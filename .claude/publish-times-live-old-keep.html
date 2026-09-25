@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html >
+<head>
+    <meta charset="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Events - SFAF Calendar</title>
+    <link rel="icon" type="image/svg+xml" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin.svg?ver=3.104.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin.png?ver=3.104.0" />
+<link rel="apple-touch-icon" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin-180.png?ver=3.104.0" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
+    <link rel="stylesheet" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/css/portal.css?ver=3.104.0" />
+    <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
+        <script>
+    (function (d) {
+        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        d.setAttribute('data-uc-motion', reduced ? 'reduced' : 'on');
+        if (reduced) { return; }
+        d.className += ' uc-anim';
+        // The nav stagger is once per session, not once per navigation: every
+        // screen here is a full page load. A storage failure means it simply
+        // runs again, which is the harmless outcome.
+        try {
+            if (window.sessionStorage.getItem('ucNavIntro') !== '1') {
+                window.sessionStorage.setItem('ucNavIntro', '1');
+                d.className += ' uc-anim-nav';
+            }
+        } catch (e) {
+            d.className += ' uc-anim-nav';
+        }
+    })(document.documentElement);
+    </script>
+    </head>
+<body class="uc-portal">        <div class="uc-portal-layout">
+            <aside class="uc-portal-sidebar" id="uc-sidebar">
+                <div class="uc-portal-brand">
+                                            <span class="uc-portal-brandmark">SFAF</span>
+                                        <span class="uc-portal-brandtext">Calendar Admin</span>
+                </div>
+                <nav class="uc-portal-nav" aria-label="Calendar admin">
+                                                                    <a href="https://resources.sfaf.org/caladmin"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 1"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-home" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 11 12 4l8 7"/><path d="M6.5 9.5V20h11V9.5"/></svg></span>
+                            <span class="uc-nav-label">Dashboard</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/events"
+                           class="uc-nav-item active"
+                           style="--uc-nav-i: 2"
+                            aria-current="page">
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-calendar" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span>
+                            <span class="uc-nav-label">Events</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/series"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 3"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-repeat" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17 2.5 21 6.5l-4 4"/><path d="M3 12.5v-2a4 4 0 0 1 4-4h14"/><path d="M7 21.5 3 17.5l4-4"/><path d="M21 11.5v2a4 4 0 0 1-4 4H3"/></svg></span>
+                            <span class="uc-nav-label">Series &amp; Categories</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/faq-sets"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 4"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-help" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.6"/><path d="M12 17h.01"/></svg></span>
+                            <span class="uc-nav-label">FAQ Sets</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/media"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 5"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-image" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.5"/><path d="m3.5 16.5 4.5-4 3.5 3 3-2.5 6 5"/></svg></span>
+                            <span class="uc-nav-label">Images</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/venues"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 6"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-venue" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 21h18"/><path d="M12 3.5 4 8.5h16z"/><path d="M6.5 21v-9M10.2 21v-9M13.8 21v-9M17.5 21v-9"/></svg></span>
+                            <span class="uc-nav-label">Venues</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/organizers"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 7"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-users" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5"/><path d="M17 13.2a5.5 5.5 0 0 1 3.5 5.8"/></svg></span>
+                            <span class="uc-nav-label">Organizers</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/optins"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 8"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-mail" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/></svg></span>
+                            <span class="uc-nav-label">Email Opt-ins</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/pending"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 9"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-clock" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>
+                            <span class="uc-nav-label">Pending</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/users"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 10"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-users" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5"/><path d="M17 13.2a5.5 5.5 0 0 1 3.5 5.8"/></svg></span>
+                            <span class="uc-nav-label">Users &amp; Teams</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/preferences"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 11"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-bell" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 10.5a6 6 0 0 0-12 0c0 4.5-2 6-2 6h16s-2-1.5-2-6z"/><path d="M13.7 19.5a2 2 0 0 1-3.4 0"/></svg></span>
+                            <span class="uc-nav-label">Preferences</span>
+                                                    </a>
+                                    </nav>
+
+                                <div class="uc-portal-foot">
+                    <div class="uc-portal-me">
+                        <span class="uc-portal-me-name">Admin</span>
+                        <span class="uc-portal-me-role">Admin</span>
+                        <a class="uc-portal-signout" href="">Sign out</a>
+                    </div>
+                </div>
+            </aside>
+
+            <div class="uc-portal-main">
+                <header class="uc-portal-topbar">
+                                        <button type="button" class="uc-portal-menu-btn" id="uc-menu-btn" aria-label="Menu"><svg class="sfaf-icon sfaf-icon-menu" width="22px" height="22px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+                                        <div class="uc-portal-user">
+                        <a class="uc-portal-logout" href="">Log out</a>
+                    </div>
+                </header>
+                <main class="uc-portal-content">
+                <div class="uc-page-head">
+            <h1>Edit Event</h1>
+            <a href="https://resources.sfaf.org/caladmin/events" class="uc-btn">&larr; Back</a>
+        </div>
+
+                
+        
+        
+        
+                <form method="post" id="uc-event-form-501" action="https://resources.sfaf.org/caladmin/events/edit/501" class="uc-form">
+            <input type="hidden" name="uc_action" value="save_event" />
+            <input type="hidden" name="event_id" value="501" />
+            <input type="hidden" name="uc_nonce" value="nonce" />
+            <p class="uc-hint uc-required-note">Fields marked * are required to publish.</p>
+
+            
+                                    <fieldset class="uc-scope-fields">
+
+                        <div class="uc-bento">
+            <div class="uc-bento-main">
+
+                        <section class="uc-bento-card uc-series-first">
+            <h2 class="uc-bento-title">Is this part of a series?
+                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="" aria-label="More about series">?</button><span class="uc-help-body" id="" data-uc-help-body>An event with no picture of its own shows its series picture. Repeating dates are added and removed on the series schedule screen, not here.</span>            </h2>
+
+            <label class="uc-field">
+                <span class="uc-field-label">Series</span>
+                <select name="series" data-uc-series-select>
+                    <option value="0">Not part of a series</option>
+                                            <option value="11" >
+                            Alpha                        </option>
+                                            <option value="12" >
+                            Beta                        </option>
+                                    </select>
+            </label>
+
+                                            <p class="uc-hint">
+                    Moving it changes which series it is listed under. Nothing else about the event changes.
+                    An event with no picture of its own shows its series' picture.
+                </p>
+                    </section>
+        
+                                <section class="uc-bento-card">
+                    <h2 class="uc-bento-title">Event details</h2>
+                                        <label class="uc-field">
+                        <span class="uc-field-label">Title<span class="uc-req" aria-hidden="true">*</span> </span>
+                        <input type="text" name="title" value="Stored group" required />
+                    </label>
+                                    <div class="uc-field">
+                    <span class="uc-field-label">Description<span class="uc-req" aria-hidden="true">*</span> </span>
+                    <textarea name="description" id="uc-description">&lt;p&gt;Words.&lt;/p&gt;</textarea>                <details class="uc-desc-images" data-uc-desc-images
+                 data-uc-ajax="https://resources.sfaf.org/wp-admin/admin-ajax.php"
+                 data-uc-action="sfaf_desc_image"
+                 data-uc-field="uc_desc_image"
+                 data-uc-ajax-nonce="nonce"
+                 data-uc-editor="uc-description">
+                        <summary class="uc-btn uc-btn-quiet uc-desc-images-open">
+                <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="15px" height="15px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                Insert image
+            </summary>
+            <div class="uc-desc-images-panel">
+                                <label class="uc-field uc-field-upload">
+                    <span class="uc-field-label">Upload a picture</span>
+                    <input type="file" data-uc-desc-upload
+                           accept="image/jpeg,image/png,image/gif,image/webp" />
+                    <span class="uc-hint">
+                        JPEG, PNG, GIF or WebP, up to 10MB.
+                        It goes full width of the description, so a wide picture reads best.
+                    </span>
+                </label>
+                <p class="uc-desc-images-status" data-uc-desc-status role="status" hidden></p>
+
+                            </div>
+        </details>
+                        </div>
+                                                                    <div class="uc-field uc-image-field"
+                      data-uc-media-folder="calendar" data-uc-media-flag="uc_calendar_media" data-uc-media-series="0" data-uc-media-upload="1" data-uc-media-folder-empty="1"                     >
+                    <span class="uc-field-label">Featured Image
+                                                <span class="uc-img-source-tag" data-uc-img-source-tag
+                              data-uc-img-source-own="Event-specific">Placeholder</span>
+                                            </span>
+                                                        <div class="uc-image-preview" id="uc-image-preview-e501"
+             data-uc-image-preview style="display:none;">
+            <img src="" alt="" data-uc-image-preview-img />
+        </div>
+
+        
+                                <div class="uc-image-buttons">
+                <button type="button" class="uc-btn uc-btn-sm uc-link-danger uc-remove-image" style="display:none;">Remove</button>
+            </div>
+                        <label class="uc-field uc-image-url-field">
+            <span class="uc-field-label">Or an image URL                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="" aria-label="More about the image URL">?</button><span class="uc-help-body" id="" data-uc-help-body>A picture set here overrides the series image for this one date. The URL is the fallback: it is used only when no image has been chosen from the library, so pasting one never fights with a chosen file.</span>            </span>
+            <input type="url" name="image_url"
+                   id="uc-image-url-e501"
+                   data-uc-image-url value=""
+                   placeholder="https://…/image.jpg" />
+        </label>
+                        <p class="uc-hint uc-hint-spec"><strong>1200 x 675 pixels, 16:9 landscape.</strong> Cards crop to this shape and fill it.</p>
+                            <p class="uc-field-note uc-field-note-attention"><svg class="uc-state-icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path fill="currentColor" d="M4 17.2V20h2.8L17 9.8 14.2 7zm14.8-9.6a.75.75 0 0 0 0-1.06l-1.74-1.74a.75.75 0 0 0-1.06 0L14.6 6.2 17.4 9z"/></svg><span>The calendar folder has no images in it yet, so Choose Image will look empty. Uploading one here puts it in the folder. If you expected pictures to be there, check that the folder is still <code>uploads/calendar</code>.</span></p>
+                                </div>
+                                                    <input type="hidden" name="uc_video_present" value="1" />
+        <label class="uc-field">
+            <span class="uc-field-label">Video</span>
+            <input type="url" name="video_url" id="uc-event-video"
+                   value=""
+                   placeholder="https://www.youtube.com/watch?v=&hellip;"
+                    />
+                        <span class="uc-hint">
+                A YouTube or Vimeo link. Paste the address from the browser bar, not embed code.
+            </span>
+        </label>
+                <div class="uc-video-preview" data-uc-video-preview hidden>
+            <p class="uc-hint uc-video-preview-note" data-uc-video-from-series hidden>
+                This event will show the series video.
+            </p>
+            <div class="uc-video-frame">
+                <iframe data-uc-video-frame
+                        src=""
+                        title="Video preview" loading="lazy"
+                        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen></iframe>
+            </div>
+        </div>
+                <script type="application/json" data-uc-series-videos>[]</script>
+        <label class="uc-check" data-uc-video-none-row hidden>
+            <input type="checkbox" name="video_none" value="1"  data-uc-video-none />
+            Don't show the series video on this event
+        </label>
+                        </section>
+
+                                <section class="uc-bento-card uc-faq-card">
+                                        <div class="uc-bento-head">
+                        <h2 class="uc-bento-title">FAQs</h2>
+                    </div>
+                    <p class="uc-hint">
+                        Frequently asked questions for this event. These are its own: there is no series block above
+                        them and nothing overrides them.
+                    </p>
+                                        
+        <div class="uc-repeater" data-repeater>
+            <div class="uc-repeater-rows">
+                            </div>
+            <button type="button" class="uc-btn uc-btn-sm uc-repeater-add">+ Add FAQ</button>
+            <template class="uc-repeater-tpl">
+                    <div class="uc-repeater-row uc-faq-row">
+        <input type="text" name="uc_faqs[__I__][question]"               value=""
+               placeholder="Question" aria-label="Question" />
+        <textarea name="uc_faqs[__I__][answer]" rows="8" placeholder="Answer" data-uc-rich></textarea>        <div class="uc-faq-row-actions">
+            <button type="button" class="uc-btn uc-btn-sm uc-repeater-remove uc-faq-remove">Remove this question</button>
+        </div>
+    </div>
+                </template>
+                    </div>
+                        </section>
+
+                                <section class="uc-bento-card">
+                    <h2 class="uc-bento-title">Classification</h2>
+                                                    <div class="uc-field uc-cat-field"                     data-uc-chips>
+                    <span class="uc-field-label">Categories<span class="uc-req" aria-hidden="true">*</span>                         <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="" aria-label="More about categories">?</button><span class="uc-help-body" id="" data-uc-help-body>An event can be in several, and it appears under each of them in the filter bar. The first one alphabetically supplies the card color and the placeholder picture, so the order you see the chips in is the order that decides it.</span>                    </span>
+                    <input type="hidden" name="uc_category_present" value="1" />
+
+                                        <div class="uc-chips" data-uc-chips-list hidden></div>
+                    <p class="uc-chips-empty" data-uc-chips-empty hidden>No categories chosen yet.</p>
+
+                    <div class="uc-chips-add" data-uc-chips-add hidden>
+                        <button type="button" class="uc-btn uc-btn-sm" data-uc-chips-toggle
+                                aria-expanded="false">+ Add category</button>
+                    </div>
+
+                    <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
+                                                    <label class="uc-check" data-uc-chip-label="Alpha">
+                                <input type="checkbox" name="category[]" value="11"
+                                       data-uc-chip-color="#16BECF"
+                                        />
+                                Alpha                            </label>
+                                                    <label class="uc-check" data-uc-chip-label="Beta">
+                                <input type="checkbox" name="category[]" value="12"
+                                       data-uc-chip-color="#16BECF"
+                                        checked="checked" />
+                                Beta                            </label>
+                                            </div>
+
+                                    </div>
+                                <div class="uc-field">
+                    <span class="uc-field-label">Organizer<span class="uc-req" aria-hidden="true">*</span> </span>
+
+                                        <input type="hidden" name="uc_organizer_present" value="1" />
+
+                    <div class="uc-check-grid">
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="organizer[]" value="11"
+                                        checked="checked" />
+                                Alpha                            </label>
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="organizer[]" value="12"
+                                        />
+                                Beta                            </label>
+                                            </div>
+
+                                                        </div>
+
+                                                </section>
+
+                                <section class="uc-bento-card">
+                    <h2 class="uc-bento-title">Schedule</h2>
+                                        <label class="uc-field">
+                        <span class="uc-field-label">Date<span class="uc-req" aria-hidden="true">*</span> </span>
+                        <input type="date" name="date" value="2026-12-01" />
+                    </label>
+                    <div class="uc-field-row">
+                        <label class="uc-field">
+                            <span class="uc-field-label">Start<span class="uc-req" aria-hidden="true">*</span> </span>
+                                <span class="uc-timepick" role="group" aria-label="Start time">
+        <select name="start_time_h"
+                                class="uc-timepick-h"
+                aria-label="Start time, hour">
+            <option value="">Hour</option>
+                            <option value="00">12 am</option>
+                            <option value="01">1 am</option>
+                            <option value="02">2 am</option>
+                            <option value="03">3 am</option>
+                            <option value="04">4 am</option>
+                            <option value="05">5 am</option>
+                            <option value="06">6 am</option>
+                            <option value="07">7 am</option>
+                            <option value="08">8 am</option>
+                            <option value="09">9 am</option>
+                            <option value="10" selected="selected">10 am</option>
+                            <option value="11">11 am</option>
+                            <option value="12">12 pm</option>
+                            <option value="13">1 pm</option>
+                            <option value="14">2 pm</option>
+                            <option value="15">3 pm</option>
+                            <option value="16">4 pm</option>
+                            <option value="17">5 pm</option>
+                            <option value="18">6 pm</option>
+                            <option value="19">7 pm</option>
+                            <option value="20">8 pm</option>
+                            <option value="21">9 pm</option>
+                            <option value="22">10 pm</option>
+                            <option value="23">11 pm</option>
+                    </select>
+        <select name="start_time_m"
+                class="uc-timepick-m"
+                aria-label="Start time, minute">
+            <option value="">Min</option>
+                            <option value="00" selected="selected">:00</option>
+                            <option value="05">:05</option>
+                            <option value="10">:10</option>
+                            <option value="15">:15</option>
+                            <option value="20">:20</option>
+                            <option value="25">:25</option>
+                            <option value="30">:30</option>
+                            <option value="35">:35</option>
+                            <option value="40">:40</option>
+                            <option value="45">:45</option>
+                            <option value="50">:50</option>
+                            <option value="55">:55</option>
+                    </select>
+    </span>
+                            </label>
+                        <label class="uc-field">
+                            <span class="uc-field-label">End<span class="uc-req" aria-hidden="true">*</span> </span>
+                                <span class="uc-timepick" role="group" aria-label="End time">
+        <select name="end_time_h"
+                                class="uc-timepick-h"
+                aria-label="End time, hour">
+            <option value="">Hour</option>
+                            <option value="00">12 am</option>
+                            <option value="01">1 am</option>
+                            <option value="02">2 am</option>
+                            <option value="03">3 am</option>
+                            <option value="04">4 am</option>
+                            <option value="05">5 am</option>
+                            <option value="06">6 am</option>
+                            <option value="07">7 am</option>
+                            <option value="08">8 am</option>
+                            <option value="09">9 am</option>
+                            <option value="10">10 am</option>
+                            <option value="11" selected="selected">11 am</option>
+                            <option value="12">12 pm</option>
+                            <option value="13">1 pm</option>
+                            <option value="14">2 pm</option>
+                            <option value="15">3 pm</option>
+                            <option value="16">4 pm</option>
+                            <option value="17">5 pm</option>
+                            <option value="18">6 pm</option>
+                            <option value="19">7 pm</option>
+                            <option value="20">8 pm</option>
+                            <option value="21">9 pm</option>
+                            <option value="22">10 pm</option>
+                            <option value="23">11 pm</option>
+                    </select>
+        <select name="end_time_m"
+                class="uc-timepick-m"
+                aria-label="End time, minute">
+            <option value="">Min</option>
+                            <option value="00" selected="selected">:00</option>
+                            <option value="05">:05</option>
+                            <option value="10">:10</option>
+                            <option value="15">:15</option>
+                            <option value="20">:20</option>
+                            <option value="25">:25</option>
+                            <option value="30">:30</option>
+                            <option value="35">:35</option>
+                            <option value="40">:40</option>
+                            <option value="45">:45</option>
+                            <option value="50">:50</option>
+                            <option value="55">:55</option>
+                    </select>
+    </span>
+                            </label>
+                    </div>
+
+                    
+                    
+                                                                                            <div class="uc-repeat" data-uc-repeat data-uc-repeat-date="2026-12-01">
+
+            <span class="uc-field-label">Repeats
+                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="" aria-label="More about repeating">?</button><span class="uc-help-body" id="" data-uc-help-body>On save this creates one separate event per date, all grouped so they can be edited together afterwards. It happens once: nothing regenerates, and the schedule is edited on the series from then on.</span>            </span>
+
+                        <div class="uc-seg" role="radiogroup" aria-label="How often this repeats">
+                                    <label class="uc-seg-opt">
+                        <input type="radio" name="repeat_mode" value=""
+                                checked="checked" data-uc-repeat-mode />
+                        <span>Never</span>
+                    </label>
+                                    <label class="uc-seg-opt">
+                        <input type="radio" name="repeat_mode" value="daily"
+                                data-uc-repeat-mode />
+                        <span>Daily</span>
+                    </label>
+                                    <label class="uc-seg-opt">
+                        <input type="radio" name="repeat_mode" value="weekly"
+                                data-uc-repeat-mode />
+                        <span>Weekly</span>
+                    </label>
+                                    <label class="uc-seg-opt">
+                        <input type="radio" name="repeat_mode" value="monthly"
+                                data-uc-repeat-mode />
+                        <span>Monthly</span>
+                    </label>
+                                    <label class="uc-seg-opt">
+                        <input type="radio" name="repeat_mode" value="custom"
+                                data-uc-repeat-mode />
+                        <span>Custom</span>
+                    </label>
+                            </div>
+
+                        <div class="uc-repeat-panel" data-uc-repeat-panel="weekly">
+                <div class="uc-repeat-every">
+                    <span>Every</span>
+                    <input type="number" name="repeat_weekly_interval" value="1" min="1" max="52"
+                           class="uc-repeat-num" aria-label="Weeks between occurrences" />
+                    <span>week(s) on</span>
+                </div>
+                <div class="uc-days" role="group" aria-label="Which days of the week">
+                                            <label class="uc-day">
+                            <input type="checkbox" name="repeat_days[]" value="0"
+                                    data-uc-repeat-day />
+                            <span aria-hidden="true">S</span>
+                            <span class="uc-visually-hidden">Sunday</span>
+                        </label>
+                                            <label class="uc-day">
+                            <input type="checkbox" name="repeat_days[]" value="1"
+                                    data-uc-repeat-day />
+                            <span aria-hidden="true">M</span>
+                            <span class="uc-visually-hidden">Monday</span>
+                        </label>
+                                            <label class="uc-day">
+                            <input type="checkbox" name="repeat_days[]" value="2"
+                                    checked="checked" data-uc-repeat-day />
+                            <span aria-hidden="true">T</span>
+                            <span class="uc-visually-hidden">Tuesday</span>
+                        </label>
+                                            <label class="uc-day">
+                            <input type="checkbox" name="repeat_days[]" value="3"
+                                    data-uc-repeat-day />
+                            <span aria-hidden="true">W</span>
+                            <span class="uc-visually-hidden">Wednesday</span>
+                        </label>
+                                            <label class="uc-day">
+                            <input type="checkbox" name="repeat_days[]" value="4"
+                                    data-uc-repeat-day />
+                            <span aria-hidden="true">T</span>
+                            <span class="uc-visually-hidden">Thursday</span>
+                        </label>
+                                            <label class="uc-day">
+                            <input type="checkbox" name="repeat_days[]" value="5"
+                                    data-uc-repeat-day />
+                            <span aria-hidden="true">F</span>
+                            <span class="uc-visually-hidden">Friday</span>
+                        </label>
+                                            <label class="uc-day">
+                            <input type="checkbox" name="repeat_days[]" value="6"
+                                    data-uc-repeat-day />
+                            <span aria-hidden="true">S</span>
+                            <span class="uc-visually-hidden">Saturday</span>
+                        </label>
+                                    </div>
+                <p class="uc-hint">The event's own day is ticked to start with. Tick more than one for a group that meets twice a week.</p>
+            </div>
+
+                        <div class="uc-repeat-panel" data-uc-repeat-panel="monthly">
+                <label class="uc-radio-row">
+                    <input type="radio" name="repeat_monthly_mode" value="date"  checked="checked" data-uc-repeat-monthly />
+                    <span>On <strong>day 1</strong> of each month</span>
+                </label>
+                <label class="uc-radio-row">
+                    <input type="radio" name="repeat_monthly_mode" value="nth"  data-uc-repeat-monthly />
+                    <span>On the</span>
+                </label>
+                <div class="uc-repeat-nth">
+                    <select name="repeat_nth" aria-label="Which occurrence in the month">
+                                                    <option value="1"  selected="selected">first</option>
+                                                    <option value="2" >second</option>
+                                                    <option value="3" >third</option>
+                                                    <option value="4" >fourth</option>
+                                                    <option value="-1" >last</option>
+                                            </select>
+                    <select name="repeat_nth_dow" aria-label="Which weekday">
+                                                    <option value="0" >Sunday</option>
+                                                    <option value="1" >Monday</option>
+                                                    <option value="2"  selected="selected">Tuesday</option>
+                                                    <option value="3" >Wednesday</option>
+                                                    <option value="4" >Thursday</option>
+                                                    <option value="5" >Friday</option>
+                                                    <option value="6" >Saturday</option>
+                                            </select>
+                    <span>of each month</span>
+                </div>
+                                <p class="uc-hint">Choose <em>last</em> rather than <em>fourth</em> if you mean the final one, since some months have five.</p>
+            </div>
+
+                        <div class="uc-repeat-panel" data-uc-repeat-panel="ends">
+                <span class="uc-field-label">Ends</span>
+                <label class="uc-radio-row">
+                    <input type="radio" name="repeat_ends" value="never"  checked="checked" data-uc-repeat-ends />
+                    <span>No end date</span>
+                </label>
+                <label class="uc-radio-row">
+                    <input type="radio" name="repeat_ends" value="on"  data-uc-repeat-ends />
+                    <span>On</span>
+                    <input type="date" name="repeat_until" value="" class="uc-repeat-date"
+                           aria-label="Repeat until this date" />
+                </label>
+                <label class="uc-radio-row">
+                    <input type="radio" name="repeat_ends" value="after"  data-uc-repeat-ends />
+                    <span>After</span>
+                    <input type="number" name="repeat_count" value="12" min="2" max="366" class="uc-repeat-num"
+                           aria-label="How many occurrences in total" />
+                    <span>occurrences</span>
+                </label>
+                                <p class="uc-hint">
+                    No end date creates a year of dates. Generation happens once, so there is no pattern left running
+                    afterwards; add more dates later from the series screen.
+                </p>
+            </div>
+
+                        <div class="uc-repeat-panel uc-dates" data-uc-repeat-panel="dates">
+                <span class="uc-field-label" data-uc-dates-label>Dates</span>
+
+                                <div class="uc-dates-add" data-uc-dates-add hidden>
+                    <input type="date" class="uc-repeat-date" data-uc-dates-input
+                           aria-label="A date this also happens on" />
+                    <button type="button" class="uc-btn uc-btn-sm" data-uc-dates-addbtn>Add date</button>
+                </div>
+
+                <ol class="uc-dates-list" data-uc-dates-list></ol>
+
+                <div class="uc-dates-slots" data-uc-dates-slots>
+                                                                <input type="date" name="repeat_dates[]" value="" class="uc-repeat-date"
+                               aria-label="Date 1" />
+                                            <input type="date" name="repeat_dates[]" value="" class="uc-repeat-date"
+                               aria-label="Date 2" />
+                                            <input type="date" name="repeat_dates[]" value="" class="uc-repeat-date"
+                               aria-label="Date 3" />
+                                            <input type="date" name="repeat_dates[]" value="" class="uc-repeat-date"
+                               aria-label="Date 4" />
+                                    </div>
+
+                <p class="uc-hint" data-uc-dates-hint>
+                    Every date here becomes its own event, at the same start and end time, in the same group as the
+                    rest. A date the pattern already covers is not added twice.
+                </p>
+            </div>
+
+                        <p class="uc-repeat-summary" data-uc-repeat-summary aria-live="polite">
+                Does not repeat. One event will be created.            </p>
+        </div>
+                                            </section>
+
+                                                <section class="uc-bento-card">
+                    <h2 class="uc-bento-title">Location<span class="uc-req" aria-hidden="true">*</span></h2>
+                            <div class="uc-field uc-location-field" data-uc-location>
+            <span class="uc-field-label">Location
+                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="" aria-label="More about venues">?</button><span class="uc-help-body" id="" data-uc-help-body>An event points at its venue rather than keeping a copy of the address, so correcting an address on the Venues screen corrects every event held there at once, including ones already published. Use a different location for a one-off place that is not worth adding as a venue.</span>            </span>
+
+                                                        <input type="hidden" name="uc_rsvp_toggle_present" value="1" />
+                <label class="uc-check"
+                       data-uc-rsvp-accept-check>
+                    <input type="checkbox" name="rsvp_enabled" value="1"
+                                                       />
+                    Accept RSVPs
+                </label>
+                                                <span class="uc-hint uc-hint-spec" data-uc-rsvp-hybrid-note hidden>
+                    A hybrid event has to take RSVPs: choosing in person or online is part of registering.
+                </span>
+                            <input type="hidden" name="uc_online_present" value="1" />
+            <input type="hidden" name="uc_online" value="0" />
+            <label class="uc-check uc-online-check">
+                <input type="checkbox" name="uc_online" value="1" data-uc-online-toggle  />
+                This is an online event
+            </label>
+            <p class="uc-hint">
+                The venue and address will be cleared. You'll need to re-enter them if you switch back.
+            </p>
+                        <input type="hidden" name="uc_hybrid" value="0" />
+            <label class="uc-check uc-online-check">
+                <input type="checkbox" name="uc_hybrid" value="1" data-uc-hybrid-toggle  />
+                This is a hybrid event
+            </label>
+            <p class="uc-hint">
+                The venue and address are kept, and a meeting link is asked for below. People choose
+                in person or online when they register, and each choice has its own number of places.
+            </p>
+
+            <div class="uc-online-panel" data-uc-online-panel>
+                <label class="uc-field">
+                    <span class="uc-field-label">Meeting link</span>
+                    <input type="url" name="meeting_url" value=""
+                           placeholder="https://zoom.us/j/00000000000" />
+                                        <span class="uc-hint">
+                        Only people who register will get this link. It never appears on the event page.
+                    </span>
+                    <span class="uc-hint">
+                        If no link is entered, RSVP emails will say a link will be provided before the event.
+                        If you enter one, choose below where it goes out, or leave both unticked to keep it
+                        here for your own reference.
+                    </span>
+                </label>
+
+                <div class="uc-field">
+                                        <span class="uc-field-label">When the link goes out</span>
+                                            <label class="uc-check">
+                            <input type="checkbox" name="meeting_send[]" value="confirmation"
+                                    />
+                            Send the link with the registration confirmation (also added to their calendar file)                        </label>
+                                            <label class="uc-check">
+                            <input type="checkbox" name="meeting_send[]" value="reminder"
+                                    />
+                            Send the link with the morning-of reminder                        </label>
+                                                        </div>
+                            </div>
+
+            <div class="uc-location-place" data-uc-location-place>
+
+                                            <label class="uc-radio-row">
+                    <input type="radio" name="location_mode" value="venue" data-uc-location-mode="venue"  />
+                    <span>A venue</span>
+                </label>
+                <div class="uc-location-venue" data-uc-location-panel="venue">
+                    <select name="venue">
+                        <option value="0">Choose a venue</option>
+                                                                                <option value="11"
+                                    data-uc-display="Alpha"
+                                    >
+                                Alpha                            </option>
+                                                                                <option value="12"
+                                    data-uc-display="Beta"
+                                    >
+                                Beta                            </option>
+                                            </select>
+                    <p class="uc-hint"><a href="https://resources.sfaf.org/caladmin/venues">Manage venues</a></p>
+                </div>
+            
+            <label class="uc-radio-row">
+                <input type="radio" name="location_mode" value="custom" data-uc-location-mode="custom"  checked="checked" />
+                <span>A different location</span>
+            </label>
+            <div class="uc-location-custom" data-uc-location-panel="custom">
+                                <div class="uc-venue-grid uc-location-grid">
+                                        <label class="uc-field uc-venue-street">
+                        <span class="uc-field-label">Place name</span>
+                        <input type="text" name="location_name" value="" placeholder="Strut" maxlength="120" />
+                        <span class="uc-hint">Shown above the address. This event only; it does not become a venue.</span>
+                    </label>
+                    <label class="uc-field uc-venue-street">
+                        <span class="uc-field-label">Street</span>
+                        <input type="text" name="location_street" value="470 Castro St" placeholder="Dolores Park, near the tennis courts" />
+                    </label>
+                    <label class="uc-field uc-venue-city">
+                        <span class="uc-field-label">City</span>
+                        <input type="text" name="location_city" value="" placeholder="San Francisco" />
+                    </label>
+                    <label class="uc-field uc-venue-state">
+                        <span class="uc-field-label">State</span>
+                        <input type="text" name="location_state" value="" placeholder="CA" maxlength="20" />
+                    </label>
+                    <label class="uc-field uc-venue-zip">
+                        <span class="uc-field-label">ZIP</span>
+                        <input type="text" name="location_zip" value="" placeholder="94114" maxlength="10" />
+                    </label>
+                </div>
+                                                    <p class="uc-hint">Shows as: <strong>470 Castro St</strong></p>
+                            </div>
+            </div>                            <div class="uc-field uc-capacity-row" data-uc-capacity-row>
+                    <span class="uc-field-label">
+                        Capacity
+                                            </span>
+                    <div class="uc-capacity-boxes">
+                        <label class="uc-capacity-box">
+                                                        <span class="uc-capacity-box-label" data-uc-capacity-label hidden>In person</span>
+                            <input type="number" name="capacity" min="0"
+                                   aria-label="Capacity"
+                                   data-uc-capacity-in-person
+                                   value="" />
+                        </label>
+                                                    <label class="uc-capacity-box" data-uc-online-capacity hidden>
+                                <span class="uc-capacity-box-label">Online</span>
+                                <input type="number" name="capacity_online" min="0"
+                                       aria-label="Capacity, online"
+                                       value="" />
+                            </label>
+                                            </div>
+                                        <span class="uc-hint uc-hint-spec">0 means unlimited.</span>
+                </div>
+                        </div>
+                        </section>
+
+                
+                                    <section class="uc-bento-card">
+                        <h2 class="uc-bento-title">Notifications</h2>
+                                        <div class="uc-notify-block">
+
+                        <div class="uc-notify-section">
+                <h4 class="uc-notify-subhead">Who hears about this event</h4>
+                <p class="uc-hint">
+                    Everybody here is told when somebody registers or cancels, gets the number registered at 6 am the day
+                    before, one copy of the morning-of reminder, and the list of who is coming two hours before. It changes
+                    nothing about who can edit this event.
+                </p>
+
+                
+                <input type="hidden" name="notify_list_present" value="1" />
+
+                                    <label class="uc-check">
+                        <input type="checkbox" name="notify_author" value="1"  checked="checked" />
+                        Send to <strong>Admin</strong> (created this event, admin@sfaf.org)
+                    </label>
+                
+                        <div class="uc-notify-picker" data-uc-notify-picker>
+            <details class="uc-picker" data-uc-picker>
+                <summary class="uc-picker-toggle" data-uc-picker-toggle>
+                    <span class="uc-picker-label">Choose who else gets it</span>
+                    <span class="uc-picker-count" data-uc-picker-count>1 individual. 1 person in total.</span>
+                                        <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                </summary>
+
+                <div class="uc-picker-panel">
+                                        <div class="uc-picker-tabs" role="tablist" aria-label="Who to notify" data-uc-picker-tabs>
+                        <button type="button" role="tab" class="uc-picker-tab"
+                                id="uc-notify-501-tab-people"
+                                aria-controls="uc-notify-501-panel-people"
+                                aria-selected="true" data-uc-picker-tab="people">Individuals</button>
+                        <button type="button" role="tab" class="uc-picker-tab"
+                                id="uc-notify-501-tab-teams"
+                                aria-controls="uc-notify-501-panel-teams"
+                                aria-selected="false" tabindex="-1" data-uc-picker-tab="teams">Teams</button>
+                    </div>
+
+                    <div role="tabpanel" class="uc-picker-panel-body"
+                         id="uc-notify-501-panel-people"
+                         aria-labelledby="uc-notify-501-tab-people"
+                         data-uc-picker-panel="people">
+                        <h4 class="uc-picker-heading">Individuals</h4>
+                                                                            <p class="uc-muted">
+                                No calendar users yet. An admin can add people under Users.                            </p>
+                                            </div>
+
+                    <div role="tabpanel" class="uc-picker-panel-body"
+                         id="uc-notify-501-panel-teams"
+                         aria-labelledby="uc-notify-501-tab-teams"
+                         data-uc-picker-panel="teams">
+                        <h4 class="uc-picker-heading">Teams</h4>
+                                                    <p class="uc-muted">No teams yet. An admin can make one under Users &amp; Teams.</p>
+                                            </div>
+                </div>
+            </details>
+
+                        <div class="uc-rchips" data-uc-notify-chips hidden>
+                <span class="uc-rchips-label">On the list</span>
+                <div class="uc-rchips-list" data-uc-notify-chips-list></div>
+                <p class="uc-muted uc-rchips-empty" data-uc-notify-chips-empty hidden>
+                    Nobody else yet. Open the picker above to add somebody.
+                </p>
+            </div>
+
+                        <input type="hidden" name="notify_teams_present" value="1" />
+
+            <script type="application/json" data-uc-notify-data>{"users":[],"teams":[],"author":"admin@sfaf.org"}</script>
+        </div>
+        
+                                <div class="uc-field uc-emails-field" data-uc-emails>
+                    <span class="uc-field-label">Anyone else</span>
+                    <div class="uc-email-pills" data-uc-email-pills>
+                                            </div>
+                    <p class="uc-muted uc-emails-empty" data-uc-emails-empty hidden>
+                        Nobody outside the calendar yet.
+                    </p>
+
+                    <div class="uc-email-add">
+                        <input type="email" name="notify_email_new" id="uc-notify-email-new"
+                               data-uc-email-input
+                               placeholder="supervisor@example.org" autocomplete="off"
+                                />
+                        <button type="button" class="uc-btn uc-btn-sm uc-btn-primary" data-uc-email-add>Add</button>
+                    </div>
+                    <p class="uc-field-error" data-uc-email-error role="alert" hidden></p>
+                                        <span class="uc-hint">
+                        For people outside the calendar system: a supervisor, a co-host. Untick an address to take it
+                        off the list.
+                    </span>
+                </div>
+            </div>
+
+                        <div class="uc-notify-section">
+                                <details class="uc-notify-kinds" data-uc-disclosure >
+                    <summary class="uc-team-add-toggle" aria-expanded="false">
+                        <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                        <span>
+                                                                                        Emails for this event: all 6 are on
+                                                    </span>
+                    </summary>
+                    <div class="uc-team-add-body">
+                        <p class="uc-hint">Untick one to stop it for this event only.</p>
+                        <input type="hidden" name="uc_notify_kinds_present" value="1" />
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="notify_kinds[]" value="confirmation"
+                                        checked="checked" />
+                                Confirmation to the person who registers                            </label>
+                            <p class="uc-hint uc-notify-kind-note">Sent the moment somebody registers. Carries the date, the time, the place, add-to-calendar links, and a link to cancel.</p>
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="notify_kinds[]" value="alert"
+                                        checked="checked" />
+                                Alert to your notification list when somebody registers                            </label>
+                            <p class="uc-hint uc-notify-kind-note">One email per registration, as it happens.</p>
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="notify_kinds[]" value="day_before"
+                                        checked="checked" />
+                                Count of who is coming, to your notification list, the day before                            </label>
+                            <p class="uc-hint uc-notify-kind-note">Sent at 6 am the day before. Gives the number registered, not the names. Nothing is sent when nobody has registered.</p>
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="notify_kinds[]" value="reminder"
+                                        checked="checked" />
+                                Morning-of reminder to everybody registered                            </label>
+                            <p class="uc-hint uc-notify-kind-note">Sent at 6 am on the day, or at midnight when the event starts earlier. Your notification list is copied in.</p>
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="notify_kinds[]" value="summary"
+                                        checked="checked" />
+                                Who is coming, to your notification list, two hours before                            </label>
+                            <p class="uc-hint uc-notify-kind-note">Lists everybody registered. Nothing is sent when nobody has registered.</p>
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="notify_kinds[]" value="cancel_alert"
+                                        checked="checked" />
+                                Alert to your notification list when somebody cancels                            </label>
+                            <p class="uc-hint uc-notify-kind-note">One email per cancellation, as it happens. Names who cancelled and what the count is now.</p>
+                                            </div>
+                </details>
+            </div>
+
+            
+                    </div>
+                        <div class="uc-notify-section">
+                <h4 class="uc-notify-subhead">Replies</h4>
+                <label class="uc-field">
+                    <span class="uc-field-label">Replies go to</span>
+                                        <input type="email" name="event_replyto" id="uc-event-replyto"
+                           value="admin@sfaf.org"
+                                                      placeholder="events@sfaf.org" />
+                                        <span class="uc-hint">
+                        One address, for replies to this event's reminder. A shared mailbox is more reliable
+                        than a person, and it does not have to be an sfaf.org address.
+                                                    Pre-filled with whoever created this event.
+                                            </span>
+                </label>
+                </div>
+                                    </section>
+                
+                                    <section class="uc-bento-card">
+                        <h2 class="uc-bento-title">Other details</h2>
+                                        <div class="uc-field uc-private-field">
+                    <span class="uc-field-label">Who can find this event
+                        <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="" aria-label="More about private events">?</button><span class="uc-help-body" id="" data-uc-help-body>The link is the whole of the protection: anybody who has it can open the event and can pass it on. There is no list of who has looked and no way to take the link back except making a new one.</span>                    </span>
+                                        <input type="hidden" name="uc_private" value="0" />
+                    <label class="uc-check">
+                        <input type="checkbox" name="uc_private" value="1"  />
+                        Make this event private
+                    </label>
+                                        <p class="uc-hint">
+                        The event will not appear anywhere on the site. Only people you send the link to can
+                        find it. Turning this on gives the event a new link, so any link you have already
+                        shared will stop working.
+                    </p>
+                                                        </div>
+                                    </section>
+                
+            </div>
+                        <div class="uc-bento-side">                
+                                <section class="uc-bento-card">
+                    <h2 class="uc-bento-title">Donate</h2>
+                    <label class="uc-field">
+                        <span class="uc-field-label">GoFundMe URL </span>
+                        <input type="url" name="gofundme_url" value="" placeholder="https://gofund.me/…" />
+                    </label>
+                                    </section>
+
+                                                        <section class="uc-bento-card">
+            <h2 class="uc-bento-title">Who can edit this
+                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="" aria-label="More about teams">?</button><span class="uc-help-body" id="" data-uc-help-body>A team is resolved every time somebody opens the event, so adding a person to the team gives them this event too, and removing them takes it away. Nothing here has to be changed for that to happen.</span>            </h2>
+
+            <p class="uc-access-organizer">
+                <strong>Admin</strong>
+                <span class="uc-muted">
+                    created this event and can always edit it.                </span>
+            </p>
+            <p class="uc-hint">Calendar admins and editors can edit every event.</p>
+
+                            <p class="uc-muted">No teams exist yet.</p>
+                <p class="uc-hint">Teams are created under Users &amp; Teams.</p>
+                    </section>
+        
+                <section class="uc-bento-card">
+                    <h2 class="uc-bento-title">Display</h2>
+                                            <label class="uc-check uc-check-locked" data-uc-rsvp-show-check>
+                            <input type="checkbox" name="show_rsvp" value="1"  checked="checked" disabled />
+                            RSVP                        </label>
+                                                                                                            <p class="uc-hint uc-rsvp-show-note" data-uc-rsvp-show-note>
+                                This event is not accepting RSVPs, so there is no button to show. Turn on <strong>Accept RSVPs</strong> in the Location card.
+                            </p>
+                            <p class="uc-hint uc-rsvp-show-note" data-uc-rsvp-hybrid-show-note hidden>
+                                A hybrid event needs its registration button: choosing in person or online is part of registering.
+                            </p>
+                                                                                            <label class="uc-check" data-uc-calendar-check>
+                            <input type="checkbox" name="show_calendar" value="1"  checked="checked" />
+                            Add to calendar                        </label>
+                                                                            <p class="uc-hint uc-calendar-note" data-uc-calendar-note hidden>
+                                Because this event takes RSVPs, the calendar link goes out with the registration confirmation instead.
+                            </p>
+                                                                    <label class="uc-check">
+                            <input type="checkbox" name="show_donate" value="1"  checked="checked" />
+                            Donate                        </label>
+                                                                                            <label class="uc-check">
+                            <input type="checkbox" name="show_social" value="1"  checked="checked" />
+                            Social share                        </label>
+                                                                                            <label class="uc-check">
+                            <input type="checkbox" name="show_reminders" value="1"  checked="checked" />
+                            Follow the series                        </label>
+                                                                                    </section>
+            </div>
+            </div>
+            
+            
+                                    </fieldset>
+        </form>
+
+                    <div class="uc-form-actions uc-form-actions-primary">
+                <p class="uc-form-actions-note">Saving keeps this event exactly as public as it is now.</p>
+                                                                <button type="submit" form="uc-event-form-501" name="save_mode" value="keep" class="uc-btn uc-btn-go uc-editor-save-main uc-editor-save">Save changes</button>
+                                                                                                        <details class="uc-cancel-inline" id="uc-cancel-this" data-uc-disclosure>
+                                <summary class="uc-btn uc-btn-stop uc-cancel-inline-toggle" aria-expanded="false">
+                    <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="14px" height="14px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                    <span>Cancel event</span>
+                </summary>
+                <div class="uc-cancel-inline-body">
+
+                <form method="post" action="https://resources.sfaf.org/caladmin/events/edit/501" class="uc-cancel-form" data-uc-confirm-cancel>
+                    <input type="hidden" name="uc_action" value="cancel_event" />
+                    <input type="hidden" name="event_id" value="501" />
+                    <input type="hidden" name="uc_nonce" value="nonce" />
+                    <fieldset class="uc-cancel-visibility">
+                        <legend>What should happen to it on the public calendar?</legend>
+                        <label class="uc-radio-opt">
+                            <input type="radio" name="cancel_visibility" value="stay" checked />
+                            <span>
+                                <strong>Leave it listed, marked cancelled.</strong>
+                                Somebody who registered may come looking for it, and an event that has simply
+                                vanished tells them nothing.
+                            </span>
+                        </label>
+                        <label class="uc-radio-opt">
+                            <input type="radio" name="cancel_visibility" value="hide" />
+                            <span>
+                                <strong>Take it off the public calendar.</strong>
+                                It stays here and keeps its registrations.
+                            </span>
+                        </label>
+                    </fieldset>
+
+                                        <label class="uc-field">
+                        <span class="uc-field-label">Why, in one line (optional)</span>
+                        <textarea name="cancel_reason" rows="2"
+                                  placeholder="Shown on the event page, and in the email."></textarea>
+                        <span class="uc-hint">This one is public. Anybody who opens the event reads it.</span>
+                    </label>
+                                        <input type="hidden" name="cancel_message" value="" data-uc-cancel-message />
+
+                                        <input type="hidden" name="notify_choice" value="" data-uc-notify-choice />
+                                            <p class="uc-hint" data-uc-cancel-count="0">Nobody is registered, so there is nobody to tell.</p>
+                    
+                    <button type="submit" class="uc-btn uc-btn-caution">Cancel this event</button>
+                </form>
+
+                </div>
+        </details>
+                <button type="submit" form="uc-delete-event-501"
+                class="uc-btn uc-btn-stop uc-editor-delete"
+                data-uc-confirm="Delete this event? Nothing puts it back.">Delete</button>
+                    </div>
+                        <p class="uc-editor-actions-note">
+                <strong>Cancel</strong> keeps the registrations, closes new ones and offers to tell everybody who signed up.
+                <strong>Delete</strong> takes the event, its questions and its settings. Nothing puts them back.
+            </p>
+
+        
+                        <div class="uc-delete-block">
+                                            <form method="post" id="uc-delete-event-501" action="https://resources.sfaf.org/caladmin/events">
+                    <input type="hidden" name="uc_action" value="trash_event" />
+                    <input type="hidden" name="event_id" value="501" />
+                    <input type="hidden" name="uc_nonce" value="nonce" />                </form>
+                    </div>
+                        </main>
+            </div>
+        </div>
+        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"file:\/\/\/C:\/Users\/msapoznikov\/Documents\/Apps\/Calendar\/public\/css\/editor-content.css?ver=3.104.0"},"quicktags":false,"mediaButtons":false}</script><script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/sfaf-email.js?ver=3.104.0"></script>
+<script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/portal.js?ver=3.104.0"></script>
+<script>window.PT_CASE={"set":{"start_time_h":"18","start_time_m":"00","end_time_h":"19","end_time_m":"30"},"press":"keep"};(function () {
+var C = window.PT_CASE, out = { errors: [], posted: null, pressed: false };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+window.confirm = function () { return true; };
+function pairs(fd) { var a = []; fd.forEach(function (v, k) { if (typeof v === 'string') { a.push([k, v]); } }); return a; }
+document.addEventListener('submit', function (e) {
+  var fd; try { fd = new FormData(e.target, e.submitter); } catch (x) { fd = new FormData(e.target); }
+  out.posted = pairs(fd); out.pressed = true; e.preventDefault();
+});
+function set(form, name, value) {
+  var els = form.querySelectorAll('[name="' + name + '"]');
+  if (!els.length) { out.errors.push('no control named ' + name); return; }
+  Array.prototype.forEach.call(els, function (el) {
+    if (el.type === 'checkbox' || el.type === 'radio') {
+      if (el.value === value) { el.checked = true; el.dispatchEvent(new Event('change', { bubbles: true })); }
+    } else {
+      el.value = value;
+      if (el.value !== value) { out.errors.push(name + ' would not take ' + value); }
+      el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+}
+window.addEventListener('load', function () { setTimeout(function () {
+  var marker = document.querySelector('select[name="start_time_h"]');
+  var form = marker ? marker.form : null;
+  if (!form) { out.errors.push('the time control is in no form'); }
+  else {
+    Object.keys(C.set).forEach(function (k) { set(form, k, C.set[k]); });
+    if (C.press) {
+      var btn = document.querySelector('button[name="save_mode"][value="' + C.press + '"]');
+      if (!btn) { out.errors.push('no ' + C.press + ' button'); } else { btn.click(); }
+    } else {
+      out.posted = pairs(new FormData(form));
+    }
+  }
+  setTimeout(function () { var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre); }, 400);
+}, 400); });
+})();</script></body></html>

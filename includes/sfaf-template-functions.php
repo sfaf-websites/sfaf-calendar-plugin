@@ -3190,11 +3190,26 @@ function sfaf_time_field( $name, $value, $args = array() ) {
  * time. An hour with no minute is read as the hour exactly, because a form that
  * refused "6" and demanded "6:00" would be refusing the obvious reading.
  *
- * @param string[] $names
+ * A HOOK NEVER GETS THE DEFAULT (3.104.0), and that is what broke this from
+ * 3.98.0. WordPress calls `do_action( 'init' )` with an empty string as the
+ * first argument when the hook carries none, so `$names` arrived as '' and
+ * the loop ran once over the name '', found no `_h` and folded nothing. On a
+ * real request no time pair was ever folded: a new event saved no times and
+ * was held by the 3.99.0 publish rule for "a start time and an end time", an
+ * existing event kept its stored times and silently dropped a change, and both
+ * public forms read no time at all. Every test called the function by hand with
+ * no argument, which is the one call WordPress never makes. So anything that is
+ * not a non-empty list means the default list, and
+ * .claude/publish-times-live.php runs it the way WordPress does.
+ *
+ * @param string[]|mixed $names Whatever the hook passes; '' from `init`.
  * @return void
  */
-function sfaf_normalize_time_post( $names = array( 'start_time', 'end_time', 'uc_start_time', 'uc_end_time' ) ) {
-    foreach ( (array) $names as $name ) {
+function sfaf_normalize_time_post( $names = null ) {
+    if ( ! is_array( $names ) || empty( $names ) ) {
+        $names = array( 'start_time', 'end_time', 'uc_start_time', 'uc_end_time' );
+    }
+    foreach ( $names as $name ) {
         if ( ! isset( $_POST[ $name . '_h' ] ) ) {
             continue;
         }

@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html >
+<head>
+<meta charset="" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Request an event</title>
+<link rel="icon" type="image/svg+xml" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin.svg?ver=3.104.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin.png?ver=3.104.0" />
+<link rel="apple-touch-icon" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin-180.png?ver=3.104.0" />
+<link rel="stylesheet" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/css/portal.css?ver=3.104.0" />
+</head>
+<body class="uc-portal uc-request-page">
+<div class="uc-request-wrap">
+                <div class="uc-request-card">
+                        <h1>Request an event</h1>
+                        <p class="uc-hint uc-request-who-line">
+                Asking as <strong>someone@sfaf.org</strong>.
+                <a href="https://resources.sfaf.org/?uc_event_request=1?uc_switch=1">Not you? Use a different address</a>
+            </p>
+            
+            
+            <form method="post" action="https://resources.sfaf.org/?uc_event_request=1&amp;uc_token=tok" class="uc-form" enctype="multipart/form-data">
+                <input type="hidden" name="uc_request_action" value="submit_request" />
+                <input type="hidden" name="uc_token" value="tok" />
+                        <div class="uc-hp" aria-hidden="true">
+            <label>Website<input type="text" name="uc_website" value="" tabindex="-1" autocomplete="off" /></label>
+        </div>
+                        <p class="uc-hint uc-required-note">Fields marked * are required.</p>                
+                
+                                                                    <fieldset class="uc-form-section-group">
+                        <legend class="uc-field-label">Who is putting this on?<span class="uc-req" data-uc-req-mark="organizer" aria-hidden="true">*</span><span class="uc-visually-hidden" data-uc-req-said="organizer"> (required)</span></legend>
+                        <div class="uc-check-grid">
+                                                            <label class="uc-check">
+                                    <input type="checkbox" name="organizer[]"
+                                        value="11"
+                                         />
+                                    Alpha                                </label>
+                                                            <label class="uc-check">
+                                    <input type="checkbox" name="organizer[]"
+                                        value="12"
+                                         />
+                                    Beta                                </label>
+                                                    </div>
+                        <span class="uc-hint">Tick everybody putting it on.</span>
+                                            </fieldset>
+                
+                                    <fieldset class="uc-form-section-group">
+                        <legend class="uc-field-group-title">Series</legend>
+                        <label class="uc-field">
+                            <span class="uc-field-label">Part of a series?</span>
+                            <select name="series" data-uc-request-series>
+                                <option value="0" data-uc-series-thumb="">Not part of one</option>
+                                                                                                        <option value="11"
+                                            data-uc-series-thumb=""
+                                            data-uc-series-banner=""
+                                            >
+                                        Alpha                                    </option>
+                                                                                                        <option value="12"
+                                            data-uc-series-thumb=""
+                                            data-uc-series-banner=""
+                                            >
+                                        Beta                                    </option>
+                                                            </select>
+                            <span class="uc-hint">Choosing one uses that series' photo unless you pick a picture below.</span>
+                        </label>
+
+                                                <div class="uc-prefill" data-uc-request-prefill hidden>
+                            <p class="uc-prefill-head">
+                                Fill this in from <strong data-uc-prefill-name></strong>?
+                            </p>
+                            <div class="uc-prefill-opts" data-uc-prefill-opts></div>
+                            <div class="uc-prefill-actions">
+                                <button type="button" class="uc-btn uc-btn-sm uc-btn-primary" data-uc-prefill-apply>Fill these in</button>
+                                <button type="button" class="uc-btn uc-btn-sm" data-uc-prefill-none>Start from scratch</button>
+                            </div>
+                            <p class="uc-flash uc-prefill-said" data-uc-prefill-said role="status" hidden></p>
+                            <p class="uc-hint">The date is never filled in.</p>
+                        </div>
+
+                        <script type="application/json" data-uc-request-prefill-data>{"11":{"location_mode":"","venue":0,"venue_name":"","location":"","start_time":"","end_time":"","description":"","image_url":"","image_id":0,"image_preview":"","categories":[],"category_names":[],"organizers":[],"organizer_name":"","faq_set":"","faq_set_name":"","from_event":0},"12":{"location_mode":"","venue":0,"venue_name":"","location":"","start_time":"","end_time":"","description":"","image_url":"","image_id":0,"image_preview":"","categories":[],"category_names":[],"organizers":[],"organizer_name":"","faq_set":"","faq_set_name":"","from_event":0}}</script>
+                    </fieldset>
+                
+                                <fieldset class="uc-form-section-group uc-request-images">
+            <legend class="uc-field-group-title">Event Image</legend>
+                            <p class="uc-hint">
+                    There are no calendar pictures to choose from yet. Ask Roxane Chicoine for an image for
+                    your event, or send this without a picture and say so in the notes.
+                </p>
+            
+                        <div class="uc-request-upload">
+                <p class="uc-hint">Or send your own, and somebody will size it for the calendar.</p>
+                                <label class="uc-field uc-field-upload">
+            <span class="uc-field-label">Or upload one</span>
+            <input type="file" name="uc_image" accept="image/jpeg,image/png,image/gif,image/webp" />
+            <span class="uc-hint">
+                JPEG, PNG, GIF or WebP, up to 10MB, and at least
+                1200 pixels wide. Landscape works best.
+                A narrower one is still accepted. Leave this empty if you do not have one.
+            </span>
+                    </label>
+                    </div>
+                    <div class="uc-field uc-field-upload uc-extra-images">
+            <span class="uc-field-label">Any other pictures</span>
+                            <input type="file" name="uc_image_extra_1"
+                       accept="image/jpeg,image/png,image/gif,image/webp"
+                       aria-label="Other picture 1" />
+                                            <input type="file" name="uc_image_extra_2"
+                       accept="image/jpeg,image/png,image/gif,image/webp"
+                       aria-label="Other picture 2" />
+                                        <span class="uc-hint">
+                Up to 2, same formats and size limit as above.
+                These are not shown on the event page. Somebody adds one to the description by hand
+                with Insert image if it belongs there.
+            </span>
+        </div>
+                </fieldset>
+        
+                <fieldset class="uc-form-section-group">
+                <legend class="uc-field-group-title">About the event</legend>
+
+                <label class="uc-field">
+                    <span class="uc-field-label">Your name<span class="uc-req" data-uc-req-mark="requester_name" aria-hidden="true">*</span></span>
+                    <input type="text" name="requester_name" required maxlength="120" value="" />
+                                    </label>
+
+                <label class="uc-field">
+                    <span class="uc-field-label">Event name<span class="uc-req" data-uc-req-mark="title" aria-hidden="true">*</span></span>
+                    <input type="text" name="title" required maxlength="200" value="" />
+                                    </label>
+
+                <div class="uc-field">
+                    <span class="uc-field-label">Description<span class="uc-req" data-uc-req-mark="description" aria-hidden="true">*</span></span>
+                    <textarea aria-required="true" name="description" id="uc-request-description"></textarea>                    <span class="uc-hint">What it is, who it is for, and what somebody should expect.</span>
+                                    </div>
+
+                                <label class="uc-field">
+                    <span class="uc-field-label">Video</span>
+                    <input type="url" name="video_url" maxlength="300" value=""
+                           placeholder="https://www.youtube.com/watch?v=&hellip;" />
+                    <span class="uc-hint">A YouTube or Vimeo link. Paste the address from the browser bar, not embed code.</span>
+                                    </label>
+
+                                                    <fieldset class="uc-field">
+                        <legend class="uc-field-label">Categories</legend>
+                        <div class="uc-check-grid">
+                                                            <label class="uc-check">
+                                    <input type="checkbox" name="categories[]" value="11"
+                                         />
+                                    Alpha                                </label>
+                                                            <label class="uc-check">
+                                    <input type="checkbox" name="categories[]" value="12"
+                                         />
+                                    Beta                                </label>
+                                                    </div>
+                    </fieldset>
+                
+                </fieldset>
+
+                <fieldset class="uc-form-section-group">
+                <legend class="uc-field-group-title">When</legend>
+
+                <label class="uc-field">
+                    <span class="uc-field-label">Date<span class="uc-req" data-uc-req-mark="date" aria-hidden="true">*</span></span>
+                    <input type="date" name="date" required value="" />
+                                    </label>
+
+                <div class="uc-field-row">
+                    <label class="uc-field">
+                        <span class="uc-field-label">Start<span class="uc-req" data-uc-req-mark="start_time" aria-hidden="true">*</span></span>
+                            <span class="uc-timepick" role="group" aria-label="Start time">
+        <select name="start_time_h"
+                                class="uc-timepick-h"
+                aria-label="Start time, hour" required>
+            <option value="" selected="selected">Hour</option>
+                            <option value="00">12 am</option>
+                            <option value="01">1 am</option>
+                            <option value="02">2 am</option>
+                            <option value="03">3 am</option>
+                            <option value="04">4 am</option>
+                            <option value="05">5 am</option>
+                            <option value="06">6 am</option>
+                            <option value="07">7 am</option>
+                            <option value="08">8 am</option>
+                            <option value="09">9 am</option>
+                            <option value="10">10 am</option>
+                            <option value="11">11 am</option>
+                            <option value="12">12 pm</option>
+                            <option value="13">1 pm</option>
+                            <option value="14">2 pm</option>
+                            <option value="15">3 pm</option>
+                            <option value="16">4 pm</option>
+                            <option value="17">5 pm</option>
+                            <option value="18">6 pm</option>
+                            <option value="19">7 pm</option>
+                            <option value="20">8 pm</option>
+                            <option value="21">9 pm</option>
+                            <option value="22">10 pm</option>
+                            <option value="23">11 pm</option>
+                    </select>
+        <select name="start_time_m"
+                class="uc-timepick-m"
+                aria-label="Start time, minute" required>
+            <option value="" selected="selected">Min</option>
+                            <option value="00">:00</option>
+                            <option value="05">:05</option>
+                            <option value="10">:10</option>
+                            <option value="15">:15</option>
+                            <option value="20">:20</option>
+                            <option value="25">:25</option>
+                            <option value="30">:30</option>
+                            <option value="35">:35</option>
+                            <option value="40">:40</option>
+                            <option value="45">:45</option>
+                            <option value="50">:50</option>
+                            <option value="55">:55</option>
+                    </select>
+    </span>
+                                                </label>
+                    <label class="uc-field">
+                        <span class="uc-field-label">End<span class="uc-req" data-uc-req-mark="end_time" aria-hidden="true">*</span></span>
+                            <span class="uc-timepick" role="group" aria-label="End time">
+        <select name="end_time_h"
+                                class="uc-timepick-h"
+                aria-label="End time, hour" required>
+            <option value="" selected="selected">Hour</option>
+                            <option value="00">12 am</option>
+                            <option value="01">1 am</option>
+                            <option value="02">2 am</option>
+                            <option value="03">3 am</option>
+                            <option value="04">4 am</option>
+                            <option value="05">5 am</option>
+                            <option value="06">6 am</option>
+                            <option value="07">7 am</option>
+                            <option value="08">8 am</option>
+                            <option value="09">9 am</option>
+                            <option value="10">10 am</option>
+                            <option value="11">11 am</option>
+                            <option value="12">12 pm</option>
+                            <option value="13">1 pm</option>
+                            <option value="14">2 pm</option>
+                            <option value="15">3 pm</option>
+                            <option value="16">4 pm</option>
+                            <option value="17">5 pm</option>
+                            <option value="18">6 pm</option>
+                            <option value="19">7 pm</option>
+                            <option value="20">8 pm</option>
+                            <option value="21">9 pm</option>
+                            <option value="22">10 pm</option>
+                            <option value="23">11 pm</option>
+                    </select>
+        <select name="end_time_m"
+                class="uc-timepick-m"
+                aria-label="End time, minute" required>
+            <option value="" selected="selected">Min</option>
+                            <option value="00">:00</option>
+                            <option value="05">:05</option>
+                            <option value="10">:10</option>
+                            <option value="15">:15</option>
+                            <option value="20">:20</option>
+                            <option value="25">:25</option>
+                            <option value="30">:30</option>
+                            <option value="35">:35</option>
+                            <option value="40">:40</option>
+                            <option value="45">:45</option>
+                            <option value="50">:50</option>
+                            <option value="55">:55</option>
+                    </select>
+    </span>
+                                                </label>
+                </div>
+
+                        <div class="uc-repeat" data-uc-repeat data-uc-repeat-date="">
+
+            <span class="uc-field-label">Repeats
+                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="" aria-label="More about repeating">?</button><span class="uc-help-body" id="" data-uc-help-body>On save this creates one separate event per date, all grouped so they can be edited together afterwards. It happens once: nothing regenerates, and the schedule is edited on the series from then on.</span>            </span>
+
+                        <div class="uc-seg" role="radiogroup" aria-label="How often this repeats">
+                                    <label class="uc-seg-opt">
+                        <input type="radio" name="repeat_mode" value=""
+                                checked="checked" data-uc-repeat-mode />
+                        <span>Never</span>
+                    </label>
+                                    <label class="uc-seg-opt">
+                        <input type="radio" name="repeat_mode" value="daily"
+                                data-uc-repeat-mode />
+                        <span>Daily</span>
+                    </label>
+                                    <label class="uc-seg-opt">
+                        <input type="radio" name="repeat_mode" value="weekly"
+                                data-uc-repeat-mode />
+                        <span>Weekly</span>
+                    </label>
+                                    <label class="uc-seg-opt">
+                        <input type="radio" name="repeat_mode" value="monthly"
+                                data-uc-repeat-mode />
+                        <span>Monthly</span>
+                    </label>
+                                    <label class="uc-seg-opt">
+                        <input type="radio" name="repeat_mode" value="custom"
+                                data-uc-repeat-mode />
+                        <span>Custom</span>
+                    </label>
+                            </div>
+
+                        <div class="uc-repeat-panel" data-uc-repeat-panel="weekly">
+                <div class="uc-repeat-every">
+                    <span>Every</span>
+                    <input type="number" name="repeat_weekly_interval" value="1" min="1" max="52"
+                           class="uc-repeat-num" aria-label="Weeks between occurrences" />
+                    <span>week(s) on</span>
+                </div>
+                <div class="uc-days" role="group" aria-label="Which days of the week">
+                                            <label class="uc-day">
+                            <input type="checkbox" name="repeat_days[]" value="0"
+                                    data-uc-repeat-day />
+                            <span aria-hidden="true">S</span>
+                            <span class="uc-visually-hidden">Sunday</span>
+                        </label>
+                                            <label class="uc-day">
+                            <input type="checkbox" name="repeat_days[]" value="1"
+                                    data-uc-repeat-day />
+                            <span aria-hidden="true">M</span>
+                            <span class="uc-visually-hidden">Monday</span>
+                        </label>
+                                            <label class="uc-day">
+                            <input type="checkbox" name="repeat_days[]" value="2"
+                                    data-uc-repeat-day />
+                            <span aria-hidden="true">T</span>
+                            <span class="uc-visually-hidden">Tuesday</span>
+                        </label>
+                                            <label class="uc-day">
+                            <input type="checkbox" name="repeat_days[]" value="3"
+                                    data-uc-repeat-day />
+                            <span aria-hidden="true">W</span>
+                            <span class="uc-visually-hidden">Wednesday</span>
+                        </label>
+                                            <label class="uc-day">
+                            <input type="checkbox" name="repeat_days[]" value="4"
+                                    data-uc-repeat-day />
+                            <span aria-hidden="true">T</span>
+                            <span class="uc-visually-hidden">Thursday</span>
+                        </label>
+                                            <label class="uc-day">
+                            <input type="checkbox" name="repeat_days[]" value="5"
+                                    checked="checked" data-uc-repeat-day />
+                            <span aria-hidden="true">F</span>
+                            <span class="uc-visually-hidden">Friday</span>
+                        </label>
+                                            <label class="uc-day">
+                            <input type="checkbox" name="repeat_days[]" value="6"
+                                    data-uc-repeat-day />
+                            <span aria-hidden="true">S</span>
+                            <span class="uc-visually-hidden">Saturday</span>
+                        </label>
+                                    </div>
+                <p class="uc-hint">The event's own day is ticked to start with. Tick more than one for a group that meets twice a week.</p>
+            </div>
+
+                        <div class="uc-repeat-panel" data-uc-repeat-panel="monthly">
+                <label class="uc-radio-row">
+                    <input type="radio" name="repeat_monthly_mode" value="date"  checked="checked" data-uc-repeat-monthly />
+                    <span>On <strong>the same date</strong> of each month</span>
+                </label>
+                <label class="uc-radio-row">
+                    <input type="radio" name="repeat_monthly_mode" value="nth"  data-uc-repeat-monthly />
+                    <span>On the</span>
+                </label>
+                <div class="uc-repeat-nth">
+                    <select name="repeat_nth" aria-label="Which occurrence in the month">
+                                                    <option value="1" >first</option>
+                                                    <option value="2" >second</option>
+                                                    <option value="3" >third</option>
+                                                    <option value="4" >fourth</option>
+                                                    <option value="-1" >last</option>
+                                            </select>
+                    <select name="repeat_nth_dow" aria-label="Which weekday">
+                                                    <option value="0" >Sunday</option>
+                                                    <option value="1" >Monday</option>
+                                                    <option value="2" >Tuesday</option>
+                                                    <option value="3" >Wednesday</option>
+                                                    <option value="4" >Thursday</option>
+                                                    <option value="5"  selected="selected">Friday</option>
+                                                    <option value="6" >Saturday</option>
+                                            </select>
+                    <span>of each month</span>
+                </div>
+                                <p class="uc-hint">Choose <em>last</em> rather than <em>fourth</em> if you mean the final one, since some months have five.</p>
+            </div>
+
+                        <div class="uc-repeat-panel" data-uc-repeat-panel="ends">
+                <span class="uc-field-label">Ends</span>
+                <label class="uc-radio-row">
+                    <input type="radio" name="repeat_ends" value="never"  checked="checked" data-uc-repeat-ends />
+                    <span>No end date</span>
+                </label>
+                <label class="uc-radio-row">
+                    <input type="radio" name="repeat_ends" value="on"  data-uc-repeat-ends />
+                    <span>On</span>
+                    <input type="date" name="repeat_until" value="" class="uc-repeat-date"
+                           aria-label="Repeat until this date" />
+                </label>
+                <label class="uc-radio-row">
+                    <input type="radio" name="repeat_ends" value="after"  data-uc-repeat-ends />
+                    <span>After</span>
+                    <input type="number" name="repeat_count" value="12" min="2" max="366" class="uc-repeat-num"
+                           aria-label="How many occurrences in total" />
+                    <span>occurrences</span>
+                </label>
+                                <p class="uc-hint">
+                    No end date creates a year of dates. Generation happens once, so there is no pattern left running
+                    afterwards; add more dates later from the series screen.
+                </p>
+            </div>
+
+                        <div class="uc-repeat-panel uc-dates" data-uc-repeat-panel="dates">
+                <span class="uc-field-label" data-uc-dates-label>Dates</span>
+
+                                <div class="uc-dates-add" data-uc-dates-add hidden>
+                    <input type="date" class="uc-repeat-date" data-uc-dates-input
+                           aria-label="A date this also happens on" />
+                    <button type="button" class="uc-btn uc-btn-sm" data-uc-dates-addbtn>Add date</button>
+                </div>
+
+                <ol class="uc-dates-list" data-uc-dates-list></ol>
+
+                <div class="uc-dates-slots" data-uc-dates-slots>
+                                                                <input type="date" name="repeat_dates[]" value="" class="uc-repeat-date"
+                               aria-label="Date 1" />
+                                            <input type="date" name="repeat_dates[]" value="" class="uc-repeat-date"
+                               aria-label="Date 2" />
+                                            <input type="date" name="repeat_dates[]" value="" class="uc-repeat-date"
+                               aria-label="Date 3" />
+                                            <input type="date" name="repeat_dates[]" value="" class="uc-repeat-date"
+                               aria-label="Date 4" />
+                                    </div>
+
+                <p class="uc-hint" data-uc-dates-hint>
+                    Every date here becomes its own event, at the same start and end time, in the same group as the
+                    rest. A date the pattern already covers is not added twice.
+                </p>
+            </div>
+
+                        <p class="uc-repeat-summary" data-uc-repeat-summary aria-live="polite">
+                Does not repeat. One event will be created.            </p>
+        </div>
+        
+                </fieldset>
+
+                <fieldset class="uc-form-section-group">
+                <legend class="uc-field-group-title">Location</legend>
+
+                                <label class="uc-field">
+                    <span class="uc-field-label">Location</span>
+                    <select name="venue">
+                        <option value="0">Somewhere else (say where below)</option>
+                                                    <option value="11" >
+                                Alpha                            </option>
+                                                    <option value="12" >
+                                Beta                            </option>
+                                            </select>
+                </label>
+                                <label class="uc-field">
+                    <span class="uc-field-label">If somewhere else, the place name</span>
+                    <input type="text" name="venue_name" maxlength="120" value=""
+                           placeholder="Strut" />
+                    <span class="uc-hint">Shown above the address on the event page. It does not add the place to the venue list.</span>
+                </label>
+                <label class="uc-field">
+                    <span class="uc-field-label">If somewhere else, the address</span>
+                    <input type="text" name="venue_other" maxlength="200" value=""
+                           placeholder="470 Castro St, San Francisco" />
+                </label>
+                </fieldset>
+
+                <fieldset class="uc-form-section-group">
+                <legend class="uc-field-group-title">RSVP</legend>
+
+                <label class="uc-check">
+                    <input type="checkbox" name="rsvp" value="1"  />
+                    People need to RSVP
+                </label>
+                <label class="uc-field">
+                    <span class="uc-field-label">How many places, if there is a limit</span>
+                    <input type="number" name="capacity" min="0" max="100000" value="" />
+                                    </label>
+                </fieldset>
+
+                                <fieldset class="uc-form-section-group">
+                    <legend class="uc-field-group-title">Questions people often ask</legend>
+                    <p class="uc-hint">Parking, what to bring, whether to book. Leave it empty if there is nothing.</p>
+
+                    
+                    <div class="uc-repeater" data-repeater>
+                        <div class="uc-repeater-rows">
+                                                                <div class="uc-repeater-row uc-faq-row">
+        <input type="text" name="faq[0][question]" maxlength="300"               value=""
+               placeholder="Question" aria-label="Question" />
+        <textarea name="faq[0][answer]" rows="8" placeholder="Answer" data-uc-rich></textarea>        <div class="uc-faq-row-actions">
+            <button type="button" class="uc-btn uc-btn-sm uc-repeater-remove uc-faq-remove">Remove this question</button>
+        </div>
+    </div>
+                                                        </div>
+                        <button type="button" class="uc-btn uc-btn-sm uc-repeater-add">+ Add a question</button>
+                        <template class="uc-repeater-tpl">
+                                <div class="uc-repeater-row uc-faq-row">
+        <input type="text" name="faq[__I__][question]" maxlength="300"               value=""
+               placeholder="Question" aria-label="Question" />
+        <textarea name="faq[__I__][answer]" rows="8" placeholder="Answer" data-uc-rich></textarea>        <div class="uc-faq-row-actions">
+            <button type="button" class="uc-btn uc-btn-sm uc-repeater-remove uc-faq-remove">Remove this question</button>
+        </div>
+    </div>
+                            </template>
+                    </div>
+                </fieldset>
+
+                
+                <fieldset class="uc-form-section-group">
+                    <legend class="uc-field-group-title">Anything else we should know</legend>
+                    <label class="uc-field">
+                        <span class="uc-visually-hidden">Anything else we should know</span>
+                        <textarea name="notes" rows="3" maxlength="2000"></textarea>
+                    </label>
+                </fieldset>
+
+                <div class="uc-form-actions uc-form-actions-primary">
+                    <p class="uc-form-actions-note">This goes to the MarCom team. You will get a copy of it by email.</p>
+                    <button type="submit" class="uc-btn uc-btn-primary">Send the request</button>
+                </div>
+            </form>
+        </div>
+        </div>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"file:\/\/\/C:\/Users\/msapoznikov\/Documents\/Apps\/Calendar\/public\/css\/editor-content.css?ver=3.104.0"},"quicktags":false,"mediaButtons":false}</script><script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/portal.js?ver=3.104.0"></script>
+<script>window.PT_CASE={"set":{"start_time_h":"18","start_time_m":"00","end_time_h":"19","end_time_m":"30"},"press":""};(function () {
+var C = window.PT_CASE, out = { errors: [], posted: null, pressed: false };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+window.confirm = function () { return true; };
+function pairs(fd) { var a = []; fd.forEach(function (v, k) { if (typeof v === 'string') { a.push([k, v]); } }); return a; }
+document.addEventListener('submit', function (e) {
+  var fd; try { fd = new FormData(e.target, e.submitter); } catch (x) { fd = new FormData(e.target); }
+  out.posted = pairs(fd); out.pressed = true; e.preventDefault();
+});
+function set(form, name, value) {
+  var els = form.querySelectorAll('[name="' + name + '"]');
+  if (!els.length) { out.errors.push('no control named ' + name); return; }
+  Array.prototype.forEach.call(els, function (el) {
+    if (el.type === 'checkbox' || el.type === 'radio') {
+      if (el.value === value) { el.checked = true; el.dispatchEvent(new Event('change', { bubbles: true })); }
+    } else {
+      el.value = value;
+      if (el.value !== value) { out.errors.push(name + ' would not take ' + value); }
+      el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+}
+window.addEventListener('load', function () { setTimeout(function () {
+  var marker = document.querySelector('select[name="start_time_h"]');
+  var form = marker ? marker.form : null;
+  if (!form) { out.errors.push('the time control is in no form'); }
+  else {
+    Object.keys(C.set).forEach(function (k) { set(form, k, C.set[k]); });
+    if (C.press) {
+      var btn = document.querySelector('button[name="save_mode"][value="' + C.press + '"]');
+      if (!btn) { out.errors.push('no ' + C.press + ' button'); } else { btn.click(); }
+    } else {
+      out.posted = pairs(new FormData(form));
+    }
+  }
+  setTimeout(function () { var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre); }, 400);
+}, 400); });
+})();</script></body></html>

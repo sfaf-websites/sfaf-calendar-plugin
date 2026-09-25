@@ -102,7 +102,24 @@ function map_deep( $v, $cb ) { return is_array( $v ) ? array_map( function ( $x 
 function plugin_dir_path( $f ) { return rtrim( str_replace( '\\', '/', dirname( $f ) ), '/' ) . '/'; }
 function plugin_dir_url( $f ) { return 'file:///' . $GLOBALS['kit_root'] . '/'; }
 function plugin_basename( $f ) { return 'sfaf-calendar/sfaf-calendar.php'; }
-function add_action() {} function add_filter() {} function remove_action() {} function remove_filter() {} function do_action() {}
+/* HOOKS ARE RECORDED, NOT RUN (3.104.0). do_action() still does nothing, so
+ * loading the plugin fires no listener. kit_run_hook() runs ONE recorded
+ * callback the way WordPress does: an action with no arguments hands its
+ * callback an empty string, sliced to accepted_args. Calling a callback by
+ * hand with no argument is the one call WordPress never makes, and it hid a
+ * fault for six releases (sfaf_normalize_time_post, 3.98.0 to 3.104.0). */
+function add_action( $h = '', $cb = null, $p = 10, $n = 1 ) { $GLOBALS['kit_hooks'][ $h ][] = array( 'cb' => $cb, 'p' => (int) $p, 'n' => (int) $n ); return true; }
+function add_filter( $h = '', $cb = null, $p = 10, $n = 1 ) { return add_action( $h, $cb, $p, $n ); }
+function remove_action() {} function remove_filter() {} function do_action() {}
+function kit_run_hook( $hook, $callback, $args = array() ) {
+    if ( empty( $args ) ) { $args = array( '' ); }
+    foreach ( isset( $GLOBALS['kit_hooks'][ $hook ] ) ? $GLOBALS['kit_hooks'][ $hook ] : array() as $h ) {
+        if ( $h['cb'] === $callback ) {
+            return call_user_func_array( $h['cb'], array_slice( $args, 0, $h['n'] ) );
+        }
+    }
+    throw new RuntimeException( "kit_run_hook: nothing registered on $hook as " . ( is_string( $callback ) ? $callback : 'a callback' ) );
+}
 function apply_filters( $tag, $value ) { return $value; }
 function add_shortcode() {} function register_activation_hook() {} function register_deactivation_hook() {} function register_uninstall_hook() {}
 function home_url( $p = '' ) { return 'https://resources.sfaf.org' . $p; }
