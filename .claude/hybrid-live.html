@@ -4653,16 +4653,40 @@ function ucDismissOnBackdrop(dialog) {
                 key: 'times', label: 'Start and end time',
                 has: function (d) { return d.start_time !== '' || d.end_time !== ''; },
                 preview: function (d) { return d.start_time + (d.end_time ? ' to ' + d.end_time : ''); },
+                /*
+                 * THE HOUR AND MINUTE PAIRS (3.104.0). Since 3.98.0 a time is
+                 * two selects, <name>_h and <name>_m, and there is no field
+                 * named start_time on the form, so this read and wrote nothing
+                 * and Fill these in silently left the times empty. A stored
+                 * minute that is not on the five-minute list is added as its
+                 * own option, the server's "(current)" rule, rather than
+                 * rounded.
+                 */
                 filled: function () {
-                    var s = form.querySelector('[name="start_time"]');
-                    var e = form.querySelector('[name="end_time"]');
+                    var s = form.querySelector('[name="start_time_h"]');
+                    var e = form.querySelector('[name="end_time_h"]');
                     return (s && s.value !== '') || (e && e.value !== '');
                 },
                 write: function (d) {
-                    var s = form.querySelector('[name="start_time"]');
-                    var e = form.querySelector('[name="end_time"]');
-                    if (s) { s.value = d.start_time; }
-                    if (e) { e.value = d.end_time; }
+                    [['start_time', d.start_time], ['end_time', d.end_time]].forEach(function (pair) {
+                        var h = form.querySelector('[name="' + pair[0] + '_h"]');
+                        var m = form.querySelector('[name="' + pair[0] + '_m"]');
+                        var parts = String(pair[1] || '').split(':');
+                        if (!h || !m) { return; }
+                        if (parts.length < 2) { h.value = ''; m.value = ''; return; }
+                        /* The hour options are zero-padded, "09" not "9". */
+                        h.value = ('0' + parseInt(parts[0], 10)).slice(-2);
+                        var mm = parts[1].slice(0, 2);
+                        if (!m.querySelector('option[value="' + mm + '"]')) {
+                            var opt = document.createElement('option');
+                            opt.value = mm;
+                            opt.textContent = ':' + mm + ' (current)';
+                            m.appendChild(opt);
+                        }
+                        m.value = mm;
+                        h.dispatchEvent(new Event('change', { bubbles: true }));
+                        m.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
                 }
             },
             {
