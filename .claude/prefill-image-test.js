@@ -297,13 +297,20 @@ function build(payload) {
         el('label', { class: 'uc-field uc-image-url-field' }, [urlInput])
     ]);
 
-    /* Two more fields, so a payload carrying times and a description proves the
-       other rows still read as text and are written the way they always were. */
-    const startInput = el('input', { type: 'text', name: 'start_time', value: '' });
-    const endInput = el('input', { type: 'text', name: 'end_time', value: '' });
+    /* The times and a description, so a payload carrying them proves the other
+       rows are still written. A time is FOUR selects since 3.98.0, <name>_h and
+       <name>_m, which is what the editor renders; until 3.104.0 this test gave
+       the prefill a field named start_time that no longer exists anywhere, and
+       so passed while the real Fill these in wrote the times to nothing. */
+    const startH = el('select', { name: 'start_time_h', value: '' });
+    const startM = el('select', { name: 'start_time_m', value: '' });
+    const endH = el('select', { name: 'end_time_h', value: '' });
+    const endM = el('select', { name: 'end_time_m', value: '' });
+    const startInput = { get value() { return startH.value + ':' + startM.value; } };
+    const endInput = { get value() { return endH.value + ':' + endM.value; } };
     const descInput = el('textarea', { name: 'description', value: '' });
 
-    const form = el('form', { class: 'uc-form' }, [card, imageField, startInput, endInput, descInput]);
+    const form = el('form', { class: 'uc-form' }, [card, imageField, startH, startM, endH, endM, descInput]);
     const root = el('div', {}, [form]);
     select.form = form;
 
