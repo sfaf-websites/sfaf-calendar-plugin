@@ -2543,12 +2543,13 @@ naming the other with "needs a category".
 whether the live site was erroring on Add to events depends on the server's PHP
 version, which only the site can show.
 
-### 1.172 The pending queue's bulk bar (3.103.0)
+### 1.172 The pending queue's bulk bar (3.103.0, one panel 3.104.0)
 
-On **Pending**, every row has a tick, and above the list there is a bar with a
-series choice, **Set categories** and **Set organizers** behind two
-disclosures, and **Publish** and **Dismiss**. With nothing ticked every button
-reads 0 and is greyed. Tick **Select every event in this list**: the numbers
+On **Pending**, every row has a tick, and above the list there is one panel:
+**Series**, **Categories** and **Organizers** side by side, one **Apply** under
+them, then **Publish** and **Dismiss**. With nothing ticked every button reads 0
+and is greyed. Tick one row that already has a category, tick an organizer only
+and press **Apply**: the row gets the organizer and **keeps its category**. Tick **Select every event in this list**: the numbers
 fill in, and **Publish counts only the rows that do not say "Not ready to
 publish"**. Tick one submission and press **Dismiss**: nothing is dismissed and
 the box names it, "a submission, which is rejected from its own row".
@@ -3038,15 +3039,16 @@ an email" and **Not sent: no email**. Nothing else changed about the reminder.
 
 **Why it needs real conditions:** the reminder runs unattended on the day, and
 the log is a real ledger table. It was proved against a model of that table.
-### 2.34 The coffee social walk: defaults, Set series, Publish (3.103.0)
+### 2.34 The coffee social walk: defaults, Apply a series, Publish (3.103.0)
 
 **After 2.30**, which is what puts the coffee social dates in Pending.
 
 1. **Series & Categories, the coffee social series.** Tick its default category
    and its default organizer. Give it a description if it has none. Save.
 2. **Pending.** Tick every pending coffee social date.
-3. **Set series**, choosing the coffee social series. The flash should say how
-   many it set. Every ticked row should now have the category and organizer, and
+3. **Choose the coffee social series in the panel**, leave Categories and
+   Organizers blank, and press **Apply**. The flash should say how many it
+   changed. Every ticked row should now have the category and organizer, and
    the "Not ready to publish" line should be gone from every one that had only
    those missing.
 4. **Tick them again and press Publish.** The count on the button should match

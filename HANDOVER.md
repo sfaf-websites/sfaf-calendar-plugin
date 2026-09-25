@@ -4,16 +4,17 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-09-25, at 3.103.0, released.
+**Last updated:** 2026-09-25, at 3.104.0, built and not yet released.
 
 ---
 
 ## What shipped last
 
+**3.104.0**: the Pending bar's three setters are **one panel with one Apply**,
+which leaves a blank control alone. `PROJECT.md` 1.
 **3.103.0**: a series names **default categories and organizers**, copied once
 into an event that joins it with none (`SFAF_Series::join()`, every join site);
-**bulk actions on Pending** (Set series, categories, organizers, Publish,
-Dismiss); and **one publish rule everywhere**: Approve and every bulk publish
+**bulk actions on Pending**; and **one publish rule everywhere**: Approve and every bulk publish
 hold an incomplete event and name it. The events list's two bulk messages had
 never shown, and Add category may have errored on PHP 8. `PROJECT.md` 1 and 2.
 **3.102.0**: **Preferences** and the **digest**, the **day-before count**, and

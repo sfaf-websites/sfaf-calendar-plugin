@@ -9,7 +9,7 @@ typography, layout, CSS failure modes) or `CLAUDE.md` (standing working rules,
 the build gate, shell rules). When something here contradicts one of those,
 those win in their own remit and this file is wrong and should be fixed.
 
-Current version at last update of this file: **3.103.0**.
+Current version at last update of this file: **3.104.0**.
 
 ---
 
@@ -2761,10 +2761,11 @@ source, by its first guard.
 > planted to prove it can fail, including the two real ones above. All six were
 > caught. See the note in §1 on what a rendering test can and cannot prove.
 
-### The pending queue's bulk bar (3.103.0)
+### The pending queue's bulk bar (3.103.0, one panel from 3.104.0)
 
-**A tick on every row and a bar above the list: Set series, Set categories, Set
-organizers, Publish, Dismiss.** It is the events list's arrangement, stacked:
+**A tick on every row and a bar above the list: one panel of Series, Categories
+and Organizers side by side with a single Apply, then Publish and Dismiss.** It
+is the events list's arrangement, stacked:
 one form, one set of ticks, `uc_action` names the form and `uc_do` the button.
 The rows hold forms of their own, so the ticks join the bar by `form=` and
 `initTickPickers()` reads them through `form.elements`. Every button is typed
@@ -2776,11 +2777,20 @@ run it. The ticks narrow and never widen: a ticked id that is not in
 `pending_entries()` now, or that `can_edit_event()` refuses, is named and not
 touched, and nothing reads the queue to decide which rows to act on.
 
-- **Set categories and Set organizers REPLACE** a row's terms, one call with
-  the whole set, and say so on the screen. A field the row's source owns is
-  refused and named.
-- **Set series** fills anything a row lacks from the defaults, even on a row
-  already in that series; see "Series defaults" in section 2.
+- **Apply writes every control that has a value and leaves a blank one alone**
+  (3.104.0). A blank control never means "clear this"; there is no way to
+  empty a field from the panel, and that is deliberate. 3.103.0 had a button
+  per control, so setting all three on forty rows was three presses and three
+  saves per row.
+- **One save per row, in a fixed order**, `pending_apply_one()`: ticked
+  categories and organizers REPLACE the row's, one call each with the whole
+  set, and the series is written LAST, so its defaults fill only what the row
+  still lacks and never replace what the same Apply just set. The series fills
+  a lacking row even when it was already in that series; see "Series defaults"
+  in section 2.
+- **A row is refused whole, never in part.** When its source owns a field the
+  panel would write, nothing is written to it and it is named. A row the Apply
+  would not change is named "already set that way" and not counted.
 - **Publish** is `publish_one()`, the rule Approve uses. Its count is only the
   ticked rows the rule lets through: the rule's answer rides on each box as
   `data-uc-tick-block`, and the row says it in words, "Not ready to publish:
@@ -3148,7 +3158,7 @@ instead is the defect to look for.
   because it is one recording of one group.
 - **Joining means a change of series.** Saving an event already in its series
   is not a join, so a category somebody cleared on purpose is not refilled. The
-  pending bar's **Set series** is the one exception, on purpose: it calls
+  pending bar's **Apply** with a series chosen is the one exception, on purpose: it calls
   `apply_defaults()` on every ticked row, because pressing it is somebody asking
   for the defaults.
 

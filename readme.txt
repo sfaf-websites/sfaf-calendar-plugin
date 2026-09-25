@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.103.0
+Stable tag: 3.104.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,16 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.104.0 =
+
+**The pending bar's Set series, Set categories and Set organizers are one panel with one Apply.**
+
+**ONE PRESS, ONE SAVE PER ROW.** Series, Categories and Organizers sit side by side, with a single Apply under them. 3.103.0 gave each its own button, so setting all three on forty rows was three presses. Apply writes every control that has a value and leaves a blank one alone: a blank control never clears anything, and there is no way to empty a field from the panel. Ticked categories and organizers replace what each row has.
+
+**THE SERIES GOES LAST, SO ITS DEFAULTS FILL ONLY GAPS.** Within the one save, the ticked categories and organizers are written first and the series after them. A series with defaults then fills the category and organizer on any row that still has none, and never replaces what the same Apply just set. The line beside Apply says so. A row whose source owns a field the panel would write is refused whole and named, never left half changed; a row Apply would not change is named "already set that way" and not counted. Publish and Dismiss are unchanged.
+
+**CHECKED.** The behavioural test now runs Apply with one control, with all three, with none, and on a row already set, 70 checks in all, and the Chrome test reads the three controls side by side and the line beside Apply. Two faults were planted and each failed it: Apply clearing a field left blank, and Apply reaching a row nobody ticked.
 
 = 3.103.0 =
 
