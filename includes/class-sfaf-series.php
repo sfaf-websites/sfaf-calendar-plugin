@@ -1264,6 +1264,8 @@ class SFAF_Series {
             'venue'         => 0,
             'venue_name'    => '',
             'location'      => '',
+            'location_name' => '',
+            'location_parts'=> array( 'street' => '', 'city' => '', 'state' => '', 'zip' => '' ),
             'start_time'    => '',
             'end_time'      => '',
             'description'   => '',
@@ -1350,10 +1352,23 @@ class SFAF_Series {
             $v = get_term( $venue, 'uc_venue' );
             $out['venue_name'] = ( $v && ! is_wp_error( $v ) ) ? $v->name : '';
         } else {
-            $text = (string) get_post_meta( $id, '_uc_location', true );
-            if ( '' !== $text ) {
+            $text  = (string) get_post_meta( $id, '_uc_location', true );
+            $place = sfaf_event_location_name( $id );
+            if ( '' !== $text || '' !== $place ) {
                 $out['location_mode'] = 'custom';
-                $out['location']      = $text;
+                /*
+                 * 'location' IS THE LINE FOR THE CARD TO SHOW, AND THE NAME AND
+                 * THE FOUR PARTS ARE WHAT IS WRITTEN (3.105.0). The editor has
+                 * had no field called location on a native event since 3.13.0
+                 * split the address and 3.93.0 put a place name in front of it,
+                 * so Fill these in wrote the composed line to nothing, the same
+                 * fault the times had until 3.104.0. The parts come through the
+                 * reader the editor itself fills from, which parses an old
+                 * one-line location rather than leaving four boxes empty.
+                 */
+                $out['location']       = '' !== $text ? $text : $place;
+                $out['location_name']  = $place;
+                $out['location_parts'] = sfaf_event_location_parts( $id );
             }
         }
 

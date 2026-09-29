@@ -4523,6 +4523,10 @@ function ucDismissOnBackdrop(dialog) {
         var form = select.form || document.querySelector('form.uc-form');
         if (!form) { return; }
 
+        /* The five boxes render_location_field() draws under "A different
+         * location", by the names the save reads. */
+        var LOCATION_BOXES = ['location_name', 'location_street', 'location_city', 'location_state', 'location_zip'];
+
         /*
          * WHAT EACH OPTION IS: a label, the payload keys it reads, and the
          * functions that read and write the form. Keeping read and write beside
@@ -4534,11 +4538,26 @@ function ucDismissOnBackdrop(dialog) {
             {
                 key: 'location', label: 'Location',
                 has: function (d) { return d.location_mode !== ''; },
-                preview: function (d) { return d.venue_name || d.location; },
+                preview: function (d) {
+                    if (d.venue_name) { return d.venue_name; }
+                    return (d.location_name && d.location !== d.location_name)
+                        ? d.location_name + ', ' + d.location : d.location;
+                },
+                /*
+                 * THE PLACE NAME AND THE FOUR ADDRESS BOXES (3.105.0). This
+                 * wrote the composed line to a field named location, which a
+                 * native event's editor has not had since the address was split
+                 * into parts, so Fill these in chose "A different location" and
+                 * left every box under it empty. The same fault the times had
+                 * until 3.104.0: a write to a name nothing renders.
+                 */
                 filled: function () {
-                    var text = form.querySelector('[name="location"]');
                     var venue = form.querySelector('[name="venue"]');
-                    return (text && text.value.trim() !== '') || (venue && venue.value && venue.value !== '0');
+                    if (venue && venue.value && venue.value !== '0') { return true; }
+                    return LOCATION_BOXES.some(function (name) {
+                        var box = form.querySelector('[name="' + name + '"]');
+                        return !!(box && box.value.trim() !== '');
+                    });
                 },
                 write: function (d) {
                     var mode = form.querySelector('[data-uc-location-mode="' + d.location_mode + '"]');
@@ -4546,10 +4565,23 @@ function ucDismissOnBackdrop(dialog) {
                     if (d.location_mode === 'venue') {
                         var venue = form.querySelector('[name="venue"]');
                         if (venue) { venue.value = String(d.venue); }
-                    } else {
-                        var text = form.querySelector('[name="location"]');
-                        if (text) { text.value = d.location; }
+                        return;
                     }
+                    var parts = d.location_parts || {};
+                    var from = {
+                        location_name: d.location_name || '',
+                        location_street: parts.street || '',
+                        location_city: parts.city || '',
+                        location_state: parts.state || '',
+                        location_zip: parts.zip || ''
+                    };
+                    LOCATION_BOXES.forEach(function (name) {
+                        var box = form.querySelector('[name="' + name + '"]');
+                        if (box) {
+                            box.value = from[name];
+                            box.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                    });
                 }
             },
             {

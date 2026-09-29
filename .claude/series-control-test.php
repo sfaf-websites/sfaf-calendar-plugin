@@ -898,6 +898,18 @@ foreach ( array(
         true );
 }
 
+/* THE LOCATION CONTROLS prefill-image-test.js WRITES TO (3.105.0). That test
+   builds its document by hand; this is what holds its names to the form. The
+   prefill wrote to a field named location for years after the editor stopped
+   drawing one on a native event, so its absence is asserted as well. */
+foreach ( array( 'location_name', 'location_street', 'location_city', 'location_state', 'location_zip' ) as $box ) {
+    expect( "New Event draws the $box box", count( nodes_matching( $new, '//input[@name="' . $box . '"]' ) ), 1 );
+}
+expect( 'New Event draws the "A different location" mode',
+    count( nodes_matching( $new, '//input[@type="radio"][@data-uc-location-mode="custom"]' ) ), 1 );
+expect( 'and no field called location on a native event',
+    count( nodes_matching( $new, '//*[@name="location"]' ) ), 0 );
+
 /* The words the script writes into the tag come from the tag, so there is one
    spelling of "Event-specific" and it is the server's. */
 $own_tag = nodes_matching( $new, '//*[@data-uc-img-source-own]' );

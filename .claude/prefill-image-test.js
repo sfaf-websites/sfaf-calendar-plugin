@@ -310,14 +310,30 @@ function build(payload) {
     const endInput = { get value() { return endH.value + ':' + endM.value; } };
     const descInput = el('textarea', { name: 'description', value: '' });
 
-    const form = el('form', { class: 'uc-form' }, [card, imageField, startH, startM, endH, endM, descInput]);
+    /* THE LOCATION, AS render_location_field() DRAWS IT ON A NATIVE EVENT
+       (3.105.0): two mode radios, the venue select, and five boxes under "A
+       different location". There is NO field named location here, because the
+       editor has none on a native event; until 3.105.0 this document had no
+       location controls at all, so the location option was never exercised and
+       the real Fill these in wrote the address to nothing.
+       series-control-test.php holds these names to the rendered form. */
+    const modeVenue = el('input', { type: 'radio', name: 'location_mode', value: 'venue', 'data-uc-location-mode': 'venue' });
+    const modeCustom = el('input', { type: 'radio', name: 'location_mode', value: 'custom', 'data-uc-location-mode': 'custom' });
+    const venueSel = el('select', { name: 'venue', value: '0' });
+    const loc = {};
+    ['location_name', 'location_street', 'location_city', 'location_state', 'location_zip'].forEach(n => {
+        loc[n] = el('input', { type: 'text', name: n, value: '' });
+    });
+
+    const form = el('form', { class: 'uc-form' }, [card, imageField, startH, startM, endH, endM, descInput,
+        modeVenue, venueSel, modeCustom].concat(Object.keys(loc).map(k => loc[k])));
     const root = el('div', {}, [form]);
     select.form = form;
 
     return {
         root, form, select, panel, optsBox, applyBtn, noneBtn, said,
         tag, idInput, urlInput, preview, previewImg, removeBtn,
-        startInput, endInput, descInput
+        startInput, endInput, descInput, modeVenue, modeCustom, venueSel, loc
     };
 }
 
@@ -548,6 +564,59 @@ expect('the description was still written',
 expect('and the preview came up with them', mixed.previewImg.src, SERIES_IMAGE);
 expect('the card counted all three',
     mixed.said.textContent.indexOf('Filled in 3 things') > -1, true);
+
+/* =========================================================================
+ * 5. THE LOCATION LANDS IN THE BOXES THE EDITOR HAS (3.105.0).
+ *
+ * A place of its own: the name and the four parts, each in its own box, and
+ * the mode switched to "A different location". Then a venue: the select, and
+ * nothing typed into the boxes.
+ * ====================================================================== */
+
+const own_place = build({
+    '11': {
+        location_mode: 'custom', venue: 0, venue_name: '', location: '470 Castro St, San Francisco, CA 94114',
+        location_name: 'Strut',
+        location_parts: { street: '470 Castro St', city: 'San Francisco', state: 'CA', zip: '94114' },
+        start_time: '', end_time: '', description: '',
+        image_url: '', image_id: 0, image_preview: '',
+        categories: [], category_names: [], organizers: [], organizer_name: '',
+        faq_set: '', faq_set_name: '', from_event: 0
+    }
+});
+runOver(own_place);
+own_place.select.choose('11');
+expect('a series whose last event had its own address offers the location',
+    rows(own_place).map(r => r.key), ['location']);
+expect('and the card shows the place and its address',
+    rows(own_place)[0] && rows(own_place)[0].text, 'Strut, 470 Castro St, San Francisco, CA 94114');
+own_place.applyBtn.click();
+expect('the mode is switched to a different location', own_place.modeCustom.checked, true);
+expect('the name and the four parts are each in their own box', {
+    name: own_place.loc.location_name.value,
+    street: own_place.loc.location_street.value,
+    city: own_place.loc.location_city.value,
+    state: own_place.loc.location_state.value,
+    zip: own_place.loc.location_zip.value
+}, { name: 'Strut', street: '470 Castro St', city: 'San Francisco', state: 'CA', zip: '94114' });
+expect('and nothing went looking for a field called location',
+    own_place.form.querySelectorAll('[name="location"]').length, 0);
+
+const at_venue = build({
+    '11': {
+        location_mode: 'venue', venue: 7, venue_name: 'Strut', location: '',
+        location_name: '', location_parts: { street: '', city: '', state: '', zip: '' },
+        start_time: '', end_time: '', description: '',
+        image_url: '', image_id: 0, image_preview: '',
+        categories: [], category_names: [], organizers: [], organizer_name: '',
+        faq_set: '', faq_set_name: '', from_event: 0
+    }
+});
+runOver(at_venue);
+at_venue.select.choose('11');
+at_venue.applyBtn.click();
+expect('a venue is chosen in the venue select', [at_venue.modeVenue.checked, at_venue.venueSel.value], [true, '7']);
+expect('and the address boxes are left alone', at_venue.loc.location_street.value, '');
 
 /* ===================================================================== */
 
