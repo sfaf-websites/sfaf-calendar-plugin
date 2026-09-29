@@ -234,7 +234,8 @@ class SFAF_Closures {
         if ( ! $payload ) {
             return '';
         }
-        return '<p class="uc-closed-warn" data-uc-closed-warn role="status" hidden></p>'
+        // A span, because it sits inside the date field's <label>.
+        return '<span class="uc-closed-warn" data-uc-closed-warn role="status" hidden></span>'
             . '<script type="application/json" data-uc-closures>'
             . wp_json_encode( $payload, JSON_HEX_TAG | JSON_HEX_AMP )
             . '</script>';

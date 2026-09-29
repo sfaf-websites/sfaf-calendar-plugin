@@ -88,6 +88,8 @@ function ucDismissOnBackdrop(dialog) {
         run('helpToggles', initHelpToggles);
         run('categoryChips', initCategoryChips);
         run('recurrence', initRecurrence);
+        // After recurrence, which publishes the dates this names.
+        run('closedDays', initClosedDays);
         run('emailPills', initEmailPills);
         run('locationPicker', initLocationPicker);
         run('liveSearch', initLiveSearch);
@@ -4314,7 +4316,16 @@ function ucDismissOnBackdrop(dialog) {
                 });
             }
 
+            /* THE DATES THIS WOULD CREATE, ON THE ROOT (3.105.0), for anything
+             * else on the page that has to ask about them: the closed-day line
+             * reads this rather than running the engine a second time with its
+             * own idea of the pattern. Empty whenever the summary cannot count. */
+            function publishDates(list) {
+                root.setAttribute('data-uc-repeat-dates', (list || []).join(' '));
+            }
+
             function refresh() {
+                publishDates([]);
                 var m = mode();
                 if (panels.weekly) { panels.weekly.hidden = (m !== 'weekly'); }
                 if (panels.monthly) { panels.monthly.hidden = (m !== 'monthly'); }
@@ -4359,6 +4370,9 @@ function ucDismissOnBackdrop(dialog) {
                     }
                 }
 
+                if (spec && spec.type && start) {
+                    publishDates(ucRecurrenceDates(start, until, spec, limit, ucCleanDates(chosen, start)));
+                }
                 summary.textContent = ucRecurrenceSummary(start, until, spec, limit, chosen, tail);
             }
 
@@ -4500,6 +4514,98 @@ function ucDismissOnBackdrop(dialog) {
      * THE DATE IS NOT HERE. It is not in the payload, so there is no box to
      * tick and nothing a later change could expose.
      * ------------------------------------------------------------------- */
+    /* ---------------------------------------------------------------------
+     * THE CLOSED-DAY WARNING (3.105.0).
+     *
+     * A LINE, AND ON PUBLISH ONE QUESTION; NEVER A REFUSAL. Closures are
+     * calendar-wide and plenty of events rightly fall on one, so nothing here
+     * can stop a save. The line appears under the date as soon as a date on a
+     * closure is picked, and for a repeating event it names every generated
+     * date that falls on one, read off the recurrence control's own list.
+     *
+     * THE QUESTION IS ON THE FORM'S SUBMIT, NOT ON THE BUTTON'S CLICK. Three
+     * other questions are bound to the save buttons' clicks and replay a click
+     * when answered; a replayed submit (resubmit) reaches only submit
+     * listeners, so this cannot make any of them ask twice. It listens in the
+     * capture phase so it runs before the other submit listeners on the form,
+     * and it stops them for the submit it holds; they run on the replay.
+     *
+     * "YES" IS REMEMBERED UNTIL THE FORM CHANGES, not for one submit, because
+     * a later submit listener may itself hold the submit and replay it, and
+     * that replay must not bring this question back. Changing anything on the
+     * form clears it, since the dates may be what changed.
+     *
+     * Save draft never asks: it puts nothing in front of anybody.
+     * ------------------------------------------------------------------- */
+    function initClosedDays() {
+        var dataNode = document.querySelector('script[data-uc-closures]');
+        var line = document.querySelector('[data-uc-closed-warn]');
+        if (!dataNode || !line) { return; }
+        var closures;
+        try {
+            closures = JSON.parse(dataNode.textContent || '[]');
+        } catch (e) {
+            return;
+        }
+        var form = line.closest('form');
+        var dateInput = form ? form.querySelector('input[name="date"]') : null;
+        if (!form || !dateInput) { return; }
+        var repeat = form.querySelector('[data-uc-repeat]');
+
+        function closureOn(ymd) {
+            for (var i = 0; i < closures.length; i++) {
+                if (ymd >= closures[i].start && ymd <= closures[i].end) { return closures[i]; }
+            }
+            return null;
+        }
+        function hits() {
+            var all = [];
+            if (dateInput.value) { all.push(dateInput.value); }
+            if (repeat) {
+                (repeat.getAttribute('data-uc-repeat-dates') || '').split(' ').forEach(function (d) {
+                    if (d && all.indexOf(d) === -1) { all.push(d); }
+                });
+            }
+            all.sort();
+            var out = [];
+            all.forEach(function (d) {
+                var c = closureOn(d);
+                if (c) { out.push(ucPrettyDate(d) + (c.name ? ' (' + c.name + ')' : '')); }
+            });
+            return out;
+        }
+        function sentence(list) {
+            return 'SFAF is closed on ' + ucJoinWords(list) + '.';
+        }
+        function refresh() {
+            var list = hits();
+            line.textContent = list.length ? sentence(list) : '';
+            line.hidden = !list.length;
+        }
+
+        // On the document, so these run after the recurrence control has
+        // republished its dates for the same change.
+        document.addEventListener('change', refresh);
+        document.addEventListener('input', refresh);
+        refresh();
+
+        var answered = false;
+        form.addEventListener('change', function () { answered = false; });
+        form.addEventListener('input', function () { answered = false; });
+        form.addEventListener('submit', function (e) {
+            var by = e.submitter;
+            if (!by || by.name !== 'save_mode' || by.value !== 'publish' || answered) { return; }
+            var list = hits();
+            if (!list.length) { return; }
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            ucConfirm('SFAF is closed on ' + ucJoinWords(list) + '. Hold the event anyway?', by, function () {
+                answered = true;
+                resubmit(form, by);
+            });
+        }, true);
+    }
+
     /* ---------------------------------------------------------------------
      * THE DONATE LIST (3.105.0).
      *

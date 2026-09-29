@@ -336,6 +336,11 @@ $RENDERERS = array(
     'class-sfaf-shortcodes.php' => 'the month grid marks the day and the card list shows a flat card',
     'class-sfaf-admin.php'      => 'the screen closures are entered on',
     'class-sfaf-closures.php'   => 'itself',
+    // 3.105.0: a line under the date on the editor and both public forms, and a
+    // flag on the pending row. Warnings only; none of them refuses a save.
+    'class-sfaf-portal.php'     => 'the editor warns under the date and the pending row flags it',
+    'class-sfaf-request.php'    => 'the staff request form warns under the date',
+    'class-sfaf-submit.php'     => 'the community form warns under the date',
 );
 
 $MUST_NOT_SEE = array(

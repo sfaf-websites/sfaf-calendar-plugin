@@ -52,6 +52,8 @@ for f in .claude/*.php; do
     preferences-live.php) continue ;;  # run below with --run
     publish-times-live.php) continue ;; # run below with --run
     series-defaults-live.php) continue ;; # run below with --run
+    closure-live.php) continue ;;      # run below with --run
+    caps-sweep-live.php) continue ;;   # run below with --run
   esac
   run "$(basename "$f" .php)" php "$f"
 done
@@ -255,6 +257,13 @@ run "rsvp-noemail-live --run" php .claude/rsvp-noemail-live.php --run
 run "preferences-live --run"  php .claude/preferences-live.php --run
 run "series-defaults-live --run" php .claude/series-defaults-live.php --run
 run "publish-times-live --run" php .claude/publish-times-live.php --run
+
+echo
+echo "=== closures, the warning, Remove, the donate list, in a browser ==="
+run "closure-live --run" php .claude/closure-live.php --run
+# Every caladmin screen, the public calendar and both public forms, read for
+# text in capitals that is not a heading (3.105.0).
+run "caps-sweep-live --run" php .claude/caps-sweep-live.php --run
 
 echo
 echo "=== shell guards ==="

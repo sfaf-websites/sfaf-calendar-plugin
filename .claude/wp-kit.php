@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) { define( 'ABSPATH', $GLOBALS['kit_root'] . '/' );
 define( 'WPINC', 'wp-includes' );
 define( 'DAY_IN_SECONDS', 86400 ); define( 'HOUR_IN_SECONDS', 3600 ); define( 'MINUTE_IN_SECONDS', 60 );
 define( 'WEEK_IN_SECONDS', 604800 ); define( 'YEAR_IN_SECONDS', 31536000 ); define( 'MONTH_IN_SECONDS', 2592000 );
-define( 'OBJECT', 'OBJECT' ); define( 'ARRAY_A', 'ARRAY_A' ); define( 'ARRAY_N', 'ARRAY_N' );
+define( 'OBJECT', 'OBJECT' ); define( 'ARRAY_A', 'ARRAY_A' ); define( 'ARRAY_N', 'ARRAY_N' ); define( 'OBJECT_K', 'OBJECT_K' );
 date_default_timezone_set( 'America/Los_Angeles' );
 
 /* ---- The store. Reset with kit_reset(). ---- */
@@ -110,6 +110,10 @@ function wp_json_encode( $d, $o = 0 ) { return json_encode( $d, $o ); }
 function is_email( $e ) { return (bool) filter_var( $e, FILTER_VALIDATE_EMAIL ); }
 function wp_parse_url( $u, $c = -1 ) { return parse_url( (string) $u, $c ); }
 function absint( $n ) { return abs( (int) $n ); }
+if ( ! function_exists( 'get_post_type_archive_link' ) ) { function get_post_type_archive_link( $t = '' ) { return 'https://resources.sfaf.org/events/'; } }
+if ( ! function_exists( 'get_post_modified_time' ) ) { function get_post_modified_time( $f = 'U', $g = false, $p = null ) { return time(); } }
+if ( ! function_exists( 'human_time_diff' ) ) { function human_time_diff( $a, $b = 0 ) { return '3 days'; } }
+if ( ! function_exists( 'wp_rand' ) ) { function wp_rand( $min = 0, $max = 0 ) { return mt_rand( (int) $min, $max ? (int) $max : mt_getrandmax() ); } }
 function number_format_i18n( $n, $d = 0 ) { return number_format( (float) $n, (int) $d ); }
 function wp_parse_args( $a, $d = array() ) { return array_merge( (array) $d, (array) $a ); }
 function wp_list_pluck( $l, $f ) { $o = array(); foreach ( (array) $l as $i ) { $o[] = is_object( $i ) ? $i->$f : $i[ $f ]; } return $o; }
@@ -261,7 +265,9 @@ function term_exists( $t, $tax = '' ) { return get_term( $t, $tax ) ? array( 'te
 function wp_get_post_terms( $id, $tax = '', $a = array() ) {
     $ids = isset( $GLOBALS['kit_terms'][ (int) $id ][ $tax ] ) ? $GLOBALS['kit_terms'][ (int) $id ][ $tax ] : array();
     if ( isset( $a['fields'] ) && 'ids' === $a['fields'] ) { return $ids; }
-    $out = array(); foreach ( $ids as $tid ) { $t = get_term( $tid, $tax ); if ( $t ) { $out[] = $t; } } return $out;
+    $out = array(); foreach ( $ids as $tid ) { $t = get_term( $tid, $tax ); if ( $t ) { $out[] = $t; } }
+    if ( isset( $a['fields'] ) && 'names' === $a['fields'] ) { return wp_list_pluck( $out, 'name' ); }
+    return $out;
 }
 function wp_get_object_terms( $id, $tax, $a = array() ) { return wp_get_post_terms( is_array( $id ) ? reset( $id ) : $id, is_array( $tax ) ? reset( $tax ) : $tax, $a ); }
 function get_the_terms( $id, $tax ) { $t = wp_get_post_terms( $id, $tax ); return $t ? $t : false; }
@@ -275,6 +281,8 @@ foreach ( array(
     'wp_print_footer_scripts', 'sanitize_html_class', 'wp_enqueue_media', 'wp_enqueue_editor',
     'sanitize_hex_color', 'wp_logout_url', 'wp_print_media_templates', 'submit_button', 'rest_url', 'settings_fields',
     'get_the_date',
+    '_prime_post_caches', 'wp_nonce_url',
+    'wp_reset_postdata',
 ) as $kit_fn ) {
     if ( ! function_exists( $kit_fn ) ) { eval( 'function ' . $kit_fn . '( ...$a ) { return null; }' ); }
 }

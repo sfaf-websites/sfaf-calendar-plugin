@@ -420,6 +420,13 @@ class SFAF_Privacy {
 class SFAF_Search {
     public static function apply( &$q, $s ) {}
 }
+/** No closures in this world (3.105.0): the date field's line and the pending
+    flag draw nothing, which is what they draw on an open day. */
+class SFAF_Closures {
+    public static function date_warning_markup() { return ''; }
+    public static function flag_for( $date ) { return ''; }
+}
+
 class SFAF_Series {
     const TAXONOMY = 'uc_series';
     public static function all() { return array(); }

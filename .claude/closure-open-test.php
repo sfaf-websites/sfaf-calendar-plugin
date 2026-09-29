@@ -98,6 +98,34 @@ $r = '' !== $ink ? co_ratio( $ink, '#FFFFFF' ) : 0;
 co( 'the ink clears 4.5:1 on the white panel (' . round( $r, 2 ) . ':1)', $r >= 4.5, true );
 co( 'the brand green would not (' . round( co_ratio( '#8CC745', '#FFFFFF' ), 2 ) . ':1)', co_ratio( '#8CC745', '#FFFFFF' ) < 4.5, true );
 
+/* ---- The closed-day warning's server half (3.105.0). ------------------- */
+co( 'a date on a closure is flagged by its name', SFAF_Closures::flag_for( '2026-09-07' ), 'Closed: Labor Day' );
+co( 'an open date is not flagged', SFAF_Closures::flag_for( '2026-09-08' ), '' );
+SFAF_Closures::save( '', 'Thanksgiving', '2099-11-26' );   // upcoming whatever today is
+$pay = SFAF_Closures::upcoming_payload();
+co( 'a past closure is not sent to the form', in_array( 'Old', array_column( $pay, 'name' ), true ), false );
+co( 'only the name and the dates are sent', array_keys( (array) reset( $pay ) ), array( 'start', 'end', 'name' ) );
+$markup = SFAF_Closures::date_warning_markup();
+co( 'the line is drawn empty and hidden, for the script to fill', (bool) preg_match( '#<span class="uc-closed-warn" data-uc-closed-warn role="status" hidden></span>#', $markup ), true );
+update_option( SFAF_Closures::OPTION, array() );
+co( 'with nothing upcoming, nothing is drawn', SFAF_Closures::date_warning_markup(), '' );
+
+/* WARNS, NEVER BLOCKS. The only places outside the calendar that ask about
+   closures are the three date fields and the pending row, and they ask only
+   for markup. No save, validator or publish rule may consult one. */
+$root = dirname( __DIR__ );
+foreach ( array(
+    'includes/class-sfaf-portal.php'  => array( 'date_warning_markup', 'flag_for' ),
+    'includes/class-sfaf-request.php' => array( 'date_warning_markup' ),
+    'includes/class-sfaf-submit.php'  => array( 'date_warning_markup' ),
+    'includes/class-sfaf-sources.php' => array(),
+    'includes/class-sfaf-submissions.php' => array(),
+) as $file => $allowed ) {
+    $code = preg_replace( '#/\*.*?\*/#s', '', (string) file_get_contents( $root . '/' . $file ) );
+    preg_match_all( '/SFAF_Closures::(\w+)/', $code, $m );
+    co( "$file asks closures only for the warning", array_values( array_unique( $m[1] ) ), $allowed );
+}
+
 if ( $fails ) {
     echo 'CLOSURE OPEN: ' . count( $fails ) . " FAILURE(S)\n  - " . implode( "\n  - ", $fails ) . "\n";
     exit( 1 );

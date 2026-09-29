@@ -503,6 +503,13 @@ class SFAF_Search {
  * anything, it makes the test harsher: with three real terms available there is
  * no innocent reason for an empty list.
  * ------------------------------------------------------------------------ */
+/** No closures in this world (3.105.0): the date field's line and the pending
+    flag draw nothing, which is what they draw on an open day. */
+class SFAF_Closures {
+    public static function date_warning_markup() { return ''; }
+    public static function flag_for( $date ) { return ''; }
+}
+
 class SFAF_Series {
     const TAXONOMY = 'uc_series';
 

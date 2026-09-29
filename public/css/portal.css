@@ -834,6 +834,30 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
     border-bottom: 1px solid var(--p-border);
 }
 
+/* THE TREATMENT IS THE HEADING'S OWN TEXT, AND NOTHING THAT SITS INSIDE IT
+   (3.105.0).
+
+   text-transform and letter-spacing INHERIT, so every rule above that sets
+   them on a heading also set them on whatever was put inside that heading.
+   The series card and the team card carry their help button on the title,
+   and the help panel opens inside the title, so a paragraph of help text was
+   rendering in tracked capitals. caps-sweep-live.php reads every screen for
+   that in Chrome, hidden panels included.
+
+   Fixed here, at the treatment, and not on the panel: anything that is not
+   the heading's own words (help, a hint, a label, a control, a sentence) is
+   given its case and spacing back wherever a card heading holds it. :where()
+   on both sides keeps this at zero specificity, which is all it needs: a
+   declared value beats an inherited one at any weight, and this must never
+   outrank a component that sets its own. */
+:where(.uc-heading, .uc-card-head h2, .uc-card-head h3, .uc-bento-title,
+       .uc-card > h2:first-child, .uc-card > h3:first-child,
+       .uc-bento-card > h2:first-child, .uc-bento-card > h3:first-child)
+    :where(.uc-help-body, .uc-hint, .uc-muted, .uc-field-label, p, label, small, input, select, textarea, button) {
+    text-transform: none;
+    letter-spacing: normal;
+}
+
 .uc-empty { color: var(--p-muted); padding: 24px; text-align: center; }
 
 .uc-table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -3909,6 +3933,23 @@ body.uc-modal-open { overflow: hidden; }
     margin: 0 0 4px; font-size: 12px; font-weight: 400; line-height: 1.4;
     color: #b45309;
 }
+
+/* ---------------------------------------------------------------------------
+   A DATE ON A CLOSED DAY (3.105.0).
+
+   THE CLOSURE'S OWN COLOUR, NOT A SYSTEM ONE. This stylesheet also dresses the
+   two public forms, where DESIGN.md allows palette colours only, so the line
+   and the pending flag take the Red family's ink and tint: the same pair the
+   calendar draws a closure in, #AD1C0D, 6.10:1 on #FDE9E7, 7.12:1 on
+   white and 6.58:1 on the caladmin canvas #F5F6F7, all measured. The words carry it; the red agrees with them.
+
+   The line is the field-label step, because it is read at the moment of
+   choosing a date. The flag is the helper step, in the pending row's meta.
+   ------------------------------------------------------------------------- */
+.uc-closed-warn { display: block; margin: 6px 0 0; font-size: 13px; font-weight: 600; line-height: 1.45; color: #AD1C0D; }
+.uc-closed-warn[hidden] { display: none; }
+.uc-closed-flag { display: inline-block; padding: 0 8px; border-radius: 99px; background: #FDE9E7; color: #AD1C0D;
+    font-size: 12px; font-weight: 400; line-height: 1.6; }
 
 /* The approval prompt lives in the actions column when JavaScript is off, and
    that column sizes to its content. Unbounded, its two sentences would make

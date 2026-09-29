@@ -13233,6 +13233,8 @@ class SFAF_Portal {
                     <label class="uc-field<?php echo esc_attr( $this->field_class( $s_date ) ); ?>"<?php echo $this->field_watch_attr( 'date', $s_date ); ?>>
                         <span class="uc-field-label">Date<?php echo $this->publish_mark( 'date' ); ?> <?php echo $this->field_badge( $s_date, $prov['label'] ); ?></span>
                         <input type="date" name="date" value="<?php echo esc_attr( $g( '_uc_event_date' ) ); ?>"<?php echo $this->field_disabled( $s_date ); ?> />
+                        <?php // Names a closure the date falls on (3.105.0). A warning, never a refusal. ?>
+                        <?php echo SFAF_Closures::date_warning_markup(); ?>
                     </label>
                     <div class="uc-field-row">
                         <label class="uc-field<?php echo esc_attr( $this->field_class( $s_start ) ); ?>">
@@ -17993,6 +17995,15 @@ class SFAF_Portal {
                     <?php endif; ?>
                     <p class="uc-queue-meta">
                         <span><?php echo esc_html( $this->pending_when( $id, $date, $prov ) ); ?></span>
+                        <?php
+                        /* ON A CLOSED DAY (3.105.0), beside the date and in words.
+                           A flag for whoever approves it, never a hold: the publish
+                           rule does not know about closures and must not. */
+                        $closed_flag = SFAF_Closures::flag_for( $date );
+                        ?>
+                        <?php if ( '' !== $closed_flag ) : ?>
+                            <span class="uc-closed-flag" data-uc-closed-flag><?php echo esc_html( $closed_flag ); ?></span>
+                        <?php endif; ?>
                         <?php $location = sfaf_event_location_short( $id ); ?>
                         <?php if ( '' !== $location ) : ?>
                             <span><?php echo esc_html( $location ); ?></span>

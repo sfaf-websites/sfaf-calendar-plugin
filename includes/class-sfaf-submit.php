@@ -1552,6 +1552,8 @@ class SFAF_Submit {
                 <label class="uc-field">
                     <span class="uc-field-label">Date<?php echo $mark( 'date' ); ?></span>
                     <input type="date" name="date"<?php echo $attr( 'date' ); ?> value="<?php echo esc_attr( $v( 'date' ) ); ?>" />
+                    <?php // Names a closure the date falls on (3.105.0); nothing is refused for it. ?>
+                    <?php echo SFAF_Closures::date_warning_markup(); ?>
                     <?php SFAF_Submissions::field_error( $err( 'date' ) ); ?>
                 </label>
 
