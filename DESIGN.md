@@ -192,6 +192,31 @@ for placeholder tiles, and an ink for text on both.
 Red and Pink are large-text only where used as text. Burgundy's ink is its own
 base value, which is already dark enough.
 
+### What stays open on a closed day is the green family's ink (3.105.0)
+
+A closure's still-open line, "Strut Pharmacy open 10 am–2 pm", is set in
+`#46661F`, the Green family's ink from the ramp above, as the token
+`--uc-open-ink` in `calendar.css`. **Never the brand green as text.**
+
+| Pairing | Ratio | Verdict |
+|---|---|---|
+| `#46661F` on white, the panel every closure puts its text on | **6.60:1** | Correct |
+| `#46661F` on the green tint `#F1F8E9` | 6.08:1 | Correct |
+| Brand green `#8CC745` on white | **2.02:1** | **BANNED as text** |
+
+Green because the palette gives it "success state" and the line is the good
+news on a red day; the words carry the fact and the colour agrees. The line
+never sits on the hatch: in the cell, the day panel and the card it is on the
+closure's solid white panel, which is what it is measured against.
+`closure-live.php` reads the rendered colour of every line in Chrome and
+measures it against the nearest opaque background.
+
+**The closed-day warning under a date field is the Red family's ink**, `#AD1C0D`,
+the closure's own colour: 7.12:1 on white, 6.58:1 on caladmin's `#F5F6F7`, and
+6.10:1 on the tint `#FDE9E7` that the pending row's "Closed: Thanksgiving" flag
+sits on. **Not caladmin's system amber**, because `portal.css` also dresses the
+two public forms, where only palette colours are allowed.
+
 ### Contrast floors
 
 4.5:1 wherever there is text. 3:1 for anything that is only a shape: an icon
@@ -260,6 +285,19 @@ sixteen of thirty-nine cards they did not. Both kinds of card carry that rule
 now: `.uc-card` since 3.17.0 and `.uc-bento-card` since 3.41.0, which had only
 escaped the same fate because every one of its headings happened to carry
 `.uc-bento-title`.
+
+**THE TREATMENT IS THE HEADING'S OWN WORDS AND NOTHING INSIDE IT (3.105.0).**
+`text-transform` and `letter-spacing` inherit, so a help panel that opens
+inside a card title rendered a paragraph in tracked capitals: the help under
+"Is this part of a series?" and on the team card. The fix is at the treatment,
+not the panel: a zero-specificity rule beside the heading rules in `portal.css`
+gives case and spacing back to help, hints, labels, controls and sentences
+inside any card heading. **Capitals outside a heading are six named treatments
+and nothing else**: the word Closed, the weekday and month on a date badge, the
+word Cancelled, the access level in caladmin's sidebar, the filter bar's group
+label, and the section headings of the organizers and groups panel.
+`caps-sweep-live.php` reads every caladmin screen, the public calendar and both
+public forms in Chrome, hidden help panels included, and fails on anything else.
 
 **The ladder is checked, not asserted.** `php .claude/type-scale-sweep.php`
 reports every rule in `portal.css` that sets a size and a weight that is not one

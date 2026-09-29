@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 207 items.** Quick 172, needs real conditions 32, blocked on other
+**Outstanding: 215 items.** Quick 180, needs real conditions 32, blocked on other
 people 3.
 
 ---
@@ -2593,6 +2593,94 @@ and save: the series picture comes back.
 
 **Why it needs a person:** the renderers were read in the test kit, not on the
 real pages or the embed on sfaf.org.
+
+### 1.176 Existing events now show a Donate button (3.105.0)
+
+**Do this first after updating.** From this release an event with no donation
+link of its own inherits one: its series' link, or the SFAF default in
+Settings. So published events that showed no Donate button now show one on
+their event page, unless their Display card's Donate tick is off. Open three
+event pages: one with its own GoFundMe link (it should still go there), one in
+a series (it should go to the SFAF default, since no series has a link yet),
+and one on its own (the SFAF default). If Donate should not be on most events,
+empty **Settings, Display, Default donation link** and save: the button leaves
+every event that has neither its own link nor a series link. The public list's
+rows are unchanged: only an event with its own link shows Donate there.
+
+**Why it needs a person:** it changes live public pages, and whether that is
+wanted is Mark's call.
+
+### 1.177 The donate list in the editor, and a series link (3.105.0)
+
+New Event: the Donate card's list starts on **SFAF default**. Choose **Custom**:
+the link box appears. Choose a series in "Is this part of a series?" that you
+have given a **Donation link** on its series screen: the first entry reads
+**Series link**, and that series is also offered by name. Save one event on
+**None** and one on the series: the first shows no Donate button, the second
+goes to the series link.
+
+**Why it needs a person:** the list was driven in the test kit's browser; the
+real series screen save and the real event page were not.
+
+### 1.178 A closure with what stays open (3.105.0)
+
+**WordPress admin, Events, Closures**: edit Thanksgiving (or add a test
+closure), press **Add a row**, pick a venue and hours, save, and reopen it: the
+row is there. On the public calendar: the month grid's closed day shows the
+line under Closed in green; on a phone, tap the day and the panel under the
+grid shows it; a list view that reaches that date shows it on the closure card.
+
+**Why it needs a person:** the real admin screen and the embed on sfaf.org.
+
+### 1.179 The closed-day warning, and Publish's one question (3.105.0)
+
+New Event: pick a date on a closure. A red line under the date names it. Fill
+the rest in and press **Publish**: one question, "SFAF is closed on …. Hold
+the event anyway?". **Cancel** leaves you on the form; **Publish** publishes.
+**Save draft** on a closed date asks nothing. Then a weekly repeat across two
+closures: the line names both dates.
+
+**Why it needs a person:** a real browser's dialog, which the headless check
+had to help along.
+
+### 1.180 The line under the date on both public forms, and the pending flag (3.105.0)
+
+On the staff request form and the community form, pick a closed date: the same
+line appears under the date and nothing stops you submitting. Submit one. On
+**Pending** its row shows **Closed: Thanksgiving** beside the date.
+
+**Why it needs a person:** the real forms, with Turnstile, and a real submission.
+
+### 1.181 Remove a registration (3.105.0)
+
+Register yourself for a test event, once with an email and once ticking "I do
+not use email". On the event's registrations list press **Remove** on each: the
+question names the person; the row turns Cancelled with "Removed by" and your
+name under it; the count on the events list drops; the notification list gets
+the usual cancellation alert naming that person. **If Remove shows a database
+error, the schema update to version 9 did not run**, and that is the thing to
+report.
+
+**Why it needs a person:** a real database, whose new column is added on the
+first load after updating, and real mail.
+
+### 1.182 Help text inside a card heading reads in sentence case (3.105.0)
+
+New Event: press the **?** beside "Is this part of a series?". The help reads in
+ordinary sentence case, not capitals. Same for the **?** on the team card of an
+existing event.
+
+**Why it needs a person:** it was measured in Chrome on the test kit's render,
+not on the live caladmin with its real fonts.
+
+### 1.183 The Settings default donation link survives a save (3.105.0)
+
+Open **Settings**, change nothing, and save. Reopen: **Default donation link**
+still holds SFAF's donation page. Empty it and save: it stays empty on reopening,
+and it does not come back.
+
+**Why it needs a person:** WordPress's own Settings save, which the kit does not
+run.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event

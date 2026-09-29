@@ -47,6 +47,11 @@ bash .claude/lint-php.sh .          # PHP 8.3, every file, fails on first error
   tokenizer does not hand back as one. Both traps produced false results in
   3.20.0.
 - Run both again against the EXTRACTED zip, not only the working tree.
+- **An empty file passes both.** `build-zip.sh` also runs
+  `.claude/shrink-check.php`, which refuses a build when a shipped file lost
+  more than half its lines since the last commit or in it (3.105.0). A
+  deliberate cut is let through only by naming it:
+  `bash .claude/build-zip.sh X.Y.Z --allow-shrink=includes/class-x.php`.
 
 Release mechanics: bump the minor version in all four places (plugin header,
 `SFAF_VERSION`, readme `Stable tag`, and `EMBED_JS_VERSION` in

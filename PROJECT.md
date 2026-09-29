@@ -9,7 +9,7 @@ typography, layout, CSS failure modes) or `CLAUDE.md` (standing working rules,
 the build gate, shell rules). When something here contradicts one of those,
 those win in their own remit and this file is wrong and should be fixed.
 
-Current version at last update of this file: **3.104.0**.
+Current version at last update of this file: **3.105.0**.
 
 ---
 
@@ -2022,6 +2022,17 @@ and no fetch anywhere in the function.
 the date is the reason somebody is on the form, and a prefilled one is a past
 date pretending to be a new event.
 
+**A WRITE TO A NAME NOTHING RENDERS IS THIS APPLIER'S RECURRING FAULT.** The
+caladmin applier wrote the times to `start_time` for six releases after the
+editor split each time into an hour and a minute (fixed 3.104.0), and the
+address to `location` for longer, after the editor split it into a place name
+and four parts (fixed 3.105.0). Both passed their test because the test's
+hand-built document had the old field, or no field at all. So
+`prefill-image-test.js` builds the editor's real controls and asserts the old
+name is ABSENT, `series-control-test.php` holds those names to the rendered
+form, and `prefill_data()` hands over `location_name` and `location_parts`,
+parsed from an old one-line address when that is all there is.
+
 **A FIELD ALREADY ANSWERED IS MARKED, NOT SKIPPED.** The row stays ticked and
 says it would replace what is there. The information is the point and the
 decision is the requester's; skipping it silently would be the software deciding
@@ -3500,10 +3511,100 @@ every reader, because `get()`, `covering()` and `spans()` all come through it.
 The note behaved exactly that way for its first draft. Anything added to a
 closure goes in both places.
 
-**Naming venues was considered and set aside.** A closure saying which sites it
-applies to turns a sentence somebody wants to write into a data model with its
-own rules about a site that is half open. Free text first; the structured
-version is not built and is not owed.
+**WHAT STAYS OPEN IS STRUCTURED (3.105.0), REVERSING 3.84.0's "FREE TEXT FIRST".**
+A closure carries rows of `open`: a venue id, an opening time and a closing
+time, H:i, as many as needed. It was set aside in 3.84.0 as a data model with
+its own rules about a half-open site; what changed is that it was the one
+sentence people kept writing into the note, and it is the one that has to be
+right to the hour. The note stays for anything else. The half-open-site rules
+never had to exist: a row is a venue and its hours, and nothing is inferred.
+
+- **The venue is a reference, resolved when the line is drawn**, the same rule
+  as an event's venue: `SFAF_Closures::open_lines()` reads the venue's name then,
+  so renaming a venue renames the line and a deleted venue drops its line
+  rather than naming nothing. On the way IN the venue must exist; on the way out
+  it is not re-checked, so deleting a venue never rewrites the option.
+- **A row missing any of its three values is dropped at save**, so a row added
+  and never filled in is not stored and not refused.
+- **`all()` rebuilds `open` too.** The note was silently dropped by exactly that
+  omission for its first draft; `closure-open-test.php` asserts the rows survive
+  the read.
+- **One line per row, "Strut Pharmacy open 10 am–2 pm"**, through
+  `sfaf_ap_time_range()`, under the word Closed and before the note, in the
+  month grid's closed mark (which the day panel clones, so it carries them), in
+  the cell's spoken label, and on the list's closure card. The grid cell drops
+  them below 560px and at phone width, as it drops the note, and the day panel
+  shows them. The ink is `DESIGN.md`'s.
+- **The sidebar shows no closure at all**, by the list renderer's own recorded
+  decision, so it shows no still-open lines either. The 3.105.0 brief named it;
+  it was reported rather than changed.
+
+**THE CLOSED-DAY WARNING WARNS AND NEVER BLOCKS (3.105.0).** Closures are
+calendar-wide and plenty of events rightly fall on one: the pharmacy that stays
+open holds its own events. So the only things outside the calendar that ask
+about closures are `SFAF_Closures::date_warning_markup()`, drawn under the date
+field on the event editor and both public forms, and `flag_for()`, the "Closed:
+Thanksgiving" flag beside the date on a pending row. **No save, validator or
+publish rule consults a closure**, and `closure-open-test.php` asserts which
+methods each of those files may call.
+
+- **The line is filled by `initClosedDays()` in `portal.js`** from a payload of
+  upcoming closures (name and dates only). For a repeating event it reads the
+  dates the repeat control would create off that control's root
+  (`data-uc-repeat-dates`, written by `initRecurrence()`), so there is one
+  engine and one idea of the pattern.
+- **Publish asks once, on the form's SUBMIT, not on the button's click.** The
+  scope, completeness and consent questions are bound to the save buttons'
+  clicks and replay a click when answered; a replayed submit reaches only
+  submit listeners, so this question can never make one of them ask twice. It
+  listens in the capture phase to run first, holds the submit, and replays it
+  through `resubmit()`. **A Yes is remembered until the form changes**, because a
+  later submit listener may hold the save and replay it, and that replay must
+  not bring the question back.
+- **Save draft never asks**, nor does Save changes on a live event, nor either
+  public form: the question guards putting an event in front of people.
+
+### Where the Donate button goes is resolved in one place (3.105.0)
+
+**`sfaf_donate_resolve( $post_id )` is the one answer**, and every reader asks
+it: the event page's donate block, the fundraising progress, the public list
+row and the editor's progress toggle. It returns the link and where it came
+from, `own`, `series`, `default` or `none`. **The rule: the event's choice, else
+its series' link, else the default in Settings.**
+
+| Stored on the event, `_uc_donate_choice` | What it resolves to |
+|---|---|
+| `inherit` | the series' link if it has one, else the default |
+| `none` | no button, whatever else is set |
+| `custom` | the event's own link, `_uc_gofundme_url` (the old box, same key) |
+| `series:<id>` | that series' link, chosen by name in the editor's list |
+| nothing, saved before 3.105.0 | `custom` when the event has its own link, else `inherit` |
+
+- **The series link is term meta, `_sfaf_series_donate_url`, read at render
+  time and never copied**: the video's rule, not the defaults' rule, because a
+  donation page belongs to the programme and correcting it should correct
+  every event using it.
+- **A named series that later has no link, or no longer exists, resolves as
+  inherit**, the 3.90.0 rule that a stored id which does not resolve is absent.
+  A button that vanished because somebody tidied another series would be the
+  worse surprise.
+- **The default is `uc_settings['donate_default_url']`, and absent is not
+  empty.** A site that has never saved Settings since 3.105.0 has no key and
+  gets SFAF's donation page (`SFAF_DONATE_DEFAULT`); a box somebody cleared
+  holds '' and means no default. The sanitiser always writes the key, because
+  `uc_settings` is rebuilt wholesale on save.
+- **The choice is stored, never the link it resolves to**, so it travels across
+  a recurrence group with the other donate keys and a corrected series link
+  reaches every event.
+- **THE LIST ROW DRAWS ONLY `own`.** The event page draws whatever resolves; the
+  list row asks the same function and draws Donate only for an event's own
+  campaign, as it did before, so the default does not put one button on every
+  row. The progress bar is `own` only too, since the figures belong to that
+  campaign.
+- **Existing events without a link of their own inherit**, so from 3.105.0 they
+  show a Donate button on the event page (series link or default) unless the
+  Display card's Donate tick is off. That follows from the rule as asked; the
+  default in Settings is the switch for all of them at once.
 
 ### FAQ sets are made in one place and copied, never linked
 
@@ -5187,12 +5288,36 @@ that looks like an address. The reminder pass claims a row for each and records
 `no_address` instead of sending, so the event's reminder log says who it could
 not reach.
 
-**NOBODY CAN RELEASE SUCH A PLACE, AND THAT IS A GAP.** The only way to cancel a
-registration is the token link in an email, and these people get none.
+**STAFF RELEASE SUCH A PLACE BY ROW (3.105.0).** The only way for a registrant
+to cancel is the token link in an email, and these people get none, and
 `cancel_rsvp()` refuses an empty address rather than release every emailless
-place on the event at once. There is no staff control to release a
-registration by row, for anybody; that was already true and is reported rather
-than built.
+place on the event at once. **Remove** on the registrations list releases one
+row by its id, so it works for them. See "Removing a registration", below.
+
+### Removing a registration (3.105.0)
+
+**Remove on each confirmed row of the caladmin registrations list**, behind a
+confirmation naming the person. `SFAF_Reminders::remove_rsvp( $rsvp_id, $by )`
+moves that one row to `cancelled` with `cancelled_at`, exactly as the cancel
+link does, and both then end in `released()`: the count cache is cleared and
+`uc_rsvp_cancelled` fires, so the cancel alert goes to the notification list
+as for a self-cancel. **The reminder ledger is not touched**, which is also what a
+self-cancel does: the reminder pass selects on `confirmed`.
+
+- **By row, never by address.** That is what makes it work without an email,
+  and it releases one place even when several rows share an address.
+- **Who is on the row; when is `cancelled_at`.** `removed_by` (schema 9) holds
+  the user id and is 0 for every registrant who used their own link, which is
+  every row before 3.105.0, so the default needed no migration. The list shows
+  "Removed by", the name, and the time under the status.
+- **The row id rides the hook.** `uc_rsvp_cancelled` carries it as a third
+  argument and `send_cancel_alert()` names that row's person. By address it
+  named the newest row at that address, and every emailless row shares ''.
+- **The event gate, asked of the event the ROW belongs to**, read from the row
+  and never from the form, at the route (`POST:remove_rsvp`) and at the render,
+  per event on the list across every event. A row whose event is gone has no
+  gate to pass and cannot be removed.
+- **Nothing reinstates a removed row**, which is why the confirmation says so.
 ### Cancellation tokens
 
 A registration gets a **128-bit token** (`SFAF_Reminders::new_token()`). The
@@ -6414,6 +6539,26 @@ chrome --headless --disable-gpu --window-size=1400,1200 \
 **Use it before theorising about anything visual or anything the script does.**
 Two releases were spent reasoning about a card that could have been measured in
 ten minutes.
+
+**A `<dialog>`'s `close` event may never arrive under `--virtual-time-budget`
+(3.105.0).** Closed by a timer-driven press, the dialog shuts with the right
+`returnValue` and the event is not delivered, so every Yes in a `ucConfirm()`
+appeared to do nothing and read as the product failing. A bare page with no
+plugin code reproduces it; `--run-all-compositor-stages-before-draw` fixes the
+bare page and not the real ones. `closure-live.php` sends the event itself when
+the dialog has closed and it has not arrived, and counts that. **Suspect the
+harness's clock before the code when an answered dialog does nothing.**
+
+### An empty file parses, and both gates pass it (3.105.0)
+
+The linter proves a file PARSES and the callable audit proves what it CALLS
+exists. An emptied class does both. `build-zip.sh` therefore runs
+`.claude/shrink-check.php`, which refuses a build when a shipped file has lost
+more than half its lines, **in the working tree against HEAD and in HEAD against
+the commit before it**, because builds here are made after committing and the
+first comparison alone would pass every one. A deliberate cut names the file:
+`--allow-shrink=<path>`. There is no switch that waives it for everything,
+because that is the switch that gets left in a script.
 
 ### A decision made for one shape is made for both (3.45.0, found 3.82.0)
 

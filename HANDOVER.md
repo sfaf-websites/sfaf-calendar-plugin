@@ -4,28 +4,24 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-09-25, at 3.104.0, released.
+**Last updated:** 2026-09-29, at 3.105.0, released.
 
 ---
 
 ## What shipped last
 
-**3.104.0**: **times had not saved on a real request since 3.98.0**, so Publish
-held complete new events and **both public forms refused every submission**
-("Give a start time"); fixed, `TESTING.md` 1.173 and 1.174 first. A **typed
-image URL** now beats the series picture wherever it points. The Pending bar is
-**one panel with one Apply**. `PROJECT.md` 1.
-**3.103.0**: **series defaults** (`SFAF_Series::join()`), **bulk actions on
-Pending**, and **one publish rule everywhere**, each held event named.
-`PROJECT.md` 1 and 2. **3.102.0**: **Preferences**, the **digest**, the
-**day-before count**, **registering without an email**. `PROJECT.md` 4 and 5.
-**3.101.0 IMPORTS EVERYACTION** into Pending, keyed on UUID, **Auto-Import off**;
-the description is the manager's. `PROJECT.md` 3.
-**3.99.0**: both public forms mark every required field from the validator's
-own list; **the editor publishes only a complete event** (a draft needs only a
-title, a live event is saved as it is); every email time says "PT".
-`PROJECT.md` 1 and 4. **3.98.1** shipped inside 3.99.0. **3.96.0 is the big
-one**: hybrid events, the event video, pictures inside descriptions.
+**3.105.0**: a closure says **what stays open** (venue and hours, a green line
+each); a date on a closed day is **named under the date** everywhere, and
+Publish **asks once**, never blocks; **Remove** on the registrations list,
+emailless included (schema 9); the **caps sweep**; the **donation link**
+(Settings default, series link, one resolver). `PROJECT.md` 2, 4 and 7.
+> **EXISTING EVENTS WITHOUT A LINK OF THEIR OWN NOW SHOW DONATE** on the event
+> page, to the SFAF default. The rule as asked; **`TESTING.md` 1.176 first**, and
+> emptying the Settings default is the one switch for all of them.
+**3.104.0**: times saved on a real request again, and both public forms took
+submissions again (`TESTING.md` 1.173, 1.174). **3.103.0**: series defaults,
+bulk Pending, one publish rule. **3.102.0**: Preferences, digests, registering
+without an email. **3.101.0 IMPORTS EVERYACTION**, **Auto-Import off**.
 **`readme.txt` is the changelog** and has the reasoning for all of it.
 
 > **AN IMPORTED EVENT NEVER TAKES RSVPS HERE (3.97.0).** The tick is locked off,
@@ -97,11 +93,12 @@ one**: hybrid events, the event video, pictures inside descriptions.
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 207 items.** Two want doing
-first, in this order: **1.74**, naming and tagging the six pictures, which is
-what makes every picker's work visible at all, and **1.80**, the preview's two
-targets. Then **1.171**, which settles whether Add category on the events list
-was erroring live. Assume everything else unverified.
+**`TESTING.md` holds the manual testing backlog: 215 items.** **1.176** first,
+the Donate buttons existing events gained in 3.105.0. Then two, in this order:
+**1.74**, naming and tagging the six pictures, which is what makes every
+picker's work visible at all, and **1.80**, the preview's two targets. Then
+**1.171**, which settles whether Add category on the events list was erroring
+live. Assume everything else unverified.
 
 **Waiting on a decision or an address**, each with its reasoning in `PROJECT.md`
 8 unless another section is named:
