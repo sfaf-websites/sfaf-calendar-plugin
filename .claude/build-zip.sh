@@ -8,7 +8,8 @@
 #     bash .claude/build-zip.sh 3.33.0
 set -eu
 
-VERSION="${1:?usage: build-zip.sh X.Y.Z}"
+VERSION="${1:?usage: build-zip.sh X.Y.Z [--allow-shrink=<path> ...]}"
+shift
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 STAGE="$ROOT/.build-stage"
 OUT="$ROOT/sfaf-calendar-$VERSION.zip"
@@ -24,6 +25,12 @@ OUT="$ROOT/sfaf-calendar-$VERSION.zip"
 # Four places since 3.101.0: embed.js carries the version too. The check is its
 # own script so a test can run it against a tree that disagrees.
 php "$ROOT/.claude/version-check.php" "$ROOT" "$VERSION" || exit 1
+
+# AN EMPTY FILE PARSES (3.105.0). The linter and the callable audit both pass a
+# class that has been emptied, so this refuses a build when a shipped file has
+# lost more than half its lines since the last commit, or in it. A deliberate
+# cut is let through by naming the file: --allow-shrink=includes/class-x.php.
+php "$ROOT/.claude/shrink-check.php" "$ROOT" "$@" || exit 1
 
 rm -rf "$STAGE"
 mkdir -p "$STAGE/sfaf-calendar"

@@ -46,6 +46,7 @@ for f in .claude/*.php; do
     everyaction-hub.php) continue ;;   # the model hub the EveryAction checks load, not a check
     everyaction-live.php) continue ;;  # run below with --run
     version-check.php) continue ;;     # the build gate itself; version-check-test.php runs it
+    shrink-check.php) continue ;;      # likewise; shrink-check-test.php runs it
     mail-kit.php) continue ;;          # the miniature WordPress the 3.102.0 mail checks load, not a check
     rsvp-noemail-live.php) continue ;; # run below with --run
     preferences-live.php) continue ;;  # run below with --run
