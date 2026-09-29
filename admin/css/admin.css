@@ -689,3 +689,17 @@
     animation: uc-spin .7s linear infinite; }
 @keyframes uc-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .uc-spinner { animation-duration: 2.4s; } }
+
+/* ---------------------------------------------------------------------------
+   WHAT STAYS OPEN ON A CLOSED DAY (3.105.0). One row per venue: the venue, its
+   opening and closing time, and Remove. The rows wrap at a narrow screen
+   rather than scroll, and the fieldset carries no box of its own: it sits in
+   the card like every other field on the form.
+   ------------------------------------------------------------------------- */
+.uc-closure-open { margin: 0 0 1em; padding: 0; border: 0; }
+.uc-closure-open legend { padding: 0; font-weight: 600; }
+.uc-open-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 16px; margin: 8px 0; }
+.uc-open-row label, .uc-open-time { display: flex; flex-direction: column; gap: 2px; }
+.uc-open-label { font-size: 12px; color: #50575e; }
+.uc-open-row .uc-timepick { display: inline-flex; gap: 4px; }
+.uc-open-row .button-link-delete { align-self: center; }

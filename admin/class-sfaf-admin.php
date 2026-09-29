@@ -939,12 +939,35 @@ class SFAF_Admin {
         $base   = self::closures_url();
 
         if ( 'save' === $action ) {
+            /*
+             * WHAT STAYS OPEN (3.105.0). One venue select and two time controls
+             * per row, keyed by a row index. Each time control posts an hour and
+             * a minute, folded here by the same function that folds the event
+             * times, so there is one rule for what a posted time is.
+             */
+            $open  = array();
+            $venues = isset( $_POST['closure_open_venue'] ) ? (array) wp_unslash( $_POST['closure_open_venue'] ) : array();
+            foreach ( $venues as $i => $venue ) {
+                $i = preg_replace( '/\D/', '', (string) $i );
+                if ( '' === $i ) {
+                    continue;
+                }
+                $from = 'closure_open_from_' . $i;
+                $to   = 'closure_open_to_' . $i;
+                sfaf_normalize_time_post( array( $from, $to ) );
+                $open[] = array(
+                    'venue' => (int) $venue,
+                    'from'  => isset( $_POST[ $from ] ) ? (string) $_POST[ $from ] : '',
+                    'to'    => isset( $_POST[ $to ] ) ? (string) $_POST[ $to ] : '',
+                );
+            }
             $done = SFAF_Closures::save(
                 isset( $_POST['closure_id'] ) ? sanitize_text_field( wp_unslash( $_POST['closure_id'] ) ) : '',
                 isset( $_POST['closure_label'] ) ? wp_unslash( $_POST['closure_label'] ) : '',
                 isset( $_POST['closure_start'] ) ? sanitize_text_field( wp_unslash( $_POST['closure_start'] ) ) : '',
                 isset( $_POST['closure_end'] ) ? sanitize_text_field( wp_unslash( $_POST['closure_end'] ) ) : '',
-                isset( $_POST['closure_note'] ) ? wp_unslash( $_POST['closure_note'] ) : ''
+                isset( $_POST['closure_note'] ) ? wp_unslash( $_POST['closure_note'] ) : '',
+                $open
             );
             if ( is_wp_error( $done ) ) {
                 set_transient( 'sfaf_closure_error_' . get_current_user_id(), $done->get_error_message(), 60 );
@@ -1061,6 +1084,51 @@ class SFAF_Admin {
                                maxlength="200" placeholder="The 6th Street Center is open as usual" value="<?php echo esc_attr( $e_note ); ?>" />
                         <br /><span class="description">Optional. Shown with the closure on the calendar. The month grid shortens anything long, so put what matters first.</span>
                     </p>
+                    <?php
+                    /*
+                     * STILL OPEN (3.105.0). Any number of rows, each a venue and
+                     * its hours. Rows already saved are drawn; Add a row copies
+                     * the inert <template> below with a fresh index. A row left
+                     * incomplete is dropped by the save rather than refused.
+                     */
+                    $open_venues = SFAF_Venues::all();
+                    $open_rows   = $editing && isset( $editing['open'] ) ? $editing['open'] : array();
+                    ?>
+                    <fieldset class="uc-closure-open" data-uc-closure-open>
+                        <legend>Still open</legend>
+                        <?php if ( empty( $open_venues ) ) : ?>
+                            <p class="description">Add the venue in caladmin first, under Venues.</p>
+                        <?php else : ?>
+                            <div data-uc-open-rows>
+                                <?php foreach ( array_values( $open_rows ) as $i => $o ) {
+                                    $this->render_closure_open_row( (string) $i, $o, $open_venues );
+                                } ?>
+                            </div>
+                            <template data-uc-open-template><?php $this->render_closure_open_row( '__i__', array(), $open_venues ); ?></template>
+                            <p><button type="button" class="button" data-uc-open-add>Add a row</button></p>
+                            <script>
+                            (function () {
+                                var box = document.querySelector('[data-uc-closure-open]');
+                                if (!box) { return; }
+                                var rows = box.querySelector('[data-uc-open-rows]');
+                                var tpl = box.querySelector('[data-uc-open-template]');
+                                var next = rows.querySelectorAll('[data-uc-open-row]').length;
+                                box.querySelector('[data-uc-open-add]').addEventListener('click', function () {
+                                    var wrap = document.createElement('div');
+                                    wrap.innerHTML = tpl.innerHTML.replace(/__i__/g, String(next++));
+                                    var row = wrap.firstElementChild;
+                                    rows.appendChild(row);
+                                    var first = row.querySelector('select');
+                                    if (first) { first.focus(); }
+                                });
+                                box.addEventListener('click', function (e) {
+                                    var btn = e.target.closest ? e.target.closest('[data-uc-open-remove]') : null;
+                                    if (btn) { btn.closest('[data-uc-open-row]').remove(); }
+                                });
+                            })();
+                            </script>
+                        <?php endif; ?>
+                    </fieldset>
                     <p>
                         <button type="submit" class="button button-primary"><?php echo $editing ? 'Save changes' : 'Add closure'; ?></button>
                         <?php if ( $editing ) : ?>
@@ -1105,6 +1173,9 @@ class SFAF_Admin {
                                         <?php if ( '' !== $admin_note ) : ?>
                                             <br /><span class="uc-muted"><?php echo esc_html( $admin_note ); ?></span>
                                         <?php endif; ?>
+                                        <?php foreach ( SFAF_Closures::open_lines( $row ) as $open_line ) : ?>
+                                            <br /><span class="uc-muted"><?php echo esc_html( $open_line ); ?></span>
+                                        <?php endforeach; ?>
                                     </td>
                                     <td><?php echo (int) $days; ?></td>
                                     <td>
@@ -1130,6 +1201,39 @@ class SFAF_Admin {
                     </p>
                 <?php endif; ?>
             </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * One row of what stays open on a closed day (3.105.0).
+     *
+     * @param string    $i      The row index, or '__i__' for the template.
+     * @param array     $o      A stored row, or empty.
+     * @param WP_Term[] $venues
+     */
+    private function render_closure_open_row( $i, $o, $venues ) {
+        $venue = isset( $o['venue'] ) ? (int) $o['venue'] : 0;
+        ?>
+        <div class="uc-open-row" data-uc-open-row>
+            <label>
+                <span class="uc-open-label">Venue</span>
+                <select name="closure_open_venue[<?php echo esc_attr( $i ); ?>]">
+                    <option value="0">Choose a venue</option>
+                    <?php foreach ( $venues as $v ) : ?>
+                        <option value="<?php echo (int) $v->term_id; ?>" <?php selected( $venue, (int) $v->term_id ); ?>><?php echo esc_html( $v->name ); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <span class="uc-open-time">
+                <span class="uc-open-label">Opens</span>
+                <?php echo sfaf_time_field( 'closure_open_from_' . $i, isset( $o['from'] ) ? $o['from'] : '', array( 'label' => 'Opens' ) ); ?>
+            </span>
+            <span class="uc-open-time">
+                <span class="uc-open-label">Closes</span>
+                <?php echo sfaf_time_field( 'closure_open_to_' . $i, isset( $o['to'] ) ? $o['to'] : '', array( 'label' => 'Closes' ) ); ?>
+            </span>
+            <button type="button" class="button-link button-link-delete" data-uc-open-remove>Remove</button>
         </div>
         <?php
     }

@@ -98,12 +98,19 @@ class SFAF_Closures {
              * option can be edited by hand or restored from an old backup, and
              * a reader should not be the first thing to trust it.
              */
+            /*
+             * AND WHAT STAYS OPEN (3.105.0), for the same reason as the note:
+             * a key missing from this list is written by save() and then read
+             * back by nobody. A row saved before 3.105.0 has none, which is an
+             * empty list.
+             */
             $out[] = array(
                 'id'    => (string) $id,
                 'label' => isset( $row['label'] ) ? (string) $row['label'] : '',
                 'start' => $start,
                 'end'   => $end,
                 'note'  => isset( $row['note'] ) ? self::clean_note( $row['note'] ) : '',
+                'open'  => isset( $row['open'] ) ? self::clean_open( $row['open'], false ) : array(),
             );
         }
 
@@ -179,6 +186,74 @@ class SFAF_Closures {
     /** Is anything closed on this date? */
     public static function is_closed( $date ) {
         return null !== self::covering( $date );
+    }
+
+    /* ---------------------------------------------------------------------
+     * The closed-day warning (3.105.0)
+     *
+     * A WARNING, NEVER A REFUSAL. Closures are calendar-wide and an event on
+     * one is often right: the pharmacy that stays open holds its own events,
+     * and a closure for the office says nothing about a march in the park. So
+     * nothing here can stop a save, and nothing reaches the save path at all.
+     * ------------------------------------------------------------------- */
+
+    /**
+     * Every closure that has not ended, for the script that names them.
+     *
+     * Only the name and the dates: the note and what stays open are for the
+     * calendar, and a form needs to know only that the day is closed and what
+     * the closure is called.
+     *
+     * @return array[] Each array{start:string,end:string,name:string}
+     */
+    public static function upcoming_payload() {
+        $today = function_exists( 'current_time' ) ? current_time( 'Y-m-d' ) : gmdate( 'Y-m-d' );
+        $out   = array();
+        foreach ( self::all() as $row ) {
+            if ( $row['end'] < $today ) {
+                continue;
+            }
+            $out[] = array( 'start' => $row['start'], 'end' => $row['end'], 'name' => self::name( $row ) );
+        }
+        return $out;
+    }
+
+    /**
+     * The line under a date field, and the data it is drawn from. ONE RENDER
+     * for the event editor and both public forms.
+     *
+     * Drawn empty and hidden; portal.js fills it in as soon as a date is
+     * picked, and for a repeating event names every generated date that falls
+     * on a closure. With no script it stays hidden, which costs nothing: the
+     * warning never decided anything.
+     *
+     * @return string
+     */
+    public static function date_warning_markup() {
+        $payload = self::upcoming_payload();
+        if ( ! $payload ) {
+            return '';
+        }
+        return '<p class="uc-closed-warn" data-uc-closed-warn role="status" hidden></p>'
+            . '<script type="application/json" data-uc-closures>'
+            . wp_json_encode( $payload, JSON_HEX_TAG | JSON_HEX_AMP )
+            . '</script>';
+    }
+
+    /**
+     * The closure a stored event date falls on, phrased for a flag: "Closed:
+     * Thanksgiving", or "Closed" for a closure with no name. '' when open.
+     *
+     * @param string $date Y-m-d
+     * @return string
+     */
+    public static function flag_for( $date ) {
+        $row = self::covering( $date );
+        if ( ! $row ) {
+            return '';
+        }
+        $name = self::name( $row );
+        return '' !== $name ? 'Closed: ' . $name : 'Closed';
     }
 
     /**
@@ -293,6 +368,70 @@ class SFAF_Closures {
     }
 
     /**
+     * What stays open, one line per row (3.105.0).
+     *
+     * "Strut Pharmacy open 10 am–2 pm". The venue is stored by reference and
+     * its name read here, at display, so renaming a venue renames the line;
+     * a row whose venue has since been deleted says nothing rather than
+     * naming a place that no longer exists. The hours go through the one
+     * formatter, which puts the en dash in.
+     *
+     * STRUCTURED, WHERE 3.84.0 SET THIS ASIDE FOR FREE TEXT. The note stays
+     * for anything else; this is the one sentence people kept writing into it,
+     * and it is the one that has to be right to the hour.
+     *
+     * @param array $row
+     * @return string[]
+     */
+    public static function open_lines( $row ) {
+        $lines = array();
+        foreach ( isset( $row['open'] ) ? (array) $row['open'] : array() as $o ) {
+            $venue = class_exists( 'SFAF_Venues' ) ? SFAF_Venues::get( (int) $o['venue'] ) : null;
+            if ( ! $venue ) {
+                continue;
+            }
+            $lines[] = $venue->name . ' open ' . sfaf_ap_time_range( $o['from'], $o['to'] );
+        }
+        return $lines;
+    }
+
+    /**
+     * Rows of what stays open, cleaned (3.105.0).
+     *
+     * Each is a venue id, an opening time and a closing time, H:i. A row
+     * missing any of the three is dropped, so an empty row added and never
+     * filled in is not stored. On the way in the venue must exist; on the way
+     * out it is left for open_lines() to resolve, so a venue deleted later
+     * does not rewrite the option.
+     *
+     * @param mixed $rows
+     * @param bool  $check_venue
+     * @return array[] Each array{venue:int,from:string,to:string}
+     */
+    private static function clean_open( $rows, $check_venue = true ) {
+        $out = array();
+        foreach ( is_array( $rows ) ? $rows : array() as $o ) {
+            if ( ! is_array( $o ) ) {
+                continue;
+            }
+            $venue = isset( $o['venue'] ) ? (int) $o['venue'] : 0;
+            $from  = isset( $o['from'] ) ? trim( (string) $o['from'] ) : '';
+            $to    = isset( $o['to'] ) ? trim( (string) $o['to'] ) : '';
+            if ( ! $venue || ! preg_match( '/^([01]\d|2[0-3]):[0-5]\d$/', $from ) || ! preg_match( '/^([01]\d|2[0-3]):[0-5]\d$/', $to ) ) {
+                continue;
+            }
+            if ( $check_venue && class_exists( 'SFAF_Venues' ) && ! SFAF_Venues::exists( $venue ) ) {
+                continue;
+            }
+            $out[] = array( 'venue' => $venue, 'from' => $from, 'to' => $to );
+            if ( count( $out ) >= 20 ) {
+                break;
+            }
+        }
+        return $out;
+    }
+
+    /**
      * The dates a closure covers, as a phrase. For a list card.
      *
      * @param array $row
@@ -319,11 +458,14 @@ class SFAF_Closures {
      * @param string $label
      * @param string $start Y-m-d
      * @param string $end   Y-m-d, or '' for a single day.
+     * @param string $note
+     * @param array  $open  What stays open: rows of venue, from, to (3.105.0).
      * @return string|WP_Error The id.
      */
-    public static function save( $id, $label, $start, $end = '', $note = '' ) {
+    public static function save( $id, $label, $start, $end = '', $note = '', $open = array() ) {
         $label = trim( wp_strip_all_tags( (string) $label ) );
         $note  = self::clean_note( $note );
+        $open  = self::clean_open( $open );
         $start = self::clean_date( $start );
         $end   = self::clean_date( $end );
 
@@ -363,6 +505,7 @@ class SFAF_Closures {
             'start' => $start,
             'end'   => $end,
             'note'  => $note,
+            'open'  => $open,
         );
 
         update_option( self::OPTION, $raw );

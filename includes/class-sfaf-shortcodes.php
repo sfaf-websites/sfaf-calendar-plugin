@@ -1397,6 +1397,10 @@ class SFAF_Shortcodes {
                                 if ( '' !== $closed_full ) {
                                     $closed_said .= '. ' . $closed_full;
                                 }
+                                // What stays open is spoken too (3.105.0).
+                                foreach ( SFAF_Closures::open_lines( $closed_row ) as $open_line ) {
+                                    $closed_said .= '. ' . $open_line;
+                                }
                                 $label = $closed_said . '. ' . $label;
                             }
                             ?>
@@ -1465,6 +1469,13 @@ class SFAF_Shortcodes {
                                         <?php if ( '' !== $closed_name ) : ?>
                                             <span class="uc-closed-name"><?php echo esc_html( $closed_name ); ?></span>
                                         <?php endif; ?>
+                                        <?php
+                                        /* WHAT STAYS OPEN (3.105.0), a line each, under the
+                                           word. The day panel clones this mark, so it
+                                           carries them too. */
+                                        foreach ( SFAF_Closures::open_lines( $closed_row ) as $open_line ) : ?>
+                                            <span class="uc-closed-open"><?php echo esc_html( $open_line ); ?></span>
+                                        <?php endforeach; ?>
                                         <?php if ( '' !== $closed_note ) : ?>
                                             <span class="uc-closed-note"><?php echo esc_html( $closed_note ); ?></span>
                                         <?php endif; ?>
@@ -2904,6 +2915,9 @@ class SFAF_Shortcodes {
                     <?php endif; ?>
                 </span>
                 <span class="uc-closure-when"><?php echo esc_html( SFAF_Closures::when( $row ) ); ?></span>
+                <?php foreach ( SFAF_Closures::open_lines( $row ) as $open_line ) : ?>
+                    <span class="uc-closed-open"><?php echo esc_html( $open_line ); ?></span>
+                <?php endforeach; ?>
                 <?php if ( '' !== $note ) : ?>
                     <span class="uc-closure-note"><?php echo esc_html( $note ); ?></span>
                 <?php endif; ?>

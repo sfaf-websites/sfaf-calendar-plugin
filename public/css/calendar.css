@@ -122,6 +122,15 @@
     --uc-closed-stripe: rgba( 240, 73, 55, 0.14 );
     --uc-closed-edge: rgba( 240, 73, 55, 0.35 );
 
+    /* WHAT STAYS OPEN ON A CLOSED DAY (3.105.0) IS THE GREEN FAMILY'S INK,
+       the stop the Green category chip sets its text in (DESIGN.md, the category
+       ramps): #46661F, measured 6.60:1 on the white panel the line sits on and
+       6.08:1 on the green tint. NEVER THE BRAND GREEN #8CC745 AS TEXT, which is
+       2.02:1 on white. Green because the palette gives it "success state" and
+       this line is the good news on a red day; the word carries it, the colour
+       only agrees. */
+    --uc-open-ink: #46661F;
+
     /* THE HATCH ITSELF, ONCE. The grid cell cannot use the shared class — it
        has to out-specify `.uc-calendar .uc-month-grid td`, which sets the white
        background at two classes and a type — so it writes its own rule. It
@@ -3631,6 +3640,9 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
        from the other side: a query changes WHEN a rule applies and never how
        strongly, so a rule added later anywhere in the file outranks it. */
     .uc-calendar .uc-day-closed-mark .uc-closed-note { display: none; }
+    /* What stays open goes with the note, and for the same reason (3.105.0):
+       its unconditional rule is later in this file. The day panel has it. */
+    .uc-calendar .uc-day-closed-mark .uc-closed-open { display: none; }
 
     .uc-day-dots { display: flex; justify-content: center; gap: 3px; flex-wrap: wrap; min-height: 8px; }
     .uc-day-dot { width: 5px; height: 5px; border-radius: 50%; display: block; }
@@ -4304,6 +4316,9 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
        above gives in full: the unconditional rule that fills a cell with the
        note is later in this file and outranks an equal-specificity hide. */
     .uc-calendar .uc-day-closed-mark .uc-closed-note { display: none; }
+    /* What stays open goes with the note, and for the same reason (3.105.0):
+       its unconditional rule is later in this file. The day panel has it. */
+    .uc-calendar .uc-day-closed-mark .uc-closed-open { display: none; }
 
     /* Dots replace the event blocks at this width, one per event. */
     .uc-day-dots { display: flex; justify-content: center; gap: 3px; flex-wrap: wrap; min-height: 8px; }
@@ -4657,6 +4672,13 @@ input.uc-invalid:focus { outline: 2px solid #dc2626; outline-offset: 1px; }
     font-weight: 600; color: var( --uc-text );
     overflow-wrap: anywhere;
 }
+/* One line per place that stays open. Every surface sits it on a solid white
+   panel, never on the hatch, so the ink is measured against white. */
+.uc-closed-open {
+    display: block;
+    font-weight: 600; color: var( --uc-open-ink );
+    overflow-wrap: anywhere;
+}
 
 /* ---- The list card: one card for the whole span. ---- */
 .uc-closure-card {
@@ -4683,6 +4705,12 @@ input.uc-invalid:focus { outline: 2px solid #dc2626; outline-offset: 1px; }
    the label and the dates, so a sentence never has to share a baseline with
    them and never squeezes the date phrase. This is the surface with the room
    for it: the grid cell gets note_short(). */
+/* WHAT STAYS OPEN (3.105.0): its own line, in the green family's ink, under
+   the word Closed and the dates, and before the note. */
+.uc-closure-panel .uc-closed-open {
+    flex: 1 1 100%;
+    font-size: 13px; line-height: 1.45;
+}
 .uc-closure-note {
     flex: 1 1 100%;
     font-size: 13px; line-height: 1.45; color: var( --uc-secondary );
@@ -4732,6 +4760,7 @@ input.uc-invalid:focus { outline: 2px solid #dc2626; outline-offset: 1px; }
    cell is a seventh of the grid and a note can contain a URL or a long word
    with no space to break at. That is a different question from a NAME being
    split in half, which is what 3.93.0 forbade in the filter dropdown. */
+.uc-day-closed-mark .uc-closed-open { margin-top: 1px; font-size: 9px; line-height: 1.25; }
 .uc-day-closed-mark .uc-closed-note {
     display: block;
     margin-top: 1px;
@@ -4754,6 +4783,7 @@ input.uc-invalid:focus { outline: 2px solid #dc2626; outline-offset: 1px; }
 }
 .uc-calendar .uc-day-panel-closed .uc-closed-word { font-size: 12px; line-height: 1.3; }
 .uc-calendar .uc-day-panel-closed .uc-closed-name { display: block; font-size: 12px; line-height: 1.35; }
+.uc-calendar .uc-day-panel-closed .uc-closed-open { margin-top: 3px; font-size: 12px; line-height: 1.45; }
 .uc-calendar .uc-day-panel-closed .uc-closed-note {
     display: block; margin-top: 3px;
     font-size: 12px; line-height: 1.45;
