@@ -82,6 +82,15 @@ class SFAF_Series {
     const META_ORGANIZERS = '_sfaf_series_organizers';
 
     /**
+     * Term meta: the series' own donation link (3.105.0). Read at render time
+     * by sfaf_donate_resolve(), never copied onto an event, so correcting it
+     * here corrects every event that uses it. The video's rule, not the
+     * defaults' rule: a donation page belongs to the programme, not to how an
+     * event is filed.
+     */
+    const META_DONATE = '_sfaf_series_donate_url';
+
+    /**
      * Post meta on the EVENT: what apply_defaults() wrote, keyed by field.
      *
      * READ ONLY TO SAY "this came from the series" under the field in the
@@ -471,6 +480,27 @@ class SFAF_Series {
      */
     public static function video( $term_id ) {
         return (string) get_term_meta( (int) $term_id, self::META_VIDEO, true );
+    }
+
+    /** The series' own donation link, or '' (3.105.0). */
+    public static function donate_url( $term_id ) {
+        return $term_id ? trim( (string) get_term_meta( (int) $term_id, self::META_DONATE, true ) ) : '';
+    }
+
+    /**
+     * Every series with a donation link of its own, by name (3.105.0). The
+     * event editor offers each one by name in its donate list.
+     *
+     * @return array<int,string> term id => name
+     */
+    public static function with_donate_links() {
+        $out = array();
+        foreach ( self::all() as $term ) {
+            if ( '' !== self::donate_url( $term->term_id ) ) {
+                $out[ (int) $term->term_id ] = (string) $term->name;
+            }
+        }
+        return $out;
     }
 
     /**
@@ -1187,6 +1217,15 @@ class SFAF_Series {
                 update_term_meta( $term_id, self::META_VIDEO, $video );
             } else {
                 delete_term_meta( $term_id, self::META_VIDEO );
+            }
+        }
+        if ( array_key_exists( 'donate_url', $args ) ) {
+            // http and https only: this is a link a visitor is sent to.
+            $url = esc_url_raw( trim( (string) $args['donate_url'] ), array( 'http', 'https' ) );
+            if ( '' !== $url ) {
+                update_term_meta( $term_id, self::META_DONATE, $url );
+            } else {
+                delete_term_meta( $term_id, self::META_DONATE );
             }
         }
         /*

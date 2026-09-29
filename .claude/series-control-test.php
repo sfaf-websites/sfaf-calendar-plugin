@@ -519,6 +519,10 @@ class SFAF_Series {
     /** The editor's note under a field copied from the series (3.103.0). */
     public static function filled_from( $id, $field ) { return ''; }
 
+    /** No series in this world has a donation link (3.105.0). */
+    public static function donate_url( $term_id ) { return ''; }
+    public static function with_donate_links() { return array(); }
+
     public static function all() {
         $out = array();
         foreach ( self::$terms as $id => $name ) {

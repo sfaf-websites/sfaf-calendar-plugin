@@ -4274,8 +4274,17 @@ class SFAF_Shortcodes {
          * the two because it is the action with a consequence; View event is
          * navigation and takes the outline.
          */
-        $donate_url = get_post_meta( $post_id, '_uc_gofundme_url', true );
-        $can_donate = ( $donate_url && sfaf_show_feature( $post_id, 'donate' ) );
+        /*
+         * AN EVENT'S OWN CAMPAIGN ONLY, ON A LIST ROW (3.105.0). The event page
+         * draws whatever sfaf_donate_resolve() answers, including the series
+         * link and the SFAF default; drawn here, that default would put the
+         * same Donate button on every row of the list. So the row asks the
+         * same resolver and keeps what it always showed, an event raising
+         * money for itself, and None takes it away here too.
+         */
+        $donate     = sfaf_donate_resolve( $post_id );
+        $donate_url = ( 'own' === $donate['from'] ) ? $donate['url'] : '';
+        $can_donate = ( '' !== $donate_url && sfaf_show_feature( $post_id, 'donate' ) );
 
         /*
          * The footer's supporting line. Still worth saying even though the

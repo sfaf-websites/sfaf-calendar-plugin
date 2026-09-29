@@ -927,9 +927,97 @@ function sfaf_social_share_buttons( $post_id, $compact = false ) {
     return ob_get_clean();
 }
 
+/** The link Settings is prefilled with, and what an unsaved Settings means. */
+define( 'SFAF_DONATE_DEFAULT', 'https://donate.sfaf.org/campaign/773029/donate' );
+
+/**
+ * The calendar-wide donation link from Settings, or '' when somebody emptied it.
+ *
+ * ABSENT AND EMPTY ARE DIFFERENT ANSWERS. A site that has never saved Settings
+ * since 3.105.0 has no key, and gets SFAF's own donation page. A site where
+ * somebody cleared the box has the key holding '', and gets no default at all,
+ * because clearing it was the way to say so.
+ *
+ * @return string
+ */
+function sfaf_donate_default_url() {
+    $s = get_option( 'uc_settings', array() );
+    if ( ! is_array( $s ) || ! array_key_exists( 'donate_default_url', $s ) ) {
+        return SFAF_DONATE_DEFAULT;
+    }
+    return trim( (string) $s['donate_default_url'] );
+}
+
+/** The meta key holding an event's donate choice (3.105.0). */
+function sfaf_donate_choice_key() {
+    return '_uc_donate_choice';
+}
+
+/**
+ * WHERE AN EVENT'S DONATE BUTTON GOES. ONE FUNCTION, EVERY READER (3.105.0).
+ *
+ * The event's choice, else its series' link, else the default in Settings:
+ *
+ *   inherit       the series' link when it has one, else the default
+ *   none          no button, whatever else is set
+ *   custom        the event's own link, _uc_gofundme_url
+ *   series:<id>   that series' link, chosen by name
+ *
+ * AN EVENT SAVED BEFORE 3.105.0 HAS NO CHOICE. One with its own link keeps it
+ * ('own'), so no campaign page changes; one without inherits, which is what a
+ * new event starts on.
+ *
+ * A NAMED SERIES THAT NO LONGER HAS A LINK, or no longer exists, is treated as
+ * inherit rather than as none: the 3.90.0 rule that a stored id which does not
+ * resolve is absent, and a button that quietly vanished because somebody
+ * tidied another series' settings would be the worse surprise.
+ *
+ * @param int $post_id
+ * @return array{url:string,from:string,series:int} from is own|series|default|none
+ */
+function sfaf_donate_resolve( $post_id ) {
+    $post_id = (int) $post_id;
+    $choice  = (string) get_post_meta( $post_id, sfaf_donate_choice_key(), true );
+    $own     = trim( (string) get_post_meta( $post_id, '_uc_gofundme_url', true ) );
+
+    if ( '' === $choice ) {
+        $choice = ( '' !== $own ) ? 'custom' : 'inherit';
+    }
+    if ( 'none' === $choice ) {
+        return array( 'url' => '', 'from' => 'none', 'series' => 0 );
+    }
+    if ( 'custom' === $choice ) {
+        return array( 'url' => $own, 'from' => ( '' !== $own ? 'own' : 'none' ), 'series' => 0 );
+    }
+    if ( 0 === strpos( $choice, 'series:' ) ) {
+        $sid = (int) substr( $choice, 7 );
+        $url = class_exists( 'SFAF_Series' ) ? SFAF_Series::donate_url( $sid ) : '';
+        if ( '' !== $url && SFAF_Series::exists( $sid ) ) {
+            return array( 'url' => $url, 'from' => 'series', 'series' => $sid );
+        }
+    }
+
+    // inherit, and anything that did not resolve above.
+    $sid = class_exists( 'SFAF_Series' ) ? (int) SFAF_Series::id_for_event( $post_id ) : 0;
+    $url = $sid ? SFAF_Series::donate_url( $sid ) : '';
+    if ( '' !== $url ) {
+        return array( 'url' => $url, 'from' => 'series', 'series' => $sid );
+    }
+    $url = sfaf_donate_default_url();
+    return array( 'url' => $url, 'from' => ( '' !== $url ? 'default' : 'none' ), 'series' => 0 );
+}
+
+/** Just the link, or '' for no button. */
+function sfaf_donate_url( $post_id ) {
+    $r = sfaf_donate_resolve( $post_id );
+    return $r['url'];
+}
+
 /**
  * Donate / GoFundMe block: progress bar (only with real figures) + outbound
- * button. Only renders when a campaign URL is set and the feature is enabled.
+ * button. Only renders when the resolved link is not empty and the feature is
+ * enabled. The link is sfaf_donate_resolve()'s answer, never a meta key read
+ * here (3.105.0).
  *
  * NO INVENTED FUNDRAISING NUMBERS. EVER.
  * ---------------------------------------------------------------------------
@@ -954,8 +1042,8 @@ function sfaf_social_share_buttons( $post_id, $compact = false ) {
  * "we have a figure" and "the platform told us the figure" are the same thing.
  */
 function sfaf_donate_block( $post_id ) {
-    $url = get_post_meta( $post_id, '_uc_gofundme_url', true );
-    if ( ! $url || ! sfaf_show_feature( $post_id, 'donate' ) ) {
+    $url = sfaf_donate_url( $post_id );
+    if ( '' === $url || ! sfaf_show_feature( $post_id, 'donate' ) ) {
         return '';
     }
 
@@ -3686,7 +3774,13 @@ function sfaf_day_event_thumb( $post_id ) {
  * @return string
  */
 function sfaf_fundraising_progress( $post_id ) {
-    if ( ! get_post_meta( $post_id, '_uc_gofundme_url', true ) || ! sfaf_show_feature( $post_id, 'donate' ) ) {
+    /*
+     * ONLY BESIDE THE EVENT'S OWN LINK (3.105.0). The goal and the total belong
+     * to the campaign at _uc_gofundme_url. Drawn beside a series link or the
+     * default they would be one campaign's figures under another's button.
+     */
+    $donate = sfaf_donate_resolve( $post_id );
+    if ( 'own' !== $donate['from'] || ! sfaf_show_feature( $post_id, 'donate' ) ) {
         return '';
     }
 

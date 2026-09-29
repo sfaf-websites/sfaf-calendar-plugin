@@ -102,7 +102,7 @@ class SFAF_Recurrence {
         // Both capacities travel, for the reason the format does: an occurrence
         // of a hybrid series runs both formats and needs both limits.
         '_uc_capacity', '_uc_capacity_online',
-        '_uc_rsvp_enabled', '_uc_gofundme_url', '_uc_gofundme_goal',
+        '_uc_rsvp_enabled', '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_donate_choice',
         '_uc_pardot_campaigns', '_uc_organizer_email', '_uc_notify_organizer',
         '_uc_email_subject', '_uc_email_body', '_uc_email_replyto',
         '_uc_show_rsvp', '_uc_show_donate', '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',

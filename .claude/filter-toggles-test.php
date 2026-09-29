@@ -244,6 +244,8 @@ function sfaf_list_card_media( $post_id, $cat_name = '' ) { return '<span class=
 function sfaf_rsvp_spots_text( $post_id ) { return ''; }
 function sfaf_series_dates_link( $post_id ) { return ''; }
 function sfaf_show_feature( $post_id, $feature ) { return false; }
+// No event in this world has a donate link (3.105.0).
+function sfaf_donate_resolve( $id ) { return array( 'url' => '', 'from' => 'none', 'series' => 0 ); }
 function sfaf_volunteer_spots_text( $post_id ) { return ''; }
 
 $GLOBALS['embed_context'] = false;

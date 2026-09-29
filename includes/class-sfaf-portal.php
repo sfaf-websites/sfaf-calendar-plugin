@@ -2585,6 +2585,20 @@ class SFAF_Portal {
             update_post_meta( $event_id, '_uc_gofundme_url', esc_url_raw( wp_unslash( $_POST['gofundme_url'] ) ) );
         }
         /*
+         * WHERE THE DONATE BUTTON GOES (3.105.0). Stored as the choice, never
+         * as the link it resolves to, so a series link corrected later reaches
+         * this event. A series is accepted only while it has a link to offer;
+         * anything unrecognised is left as it was rather than guessed at.
+         */
+        if ( isset( $_POST['donate_choice'] ) ) {
+            $dc = sanitize_text_field( wp_unslash( $_POST['donate_choice'] ) );
+            $ok = in_array( $dc, array( 'inherit', 'none', 'custom' ), true )
+                || ( preg_match( '/^series:(\d+)$/', $dc, $dm ) && '' !== SFAF_Series::donate_url( (int) $dm[1] ) );
+            if ( $ok ) {
+                update_post_meta( $event_id, sfaf_donate_choice_key(), $dc );
+            }
+        }
+        /*
          * THE VIDEO, AND THE TICK THAT REFUSES AN INHERITED ONE.
          *
          * REJECTED AND REPORTED, NEVER STORED, which is the reply-to rule and
@@ -3134,7 +3148,7 @@ class SFAF_Portal {
              * link and the delivery ticks along with it, the same way
              * SFAF_Online::set() clears them on the source.
              */
-            '_uc_rsvp_enabled', '_uc_gofundme_url', '_uc_gofundme_goal',
+            '_uc_rsvp_enabled', '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_donate_choice',
             '_uc_pardot_campaigns', '_uc_organizer_email', '_uc_notify_organizer',
             '_uc_email_subject', '_uc_email_body', '_uc_email_replyto',
             '_uc_show_rsvp', '_uc_show_donate', '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
@@ -3346,7 +3360,7 @@ class SFAF_Portal {
         $copy_keys = array(
             '_uc_start_time', '_uc_end_time', '_uc_location',
             '_uc_capacity', '_uc_rsvp_enabled',
-            '_uc_gofundme_url', '_uc_gofundme_goal', sfaf_fundraising_progress_meta_key(),
+            '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_donate_choice', sfaf_fundraising_progress_meta_key(),
             '_uc_pardot_campaigns',
             '_uc_organizer_email', '_uc_notify_organizer',
             '_uc_email_subject', '_uc_email_body', '_uc_email_replyto',
@@ -7530,7 +7544,8 @@ class SFAF_Portal {
         // there is one and nowhere else, including a native event with a
         // campaign URL typed by hand. A control over nothing is worse than no
         // control: it invites a manager to set something with no effect.
-        $has_donate = $ctx['event_id'] && '' !== (string) get_post_meta( $ctx['event_id'], '_uc_gofundme_url', true );
+        // Its own campaign only: the figures are that campaign's (3.105.0).
+        $has_donate = $ctx['event_id'] && 'own' === sfaf_donate_resolve( $ctx['event_id'] )['from'];
         $fields     = array_diff( $fields, array( 'fundraising_progress' ) );
         if ( $has_donate ) {
             $fields[] = 'fundraising_progress';
@@ -8741,6 +8756,11 @@ class SFAF_Portal {
             'faq_set'     => sanitize_text_field( wp_unslash( $_POST['series_faq_set'] ?? '' ) ),
             'video'       => trim( (string) wp_unslash( $_POST['series_video'] ?? '' ) ),
         );
+        // Under its own presence check, so a form that does not draw the box
+        // cannot clear a link it never showed (3.105.0).
+        if ( isset( $_POST['series_donate_url'] ) ) {
+            $args['donate_url'] = trim( (string) wp_unslash( $_POST['series_donate_url'] ) );
+        }
 
         /*
          * THE DEFAULTS (3.103.0), under their marker: a tick group with every
@@ -9398,6 +9418,23 @@ class SFAF_Portal {
                         A YouTube or Vimeo link. Paste the address from the browser bar, not embed code.
                         It plays on every event in this series unless that event has its own.
                     </span>
+                </label>
+
+                <?php
+                /*
+                 * THE SERIES' DONATION LINK (3.105.0). Read at render time by
+                 * sfaf_donate_resolve() on every event in the series that
+                 * inherits, so it is not copied and correcting it here
+                 * corrects them all. Empty means the series has none and its
+                 * events fall through to the default in Settings.
+                 */
+                ?>
+                <label class="uc-field">
+                    <span class="uc-field-label">Donation link</span>
+                    <input type="url" name="series_donate_url"
+                           value="<?php echo esc_attr( $term_id ? SFAF_Series::donate_url( $term_id ) : '' ); ?>"
+                           placeholder="https://donate.sfaf.org/&hellip;" />
+                    <span class="uc-hint">Used by every event in this series whose donate button is set to Series link. Leave empty to use the SFAF default.</span>
                 </label>
 
                 <?php
@@ -12770,11 +12807,46 @@ class SFAF_Portal {
                 // and a fetch writes it, so it locks with source_url rather than
                 // looking editable and being replaced on the next run.
                 $s_url = $st( 'source_url' );
+
+                /*
+                 * WHERE THE BUTTON GOES, AS ONE LIST (3.105.0). The first entry
+                 * is whatever the event inherits, named for which of the two it
+                 * is today, and it is what a new event starts on. Every series
+                 * with a link of its own follows by name. Custom reveals the
+                 * event's own box, which is the old GoFundMe URL field and the
+                 * same meta key, so a campaign link already typed stays put.
+                 *
+                 * sfaf_donate_resolve() answers the same question for the page,
+                 * the list and the progress bar; this only chooses its input.
+                 */
+                $don_series = $event_id ? (int) SFAF_Series::id_for_event( $event_id ) : 0;
+                if ( ! $event_id && isset( $_GET['series'] ) && SFAF_Series::exists( (int) $_GET['series'] ) ) {
+                    $don_series = (int) $_GET['series'];
+                }
+                $don_links  = SFAF_Series::with_donate_links();
+                $don_choice = $event_id ? (string) get_post_meta( $event_id, sfaf_donate_choice_key(), true ) : '';
+                if ( '' === $don_choice ) {
+                    // The same reading of "never chosen" the resolver makes.
+                    $don_choice = ( '' !== trim( (string) $g( '_uc_gofundme_url' ) ) ) ? 'custom' : 'inherit';
+                }
+                $don_inherit = isset( $don_links[ $don_series ] ) ? 'Series link' : 'SFAF default';
                 ?>
-                <section class="uc-bento-card">
+                <section class="uc-bento-card" data-uc-donate>
                     <h2 class="uc-bento-title">Donate</h2>
-                    <label class="uc-field<?php echo esc_attr( $this->field_class( $s_url ) ); ?>">
-                        <span class="uc-field-label">GoFundMe URL <?php echo $this->field_badge( $s_url, $prov['label'] ); ?></span>
+                    <label class="uc-field">
+                        <span class="uc-field-label">Donate button</span>
+                        <select name="donate_choice" data-uc-donate-choice
+                                data-uc-donate-series-links="<?php echo esc_attr( wp_json_encode( array_map( 'strval', array_keys( $don_links ) ) ) ); ?>">
+                            <option value="inherit" data-uc-donate-inherit <?php selected( 'inherit', $don_choice ); ?>><?php echo esc_html( $don_inherit ); ?></option>
+                            <option value="none" <?php selected( 'none', $don_choice ); ?>>None</option>
+                            <?php foreach ( $don_links as $sid => $sname ) : ?>
+                                <option value="<?php echo esc_attr( 'series:' . (int) $sid ); ?>" <?php selected( 'series:' . (int) $sid, $don_choice ); ?>><?php echo esc_html( $sname ); ?></option>
+                            <?php endforeach; ?>
+                            <option value="custom" <?php selected( 'custom', $don_choice ); ?>>Custom</option>
+                        </select>
+                    </label>
+                    <label class="uc-field<?php echo esc_attr( $this->field_class( $s_url ) ); ?>" data-uc-donate-custom<?php echo 'custom' === $don_choice ? '' : ' hidden'; ?>>
+                        <span class="uc-field-label">Donation link <?php echo $this->field_badge( $s_url, $prov['label'] ); ?></span>
                         <input type="url" name="gofundme_url" value="<?php echo esc_attr( $g( '_uc_gofundme_url' ) ); ?>" placeholder="https://gofund.me/…"<?php echo $this->field_disabled( $s_url ); ?> />
                     </label>
                     <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'fundraising_progress' ), $placed ) ); ?>

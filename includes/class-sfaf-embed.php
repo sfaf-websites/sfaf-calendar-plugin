@@ -1335,7 +1335,7 @@ class SFAF_Embed {
                 // taxonomy hooks rather than here. What is left of the old
                 // group is the recurrence marker, which nothing renders.
                 '_uc_faqs',
-                '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_gofundme_raised',
+                '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_gofundme_raised', '_uc_donate_choice',
                 '_uc_rsvp_enabled', '_uc_show_rsvp', '_uc_show_donate',
                 '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
             ) );

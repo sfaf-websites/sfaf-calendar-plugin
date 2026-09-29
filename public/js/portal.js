@@ -76,6 +76,7 @@ function ucDismissOnBackdrop(dialog) {
         run('repeaters', initRepeaters);
         run('faqSetPicker', initFaqSetPicker);
         run('seriesPrefill', initSeriesPrefill);
+        run('donateChoice', initDonateChoice);
         run('notifyPicker', initNotifyPicker);
         run('imagePicker', initImagePicker);
         // ORDER MATTERS between these three. Both the scope confirmation and
@@ -4499,6 +4500,43 @@ function ucDismissOnBackdrop(dialog) {
      * THE DATE IS NOT HERE. It is not in the payload, so there is no box to
      * tick and nothing a later change could expose.
      * ------------------------------------------------------------------- */
+    /* ---------------------------------------------------------------------
+     * THE DONATE LIST (3.105.0).
+     *
+     * Custom shows the event's own link box and every other entry hides it.
+     * Hidden, not disabled: the box still posts, so a campaign link typed and
+     * then set aside is kept for the next time Custom is chosen.
+     *
+     * The first entry says which link the event inherits, and that depends on
+     * the series select above it, so it is renamed when the series changes.
+     * Which series have a link of their own is on the select, from the server.
+     * ------------------------------------------------------------------- */
+    function initDonateChoice() {
+        var select = document.querySelector('[data-uc-donate-choice]');
+        if (!select) { return; }
+        var box = document.querySelector('[data-uc-donate-custom]');
+        var inherit = select.querySelector('[data-uc-donate-inherit]');
+        var linked = [];
+        try {
+            linked = JSON.parse(select.getAttribute('data-uc-donate-series-links') || '[]');
+        } catch (e) {
+            linked = [];
+        }
+
+        function showBox() {
+            if (box) { box.hidden = (select.value !== 'custom'); }
+        }
+        select.addEventListener('change', showBox);
+        showBox();
+
+        var series = select.form ? select.form.querySelector('[name="series"]') : null;
+        if (series && inherit) {
+            series.addEventListener('change', function () {
+                inherit.textContent = linked.indexOf(String(series.value)) > -1 ? 'Series link' : 'SFAF default';
+            });
+        }
+    }
+
     function initSeriesPrefill() {
         var root = document.querySelector('[data-uc-series-prefill]');
         if (!root) { return; }

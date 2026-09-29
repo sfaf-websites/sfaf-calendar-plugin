@@ -188,6 +188,8 @@ function sfaf_favicon_links() { echo "<link rel=\"icon\" data-uc-test-favicon />
 function sfaf_event_image_url( $id, $s = 'large' ) { return ''; }
 function sfaf_event_image_source( $id ) { return 'none'; }
 function sfaf_fundraising_progress_meta_key() { return '_uc_show_fund_progress'; }
+// No event in this world has a donate link (3.105.0).
+function sfaf_donate_resolve( $id ) { return array( 'url' => '', 'from' => 'none', 'series' => 0 ); }
 function sfaf_source_links_flag() { return false; }
 function sfaf_set_source_links( $v ) {}
 function _prime_post_caches( $ids, $a = true, $b = true ) {}

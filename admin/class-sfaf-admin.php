@@ -1221,6 +1221,17 @@ class SFAF_Admin {
         $home_url = isset( $input['calendar_home_url'] ) ? esc_url_raw( trim( (string) $input['calendar_home_url'] ), array( 'http', 'https' ) ) : '';
         $out['calendar_home_url'] = $home_url;
 
+        /*
+         * THE DEFAULT DONATION LINK (3.105.0). Always written, empty or not:
+         * an empty value is how somebody says there is no default, and
+         * sfaf_donate_default_url() reads a missing key as SFAF's own page.
+         * This array replaces uc_settings wholesale, so leaving the key out
+         * on an empty box would turn "none" back into the default.
+         */
+        $out['donate_default_url'] = isset( $input['donate_default_url'] )
+            ? esc_url_raw( trim( (string) $input['donate_default_url'] ), array( 'http', 'https' ) )
+            : sfaf_donate_default_url();
+
         // Colors.
         foreach ( array( 'brand_primary_color', 'brand_accent_color' ) as $field ) {
             $color = isset( $input[ $field ] ) ? sanitize_hex_color( $input[ $field ] ) : '';
@@ -1767,6 +1778,12 @@ class SFAF_Admin {
                             back to this site's own event archive, which is almost certainly not what a visitor should
                             be shown.
                         </p>
+                        <div class="uc-field-row">
+                            <label for="uc_donate_default_url">Default donation link</label>
+                            <input type="url" name="uc_settings[donate_default_url]" id="uc_donate_default_url"
+                                   value="<?php echo esc_attr( $s( 'donate_default_url', SFAF_DONATE_DEFAULT ) ); ?>" class="uc-input" />
+                        </div>
+                        <p class="description">Where an event's Donate button goes when neither the event nor its series has a link. Leave empty for no button on those events.</p>
                         <div class="uc-field-row uc-field-row-top">
                             <label>Pagination style</label>
                             <div class="uc-radio-stack">
