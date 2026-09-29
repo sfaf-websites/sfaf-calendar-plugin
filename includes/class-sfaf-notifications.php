@@ -1352,11 +1352,17 @@ class SFAF_Notifications {
      * back. It has already been moved to 'cancelled' by the time this runs,
      * which is why the lookup does not filter on status.
      *
+     * THE ROW, WHEN THE HOOK CARRIES IT (3.105.0). A removal by staff passes
+     * the id of the one row it released, which is the only way to name
+     * somebody who registered without an email: every such row has the
+     * address '', so looking up by address would name whoever was newest.
+     *
      * @param int    $event_id
      * @param string $email
+     * @param int    $rsvp_id 0 when the hook did not carry one.
      * @return int How many were sent.
      */
-    public static function send_cancel_alert( $event_id, $email ) {
+    public static function send_cancel_alert( $event_id, $email, $rsvp_id = 0 ) {
         $event_id = (int) $event_id;
 
         if ( ! self::on( $event_id, 'cancel_alert' ) ) {
@@ -1373,11 +1379,17 @@ class SFAF_Notifications {
 
         global $wpdb;
         $table = $wpdb->prefix . 'uc_rsvps';
-        $row   = $wpdb->get_row( $wpdb->prepare(
-            "SELECT * FROM {$table} WHERE event_id = %d AND email = %s ORDER BY id DESC LIMIT 1",
-            $event_id,
-            (string) $email
-        ) );
+        $row   = ( (int) $rsvp_id > 0 )
+            ? $wpdb->get_row( $wpdb->prepare(
+                "SELECT * FROM {$table} WHERE id = %d AND event_id = %d",
+                (int) $rsvp_id,
+                $event_id
+            ) )
+            : $wpdb->get_row( $wpdb->prepare(
+                "SELECT * FROM {$table} WHERE event_id = %d AND email = %s ORDER BY id DESC LIMIT 1",
+                $event_id,
+                (string) $email
+            ) );
 
         $person = (object) array(
             'name'  => $row ? SFAF_RSVP::display_name( $row ) : '',

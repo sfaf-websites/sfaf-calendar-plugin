@@ -1940,6 +1940,32 @@ class SFAF_Portal {
                 $this->redirect( 'rsvps', array( 'event_id' => $event_id, 'msg' => 'rsvp_settings_saved' ) );
                 break;
 
+            /*
+             * RELEASE ONE REGISTRATION (3.105.0). THE EVENT GATE, asked of the
+             * event the ROW belongs to, read from the row and never from the
+             * form: the id is a thing anybody can post, so the event is looked
+             * up rather than trusted. A row whose event is gone has no gate to
+             * pass and cannot be removed here.
+             *
+             * SFAF_Reminders::remove_rsvp() is the cancel link's own path from
+             * the status change on: the count, the cancel alert, and the
+             * reminder ledger left alone. It records who and when on the row.
+             */
+            case 'remove_rsvp':
+                $rsvp_id = isset( $_POST['rsvp_id'] ) ? (int) $_POST['rsvp_id'] : 0;
+                $row     = $rsvp_id ? SFAF_RSVP::row( $rsvp_id ) : null;
+                $post    = $row ? get_post( (int) $row->event_id ) : null;
+                if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
+                    wp_die( 'Denied' );
+                }
+                $done = SFAF_Reminders::remove_rsvp( $rsvp_id, (int) $user->ID );
+                $back = array( 'msg' => $done ? 'rsvp_removed' : 'rsvp_not_removed' );
+                if ( ! empty( $_POST['back_event'] ) ) {
+                    $back['event_id'] = (int) $row->event_id;
+                }
+                $this->redirect( 'rsvps', $back );
+                break;
+
             /* ---- Teams. A name and a set of users, and nothing else. ------ */
             case 'save_team':
                 if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
@@ -4037,6 +4063,8 @@ class SFAF_Portal {
             'faq_set_deleted'  => 'FAQ set deleted. Events that already used it keep their questions, because the rows were copied.',
             'manager_saved'    => 'Saved. Those are the same fields the event editor shows, so the event now reads the same in both places.',
             'rsvp_settings_saved' => 'Registration settings saved. These are the same controls the event editor shows, on the same event, so it now reads the same in both places.',
+            'rsvp_removed'        => 'Registration removed. The place is free.',
+            'rsvp_not_removed'    => 'Nothing to remove: that registration was already cancelled.',
 
             // The schedule.
             'schedule_added'    => 'Date added. It is an ordinary event, identical to the others, with nobody registered yet. A time change to the group reaches it; a change to the pattern leaves it where it is.',
@@ -16747,8 +16775,28 @@ class SFAF_Portal {
                     <p class="uc-empty">Nobody has registered for anything yet.</p>
                 <?php endif; ?>
             <?php else : ?>
+                <?php
+                /*
+                 * REMOVE, PER ROW, WHERE THE EVENT GATE SAYS SO (3.105.0).
+                 *
+                 * On one event's list the page has already asked the gate. On
+                 * the list across every event it is asked per row, once per
+                 * event, because a team member reading that list may edit some
+                 * of its events and not others. A row whose event is gone gets
+                 * nothing: there is no gate to pass. The route asks again at the
+                 * write, since a control not drawn is not a refusal.
+                 */
+                $may_remove = array();
+                foreach ( $rsvps as $r ) {
+                    $eid = (int) $r->event_id;
+                    if ( ! isset( $may_remove[ $eid ] ) ) {
+                        $ep = get_post( $eid );
+                        $may_remove[ $eid ] = ( $ep && 'uc_event' === $ep->post_type && $this->can_edit_event( $user, $ep ) );
+                    }
+                }
+                ?>
                 <table class="uc-table">
-                    <thead><tr><?php if ( ! $event ) : ?><th>Event</th><?php endif; ?><th>First name</th><th>Last name</th><th>Email</th><th>Phone</th><th>Updates</th><th>Status</th><th>Registered</th></tr></thead>
+                    <thead><tr><?php if ( ! $event ) : ?><th>Event</th><?php endif; ?><th>First name</th><th>Last name</th><th>Email</th><th>Phone</th><th>Updates</th><th>Status</th><th>Registered</th><th><span class="uc-visually-hidden">Actions</span></th></tr></thead>
                     <tbody>
                     <?php foreach ( $rsvps as $r ) : ?>
                         <tr>
@@ -16797,8 +16845,35 @@ class SFAF_Portal {
                                     echo '<span class="uc-muted">&ndash;</span>';
                                 }
                             ?></td>
-                            <td><span class="uc-pill uc-pill-<?php echo esc_attr( $r->status ); ?>"><?php echo esc_html( sfaf_rsvp_status_label( $r->status ) ); ?></span></td>
+                            <td>
+                                <span class="uc-pill uc-pill-<?php echo esc_attr( $r->status ); ?>"><?php echo esc_html( sfaf_rsvp_status_label( $r->status ) ); ?></span>
+                                <?php
+                                /* Who released it, when it was not the registrant (3.105.0). */
+                                $by = isset( $r->removed_by ) ? (int) $r->removed_by : 0;
+                                if ( $by && 'cancelled' === $r->status ) :
+                                    $by_user = get_userdata( $by );
+                                    $by_name = ( $by_user && '' !== (string) $by_user->display_name ) ? $by_user->display_name : 'a former user';
+                                    ?>
+                                    <span class="uc-rsvp-removed-by">Removed by <?php echo esc_html( $by_name ); ?>, <?php echo esc_html( sfaf_ap_datetime( $r->cancelled_at ) ); ?></span>
+                                <?php endif; ?>
+                            </td>
                             <td><?php echo esc_html( sfaf_ap_datetime( $r->created_at ) ); ?></td>
+                            <td class="uc-rsvp-actions">
+                                <?php if ( 'confirmed' === $r->status && ! empty( $may_remove[ (int) $r->event_id ] ) ) :
+                                    $who = SFAF_RSVP::display_name( $r );
+                                    $who = '' !== $who ? $who : 'this person';
+                                    ?>
+                                    <form method="post" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>">
+                                        <input type="hidden" name="uc_action" value="remove_rsvp" />
+                                        <?php wp_nonce_field( 'uc_portal_remove_rsvp', 'uc_nonce' ); ?>
+                                        <input type="hidden" name="rsvp_id" value="<?php echo (int) $r->id; ?>" />
+                                        <?php if ( $event ) : ?><input type="hidden" name="back_event" value="1" /><?php endif; ?>
+                                        <button type="submit" class="uc-link-danger uc-btn-sm" data-uc-rsvp-remove
+                                                aria-label="<?php echo esc_attr( 'Remove ' . $who ); ?>"
+                                                data-uc-confirm="<?php echo esc_attr( 'Remove ' . $who . '\'s registration? Their place is released, and nothing puts it back.' ); ?>">Remove</button>
+                                    </form>
+                                <?php endif; ?>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>

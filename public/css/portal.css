@@ -3480,6 +3480,13 @@ body.uc-modal-open { overflow: hidden; }
     background: color-mix(in srgb, var(--uc-primary, #16BECF) 14%, #fff);
     color: color-mix(in srgb, var(--uc-primary, #16BECF) 72%, #000); }
 
+/* WHO RELEASED A PLACE, when it was not the registrant (3.105.0). The helper
+   step under the status pill, on its own line. The Remove cell never wraps, so
+   the column is as wide as the word and no wider. */
+.uc-rsvp-removed-by { display: block; margin-top: 4px; font-size: 12px; font-weight: 400; line-height: 1.4; color: var(--p-muted); }
+.uc-rsvp-actions { white-space: nowrap; text-align: right; }
+.uc-rsvp-actions form { margin: 0; }
+
 /* ---------- Removing a series ----------
    Two options, each a real block with its own consequence written under it,
    because one of them deletes events and the other does not. */

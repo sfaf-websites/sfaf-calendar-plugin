@@ -24,7 +24,7 @@ define( 'SFAF_VERSION', '3.104.0' );
  * hook — still gets its new tables, instead of throwing "table doesn't exist"
  * the first time the runner looks for one.
  */
-define( 'SFAF_DB_VERSION', '8' );
+define( 'SFAF_DB_VERSION', '9' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -900,6 +900,13 @@ function sfaf_install_tables() {
     // already says that they did; this says when, which is the question an
     // organizer looking at a half-empty room actually asks.
     //
+    // removed_by IS WHO, WHEN IT WAS NOT THEM (3.105.0). A member of staff can
+    // release a place from the registrations list, and the row records their
+    // user id; the time is cancelled_at, written in the same statement. 0 is a
+    // registrant who used their own cancel link, which is every row before
+    // 3.105.0, so the default needs no migration. See
+    // SFAF_Reminders::remove_rsvp().
+    //
     // FIRST AND LAST ARE TWO COLUMNS, AND LAST IS OPTIONAL.
     //
     // The form used to ask for one full name. Somebody registering for an HIV
@@ -929,6 +936,7 @@ function sfaf_install_tables() {
         token char(32) NOT NULL DEFAULT '',
         created_at datetime DEFAULT CURRENT_TIMESTAMP,
         cancelled_at datetime NULL,
+        removed_by bigint(20) unsigned NOT NULL DEFAULT 0,
         format varchar(20) NOT NULL DEFAULT '',
         PRIMARY KEY (id),
         KEY event_id (event_id),

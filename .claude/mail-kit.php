@@ -276,7 +276,12 @@ class MK_DB {
         if ( preg_match( "/^UPDATE\\s+(\\w+)\\s+SET\\s+(.+?)\\s+WHERE/s", trim( $sql ), $m ) ) {
             $set = array();
             foreach ( preg_split( '/,\s*/', $m[2] ) as $pair ) {
-                if ( preg_match( "/(\\w+)\\s*=\\s*'((?:[^'\\\\]|\\\\.)*)'/", $pair, $p ) ) { $set[ $p[1] ] = stripslashes( $p[2] ); }
+                // Quoted, or a bare integer from %d (removed_by, 3.105.0). An
+                // unread pair throws, so a SET this cannot model is never a
+                // silent no-op that a test then reads as "not written".
+                if ( preg_match( "/^\\s*(\\w+)\\s*=\\s*'((?:[^'\\\\]|\\\\.)*)'\\s*$/", $pair, $p ) ) { $set[ $p[1] ] = stripslashes( $p[2] ); }
+                elseif ( preg_match( '/^\s*(\w+)\s*=\s*(-?\d+)\s*$/', $pair, $p ) ) { $set[ $p[1] ] = $p[2]; }
+                else { throw new RuntimeException( 'mail-kit: a SET it cannot read: ' . $pair ); }
             }
             $n = 0;
             foreach ( $this->rows( str_replace( 'UPDATE ' . $m[1], 'SELECT * FROM ' . $m[1], preg_replace( '/SET\s+.+?\s+WHERE/s', 'WHERE', $sql ) ) ) as $row ) {
@@ -295,6 +300,7 @@ function mk_rsvp( $event_id, $first, $email, $status = 'confirmed' ) {
     $GLOBALS['wpdb']->insert( 'wp_uc_rsvps', array(
         'event_id' => (int) $event_id, 'name' => $first, 'first_name' => $first, 'last_name' => '', 'email' => $email,
         'phone' => '', 'status' => $status, 'token' => bin2hex( random_bytes( 16 ) ), 'created_at' => date( 'Y-m-d H:i:s' ), 'format' => '',
+        'removed_by' => 0, // the column's default (3.105.0)
     ) );
     $s =& sfaf_rsvp_count_store(); $s = array();
     return $GLOBALS['wpdb']->insert_id;

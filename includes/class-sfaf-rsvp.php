@@ -543,6 +543,14 @@ class SFAF_RSVP {
     /**
      * Get RSVPs for an event
      */
+    /** One registration row by id, or null (3.105.0). */
+    public static function row( $rsvp_id ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'uc_rsvps';
+        $row   = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table WHERE id = %d", (int) $rsvp_id ) );
+        return $row ? $row : null;
+    }
+
     public static function get_rsvps( $event_id, $status = 'confirmed' ) {
         global $wpdb;
         $table = $wpdb->prefix . 'uc_rsvps';

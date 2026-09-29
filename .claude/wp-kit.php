@@ -43,6 +43,9 @@ function kit_reset() {
     $GLOBALS['kit_term_meta'] = array(); // term id => key => value (3.103.0)
     $GLOBALS['kit_term_desc'] = array(); // term id => description (3.103.0)
     $GLOBALS['kit_query'] = null;         // callable( args ) => WP_Post[], or null for no rows (3.103.0)
+    $GLOBALS['kit_user_id'] = 1;          // who is signed in (3.105.0)
+    $GLOBALS['kit_refused'] = array();    // user ids that hold no capability at all (3.105.0)
+    $GLOBALS['kit_db'] = null;            // callable( method, sql ) standing in for a table, or null (3.105.0)
 }
 kit_reset();
 
@@ -56,12 +59,28 @@ class wpdb {
     public $term_taxonomy = 'wp_term_taxonomy'; public $term_relationships = 'wp_term_relationships';
     public $users = 'wp_users'; public $usermeta = 'wp_usermeta'; public $options = 'wp_options'; public $insert_id = 0;
     function __call( $n, $a ) {
-        if ( 'prepare' === $n ) { return (string) $a[0]; }
+        if ( 'prepare' === $n ) { return kit_prepare( $a ); }
+        // A test that models a table answers here (3.105.0); every other test
+        // keeps the empty answers below.
+        if ( ! empty( $GLOBALS['kit_db'] ) && in_array( $n, array( 'get_results', 'get_row', 'get_var', 'query' ), true ) ) {
+            return call_user_func( $GLOBALS['kit_db'], $n, (string) $a[0] );
+        }
         if ( in_array( $n, array( 'get_results', 'get_col' ), true ) ) { return array(); }
         return null;
     }
 }
 $GLOBALS['wpdb'] = new wpdb();
+/** prepare(), filling the placeholders, so a modelled table can read the values. */
+function kit_prepare( $a ) {
+    $q = (string) array_shift( $a );
+    if ( 1 === count( $a ) && is_array( $a[0] ) ) { $a = $a[0]; }
+    if ( ! $a ) { return $q; }
+    $i = 0;
+    return preg_replace_callback( '/%[dsf]/', function ( $m ) use ( &$i, $a ) {
+        $v = isset( $a[ $i ] ) ? $a[ $i ] : ''; $i++;
+        return '%d' === $m[0] ? (string) (int) $v : ( '%f' === $m[0] ? (string) (float) $v : "'" . addslashes( (string) $v ) . "'" );
+    }, $q );
+}
 
 /* ---- Escaping, strings, i18n. ---- */
 function esc_attr( $t ) { return htmlspecialchars( (string) $t, ENT_QUOTES, 'UTF-8' ); }
@@ -159,11 +178,11 @@ function wp_timezone() { return new DateTimeZone( 'America/Los_Angeles' ); }
 function wp_timezone_string() { return 'America/Los_Angeles'; }
 
 /* ---- Users. One administrator. ---- */
-function wp_get_current_user() { return new WP_User(); }
-function get_current_user_id() { return 1; }
+function wp_get_current_user() { $u = new WP_User(); $u->ID = (int) $GLOBALS['kit_user_id']; return $u; }
+function get_current_user_id() { return (int) $GLOBALS['kit_user_id']; }
 function get_userdata( $id ) { return new WP_User(); }
 function current_user_can( $c ) { return true; }
-function user_can( $u, $c ) { return true; }
+function user_can( $u, $c ) { return ! in_array( (int) ( is_object( $u ) ? $u->ID : $u ), $GLOBALS['kit_refused'], true ); }
 function is_user_logged_in() { return true; }
 function get_users( $a = array() ) { return array(); }
 function get_user_meta( $id, $k = '', $s = false ) { return $s ? '' : array(); }

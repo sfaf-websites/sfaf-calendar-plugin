@@ -388,6 +388,9 @@ $ALLOWED = array(
     'POST:media_save'             => array( 'role' ),
     'POST:media_upload'           => array( 'role' ),
     'POST:save_rsvp_settings'     => array( 'event' ),
+    // Releasing one registration (3.105.0): the event gate, asked of the event
+    // the ROW belongs to, looked up from the row rather than taken from the form.
+    'POST:remove_rsvp'            => array( 'event' ),
     'POST:save_manager_fields'    => array( 'event', 'viewall' ),
     'POST:refresh_source_event'   => array( 'event' ),
     'POST:faq_set_apply'          => array( 'event' ),

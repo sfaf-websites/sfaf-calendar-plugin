@@ -84,7 +84,9 @@ class SFAF_Reminders {
          * class owns cancelling; what to say and who to say it to stays
          * SFAF_Notifications' job.
          */
-        add_action( 'uc_rsvp_cancelled', array( 'SFAF_Notifications', 'send_cancel_alert' ), 10, 2 );
+        // Three arguments since 3.105.0: the row id, so a removal by staff
+        // names the one person it released. See released().
+        add_action( 'uc_rsvp_cancelled', array( 'SFAF_Notifications', 'send_cancel_alert' ), 10, 3 );
     }
 
     /** Whether reminders are switched on. On unless explicitly disabled. */
@@ -955,21 +957,80 @@ class SFAF_Reminders {
         ) );
 
         if ( $rows > 0 ) {
-            /*
-             * THE PLACE IS FREE THE MOMENT THIS RETURNS, and nothing has to be
-             * told about it. Capacity is counted with a COUNT of rows at status
-             * 'confirmed' (sfaf_get_rsvp_count), the reminder recipients are
-             * selected on the same status, the announcement audience is the
-             * same one again, and the pre-event summary lists confirmed rows
-             * only. Moving the status out of 'confirmed' removes this person
-             * from all four at once. There is no counter to decrement and no
-             * cache to clear beyond the request-local one.
-             */
-            sfaf_clear_rsvp_count_cache( (int) $event_id );
-            do_action( 'uc_rsvp_cancelled', (int) $event_id, (string) $email );
+            self::released( (int) $event_id, (string) $email, 0 );
         }
 
         return ( $rows > 0 );
+    }
+
+    /**
+     * Release ONE registration, by its row, for a member of staff (3.105.0).
+     *
+     * THE SAME PATH AS THE CANCEL LINK FROM HERE ON. The row moves to
+     * 'cancelled' with cancelled_at, exactly as cancel_rsvp() moves it, and
+     * released() then does what a self-cancel does: the count cache is cleared
+     * and uc_rsvp_cancelled fires, so the cancel alert goes to the notification
+     * list with the same message. The reminder ledger is not touched, which is
+     * also what a self-cancel does: the reminder pass selects on 'confirmed'
+     * and this row no longer is.
+     *
+     * BY ROW, NOT BY ADDRESS, and that is what makes it work for somebody who
+     * registered without an email. cancel_rsvp() refuses an empty address
+     * because matching on '' would release every emailless place at once; the
+     * row id names exactly one.
+     *
+     * WHO AND WHEN ARE RECORDED ON THE ROW. removed_by is the user id; the time
+     * is cancelled_at, set in the same statement, so the two cannot disagree.
+     * A row a registrant released themselves has removed_by 0.
+     *
+     * The caller asks the event gate. This does not, because it is also what a
+     * test calls, and a method with a capability check buried in it answers a
+     * different question depending on who is logged in.
+     *
+     * @param int $rsvp_id
+     * @param int $by_user_id
+     * @return bool Whether a confirmed place was released.
+     */
+    public static function remove_rsvp( $rsvp_id, $by_user_id ) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'uc_rsvps';
+
+        $row = $wpdb->get_row( $wpdb->prepare( "SELECT id, event_id, email, status FROM $table WHERE id = %d", (int) $rsvp_id ) );
+        if ( ! $row || 'confirmed' !== $row->status ) {
+            return false;
+        }
+
+        $rows = $wpdb->query( $wpdb->prepare(
+            "UPDATE $table SET status = 'cancelled', cancelled_at = %s, removed_by = %d WHERE id = %d AND status = 'confirmed'",
+            current_time( 'mysql' ),
+            (int) $by_user_id,
+            (int) $rsvp_id
+        ) );
+
+        if ( $rows > 0 ) {
+            self::released( (int) $row->event_id, (string) $row->email, (int) $rsvp_id );
+        }
+        return ( $rows > 0 );
+    }
+
+    /**
+     * What happens once a place is released, by either path.
+     *
+     * THE PLACE IS FREE THE MOMENT THIS RETURNS, and nothing has to be told
+     * about it. Capacity is counted with a COUNT of rows at status 'confirmed'
+     * (sfaf_get_rsvp_count), the reminder recipients are selected on the same
+     * status, the announcement audience is the same one again, and the
+     * pre-event summary lists confirmed rows only. Moving the status out of
+     * 'confirmed' removes this person from all four at once. There is no
+     * counter to decrement and no cache to clear beyond the request-local one.
+     *
+     * THE ROW ID RIDES THE HOOK (3.105.0) so the cancel alert names the person
+     * released. By address alone it named the newest row at that address, and
+     * for somebody with no email every emailless row shares the address ''.
+     */
+    private static function released( $event_id, $email, $rsvp_id ) {
+        sfaf_clear_rsvp_count_cache( (int) $event_id );
+        do_action( 'uc_rsvp_cancelled', (int) $event_id, (string) $email, (int) $rsvp_id );
     }
 
     /**
