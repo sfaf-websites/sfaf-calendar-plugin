@@ -102,6 +102,7 @@
                            >
                             <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-clock" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>
                             <span class="uc-nav-label">Pending</span>
+                                                            <span class="uc-nav-badge">1<span class="uc-visually-hidden"> waiting for review</span></span>
                                                     </a>
                                                                     <a href="https://resources.sfaf.org/caladmin/users"
                            class="uc-nav-item"
@@ -208,42 +209,40 @@
                         </main>
             </div>
         </div>
-        <script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/sfaf-email.js?ver=3.105.0"></script>
+        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"file:\/\/\/C:\/Users\/msapoznikov\/Documents\/Apps\/Calendar\/public\/css\/editor-content.css?ver=3.105.0"},"quicktags":false,"mediaButtons":false}</script><script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/sfaf-email.js?ver=3.105.0"></script>
 <script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/portal.js?ver=3.105.0"></script>
-<script>(function () {
-var out = { errors: [] };
+<script>window.CS_PAGE="caladmin-preferences";(function () {
+var out = { page: window.CS_PAGE, errors: [], caps: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function path(el) {
+  var p = [];
+  for (var n = el; n && n.nodeType === 1 && p.length < 4; n = n.parentNode) {
+    p.unshift(n.tagName.toLowerCase() + (n.className && typeof n.className === 'string' ? '.' + n.className.trim().split(/\s+/).join('.') : ''));
+  }
+  return p.join(' > ');
+}
 window.addEventListener('load', function () { setTimeout(function () {
-  function css(el, p) { return el ? getComputedStyle(el).getPropertyValue(p).trim() : 'ABSENT'; }
-  var form = document.querySelector('form.uc-prefs');
-  var nav = document.querySelector('.uc-nav-item[aria-current="page"]');
-  out.h1 = (document.querySelector('.uc-page-head h1') || {}).textContent || '';
-  out.navCurrent = nav ? nav.textContent.replace(/\s+/g, ' ').trim() : '';
-  out.navLast = (function () { var a = document.querySelectorAll('.uc-portal-nav .uc-nav-item'); return a.length ? a[a.length - 1].textContent.replace(/\s+/g, ' ').trim() : ''; })();
-  var radios = form ? form.querySelectorAll('input[type="radio"][name="digest_frequency"]') : [];
-  out.radios = Array.prototype.map.call(radios, function (r) { return r.value + (r.checked ? '*' : ''); });
-  out.legends = Array.prototype.map.call(form ? form.querySelectorAll('fieldset > legend') : [], function (l) { return l.textContent.trim(); });
-  out.groups = {};
-  ['venues', 'series', 'organizers'].forEach(function (g) {
-    var boxes = form.querySelectorAll('input[type="checkbox"][name="digest_' + g + '[]"]');
-    var b = boxes[0];
-    out.groups[g] = {
-      count: boxes.length,
-      ticked: Array.prototype.filter.call(boxes, function (x) { return x.checked; }).length,
-      size: b ? Math.round(b.getBoundingClientRect().width) + 'x' + Math.round(b.getBoundingClientRect().height) : 'none',
-      gap: b ? Math.round(b.closest('label').getBoundingClientRect().right > 0 ? (function () {
-        var lab = b.closest('label'); var r = document.createRange(); r.selectNodeContents(lab);
-        var t = Array.prototype.filter.call(lab.childNodes, function (n) { return n.nodeType === 3 && n.textContent.trim(); })[0];
-        if (!t) { return -1; } r.selectNodeContents(t); return r.getBoundingClientRect().left - b.getBoundingClientRect().right; })() : -1) : -1
-    };
+  Array.prototype.forEach.call(document.body.querySelectorAll('*'), function (el) {
+    if (el.closest('script, style, template, noscript, #out')) { return; }
+    var own = '';
+    Array.prototype.forEach.call(el.childNodes, function (n) { if (n.nodeType === 3) { own += n.textContent; } });
+    own = own.replace(/\s+/g, ' ').trim();
+    if (!/[a-z]/.test(own)) { return; }
+    var cs = getComputedStyle(el);
+    if (cs.textTransform !== 'uppercase' && cs.fontVariantCaps.indexOf('small-caps') < 0) { return; }
+    /* A heading's own text: the element itself, anything inside a table
+       header, or a plain wrapper inside a heading. Help panels, hints,
+       labels, controls and sentences inside a heading are NOT its text,
+       which is the whole of what this sweep is for. */
+    var heading = /^(H[1-6]|TH)$/.test(el.tagName) || !!el.closest('th')
+      || (!!el.closest('h1, h2, h3, h4, h5, h6') && !el.closest('.uc-help-body, .uc-hint, .uc-muted, .uc-field-label, label, button, p, small, select, a'));
+    var classes = [];
+    for (var n = el; n && n.nodeType === 1; n = n.parentNode) {
+      if (typeof n.className === 'string') { classes = classes.concat(n.className.trim().split(/\s+/)); }
+    }
+    out.caps.push({ text: own.slice(0, 70), heading: heading, path: path(el), classes: classes,
+      shown: el.getClientRects().length > 0 });
   });
-  var fs = form.querySelectorAll('fieldset');
-  out.fieldsetGap = fs.length > 1 ? Math.round(fs[1].getBoundingClientRect().top - fs[0].getBoundingClientRect().bottom) : -1;
-  var radio = radios[0];
-  out.radioSize = radio ? Math.round(radio.getBoundingClientRect().width) + 'x' + Math.round(radio.getBoundingClientRect().height) : 'none';
-  var btn = form.querySelector('button[type="submit"]');
-  out.button = btn ? btn.textContent.trim() + ' / ' + css(btn, 'background-color') : 'none';
-  out.hints = Array.prototype.map.call(form.querySelectorAll('.uc-hint'), function (p) { return p.textContent.replace(/\s+/g, ' ').trim(); });
   var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 }, 300); });
 })();</script></body></html>

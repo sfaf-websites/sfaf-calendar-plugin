@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, nofollow" />
 <title>Request an event</title>
-<link rel="icon" type="image/svg+xml" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin.svg?ver=3.104.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin.png?ver=3.104.0" />
-<link rel="apple-touch-icon" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin-180.png?ver=3.104.0" />
-<link rel="stylesheet" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/css/portal.css?ver=3.104.0" />
+<link rel="icon" type="image/svg+xml" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin.svg?ver=3.105.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin.png?ver=3.105.0" />
+<link rel="apple-touch-icon" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin-180.png?ver=3.105.0" />
+<link rel="stylesheet" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/css/portal.css?ver=3.105.0" />
 </head>
 <body class="uc-portal uc-request-page">
 <div class="uc-request-wrap">
@@ -78,7 +78,7 @@
                             <p class="uc-hint">The date is never filled in.</p>
                         </div>
 
-                        <script type="application/json" data-uc-request-prefill-data>{"11":{"location_mode":"","venue":0,"venue_name":"","location":"","start_time":"","end_time":"","description":"","image_url":"","image_id":0,"image_preview":"","categories":[],"category_names":[],"organizers":[],"organizer_name":"","faq_set":"","faq_set_name":"","from_event":0},"12":{"location_mode":"","venue":0,"venue_name":"","location":"","start_time":"","end_time":"","description":"","image_url":"","image_id":0,"image_preview":"","categories":[],"category_names":[],"organizers":[],"organizer_name":"","faq_set":"","faq_set_name":"","from_event":0}}</script>
+                        <script type="application/json" data-uc-request-prefill-data>{"11":{"location_mode":"","venue":0,"venue_name":"","location":"","location_name":"","location_parts":{"street":"","city":"","state":"","zip":""},"start_time":"","end_time":"","description":"","image_url":"","image_id":0,"image_preview":"","categories":[],"category_names":[],"organizers":[],"organizer_name":"","faq_set":"","faq_set_name":"","from_event":0},"12":{"location_mode":"","venue":0,"venue_name":"","location":"","location_name":"","location_parts":{"street":"","city":"","state":"","zip":""},"start_time":"","end_time":"","description":"","image_url":"","image_id":0,"image_preview":"","categories":[],"category_names":[],"organizers":[],"organizer_name":"","faq_set":"","faq_set_name":"","from_event":0}}</script>
                     </fieldset>
                 
                                 <fieldset class="uc-form-section-group uc-request-images">
@@ -163,7 +163,7 @@
                 <label class="uc-field">
                     <span class="uc-field-label">Date<span class="uc-req" data-uc-req-mark="date" aria-hidden="true">*</span></span>
                     <input type="date" name="date" required value="" />
-                                    </label>
+                                                                            </label>
 
                 <div class="uc-field-row">
                     <label class="uc-field">
@@ -325,7 +325,7 @@
                         </label>
                                             <label class="uc-day">
                             <input type="checkbox" name="repeat_days[]" value="2"
-                                    data-uc-repeat-day />
+                                    checked="checked" data-uc-repeat-day />
                             <span aria-hidden="true">T</span>
                             <span class="uc-visually-hidden">Tuesday</span>
                         </label>
@@ -343,7 +343,7 @@
                         </label>
                                             <label class="uc-day">
                             <input type="checkbox" name="repeat_days[]" value="5"
-                                    checked="checked" data-uc-repeat-day />
+                                    data-uc-repeat-day />
                             <span aria-hidden="true">F</span>
                             <span class="uc-visually-hidden">Friday</span>
                         </label>
@@ -377,10 +377,10 @@
                     <select name="repeat_nth_dow" aria-label="Which weekday">
                                                     <option value="0" >Sunday</option>
                                                     <option value="1" >Monday</option>
-                                                    <option value="2" >Tuesday</option>
+                                                    <option value="2"  selected="selected">Tuesday</option>
                                                     <option value="3" >Wednesday</option>
                                                     <option value="4" >Thursday</option>
-                                                    <option value="5"  selected="selected">Friday</option>
+                                                    <option value="5" >Friday</option>
                                                     <option value="6" >Saturday</option>
                                             </select>
                     <span>of each month</span>
@@ -530,7 +530,7 @@
             </form>
         </div>
         </div>
-<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"file:\/\/\/C:\/Users\/msapoznikov\/Documents\/Apps\/Calendar\/public\/css\/editor-content.css?ver=3.104.0"},"quicktags":false,"mediaButtons":false}</script><script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/portal.js?ver=3.104.0"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"file:\/\/\/C:\/Users\/msapoznikov\/Documents\/Apps\/Calendar\/public\/css\/editor-content.css?ver=3.105.0"},"quicktags":false,"mediaButtons":false}</script><script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/portal.js?ver=3.105.0"></script>
 <script>window.RM_DATA = {"steps":[{"label":"as it opens","act":[]}],"inputs":{"requester_name":["requester_name"],"title":["title"],"description":["description"],"organizer":["organizer[]"],"date":["date"],"start_time":["start_time_h"],"end_time":["end_time_h"]}};</script><script>(function () {
 var DATA = window.RM_DATA, out = { steps: [], note: '', errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });

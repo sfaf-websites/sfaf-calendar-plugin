@@ -4,6 +4,20 @@
 <meta charset="" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, nofollow" />
+<title>Submit an event</title>
+<link rel="icon" type="image/svg+xml" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin.svg?ver=3.105.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin.png?ver=3.105.0" />
+<link rel="apple-touch-icon" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin-180.png?ver=3.105.0" />
+<link rel="stylesheet" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/css/portal.css?ver=3.105.0" />
+</head>
+<body class="uc-portal uc-request-page">
+<div class="uc-request-wrap">
+        <!DOCTYPE html>
+<html >
+<head>
+<meta charset="" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
 <title>Submit an event: Cycle to Zero</title>
 <link rel="icon" type="image/svg+xml" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin.svg?ver=3.105.0" />
 <link rel="icon" type="image/png" sizes="32x32" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin.png?ver=3.105.0" />
@@ -76,7 +90,7 @@
                 <label class="uc-field">
                     <span class="uc-field-label">Date<span class="uc-req" data-uc-req-mark="date" aria-hidden="true">*</span></span>
                     <input type="date" name="date" required value="" />
-                                                                            </label>
+                                        <span class="uc-closed-warn" data-uc-closed-warn role="status" hidden></span><script type="application/json" data-uc-closures>[{"start":"2026-11-26","end":"2026-11-27","name":"Thanksgiving"}]</script>                                    </label>
 
                 <div class="uc-field-row">
                     <label class="uc-field">
@@ -398,58 +412,40 @@
         </div>
         </div>
 <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"file:\/\/\/C:\/Users\/msapoznikov\/Documents\/Apps\/Calendar\/public\/css\/editor-content.css?ver=3.105.0"},"quicktags":false,"mediaButtons":false}</script><script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/portal.js?ver=3.105.0"></script>
-<script>window.RM_DATA = {"steps":[{"label":"as it opens","act":[]},{"label":"cost is Something else","act":[["cost","other"]]},{"label":"cost is Free again","act":[["cost","free"]]},{"label":"age is Something else","act":[["age_restriction","other"]]},{"label":"age is back on a real answer","act":[["age_restriction","all"]]},{"label":"use my details is ticked","act":[["contact_same",true]]},{"label":"use my details is unticked","act":[["contact_same",false]]},{"label":"a venue is chosen","act":[["venue","11"]]},{"label":"back to entering it by hand","act":[["venue","0"]]}],"inputs":{"submitter_name":["submitter_name"],"submitter_email":["submitter_email[]"],"title":["title"],"description":["description"],"date":["date"],"start_time":["start_time_h"],"end_time":["end_time_h"],"street":["street"],"cost":["cost"],"cost_other":["cost_other"],"age_other":["age_other"],"contact_name":["contact_name"],"contact_email":["contact_email","contact_phone"]}};</script><script>(function () {
-var DATA = window.RM_DATA, out = { steps: [], note: '', errors: [] };
+<script>window.CS_PAGE="public-submit-form";(function () {
+var out = { page: window.CS_PAGE, errors: [], caps: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
-function form() {
-  var fs = document.querySelectorAll('form');
-  for (var i = 0; i < fs.length; i++) { if (fs[i].querySelector('.uc-req, .uc-required-note')) { return fs[i]; } }
-  return fs[0];
-}
-function shown(el) { return el && !el.hidden && el.getClientRects().length > 0; }
-function base(n) { return String(n).replace(/_(h|m)$/, ''); }
-function read() {
-  var f = form(), r = { visible: [], misplaced: [], required: [], aria: [], legend: [], colour: [], labels: [] };
-  f.querySelectorAll('.uc-req').forEach(function (m) {
-    if (m.hidden) { return; }
-    var key = m.getAttribute('data-uc-req-mark');
-    if (key) { r.visible.push(key); } else { r.visible.push('(no key)'); }
-    /* On the right label: its own field wrapper holds the field's control. */
-    if (key && DATA.inputs && DATA.inputs[key]) {
-      var wrap = m.closest('.uc-field, fieldset, label');
-      var ok = DATA.inputs[key].some(function (n) { return wrap && wrap.querySelector('[name="' + n + '"]'); });
-      if (!ok) { r.misplaced.push(key); }
-    }
-    var lab = m.parentElement, a = getComputedStyle(m), b = getComputedStyle(lab);
-    if (a.color !== b.color || a.fontWeight !== b.fontWeight) { r.colour.push((key || lab.textContent.trim()) + ' ' + a.color + '/' + b.color); }
-    r.labels.push(lab.textContent.replace(/\s+/g, ' ').replace('*', '').trim().split(' ')[0]);
-  });
-  f.querySelectorAll('input, select, textarea').forEach(function (el) {
-    if (!el.name || el.type === 'hidden') { return; }
-    if (el.required) { r.required.push(el.name); }
-    if (el.getAttribute('aria-required') === 'true') { r.aria.push(el.name); }
-  });
-  f.querySelectorAll('[data-uc-req-said]').forEach(function (s) {
-    if (!s.hidden && /required/.test(s.textContent)) { r.legend.push(s.getAttribute('data-uc-req-said')); }
-  });
-  ['visible', 'required', 'aria', 'legend', 'labels'].forEach(function (k) { r[k] = r[k].filter(function (v, i, a) { return a.indexOf(v) === i; }).sort(); });
-  return r;
-}
-function act(a) {
-  var f = form(), el = f.querySelector('[name="' + a[0] + '"]');
-  if (!el) { out.errors.push('no control named ' + a[0]); return; }
-  if (el.type === 'checkbox') { el.checked = !!a[1]; } else { el.value = a[1]; }
-  el.dispatchEvent(new Event('change', { bubbles: true }));
+function path(el) {
+  var p = [];
+  for (var n = el; n && n.nodeType === 1 && p.length < 4; n = n.parentNode) {
+    p.unshift(n.tagName.toLowerCase() + (n.className && typeof n.className === 'string' ? '.' + n.className.trim().split(/\s+/).join('.') : ''));
+  }
+  return p.join(' > ');
 }
 window.addEventListener('load', function () { setTimeout(function () {
-  var n = document.querySelector('.uc-required-note');
-  out.note = n ? n.textContent.trim() : '';
-  out.noteShown = shown(n);
-  DATA.steps.forEach(function (s) {
-    s.act.forEach(act);
-    var r = read(); r.label = s.label; out.steps.push(r);
+  Array.prototype.forEach.call(document.body.querySelectorAll('*'), function (el) {
+    if (el.closest('script, style, template, noscript, #out')) { return; }
+    var own = '';
+    Array.prototype.forEach.call(el.childNodes, function (n) { if (n.nodeType === 3) { own += n.textContent; } });
+    own = own.replace(/\s+/g, ' ').trim();
+    if (!/[a-z]/.test(own)) { return; }
+    var cs = getComputedStyle(el);
+    if (cs.textTransform !== 'uppercase' && cs.fontVariantCaps.indexOf('small-caps') < 0) { return; }
+    /* A heading's own text: the element itself, anything inside a table
+       header, or a plain wrapper inside a heading. Help panels, hints,
+       labels, controls and sentences inside a heading are NOT its text,
+       which is the whole of what this sweep is for. */
+    var heading = /^(H[1-6]|TH)$/.test(el.tagName) || !!el.closest('th')
+      || (!!el.closest('h1, h2, h3, h4, h5, h6') && !el.closest('.uc-help-body, .uc-hint, .uc-muted, .uc-field-label, label, button, p, small, select, a'));
+    var classes = [];
+    for (var n = el; n && n.nodeType === 1; n = n.parentNode) {
+      if (typeof n.className === 'string') { classes = classes.concat(n.className.trim().split(/\s+/)); }
+    }
+    out.caps.push({ text: own.slice(0, 70), heading: heading, path: path(el), classes: classes,
+      shown: el.getClientRects().length > 0 });
   });
-  var pre = document.createElement('pre'); pre.id = 'out';
-  pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
-}, 400); });
-})();</script></body></html>
+  var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+}, 300); });
+})();</script></body></html></div>
+<script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/portal.js?ver=3.105.0"></script>
+</body></html>

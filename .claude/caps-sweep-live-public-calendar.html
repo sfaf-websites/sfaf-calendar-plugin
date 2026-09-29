@@ -1,0 +1,582 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../public/css/calendar.css"></head><body>        <div class="uc-calendar uc-view-calendar"
+                          data-view="calendar"
+             data-category=""
+             data-render="card"
+             data-per-page="12"
+                          data-scope-category=""
+             data-active-category=""
+             data-active-groups=""
+                          data-filters="category,organizer,series"
+             data-scope-organizer=""
+             data-active-organizer=""
+             data-filter-category=""
+             data-filter-organizer=""
+             data-filter-series="0"
+             data-filter-venue=""
+                          data-filter-s=""
+             data-pagination="load_more"
+             data-page="1"
+                                       data-month="2026-11"
+             data-max-pages="0">
+
+                                                <form class="uc-filter-form" method="get" action="" data-uc-filter-form>
+                                            <div class="uc-filters">
+                <div class="uc-search-wrap">
+                    <svg class="sfaf-icon sfaf-icon-search uc-search-icon" width="1em" height="1em" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.4 15.4 4.6 4.6"/></svg>                    <input type="search" class="uc-search" value=""
+                           aria-label="Search events" placeholder="Search events..." />
+                </div>
+                                <div class="uc-filter-buttons">
+                                                            <button type="submit" name="uc_cat" value=""
+                            class="uc-filter-btn active"
+                            data-category="all" aria-pressed="true">All Events</button>
+                                            <button type="submit" name="uc_cat" value="alpha"
+                                class="uc-filter-btn"
+                                data-category="alpha"
+                                aria-pressed="false"
+                                style="--cat-color: #16BECF">
+                                                        <span class="uc-filter-dot" aria-hidden="true"></span>
+                            Alpha                        </button>
+                                            <button type="submit" name="uc_cat" value="beta"
+                                class="uc-filter-btn"
+                                data-category="beta"
+                                aria-pressed="false"
+                                style="--cat-color: #16BECF">
+                                                        <span class="uc-filter-dot" aria-hidden="true"></span>
+                            Beta                        </button>
+                                    </div>
+                
+                                                <details class="uc-who" data-uc-who>
+            <summary class="uc-who-trigger"
+                    data-uc-who-trigger
+                    aria-label="Filter by organizer or group">
+                <span class="uc-who-label" data-uc-who-label>Organizers and groups</span>
+                <svg class="sfaf-icon sfaf-icon-chevron uc-who-chevron" width="1em" height="1em" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg>            </summary>
+
+            <div class="uc-who-panel" id="uc-who-8063" data-uc-who-panel>
+                                <button type="button" class="uc-who-clear" data-uc-who-clear>Clear all</button>
+                                <div class="uc-who-cols">
+                                            <section class="uc-who-col uc-who-col-org">
+                            <p class="uc-who-heading" id="uc-who-8063-org">Organizers</p>
+                            <div class="uc-who-list" role="group" aria-labelledby="uc-who-8063-org">
+                                                                    <label class="uc-who-opt">
+                                        <input type="checkbox" name="uc_org[]"
+                                               value="alpha"
+                                               data-uc-who-organizer
+                                                />
+                                        <span>Alpha</span>
+                                                                            </label>
+                                                                    <label class="uc-who-opt">
+                                        <input type="checkbox" name="uc_org[]"
+                                               value="beta"
+                                               data-uc-who-organizer
+                                                />
+                                        <span>Beta</span>
+                                                                            </label>
+                                                            </div>
+                        </section>
+                    
+                                            <section class="uc-who-col uc-who-col-grp">
+                            <p class="uc-who-heading" id="uc-who-8063-grp">Groups</p>
+                                                        <div class="uc-who-list uc-who-list-2col" role="group" aria-labelledby="uc-who-8063-grp" data-uc-who-groups>
+                                                                    <label class="uc-who-opt" data-uc-who-group-orgs="">
+                                        <input type="checkbox" name="uc_group[]"
+                                               value="alpha"
+                                               data-uc-who-group
+                                                />
+                                        <span>Alpha</span>
+                                                                            </label>
+                                                                    <label class="uc-who-opt" data-uc-who-group-orgs="">
+                                        <input type="checkbox" name="uc_group[]"
+                                               value="beta"
+                                               data-uc-who-group
+                                                />
+                                        <span>Beta</span>
+                                                                            </label>
+                                                            </div>
+                            <p class="uc-who-none" data-uc-who-none hidden>No groups match those organizers.</p>
+                        </section>
+                                    </div>
+
+                                <noscript>
+                <div class="uc-who-foot">
+                                                            <button type="submit" name="uc_cat" value=""
+                            class="uc-who-apply" data-uc-who-apply>Apply</button>
+                </div>
+                </noscript>
+            </div>
+        </details>
+                                    </div>
+            </form>
+
+                        
+            <div class="uc-view-bar">
+                                                                        <div class="uc-view-toggle" role="group" aria-label="Choose how events are displayed">
+                                            <button type="button" class="uc-view-btn"
+                        data-view="list"
+                        title="Show events as a list"
+                        aria-label="Show events as a list"
+                        aria-pressed="false">
+                    <svg class="sfaf-icon sfaf-icon-menu" width="17px" height="17px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg>                </button>
+                                            <button type="button" class="uc-view-btn active"
+                        data-view="calendar"
+                        title="Show events on a calendar"
+                        aria-label="Show events on a calendar"
+                        aria-pressed="true">
+                    <svg class="sfaf-icon sfaf-icon-calendar" width="17px" height="17px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg>                </button>
+                    </div>
+                    </div>
+
+            
+            
+                        <div class="uc-view-panels"
+                 >
+                            <div class="uc-view-panel uc-panel-list" hidden>
+                                    <div class="uc-event-list">
+                                                    <div class="uc-no-events">
+                                <p>No upcoming events found.</p>
+                            </div>
+                                            </div>
+                                                </div>
+                                    <div class="uc-view-panel uc-panel-calendar">
+                        <div class="uc-month" data-month="2026-11"
+             data-prev="2026-10"
+             data-next="2026-12"
+             data-rows="5"
+             data-today="2026-09-29">
+
+                                    <div class="uc-month-head">
+                                <div class="uc-month-heading">
+                                        <h3 class="uc-month-label" aria-live="polite">November 2026</h3>
+                </div>
+
+                                <div class="uc-month-nav-group">
+                                            <button type="button" class="uc-month-nav uc-month-prev" data-goto="2026-10"
+                                aria-label="Previous month"><svg class="sfaf-icon sfaf-icon-chevron" width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></button>
+                        <button type="button" class="uc-month-nav uc-month-today" data-goto="2026-09">Today</button>
+                                        <button type="button" class="uc-month-nav uc-month-next" data-goto="2026-12"
+                            aria-label="Next month"><svg class="sfaf-icon sfaf-icon-chevron" width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></button>
+                </div>
+            </div>
+
+                                <div class="uc-month-wrap">
+            <table class="uc-month-grid" role="grid">
+                <caption class="uc-visually-hidden">November 2026, 1 event this month. Use the arrow keys to move between days.</caption>
+                <thead>
+                    <tr>
+                                                    <th scope="col">
+                                <abbr title="Sunday">
+                                    <span class="uc-day-name-full" aria-hidden="true">Sun</span>
+                                    <span class="uc-day-name-min" aria-hidden="true">S</span>
+                                    <span class="uc-visually-hidden">Sunday</span>
+                                </abbr>
+                            </th>
+                                                    <th scope="col">
+                                <abbr title="Monday">
+                                    <span class="uc-day-name-full" aria-hidden="true">Mon</span>
+                                    <span class="uc-day-name-min" aria-hidden="true">M</span>
+                                    <span class="uc-visually-hidden">Monday</span>
+                                </abbr>
+                            </th>
+                                                    <th scope="col">
+                                <abbr title="Tuesday">
+                                    <span class="uc-day-name-full" aria-hidden="true">Tue</span>
+                                    <span class="uc-day-name-min" aria-hidden="true">T</span>
+                                    <span class="uc-visually-hidden">Tuesday</span>
+                                </abbr>
+                            </th>
+                                                    <th scope="col">
+                                <abbr title="Wednesday">
+                                    <span class="uc-day-name-full" aria-hidden="true">Wed</span>
+                                    <span class="uc-day-name-min" aria-hidden="true">W</span>
+                                    <span class="uc-visually-hidden">Wednesday</span>
+                                </abbr>
+                            </th>
+                                                    <th scope="col">
+                                <abbr title="Thursday">
+                                    <span class="uc-day-name-full" aria-hidden="true">Thu</span>
+                                    <span class="uc-day-name-min" aria-hidden="true">T</span>
+                                    <span class="uc-visually-hidden">Thursday</span>
+                                </abbr>
+                            </th>
+                                                    <th scope="col">
+                                <abbr title="Friday">
+                                    <span class="uc-day-name-full" aria-hidden="true">Fri</span>
+                                    <span class="uc-day-name-min" aria-hidden="true">F</span>
+                                    <span class="uc-visually-hidden">Friday</span>
+                                </abbr>
+                            </th>
+                                                    <th scope="col">
+                                <abbr title="Saturday">
+                                    <span class="uc-day-name-full" aria-hidden="true">Sat</span>
+                                    <span class="uc-day-name-min" aria-hidden="true">S</span>
+                                    <span class="uc-visually-hidden">Saturday</span>
+                                </abbr>
+                            </th>
+                                            </tr>
+                </thead>
+                <tbody>
+                                            <tr>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-01"
+                                data-count="0"
+                                tabindex="0"
+                                role="gridcell"
+                                aria-label="Sunday, November 1, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">1</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-02"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Monday, November 2, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">2</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-03"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Tuesday, November 3, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">3</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-04"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Wednesday, November 4, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">4</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-05"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Thursday, November 5, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">5</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-06"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Friday, November 6, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">6</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-07"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Saturday, November 7, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">7</span>
+                                                                                            </td>
+                                                </tr>
+                                            <tr>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-08"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Sunday, November 8, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">8</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-09"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Monday, November 9, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">9</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-10"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Tuesday, November 10, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">10</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-11"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Wednesday, November 11, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">11</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-12"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Thursday, November 12, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">12</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-13"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Friday, November 13, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">13</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-14"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Saturday, November 14, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">14</span>
+                                                                                            </td>
+                                                </tr>
+                                            <tr>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-15"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Sunday, November 15, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">15</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-16"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Monday, November 16, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">16</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-17"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Tuesday, November 17, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">17</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-18"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Wednesday, November 18, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">18</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-19"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Thursday, November 19, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">19</span>
+                                                                                            </td>
+                                                    <td class="uc-day"
+                                data-day="2026-11-20"
+                                data-count="1"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Friday, November 20, 2026. 1 event">
+                                <span class="uc-day-num" aria-hidden="true">20</span>
+                                                                                                                                        <span class="uc-day-dots" aria-hidden="true"><span class="uc-day-dot" style="background:#16BECF"></span></span>
+                                                                        <ul class="uc-day-events">
+                                                                                    <li class="uc-day-event">
+                                                                                                                                                <a href="https://resources.sfaf.org/events/501/" target="_blank" rel="noopener"                                                   data-uc-preview
+                                                   data-uc-pv-title="Coffee social"
+                                                   data-uc-pv-img=""
+                                                   data-uc-pv-date="Friday, November 20, 2026"
+                                                   data-uc-pv-time="10–11:30 am"
+                                                   data-uc-pv-place="1035 Market St"
+                                                                                                      style="--cat-ink: #0C666F; --cat-media: #D5F3F6">
+                                                    <span class="uc-de-dot" aria-hidden="true"></span><span class="uc-visually-hidden">Alpha</span>                                                                                                        <span class="uc-day-event-text">
+                                                                                                                <span class="uc-day-event-title">Coffee social</span>
+                                                                                                                    <span class="uc-day-event-time">10 am</span>
+                                                                                                            </span>
+                                                    <span class="uc-sr-only"> (opens in a new tab)</span>                                                </a>
+                                            </li>
+                                                                            </ul>
+                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-21"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Saturday, November 21, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">21</span>
+                                                                                            </td>
+                                                </tr>
+                                            <tr>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-22"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Sunday, November 22, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">22</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-23"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Monday, November 23, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">23</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-24"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Tuesday, November 24, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">24</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-25"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Wednesday, November 25, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">25</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty uc-day-closed"
+                                data-day="2026-11-26"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Closed for Thanksgiving. Call ahead. Alpha open 10 am–2 pm. Thursday, November 26, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">26</span>
+                                                                                                                                            <span class="uc-day-closed-mark" aria-hidden="true">
+                                        <span class="uc-closed-word">Closed</span>
+                                                                                    <span class="uc-closed-name">Thanksgiving</span>
+                                                                                                                            <span class="uc-closed-open">Alpha open 10 am–2 pm</span>
+                                                                                                                            <span class="uc-closed-note">Call ahead</span>
+                                                                            </span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty uc-day-closed"
+                                data-day="2026-11-27"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Closed for Thanksgiving. Call ahead. Alpha open 10 am–2 pm. Friday, November 27, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">27</span>
+                                                                                                                                            <span class="uc-day-closed-mark" aria-hidden="true">
+                                        <span class="uc-closed-word">Closed</span>
+                                                                                    <span class="uc-closed-name">Thanksgiving</span>
+                                                                                                                            <span class="uc-closed-open">Alpha open 10 am–2 pm</span>
+                                                                                                                            <span class="uc-closed-note">Call ahead</span>
+                                                                            </span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-28"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Saturday, November 28, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">28</span>
+                                                                                            </td>
+                                                </tr>
+                                            <tr>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-29"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Sunday, November 29, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">29</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-empty"
+                                data-day="2026-11-30"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Monday, November 30, 2026. No events">
+                                <span class="uc-day-num" aria-hidden="true">30</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-out uc-day-empty"
+                                data-day="2026-12-01"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Tuesday, December 1, 2026. No events. Outside November 2026">
+                                <span class="uc-day-num" aria-hidden="true">1</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-out uc-day-empty"
+                                data-day="2026-12-02"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Wednesday, December 2, 2026. No events. Outside November 2026">
+                                <span class="uc-day-num" aria-hidden="true">2</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-out uc-day-empty"
+                                data-day="2026-12-03"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Thursday, December 3, 2026. No events. Outside November 2026">
+                                <span class="uc-day-num" aria-hidden="true">3</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-out uc-day-empty"
+                                data-day="2026-12-04"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Friday, December 4, 2026. No events. Outside November 2026">
+                                <span class="uc-day-num" aria-hidden="true">4</span>
+                                                                                            </td>
+                                                    <td class="uc-day uc-day-out uc-day-empty"
+                                data-day="2026-12-05"
+                                data-count="0"
+                                tabindex="-1"
+                                role="gridcell"
+                                aria-label="Saturday, December 5, 2026. No events. Outside November 2026">
+                                <span class="uc-day-num" aria-hidden="true">5</span>
+                                                                                            </td>
+                                                </tr>
+                                    </tbody>
+            </table>
+            </div>
+
+            
+                        <div class="uc-month-day-panel" aria-live="polite"></div>
+        </div>
+                    </div>
+                        </div>
+
+                    </div>
+        <script>window.CS_PAGE="public-calendar";(function () {
+var out = { page: window.CS_PAGE, errors: [], caps: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function path(el) {
+  var p = [];
+  for (var n = el; n && n.nodeType === 1 && p.length < 4; n = n.parentNode) {
+    p.unshift(n.tagName.toLowerCase() + (n.className && typeof n.className === 'string' ? '.' + n.className.trim().split(/\s+/).join('.') : ''));
+  }
+  return p.join(' > ');
+}
+window.addEventListener('load', function () { setTimeout(function () {
+  Array.prototype.forEach.call(document.body.querySelectorAll('*'), function (el) {
+    if (el.closest('script, style, template, noscript, #out')) { return; }
+    var own = '';
+    Array.prototype.forEach.call(el.childNodes, function (n) { if (n.nodeType === 3) { own += n.textContent; } });
+    own = own.replace(/\s+/g, ' ').trim();
+    if (!/[a-z]/.test(own)) { return; }
+    var cs = getComputedStyle(el);
+    if (cs.textTransform !== 'uppercase' && cs.fontVariantCaps.indexOf('small-caps') < 0) { return; }
+    /* A heading's own text: the element itself, anything inside a table
+       header, or a plain wrapper inside a heading. Help panels, hints,
+       labels, controls and sentences inside a heading are NOT its text,
+       which is the whole of what this sweep is for. */
+    var heading = /^(H[1-6]|TH)$/.test(el.tagName) || !!el.closest('th')
+      || (!!el.closest('h1, h2, h3, h4, h5, h6') && !el.closest('.uc-help-body, .uc-hint, .uc-muted, .uc-field-label, label, button, p, small, select, a'));
+    var classes = [];
+    for (var n = el; n && n.nodeType === 1; n = n.parentNode) {
+      if (typeof n.className === 'string') { classes = classes.concat(n.className.trim().split(/\s+/)); }
+    }
+    out.caps.push({ text: own.slice(0, 70), heading: heading, path: path(el), classes: classes,
+      shown: el.getClientRects().length > 0 });
+  });
+  var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+}, 300); });
+})();</script></body></html>

@@ -95,6 +95,7 @@ function ucDismissOnBackdrop(dialog) {
         run('repeaters', initRepeaters);
         run('faqSetPicker', initFaqSetPicker);
         run('seriesPrefill', initSeriesPrefill);
+        run('donateChoice', initDonateChoice);
         run('notifyPicker', initNotifyPicker);
         run('imagePicker', initImagePicker);
         // ORDER MATTERS between these three. Both the scope confirmation and
@@ -106,6 +107,8 @@ function ucDismissOnBackdrop(dialog) {
         run('helpToggles', initHelpToggles);
         run('categoryChips', initCategoryChips);
         run('recurrence', initRecurrence);
+        // After recurrence, which publishes the dates this names.
+        run('closedDays', initClosedDays);
         run('emailPills', initEmailPills);
         run('locationPicker', initLocationPicker);
         run('liveSearch', initLiveSearch);
@@ -4332,7 +4335,16 @@ function ucDismissOnBackdrop(dialog) {
                 });
             }
 
+            /* THE DATES THIS WOULD CREATE, ON THE ROOT (3.105.0), for anything
+             * else on the page that has to ask about them: the closed-day line
+             * reads this rather than running the engine a second time with its
+             * own idea of the pattern. Empty whenever the summary cannot count. */
+            function publishDates(list) {
+                root.setAttribute('data-uc-repeat-dates', (list || []).join(' '));
+            }
+
             function refresh() {
+                publishDates([]);
                 var m = mode();
                 if (panels.weekly) { panels.weekly.hidden = (m !== 'weekly'); }
                 if (panels.monthly) { panels.monthly.hidden = (m !== 'monthly'); }
@@ -4377,6 +4389,9 @@ function ucDismissOnBackdrop(dialog) {
                     }
                 }
 
+                if (spec && spec.type && start) {
+                    publishDates(ucRecurrenceDates(start, until, spec, limit, ucCleanDates(chosen, start)));
+                }
                 summary.textContent = ucRecurrenceSummary(start, until, spec, limit, chosen, tail);
             }
 
@@ -4518,6 +4533,135 @@ function ucDismissOnBackdrop(dialog) {
      * THE DATE IS NOT HERE. It is not in the payload, so there is no box to
      * tick and nothing a later change could expose.
      * ------------------------------------------------------------------- */
+    /* ---------------------------------------------------------------------
+     * THE CLOSED-DAY WARNING (3.105.0).
+     *
+     * A LINE, AND ON PUBLISH ONE QUESTION; NEVER A REFUSAL. Closures are
+     * calendar-wide and plenty of events rightly fall on one, so nothing here
+     * can stop a save. The line appears under the date as soon as a date on a
+     * closure is picked, and for a repeating event it names every generated
+     * date that falls on one, read off the recurrence control's own list.
+     *
+     * THE QUESTION IS ON THE FORM'S SUBMIT, NOT ON THE BUTTON'S CLICK. Three
+     * other questions are bound to the save buttons' clicks and replay a click
+     * when answered; a replayed submit (resubmit) reaches only submit
+     * listeners, so this cannot make any of them ask twice. It listens in the
+     * capture phase so it runs before the other submit listeners on the form,
+     * and it stops them for the submit it holds; they run on the replay.
+     *
+     * "YES" IS REMEMBERED UNTIL THE FORM CHANGES, not for one submit, because
+     * a later submit listener may itself hold the submit and replay it, and
+     * that replay must not bring this question back. Changing anything on the
+     * form clears it, since the dates may be what changed.
+     *
+     * Save draft never asks: it puts nothing in front of anybody.
+     * ------------------------------------------------------------------- */
+    function initClosedDays() {
+        var dataNode = document.querySelector('script[data-uc-closures]');
+        var line = document.querySelector('[data-uc-closed-warn]');
+        if (!dataNode || !line) { return; }
+        var closures;
+        try {
+            closures = JSON.parse(dataNode.textContent || '[]');
+        } catch (e) {
+            return;
+        }
+        var form = line.closest('form');
+        var dateInput = form ? form.querySelector('input[name="date"]') : null;
+        if (!form || !dateInput) { return; }
+        var repeat = form.querySelector('[data-uc-repeat]');
+
+        function closureOn(ymd) {
+            for (var i = 0; i < closures.length; i++) {
+                if (ymd >= closures[i].start && ymd <= closures[i].end) { return closures[i]; }
+            }
+            return null;
+        }
+        function hits() {
+            var all = [];
+            if (dateInput.value) { all.push(dateInput.value); }
+            if (repeat) {
+                (repeat.getAttribute('data-uc-repeat-dates') || '').split(' ').forEach(function (d) {
+                    if (d && all.indexOf(d) === -1) { all.push(d); }
+                });
+            }
+            all.sort();
+            var out = [];
+            all.forEach(function (d) {
+                var c = closureOn(d);
+                if (c) { out.push(ucPrettyDate(d) + (c.name ? ' (' + c.name + ')' : '')); }
+            });
+            return out;
+        }
+        function sentence(list) {
+            return 'SFAF is closed on ' + ucJoinWords(list) + '.';
+        }
+        function refresh() {
+            var list = hits();
+            line.textContent = list.length ? sentence(list) : '';
+            line.hidden = !list.length;
+        }
+
+        // On the document, so these run after the recurrence control has
+        // republished its dates for the same change.
+        document.addEventListener('change', refresh);
+        document.addEventListener('input', refresh);
+        refresh();
+
+        var answered = false;
+        form.addEventListener('change', function () { answered = false; });
+        form.addEventListener('input', function () { answered = false; });
+        form.addEventListener('submit', function (e) {
+            var by = e.submitter;
+            if (!by || by.name !== 'save_mode' || by.value !== 'publish' || answered) { return; }
+            var list = hits();
+            if (!list.length) { return; }
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            ucConfirm('SFAF is closed on ' + ucJoinWords(list) + '. Hold the event anyway?', by, function () {
+                answered = true;
+                resubmit(form, by);
+            });
+        }, true);
+    }
+
+    /* ---------------------------------------------------------------------
+     * THE DONATE LIST (3.105.0).
+     *
+     * Custom shows the event's own link box and every other entry hides it.
+     * Hidden, not disabled: the box still posts, so a campaign link typed and
+     * then set aside is kept for the next time Custom is chosen.
+     *
+     * The first entry says which link the event inherits, and that depends on
+     * the series select above it, so it is renamed when the series changes.
+     * Which series have a link of their own is on the select, from the server.
+     * ------------------------------------------------------------------- */
+    function initDonateChoice() {
+        var select = document.querySelector('[data-uc-donate-choice]');
+        if (!select) { return; }
+        var box = document.querySelector('[data-uc-donate-custom]');
+        var inherit = select.querySelector('[data-uc-donate-inherit]');
+        var linked = [];
+        try {
+            linked = JSON.parse(select.getAttribute('data-uc-donate-series-links') || '[]');
+        } catch (e) {
+            linked = [];
+        }
+
+        function showBox() {
+            if (box) { box.hidden = (select.value !== 'custom'); }
+        }
+        select.addEventListener('change', showBox);
+        showBox();
+
+        var series = select.form ? select.form.querySelector('[name="series"]') : null;
+        if (series && inherit) {
+            series.addEventListener('change', function () {
+                inherit.textContent = linked.indexOf(String(series.value)) > -1 ? 'Series link' : 'SFAF default';
+            });
+        }
+    }
+
     function initSeriesPrefill() {
         var root = document.querySelector('[data-uc-series-prefill]');
         if (!root) { return; }
@@ -4542,6 +4686,10 @@ function ucDismissOnBackdrop(dialog) {
         var form = select.form || document.querySelector('form.uc-form');
         if (!form) { return; }
 
+        /* The five boxes render_location_field() draws under "A different
+         * location", by the names the save reads. */
+        var LOCATION_BOXES = ['location_name', 'location_street', 'location_city', 'location_state', 'location_zip'];
+
         /*
          * WHAT EACH OPTION IS: a label, the payload keys it reads, and the
          * functions that read and write the form. Keeping read and write beside
@@ -4553,11 +4701,26 @@ function ucDismissOnBackdrop(dialog) {
             {
                 key: 'location', label: 'Location',
                 has: function (d) { return d.location_mode !== ''; },
-                preview: function (d) { return d.venue_name || d.location; },
+                preview: function (d) {
+                    if (d.venue_name) { return d.venue_name; }
+                    return (d.location_name && d.location !== d.location_name)
+                        ? d.location_name + ', ' + d.location : d.location;
+                },
+                /*
+                 * THE PLACE NAME AND THE FOUR ADDRESS BOXES (3.105.0). This
+                 * wrote the composed line to a field named location, which a
+                 * native event's editor has not had since the address was split
+                 * into parts, so Fill these in chose "A different location" and
+                 * left every box under it empty. The same fault the times had
+                 * until 3.104.0: a write to a name nothing renders.
+                 */
                 filled: function () {
-                    var text = form.querySelector('[name="location"]');
                     var venue = form.querySelector('[name="venue"]');
-                    return (text && text.value.trim() !== '') || (venue && venue.value && venue.value !== '0');
+                    if (venue && venue.value && venue.value !== '0') { return true; }
+                    return LOCATION_BOXES.some(function (name) {
+                        var box = form.querySelector('[name="' + name + '"]');
+                        return !!(box && box.value.trim() !== '');
+                    });
                 },
                 write: function (d) {
                     var mode = form.querySelector('[data-uc-location-mode="' + d.location_mode + '"]');
@@ -4565,10 +4728,23 @@ function ucDismissOnBackdrop(dialog) {
                     if (d.location_mode === 'venue') {
                         var venue = form.querySelector('[name="venue"]');
                         if (venue) { venue.value = String(d.venue); }
-                    } else {
-                        var text = form.querySelector('[name="location"]');
-                        if (text) { text.value = d.location; }
+                        return;
                     }
+                    var parts = d.location_parts || {};
+                    var from = {
+                        location_name: d.location_name || '',
+                        location_street: parts.street || '',
+                        location_city: parts.city || '',
+                        location_state: parts.state || '',
+                        location_zip: parts.zip || ''
+                    };
+                    LOCATION_BOXES.forEach(function (name) {
+                        var box = form.querySelector('[name="' + name + '"]');
+                        if (box) {
+                            box.value = from[name];
+                            box.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                    });
                 }
             },
             {

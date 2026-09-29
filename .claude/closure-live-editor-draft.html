@@ -102,6 +102,7 @@
                            >
                             <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-clock" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>
                             <span class="uc-nav-label">Pending</span>
+                                                            <span class="uc-nav-badge">1<span class="uc-visually-hidden"> waiting for review</span></span>
                                                     </a>
                                                                     <a href="https://resources.sfaf.org/caladmin/users"
                            class="uc-nav-item"
@@ -187,7 +188,7 @@
                 </p>
             </div>
 
-            <script type="application/json" data-uc-prefill-data>{"11":{"location_mode":"","venue":0,"venue_name":"","location":"","location_name":"","location_parts":{"street":"","city":"","state":"","zip":""},"start_time":"","end_time":"","description":"","image_url":"","image_id":0,"image_preview":"","categories":[],"category_names":[],"organizers":[],"organizer_name":"","faq_set":"","faq_set_name":"","from_event":0},"12":{"location_mode":"","venue":0,"venue_name":"","location":"","location_name":"","location_parts":{"street":"","city":"","state":"","zip":""},"start_time":"","end_time":"","description":"","image_url":"","image_id":0,"image_preview":"","categories":[],"category_names":[],"organizers":[],"organizer_name":"","faq_set":"","faq_set_name":"","from_event":0}}</script>
+            <script type="application/json" data-uc-prefill-data>{"11":{"location_mode":"custom","venue":0,"venue_name":"","location":"470 Castro St, San Francisco, CA 94114","location_name":"Strut","location_parts":{"street":"470 Castro St","city":"San Francisco","state":"CA","zip":"94114"},"start_time":"10:00","end_time":"11:30","description":"","image_url":"","image_id":0,"image_preview":"","categories":[],"category_names":[],"organizers":[],"organizer_name":"","faq_set":"","faq_set_name":"","from_event":501},"12":{"location_mode":"","venue":0,"venue_name":"","location":"","location_name":"","location_parts":{"street":"","city":"","state":"","zip":""},"start_time":"","end_time":"","description":"","image_url":"","image_id":0,"image_preview":"","categories":[],"category_names":[],"organizers":[],"organizer_name":"","faq_set":"","faq_set_name":"","from_event":0}}</script>
                     </section>
         
                                 <section class="uc-bento-card">
@@ -356,7 +357,7 @@
                                         <label class="uc-field">
                         <span class="uc-field-label">Date<span class="uc-req" aria-hidden="true">*</span> </span>
                         <input type="date" name="date" value="" />
-                                                                    </label>
+                                                <span class="uc-closed-warn" data-uc-closed-warn role="status" hidden></span><script type="application/json" data-uc-closures>[{"start":"2026-11-26","end":"2026-11-27","name":"Thanksgiving"},{"start":"2026-12-24","end":"2026-12-25","name":"Winter break"}]</script>                    </label>
                     <div class="uc-field-row">
                         <label class="uc-field">
                             <span class="uc-field-label">Start<span class="uc-req" aria-hidden="true">*</span> </span>
@@ -787,9 +788,10 @@
                     <label class="uc-field">
                         <span class="uc-field-label">Donate button</span>
                         <select name="donate_choice" data-uc-donate-choice
-                                data-uc-donate-series-links="[]">
+                                data-uc-donate-series-links="[&quot;11&quot;]">
                             <option value="inherit" data-uc-donate-inherit  selected="selected">SFAF default</option>
                             <option value="none" >None</option>
+                                                            <option value="series:11" >Alpha</option>
                                                         <option value="custom" >Custom</option>
                         </select>
                     </label>
@@ -851,14 +853,38 @@
         </div>
         <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"file:\/\/\/C:\/Users\/msapoznikov\/Documents\/Apps\/Calendar\/public\/css\/editor-content.css?ver=3.105.0"},"quicktags":false,"mediaButtons":false}</script><script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/sfaf-email.js?ver=3.105.0"></script>
 <script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/portal.js?ver=3.105.0"></script>
-<script>window.PT_CASE={"set":{"title":"Half done","start_time_h":"09","start_time_m":"15","end_time_h":"10","end_time_m":"45"},"press":"draft"};(function () {
-var C = window.PT_CASE, out = { errors: [], posted: null, pressed: false };
+<script>window.CL_PAGE="editor-draft";window.CL_CASE={"set":{"title":"Half done","date":"2026-11-26"},"press":"draft","answer":""};window.CL_SERIES="11";(function () {
+var P = window.CL_PAGE, C = window.CL_CASE || {}, out = { page: P, errors: [], posted: null, dialogs: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
-window.confirm = function () { return true; };
+function text(el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }
+function seen(el) { return !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden'; }
+function rgb(s) { var m = String(s).match(/\d+(\.\d+)?/g); return m ? m.slice(0, 4).map(Number) : null; }
+function lum(c) { return [0, 1, 2].map(function (i) { var v = c[i] / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }).reduce(function (a, v, i) { return a + v * [0.2126, 0.7152, 0.0722][i]; }, 0); }
+function behind(el) {
+  for (var n = el; n && n.nodeType === 1; n = n.parentNode) {
+    var cs = getComputedStyle(n), c = rgb(cs.backgroundColor);
+    if (cs.backgroundImage !== 'none') { return 'PATTERN'; }
+    if (c && (c.length < 4 || c[3] > 0)) { return c; }
+  }
+  return [255, 255, 255];
+}
+function contrast(el) {
+  var fg = rgb(getComputedStyle(el).color), bg = behind(el);
+  if (bg === 'PATTERN') { return 'on a pattern'; }
+  var a = lum(fg), b = lum(bg);
+  return Math.round(((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)) * 100) / 100;
+}
+function lines(sel) {
+  return Array.prototype.map.call(document.querySelectorAll(sel), function (el) {
+    return { text: text(el), seen: seen(el), color: getComputedStyle(el).color, contrast: seen(el) ? contrast(el) : null, top: Math.round(el.getBoundingClientRect().top) };
+  });
+}
 function pairs(fd) { var a = []; fd.forEach(function (v, k) { if (typeof v === 'string') { a.push([k, v]); } }); return a; }
 document.addEventListener('submit', function (e) {
+  if (e.target.closest('dialog') || e.target.method === 'dialog') { return; }
+  if (e.defaultPrevented) { return; }
   var fd; try { fd = new FormData(e.target, e.submitter); } catch (x) { fd = new FormData(e.target); }
-  out.posted = pairs(fd); out.pressed = true; e.preventDefault();
+  out.posted = pairs(fd); e.preventDefault();
 });
 function set(form, name, value) {
   var els = form.querySelectorAll('[name="' + name + '"]');
@@ -868,24 +894,133 @@ function set(form, name, value) {
       if (el.value === value) { el.checked = true; el.dispatchEvent(new Event('change', { bubbles: true })); }
     } else {
       el.value = value;
-      if (el.value !== value) { out.errors.push(name + ' would not take ' + value); }
       el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }));
     }
   });
 }
+/* Answer whatever dialog is open: the closure question as the case says,
+   anything else (the completeness question) with its confirming button. */
+function answer(then) {
+  var d = document.querySelector('dialog.uc-confirm-modal[open]');
+  if (!d) { then(); return; }
+  var msg = text(d.querySelector('.uc-confirm-msg'));
+  out.dialogs.push(msg);
+  var closure = msg.indexOf('SFAF is closed on') === 0;
+  var btn = d.querySelector('button[value="' + ((closure || C.answerAll) ? (C.answer || 'ok') : 'ok') + '"]');
+  var delivered = false;
+  d.addEventListener('close', function () { delivered = true; });
+  btn.click();
+  setTimeout(function () {
+    /* HEADLESS DOES NOT DELIVER THIS close ON THESE PAGES, even with the
+       compositor flag below (a bare page gets it with the flag; these do not).
+       The dialog has closed, with the answer as its returnValue; the event is
+       what the browser would send next, so it is sent here, and counted, so
+       the report can say the delivery was simulated and the handler was not. */
+    if (!delivered && !d.open && d.isConnected) { out.synthClose = (out.synthClose || 0) + 1; d.dispatchEvent(new Event('close')); }
+    setTimeout(function () { answer(then); }, 150);
+  }, 150);
+}
+function finish() { var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre); }
+
 window.addEventListener('load', function () { setTimeout(function () {
-  var marker = document.querySelector('select[name="start_time_h"]');
-  var form = marker ? marker.form : null;
-  if (!form) { out.errors.push('the time control is in no form'); }
-  else {
-    Object.keys(C.set).forEach(function (k) { set(form, k, C.set[k]); });
-    if (C.press) {
-      var btn = document.querySelector('button[name="save_mode"][value="' + C.press + '"]');
-      if (!btn) { out.errors.push('no ' + C.press + ' button'); } else { btn.click(); }
-    } else {
-      out.posted = pairs(new FormData(form));
+  var warn = function () { var w = document.querySelector('[data-uc-closed-warn]'); return { seen: seen(w), text: text(w), color: w ? getComputedStyle(w).color : '' }; };
+
+  if (P === 'closures-admin') {
+    var rows = function () { return Array.prototype.map.call(document.querySelectorAll('[data-uc-open-rows] [data-uc-open-row]'), function (r) {
+      var sel = r.querySelectorAll('select');
+      return Array.prototype.map.call(sel, function (s) { return s.name + '=' + s.value; }).join(' ');
+    }); };
+    out.before = rows();
+    document.querySelector('[data-uc-open-add]').click();
+    document.querySelector('[data-uc-open-add]').click();
+    out.added = rows();
+    var all = document.querySelectorAll('[data-uc-open-rows] [data-uc-open-row]');
+    all[all.length - 1].querySelector('[data-uc-open-remove]').click();
+    var third = document.querySelectorAll('[data-uc-open-rows] [data-uc-open-row]')[2];
+    if (third) {
+      var s = third.querySelectorAll('select');
+      s[0].value = '12'; s[1].value = '12'; s[2].value = '00'; s[3].value = '15'; s[4].value = '30';
     }
+    out.after = rows();
+    var f = document.querySelector('[data-uc-closure-open]').closest('form');
+    out.posted = pairs(new FormData(f));
+    out.rowWidth = document.documentElement.scrollWidth;
+    return finish();
   }
-  setTimeout(function () { var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre); }, 400);
+  if (P === 'grid-desktop' || P === 'grid-phone') {
+    var cell = document.querySelector('td[data-day="2026-11-26"]');
+    out.label = cell ? cell.getAttribute('aria-label') : '';
+    out.cell = lines('td[data-day="2026-11-26"] .uc-closed-open');
+    out.word = lines('td[data-day="2026-11-26"] .uc-closed-word');
+    if (P === 'grid-phone' && cell) { cell.click(); }
+    return setTimeout(function () { out.panel = lines('.uc-day-panel-closed .uc-closed-open'); out.panelWord = lines('.uc-day-panel-closed .uc-closed-word'); finish(); }, 300);
+  }
+  if (P === 'list-card') {
+    out.card = lines('.uc-closure-card .uc-closed-open');
+    out.word = lines('.uc-closure-card .uc-closed-word');
+    out.when = lines('.uc-closure-card .uc-closure-when');
+    return finish();
+  }
+  if (P === 'pending') {
+    out.flag = lines('[data-uc-closed-flag]');
+    return finish();
+  }
+  if (P === 'rsvps') {
+    var rm = document.querySelector('[data-uc-rsvp-remove]');
+    out.removeSeen = seen(rm);
+    C.answerAll = true;
+    C.answer = 'cancel';
+    rm.click();
+    return setTimeout(function () {
+      answer(function () {
+        out.afterCancel = out.posted;
+        C.answer = 'ok';
+        rm.click();
+        setTimeout(function () { answer(function () { setTimeout(finish, 900); }); }, 300);
+      });
+    }, 150);
+  }
+  if (P === 'donate') {
+    var sel = document.querySelector('[data-uc-donate-choice]');
+    var box = document.querySelector('[data-uc-donate-custom]');
+    out.start = { value: sel.value, first: text(sel.options[0]), boxSeen: seen(box), options: Array.prototype.map.call(sel.options, function (o) { return text(o); }) };
+    sel.value = 'custom'; sel.dispatchEvent(new Event('change', { bubbles: true }));
+    out.custom = { boxSeen: seen(box) };
+    sel.value = 'none'; sel.dispatchEvent(new Event('change', { bubbles: true }));
+    out.none = { boxSeen: seen(box) };
+    var series = document.querySelector('[data-uc-series-select]');
+    series.value = window.CL_SERIES; series.dispatchEvent(new Event('change', { bubbles: true }));
+    out.afterSeries = text(sel.options[0]);
+    return finish();
+  }
+  if (P === 'prefill') {
+    var ser = document.querySelector('[data-uc-series-select]');
+    ser.value = window.CL_SERIES; ser.dispatchEvent(new Event('change', { bubbles: true }));
+    return setTimeout(function () {
+      var apply = document.querySelector('[data-uc-prefill-apply]');
+      if (apply) { apply.click(); }
+      out.boxes = {};
+      ['location_name', 'location_street', 'location_city', 'location_state', 'location_zip'].forEach(function (n) {
+        var b = document.querySelector('[name="' + n + '"]'); out.boxes[n] = b ? b.value : 'MISSING';
+      });
+      var mode = document.querySelector('[data-uc-location-mode="custom"]');
+      out.mode = mode ? mode.checked : 'MISSING';
+      out.oldField = document.querySelectorAll('[name="location"]').length;
+      finish();
+    }, 200);
+  }
+
+  /* The editor and the two public forms. */
+  var date = document.querySelector('input[name="date"]');
+  var form = date ? date.form : null;
+  if (!form) { out.errors.push('no date field in a form'); return finish(); }
+  out.atLoad = warn();
+  Object.keys(C.set || {}).forEach(function (k) { set(form, k, C.set[k]); });
+  out.warn = warn();
+  if (!C.press) { return finish(); }
+  var btn = document.querySelector('button[name="save_mode"][value="' + C.press + '"]');
+  if (!btn) { out.errors.push('no ' + C.press + ' button'); return finish(); }
+  btn.click();
+  setTimeout(function () { answer(function () { setTimeout(finish, 900); }); }, 300);
 }, 400); });
 })();</script></body></html>

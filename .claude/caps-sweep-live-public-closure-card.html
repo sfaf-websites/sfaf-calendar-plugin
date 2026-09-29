@@ -1,0 +1,46 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../public/css/calendar.css"></head><body><div class="uc-calendar">                <div class="uc-closure-card uc-closed-hatch" role="note">
+            <span class="uc-closure-panel">
+                <span class="uc-closure-label">
+                    <span class="uc-closed-word">Closed</span>
+                                            <span class="uc-closed-name">Thanksgiving</span>
+                                    </span>
+                <span class="uc-closure-when">Thursday, November 26, 2026 to Friday, November 27, 2026</span>
+                                    <span class="uc-closed-open">Alpha open 10 am–2 pm</span>
+                                                    <span class="uc-closure-note">Call ahead</span>
+                            </span>
+        </div>
+        </div><script>window.CS_PAGE="public-closure-card";(function () {
+var out = { page: window.CS_PAGE, errors: [], caps: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function path(el) {
+  var p = [];
+  for (var n = el; n && n.nodeType === 1 && p.length < 4; n = n.parentNode) {
+    p.unshift(n.tagName.toLowerCase() + (n.className && typeof n.className === 'string' ? '.' + n.className.trim().split(/\s+/).join('.') : ''));
+  }
+  return p.join(' > ');
+}
+window.addEventListener('load', function () { setTimeout(function () {
+  Array.prototype.forEach.call(document.body.querySelectorAll('*'), function (el) {
+    if (el.closest('script, style, template, noscript, #out')) { return; }
+    var own = '';
+    Array.prototype.forEach.call(el.childNodes, function (n) { if (n.nodeType === 3) { own += n.textContent; } });
+    own = own.replace(/\s+/g, ' ').trim();
+    if (!/[a-z]/.test(own)) { return; }
+    var cs = getComputedStyle(el);
+    if (cs.textTransform !== 'uppercase' && cs.fontVariantCaps.indexOf('small-caps') < 0) { return; }
+    /* A heading's own text: the element itself, anything inside a table
+       header, or a plain wrapper inside a heading. Help panels, hints,
+       labels, controls and sentences inside a heading are NOT its text,
+       which is the whole of what this sweep is for. */
+    var heading = /^(H[1-6]|TH)$/.test(el.tagName) || !!el.closest('th')
+      || (!!el.closest('h1, h2, h3, h4, h5, h6') && !el.closest('.uc-help-body, .uc-hint, .uc-muted, .uc-field-label, label, button, p, small, select, a'));
+    var classes = [];
+    for (var n = el; n && n.nodeType === 1; n = n.parentNode) {
+      if (typeof n.className === 'string') { classes = classes.concat(n.className.trim().split(/\s+/)); }
+    }
+    out.caps.push({ text: own.slice(0, 70), heading: heading, path: path(el), classes: classes,
+      shown: el.getClientRects().length > 0 });
+  });
+  var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+}, 300); });
+})();</script></body></html>

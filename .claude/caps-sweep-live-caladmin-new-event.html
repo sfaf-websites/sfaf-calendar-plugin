@@ -102,6 +102,7 @@
                            >
                             <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-clock" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>
                             <span class="uc-nav-label">Pending</span>
+                                                            <span class="uc-nav-badge">1<span class="uc-visually-hidden"> waiting for review</span></span>
                                                     </a>
                                                                     <a href="https://resources.sfaf.org/caladmin/users"
                            class="uc-nav-item"
@@ -187,7 +188,7 @@
                 </p>
             </div>
 
-            <script type="application/json" data-uc-prefill-data>{"11":{"location_mode":"","venue":0,"venue_name":"","location":"","location_name":"","location_parts":{"street":"","city":"","state":"","zip":""},"start_time":"","end_time":"","description":"","image_url":"","image_id":0,"image_preview":"","categories":[],"category_names":[],"organizers":[],"organizer_name":"","faq_set":"","faq_set_name":"","from_event":0},"12":{"location_mode":"","venue":0,"venue_name":"","location":"","location_name":"","location_parts":{"street":"","city":"","state":"","zip":""},"start_time":"","end_time":"","description":"","image_url":"","image_id":0,"image_preview":"","categories":[],"category_names":[],"organizers":[],"organizer_name":"","faq_set":"","faq_set_name":"","from_event":0}}</script>
+            <script type="application/json" data-uc-prefill-data>{"11":{"location_mode":"custom","venue":0,"venue_name":"","location":"1035 Market St","location_name":"","location_parts":{"street":"1035 Market St","city":"","state":"","zip":""},"start_time":"10:00","end_time":"11:30","description":"\u003Cp\u003ECoffee and conversation.\u003C\/p\u003E","image_url":"","image_id":0,"image_preview":"","categories":[11],"category_names":["Alpha"],"organizers":[],"organizer_name":"","faq_set":"","faq_set_name":"","from_event":501},"12":{"location_mode":"custom","venue":0,"venue_name":"","location":"1035 Market St","location_name":"","location_parts":{"street":"1035 Market St","city":"","state":"","zip":""},"start_time":"10:00","end_time":"11:30","description":"\u003Cp\u003EWords.\u003C\/p\u003E","image_url":"","image_id":0,"image_preview":"","categories":[11],"category_names":["Alpha"],"organizers":[],"organizer_name":"","faq_set":"","faq_set_name":"","from_event":501}}</script>
                     </section>
         
                                 <section class="uc-bento-card">
@@ -356,7 +357,7 @@
                                         <label class="uc-field">
                         <span class="uc-field-label">Date<span class="uc-req" aria-hidden="true">*</span> </span>
                         <input type="date" name="date" value="" />
-                                                                    </label>
+                                                <span class="uc-closed-warn" data-uc-closed-warn role="status" hidden></span><script type="application/json" data-uc-closures>[{"start":"2026-11-26","end":"2026-11-27","name":"Thanksgiving"}]</script>                    </label>
                     <div class="uc-field-row">
                         <label class="uc-field">
                             <span class="uc-field-label">Start<span class="uc-req" aria-hidden="true">*</span> </span>
@@ -851,41 +852,38 @@
         </div>
         <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"file:\/\/\/C:\/Users\/msapoznikov\/Documents\/Apps\/Calendar\/public\/css\/editor-content.css?ver=3.105.0"},"quicktags":false,"mediaButtons":false}</script><script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/sfaf-email.js?ver=3.105.0"></script>
 <script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/portal.js?ver=3.105.0"></script>
-<script>window.PT_CASE={"set":{"title":"Half done","start_time_h":"09","start_time_m":"15","end_time_h":"10","end_time_m":"45"},"press":"draft"};(function () {
-var C = window.PT_CASE, out = { errors: [], posted: null, pressed: false };
+<script>window.CS_PAGE="caladmin-new-event";(function () {
+var out = { page: window.CS_PAGE, errors: [], caps: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
-window.confirm = function () { return true; };
-function pairs(fd) { var a = []; fd.forEach(function (v, k) { if (typeof v === 'string') { a.push([k, v]); } }); return a; }
-document.addEventListener('submit', function (e) {
-  var fd; try { fd = new FormData(e.target, e.submitter); } catch (x) { fd = new FormData(e.target); }
-  out.posted = pairs(fd); out.pressed = true; e.preventDefault();
-});
-function set(form, name, value) {
-  var els = form.querySelectorAll('[name="' + name + '"]');
-  if (!els.length) { out.errors.push('no control named ' + name); return; }
-  Array.prototype.forEach.call(els, function (el) {
-    if (el.type === 'checkbox' || el.type === 'radio') {
-      if (el.value === value) { el.checked = true; el.dispatchEvent(new Event('change', { bubbles: true })); }
-    } else {
-      el.value = value;
-      if (el.value !== value) { out.errors.push(name + ' would not take ' + value); }
-      el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-  });
+function path(el) {
+  var p = [];
+  for (var n = el; n && n.nodeType === 1 && p.length < 4; n = n.parentNode) {
+    p.unshift(n.tagName.toLowerCase() + (n.className && typeof n.className === 'string' ? '.' + n.className.trim().split(/\s+/).join('.') : ''));
+  }
+  return p.join(' > ');
 }
 window.addEventListener('load', function () { setTimeout(function () {
-  var marker = document.querySelector('select[name="start_time_h"]');
-  var form = marker ? marker.form : null;
-  if (!form) { out.errors.push('the time control is in no form'); }
-  else {
-    Object.keys(C.set).forEach(function (k) { set(form, k, C.set[k]); });
-    if (C.press) {
-      var btn = document.querySelector('button[name="save_mode"][value="' + C.press + '"]');
-      if (!btn) { out.errors.push('no ' + C.press + ' button'); } else { btn.click(); }
-    } else {
-      out.posted = pairs(new FormData(form));
+  Array.prototype.forEach.call(document.body.querySelectorAll('*'), function (el) {
+    if (el.closest('script, style, template, noscript, #out')) { return; }
+    var own = '';
+    Array.prototype.forEach.call(el.childNodes, function (n) { if (n.nodeType === 3) { own += n.textContent; } });
+    own = own.replace(/\s+/g, ' ').trim();
+    if (!/[a-z]/.test(own)) { return; }
+    var cs = getComputedStyle(el);
+    if (cs.textTransform !== 'uppercase' && cs.fontVariantCaps.indexOf('small-caps') < 0) { return; }
+    /* A heading's own text: the element itself, anything inside a table
+       header, or a plain wrapper inside a heading. Help panels, hints,
+       labels, controls and sentences inside a heading are NOT its text,
+       which is the whole of what this sweep is for. */
+    var heading = /^(H[1-6]|TH)$/.test(el.tagName) || !!el.closest('th')
+      || (!!el.closest('h1, h2, h3, h4, h5, h6') && !el.closest('.uc-help-body, .uc-hint, .uc-muted, .uc-field-label, label, button, p, small, select, a'));
+    var classes = [];
+    for (var n = el; n && n.nodeType === 1; n = n.parentNode) {
+      if (typeof n.className === 'string') { classes = classes.concat(n.className.trim().split(/\s+/)); }
     }
-  }
-  setTimeout(function () { var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre); }, 400);
-}, 400); });
+    out.caps.push({ text: own.slice(0, 70), heading: heading, path: path(el), classes: classes,
+      shown: el.getClientRects().length > 0 });
+  });
+  var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+}, 300); });
 })();</script></body></html>
