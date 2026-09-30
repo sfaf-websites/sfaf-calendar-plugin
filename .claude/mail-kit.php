@@ -324,7 +324,8 @@ $mk_port = file_get_contents( $mk_root . '/includes/class-sfaf-portal.php' );
 
 foreach ( array( 'function sfaf_local_timestamp(', 'function sfaf_ap_date(', 'function sfaf_ap_time(', 'function sfaf_ap_time_range(',
                  'function sfaf_ap_time_zone(', 'function sfaf_ap_zoned(', 'function sfaf_location_part_keys(', 'function sfaf_event_location_name(',
-                 'function sfaf_event_location(', 'function sfaf_event_takes_rsvps(', 'function sfaf_flatten_html(' ) as $mk_n ) {
+                 'function sfaf_event_location(', 'function sfaf_event_takes_rsvps(', 'function sfaf_flatten_html(',
+                 'function sfaf_email_required_locked(', 'function sfaf_email_required(' ) as $mk_n ) {
     eval( mk_lift( $mk_tpl, $mk_n ) );
 }
 foreach ( array( 'function &sfaf_rsvp_count_store(', 'function &sfaf_rsvp_format_count_store(', 'function sfaf_clear_rsvp_count_cache(',

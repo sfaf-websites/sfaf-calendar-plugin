@@ -7,6 +7,7 @@
     var modal = null;
     var currentEventId = null;
     var currentFormats = '';   // the opened button's data-uc-formats (3.102.0)
+    var currentEmailRequired = false; // the opened button's data-uc-email-required (3.106.0)
 
     /**
      * Run one initialiser without letting it take the others down.
@@ -1642,6 +1643,7 @@
             // radios too and no previous event's choice survives into this one.
             renderFormatChoice(this);
             currentFormats = ($(this).attr('data-uc-formats') || '');
+            currentEmailRequired = ($(this).attr('data-uc-email-required') === '1');
 
             // Reset form. The opt-in is cleared with everything else: it must
             // never carry a previous visitor's tick into a fresh form.
@@ -1722,6 +1724,12 @@
             box.prop('checked', false);
             $('#uc-rsvp-noemail-wrap').attr('hidden', 'hidden');
             $('#uc-rsvp-online-note').removeAttr('hidden');
+        } else if (currentEmailRequired) {
+            /* EMAIL REQUIRED TO REGISTER (3.106.0): the box is not offered at
+               all, and SFAF_RSVP::submit() refuses a registration without one. */
+            box.prop('checked', false);
+            $('#uc-rsvp-noemail-wrap').attr('hidden', 'hidden');
+            $('#uc-rsvp-online-note').attr('hidden', 'hidden');
         } else {
             $('#uc-rsvp-noemail-wrap').removeAttr('hidden');
             $('#uc-rsvp-online-note').attr('hidden', 'hidden');

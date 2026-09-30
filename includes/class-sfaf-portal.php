@@ -3183,7 +3183,7 @@ class SFAF_Portal {
              * link and the delivery ticks along with it, the same way
              * SFAF_Online::set() clears them on the source.
              */
-            '_uc_rsvp_enabled', '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_donate_choice', '_uc_volunteer_url',
+            '_uc_rsvp_enabled', '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_donate_choice', '_uc_volunteer_url', '_uc_email_required',
             '_uc_pardot_campaigns', '_uc_organizer_email', '_uc_notify_organizer',
             '_uc_email_subject', '_uc_email_body', '_uc_email_replyto',
             '_uc_show_rsvp', '_uc_show_donate', '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
@@ -3395,7 +3395,7 @@ class SFAF_Portal {
         $copy_keys = array(
             '_uc_start_time', '_uc_end_time', '_uc_location',
             '_uc_capacity', '_uc_rsvp_enabled',
-            '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_donate_choice', '_uc_volunteer_url', sfaf_fundraising_progress_meta_key(),
+            '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_donate_choice', '_uc_volunteer_url', '_uc_email_required', sfaf_fundraising_progress_meta_key(),
             '_uc_pardot_campaigns',
             '_uc_organizer_email', '_uc_notify_organizer',
             '_uc_email_subject', '_uc_email_body', '_uc_email_replyto',
@@ -14223,7 +14223,7 @@ class SFAF_Portal {
              * No online capacity: an imported event cannot be hybrid, because
              * SFAF_Sources::import_event() refuses all four of the keys.
              */
-            $draw_rsvp( array( 'rsvp_enabled', 'capacity' ) );
+            $draw_rsvp( array( 'rsvp_enabled', 'email_required', 'capacity' ) );
             return $rsvp_placed;
         }
 
@@ -14286,7 +14286,7 @@ class SFAF_Portal {
              * First in the card for the same reason the online tick is first,
              * which is that it decides whether the controls below it apply.
              */
-            $draw_rsvp( array( 'rsvp_enabled' ) );
+            $draw_rsvp( array( 'rsvp_enabled', 'email_required' ) );
             ?>
             <input type="hidden" name="uc_online_present" value="1" />
             <input type="hidden" name="uc_online" value="0" />
@@ -14602,7 +14602,7 @@ class SFAF_Portal {
          * card asks for by name is the card's business, and the catch-all
          * further down draws anything it did not claim.
          */
-        $fields = array( 'rsvp_enabled', 'capacity', 'capacity_online' );
+        $fields = array( 'rsvp_enabled', 'email_required', 'capacity', 'capacity_online' );
         if ( $ctx['event_id'] && ! $ctx['imported'] ) {
             $fields[] = 'notify';
             $fields[] = 'replyto';
@@ -14714,6 +14714,31 @@ class SFAF_Portal {
                 <span class="uc-hint uc-hint-spec" data-uc-rsvp-hybrid-note<?php echo $rsvp_forced ? '' : ' hidden'; ?>>
                     A hybrid event has to take RSVPs: choosing in person or online is part of registering.
                 </span>
+                <?php
+                break;
+
+            /*
+             * EMAIL REQUIRED TO REGISTER (3.106.0). Off by default. On an online
+             * event it is on and locked, because the meeting link and a
+             * waitlist offer go by email; the save writes it that way whatever
+             * the box says, and the script locks it the moment Online is
+             * ticked. A hybrid event follows it for in person; its form always
+             * asks for an email from somebody joining online.
+             */
+            case 'email_required':
+                if ( $event_id && SFAF_Sources::takes_rsvps_at_source( $event_id ) ) {
+                    break;
+                }
+                $req_locked = ( $event_id && sfaf_email_required_locked( $event_id ) );
+                ?>
+                <input type="hidden" name="uc_email_required_present" value="1" />
+                <label class="uc-check<?php echo $req_locked ? ' uc-check-locked' : ''; ?>" data-uc-email-required-check>
+                    <input type="checkbox" name="email_required" value="1"
+                           <?php checked( $req_locked || '1' === (string) $g( '_uc_email_required' ) ); ?>
+                           <?php disabled( $req_locked ); ?> />
+                    Email required to register
+                </label>
+                <span class="uc-hint">Turn this on to remove the option to register without an email address.</span>
                 <?php
                 break;
 
@@ -14998,6 +15023,11 @@ class SFAF_Portal {
          * A reply-to nobody can receive is worse than no reply-to, because the
          * fallback would at least have reached somebody.
          */
+        // Email required (3.106.0): stored as ticked, and on for an online event.
+        if ( isset( $_POST['uc_email_required_present'] ) ) {
+            $want = isset( $_POST['email_required'] ) || sfaf_email_required_locked( $event_id );
+            update_post_meta( $event_id, '_uc_email_required', $want ? '1' : '0' );
+        }
         if ( isset( $_POST['event_replyto'] ) ) {
             $raw = trim( (string) wp_unslash( $_POST['event_replyto'] ) );
             if ( '' === $raw ) {
@@ -16721,7 +16751,7 @@ class SFAF_Portal {
                     <div class="uc-notify-section">
                         <h4 class="uc-notify-subhead">Registrations</h4>
                         <p class="uc-hint">Whether the form is on the event page, and how many places there are.</p>
-                        <?php $rsvp_placed = $this->render_rsvp_settings( $rsvp_ctx, array( 'rsvp_enabled', 'capacity' ) ); ?>
+                        <?php $rsvp_placed = $this->render_rsvp_settings( $rsvp_ctx, array( 'rsvp_enabled', 'email_required', 'capacity' ) ); ?>
                     </div>
                     <?php $this->render_rsvp_settings( $rsvp_ctx, null, $rsvp_placed ); ?>
                     <div class="uc-form-actions">

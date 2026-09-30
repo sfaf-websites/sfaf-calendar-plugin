@@ -1264,6 +1264,8 @@ function sfaf_rsvp_block( $post_id ) {
                  * what the page shows and what submit() will accept.
                  */
                 'data-uc-formats' => implode( ',', sfaf_event_formats( $post_id ) ),
+                // The form hides "register without an email" when this is 1 (3.106.0).
+                'data-uc-email-required' => '1' === (string) get_post_meta( $post_id, '_uc_email_required', true ) ? '1' : '0',
                 'data-uc-full'    => implode( ',', array_values( array_filter(
                     sfaf_event_formats( $post_id ),
                     function ( $f ) use ( $post_id ) {
@@ -1298,6 +1300,41 @@ function sfaf_rsvp_block( $post_id ) {
  * @param array  $data     RSVP data (name, email...) plus, for the morning-of
  *                         reminder, a per-recipient cancel_url.
  */
+/**
+ * Whether the email tick is on and cannot be turned off: an online event
+ * (3.106.0). The meeting link and a waitlist offer go by email, so an online
+ * registration without an address could be told nothing it needs.
+ *
+ * @param int $event_id
+ * @return bool
+ */
+function sfaf_email_required_locked( $event_id ) {
+    return SFAF_Online::MODE_ONLINE === SFAF_Online::mode( (int) $event_id );
+}
+
+/**
+ * Whether a registration for this event, in this format, needs an email
+ * (3.106.0). The one rule the form and SFAF_RSVP::submit() both ask.
+ *
+ *   an online event                 always
+ *   a hybrid event, joining online  always
+ *   anything else                   when Email required to register is ticked
+ *
+ * @param int    $event_id
+ * @param string $format   The format picked on a hybrid event, else ''.
+ * @return bool
+ */
+function sfaf_email_required( $event_id, $format = '' ) {
+    $event_id = (int) $event_id;
+    if ( sfaf_email_required_locked( $event_id ) ) {
+        return true;
+    }
+    if ( SFAF_Online::is_hybrid( $event_id ) && SFAF_Online::MODE_ONLINE === (string) $format ) {
+        return true;
+    }
+    return '1' === (string) get_post_meta( $event_id, '_uc_email_required', true );
+}
+
 /**
  * The event's volunteer page as a button, or nothing (3.106.0).
  *

@@ -1798,6 +1798,25 @@ function ucDismissOnBackdrop(dialog) {
         /* Two causes, two sentences, and only one of them may be on screen. */
         if (plain && isHybrid) { plain.hidden = true; }
     }
+    /* EMAIL REQUIRED IS ON AND LOCKED FOR AN ONLINE EVENT (3.106.0), the
+     * arrangement applyHybridRsvpLock() uses: the value it arrived with is kept
+     * and given back when Online is unticked. The save writes it on either way. */
+    function applyEmailRequiredLock(isOnline) {
+        var label = document.querySelector('[data-uc-email-required-check]');
+        var box = label ? label.querySelector('input') : null;
+        if (!box) { return; }
+        if (isOnline) {
+            if (null === box.getAttribute('data-uc-was-checked')) {
+                box.setAttribute('data-uc-was-checked', box.checked ? '1' : '0');
+            }
+            box.checked = true;
+        } else if (null !== box.getAttribute('data-uc-was-checked')) {
+            box.checked = ('1' === box.getAttribute('data-uc-was-checked'));
+            box.removeAttribute('data-uc-was-checked');
+        }
+        box.disabled = isOnline;
+        label.classList.toggle('uc-check-locked', isOnline);
+    }
     function initLocationPicker() {
         document.querySelectorAll('[data-uc-location]').forEach(function (root) {
             var modes = Array.prototype.slice.call(root.querySelectorAll('[data-uc-location-mode]'));
@@ -1893,6 +1912,7 @@ function ucDismissOnBackdrop(dialog) {
                 });
 
                 applyHybridRsvpLock(isHybrid);
+                applyEmailRequiredLock(isOnline && !isHybrid);
             }
 
             modes.forEach(function (m) { m.addEventListener('change', apply); });

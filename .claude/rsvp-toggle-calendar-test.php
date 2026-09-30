@@ -175,9 +175,9 @@ if ( preg_match( '/if \( isset\( \$_POST\[\'uc_rsvp_toggle_present\'\] \) \) \{(
  * event leaves the location field early and the catch-all that would otherwise
  * have caught it is inside the Notifications card, which native events only, so
  * an imported event that stopped drawing them here would simply lose them. */
-check( (bool) preg_match( "/\\\$draw_rsvp\( array\( 'rsvp_enabled' \) \);/", $portal ),
+check( (bool) preg_match( "/\\\$draw_rsvp\( array\( 'rsvp_enabled', 'email_required' \) \);/", $portal ),
     'the Location card no longer draws Accept RSVPs' );
-check( (bool) preg_match( "/\\\$draw_rsvp\( array\( 'rsvp_enabled', 'capacity' \) \);\s*\n\s*return \\\$rsvp_placed;/", $portal ),
+check( (bool) preg_match( "/\\\$draw_rsvp\( array\( 'rsvp_enabled', 'email_required', 'capacity' \) \);\s*\n\s*return \\\$rsvp_placed;/", $portal ),
     'an imported event leaves the location field without its RSVP controls, and nothing downstream draws them for it' );
 check( (bool) preg_match( "/\\\$draw_rsvp\( array\( 'capacity' \) \);/", $portal ),
     'the Location card no longer draws the in-person capacity' );

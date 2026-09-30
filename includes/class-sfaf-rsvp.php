@@ -328,6 +328,11 @@ class SFAF_RSVP {
          * the refusal, because a form is not a refusal.
          */
         $attending = $hybrid ? $format : ( isset( $formats[0] ) ? (string) $formats[0] : '' );
+        // Email required to register (3.106.0). The online case keeps its own
+        // sentence below.
+        if ( $data['no_email'] && SFAF_Online::MODE_ONLINE !== $attending && sfaf_email_required( $data['event_id'], $format ) ) {
+            return array( 'success' => false, 'message' => 'This event needs an email address to register.' );
+        }
         if ( $data['no_email'] && SFAF_Online::MODE_ONLINE === $attending ) {
             return array( 'success' => false, 'message' => 'Joining online needs an email address for the meeting link.' );
         }
