@@ -4720,16 +4720,16 @@ body.uc-modal-open { overflow: hidden; }
    The counts sit under the page head, as body text. Each waitlist is its own
    card under the registrants. Its pills keep their case: .uc-pill capitalises,
    which is right for one word and turns "Needs a call" into three. Waiting and
-   passed are the pill's own grey; an open offer is teal, #0E7680 on the band
-   #E8F9FA at 4.94:1; a call to make is amber, #92400E on #FEF3C7 at 6.37:1,
+   passed are the pill's own grey; an open offer is teal, --uc-accent-text on the band
+   --uc-band at 4.94:1; a call to make is amber, #92400E on #FFFBEB at 7.53:1,
    caladmin's system colour for a step in the job.
    ------------------------------------------------------------------------- */
 .uc-rsvp-counts { margin: 0 0 16px; font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--sfaf-darkgray); }
 .uc-rsvp-counts strong { font-weight: 600; }
 .uc-waitlist { margin-top: 20px; }
 .uc-waitlist .uc-pill { text-transform: none; }
-.uc-waitlist .uc-pill-offered { background: #E8F9FA; color: #0E7680; }
-.uc-waitlist .uc-pill-offered_manual { background: #FEF3C7; color: #92400E; }
+.uc-waitlist .uc-pill-offered { background: var(--uc-band); color: var(--uc-accent-text); }
+.uc-waitlist .uc-pill-offered_manual { background: #FFFBEB; color: #92400E; }
 .uc-waitlist .uc-rsvp-actions form { display: inline-block; margin-left: 8px; }
 
 /* ---------------------------------------------------------------------------
@@ -4737,8 +4737,8 @@ body.uc-modal-open { overflow: hidden; }
 
    The list of messages down the left, the chosen one on the right as it will
    arrive. At phone width the two stack, list first. Everything is tokens: the
-   control edge --p-border-strong, the teal band and its ink #0E7680 (4.94:1)
-   for a chip and for the chosen message, and the red already in use for a
+   control edge --p-border-strong, the teal band and its ink --uc-accent-text (4.94:1)
+   for a chip and for the chosen message, and --p-danger-text for a
    chip that the next Backspace will remove.
    ------------------------------------------------------------------------- */
 .uc-tpl-top { display: flex; gap: 16px; margin: 0 0 16px; }
@@ -4750,25 +4750,25 @@ body.uc-modal-open { overflow: hidden; }
 .uc-tpl-pick { display: block; width: 100%; min-height: 36px; padding: 8px 10px; border: 0; border-radius: 6px;
     background: transparent; color: var(--sfaf-darkgray); font: inherit; font-size: 14px; font-weight: 400; text-align: left; cursor: pointer; }
 .uc-tpl-pick:hover { background: var(--uc-band); }
-.uc-tpl-pick[aria-pressed="true"] { background: var(--uc-band); color: #0E7680; font-weight: 600; }
-.uc-tpl-pick:focus-visible { outline: 2px solid #0E7680; outline-offset: 1px; }
+.uc-tpl-pick[aria-pressed="true"] { background: var(--uc-band); color: var(--uc-accent-text); font-weight: 600; }
+.uc-tpl-pick:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 1px; }
 .uc-tpl-main { min-width: 0; }
 .uc-tpl-subject { margin: 0 0 10px; font-size: 14px; font-weight: 400; line-height: 1.5; }
-.uc-tpl-preview { display: block; width: 100%; height: 640px; border: 1px solid var(--p-border); border-radius: 8px; background: #fff; }
+.uc-tpl-preview { display: block; width: 100%; height: 640px; border: 1px solid var(--p-border); border-radius: 8px; background: var(--p-control-face); }
 .uc-tpl-state { margin: 8px 0 0; font-size: 12px; font-weight: 400; line-height: 1.5; color: var(--p-muted); }
 .uc-tpl-form { margin-top: 20px; display: flex; flex-direction: column; gap: 14px; }
 .uc-tpl-form[hidden] { display: none; }
 .uc-tpl-tokens { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .uc-tpl-token { min-height: 32px; padding: 4px 10px; border: 1px solid var(--p-border-strong); border-radius: 99px;
-    background: #fff; color: var(--sfaf-darkgray); font: inherit; font-size: 12px; font-weight: 400; cursor: pointer; }
+    background: var(--p-control-face); color: var(--sfaf-darkgray); font: inherit; font-size: 12px; font-weight: 400; cursor: pointer; }
 .uc-tpl-token[hidden] { display: none; }
 .uc-tpl-editor { min-height: 140px; padding: 10px 12px; border: 1px solid var(--p-border-strong); border-radius: 6px;
-    background: #fff; font-size: 14px; font-weight: 400; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+    background: var(--p-control-face); font-size: 14px; font-weight: 400; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .uc-tpl-editor-line { min-height: 0; white-space: nowrap; overflow-x: auto; }
-.uc-tpl-editor:focus-visible { outline: 2px solid #0E7680; outline-offset: 1px; }
+.uc-tpl-editor:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 1px; }
 .uc-tpl-chip { display: inline-block; margin: 0 1px; padding: 0 6px; border: 1px solid transparent; border-radius: 4px;
-    background: var(--uc-band); color: #0E7680; font-size: 13px; font-weight: 600; line-height: 1.5; white-space: nowrap; user-select: all; }
-.uc-tpl-chip.is-armed { border-color: #c0392b; }
+    background: var(--uc-band); color: var(--uc-accent-text); font-size: 13px; font-weight: 600; line-height: 1.5; white-space: nowrap; user-select: all; }
+.uc-tpl-chip.is-armed { border-color: var(--p-danger-text); }
 @media (max-width: 760px) {
     .uc-tpl-cols { grid-template-columns: minmax(0, 1fr); }
     .uc-tpl-preview { height: 520px; }

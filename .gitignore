@@ -85,3 +85,4 @@ node_modules/
 # is not part of the plugin: the mail banner is SFAF_Email::banner_url(), which
 # resolves a URL from settings, and nothing in the tree reads this file.
 SFAF-generic-header-skyline-1200x212.png
+.claude/release-3106-live-*.html
