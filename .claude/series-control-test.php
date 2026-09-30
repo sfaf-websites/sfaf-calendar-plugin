@@ -523,6 +523,10 @@ class SFAF_Series {
     /** post_id => term_id, for the events in the world below. */
     public static $of_event = array();
 
+    /** The series' default language (3.106.0). Every series here is English. */
+    const META_LANGUAGE = '_sfaf_series_language';
+    public static function language( $term_id ) { return 'en'; }
+
     /** The editor's note under a field copied from the series (3.103.0). */
     public static function filled_from( $id, $field ) { return ''; }
 
@@ -612,6 +616,7 @@ require_once $root . "/includes/class-sfaf-video.php";
 require_once $root . '/includes/class-sfaf-online.php';
 require_once $root . '/includes/class-sfaf-cancellation.php';
 require_once $root . '/includes/class-sfaf-notifications.php';
+require_once $root . '/includes/class-sfaf-messages.php';
 require_once $root . '/includes/class-sfaf-request.php';
 require_once $root . '/includes/class-sfaf-uploads.php';
 /* Pictures inside a description (3.96.0): the editor draws the chooser, so
