@@ -675,6 +675,7 @@ class SFAF_Portal {
                 wp_safe_redirect( SFAF_Cron::admin_url(), 301 );
                 exit;
             case 'users':      $this->render_users( $user ); break;
+            case 'email-templates': $this->render_email_templates( $user ); break;
             case 'media':      $this->render_media( $user ); break;
             case 'venues':     $this->render_venues( $user ); break;
             case 'organizers': $this->render_organizers( $user ); break;
@@ -1955,6 +1956,38 @@ class SFAF_Portal {
              * CONFIRM SOMEBODY OFF THE WAITLIST (3.106.0). The event gate, of the
              * event the row belongs to, read from the row.
              */
+            /*
+             * THE EMAIL TEMPLATES (3.106.0). Administrators only: the text is
+             * every registrant's, on every event.
+             */
+            case 'save_email_template':
+                if ( ! $this->is_admin_role( $user ) ) {
+                    wp_die( 'Denied' );
+                }
+                $t_key  = sanitize_key( wp_unslash( $_POST['tpl_key'] ?? '' ) );
+                $t_var  = sanitize_key( wp_unslash( $_POST['tpl_variant'] ?? '' ) );
+                $t_lang = SFAF_Messages::lang( sanitize_key( wp_unslash( $_POST['tpl_lang'] ?? 'en' ) ) );
+                $back   = array( 'key' => $t_key, 'variant' => $t_var, 'lang' => $t_lang );
+                // One route and one nonce; the button pressed says which (tpl_do).
+                if ( 'reset' === sanitize_key( wp_unslash( $_POST['tpl_do'] ?? '' ) ) ) {
+                    SFAF_Messages::reset( $t_key, $t_var, $t_lang );
+                    $back['msg'] = 'tpl_reset';
+                } else {
+                    $done = SFAF_Messages::save( $t_key, $t_var, $t_lang, array(
+                        'subject' => (string) wp_unslash( $_POST['tpl_subject'] ?? '' ),
+                        'intro'   => (string) wp_unslash( $_POST['tpl_intro'] ?? '' ),
+                        'closing' => (string) wp_unslash( $_POST['tpl_closing'] ?? '' ),
+                    ) );
+                    if ( is_wp_error( $done ) ) {
+                        set_transient( 'sfaf_tpl_error_' . $user->ID, $done->get_error_message(), 60 );
+                        $back['msg'] = 'tpl_failed';
+                    } else {
+                        $back['msg'] = 'tpl_saved';
+                    }
+                }
+                $this->redirect( 'email-templates', $back );
+                break;
+
             case 'confirm_waitlist':
                 $rsvp_id = isset( $_POST['rsvp_id'] ) ? (int) $_POST['rsvp_id'] : 0;
                 $row     = $rsvp_id ? SFAF_RSVP::row( $rsvp_id ) : null;
@@ -2831,6 +2864,23 @@ class SFAF_Portal {
             }
         }
 
+        /*
+         * THE LANGUAGE ITS REGISTRANTS ARE WRITTEN TO IN (3.106.0). After the
+         * series is saved, so what it inherits is the series it is in now. An
+         * event that has never had one of its own and is left on what it
+         * inherits stores nothing, so it goes on following its series; any
+         * other choice is stored as its own.
+         */
+        if ( isset( $_POST['event_language'] ) ) {
+            $lang    = ( 'es' === sanitize_key( wp_unslash( $_POST['event_language'] ) ) ) ? 'es' : 'en';
+            $own     = (string) get_post_meta( $event_id, '_uc_language', true );
+            $sid     = SFAF_Series::id_for_event( $event_id );
+            $inherit = $sid ? SFAF_Series::language( $sid ) : 'en';
+            if ( '' !== $own || $lang !== $inherit ) {
+                update_post_meta( $event_id, '_uc_language', $lang );
+            }
+        }
+
         // Team access. Its own gate, checked again here. See the method.
         $this->save_access_from_post( $user, $event_id );
 
@@ -3202,7 +3252,7 @@ class SFAF_Portal {
              * link and the delivery ticks along with it, the same way
              * SFAF_Online::set() clears them on the source.
              */
-            '_uc_rsvp_enabled', '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_donate_choice', '_uc_volunteer_url', '_uc_email_required',
+            '_uc_rsvp_enabled', '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_donate_choice', '_uc_volunteer_url', '_uc_email_required', '_uc_language',
             '_uc_pardot_campaigns', '_uc_organizer_email', '_uc_notify_organizer',
             '_uc_email_subject', '_uc_email_body', '_uc_email_replyto',
             '_uc_show_rsvp', '_uc_show_donate', '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
@@ -3414,7 +3464,7 @@ class SFAF_Portal {
         $copy_keys = array(
             '_uc_start_time', '_uc_end_time', '_uc_location',
             '_uc_capacity', '_uc_rsvp_enabled',
-            '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_donate_choice', '_uc_volunteer_url', '_uc_email_required', sfaf_fundraising_progress_meta_key(),
+            '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_donate_choice', '_uc_volunteer_url', '_uc_email_required', '_uc_language', sfaf_fundraising_progress_meta_key(),
             '_uc_pardot_campaigns',
             '_uc_organizer_email', '_uc_notify_organizer',
             '_uc_email_subject', '_uc_email_body', '_uc_email_replyto',
@@ -3839,6 +3889,8 @@ class SFAF_Portal {
             // WordPress admin now.
             $nav['pending'] = array( 'Pending', 'pending', 'clock' );
             $nav['users']   = array( 'Users & Teams', 'users', 'users' );
+            // The words of every registrant message (3.106.0). Admin only.
+            $nav['email-templates'] = array( 'Email Templates', 'email-templates', 'mail' );
         }
         // Everybody's own, last (3.102.0).
         $nav['preferences'] = array( 'Preferences', 'preferences', 'bell' );
@@ -4094,6 +4146,8 @@ class SFAF_Portal {
             'rsvp_removed'        => 'Registration removed. The place is free.',
             'rsvp_not_removed'    => 'Nothing to remove: that registration was already cancelled.',
             'waitlist_confirmed'  => 'Confirmed. They are registered now.',
+            'tpl_saved'           => 'Saved. This is the text that goes out from now on.',
+            'tpl_reset'           => 'Back to the shipped text.',
             'waitlist_not_confirmed' => 'Nothing to confirm: they are no longer on the waitlist.',
 
             // The schedule.
@@ -6994,6 +7048,31 @@ class SFAF_Portal {
                         </option>
                     <?php endforeach; ?>
                 </select>
+            </label>
+
+            <?php
+            /*
+             * THE EVENT'S LANGUAGE (3.106.0): what every message to its
+             * registrants is written in. It shows what the event uses now, its
+             * own or its series', and follows the series select until somebody
+             * picks one here. The request forms stay English.
+             */
+            $lang_now   = $event_id ? sfaf_event_language( $event_id ) : ( $cur_series ? SFAF_Series::language( $cur_series ) : 'en' );
+            $lang_by_sr = array();
+            foreach ( $all_series as $term ) {
+                $lang_by_sr[ (string) $term->term_id ] = SFAF_Series::language( $term->term_id );
+            }
+            ?>
+            <label class="uc-field">
+                <span class="uc-field-label">Language</span>
+                <select name="event_language" data-uc-event-language
+                        data-uc-series-langs="<?php echo esc_attr( wp_json_encode( $lang_by_sr ) ); ?>"
+                        <?php echo ( $event_id && '' !== (string) get_post_meta( $event_id, '_uc_language', true ) ) ? 'data-uc-own="1"' : ''; ?>>
+                    <?php foreach ( SFAF_Messages::languages() as $code => $name ) : ?>
+                        <option value="<?php echo esc_attr( $code ); ?>" <?php selected( $lang_now, $code ); ?>><?php echo esc_html( $name ); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <span class="uc-hint">Emails to people who register go out in this language.</span>
             </label>
 
             <?php if ( ! $offer ) : ?>
@@ -19211,6 +19290,153 @@ class SFAF_Portal {
                 <button type="submit" class="uc-btn uc-btn-primary">Save preferences</button>
             </div>
         </form>
+        <?php
+        $this->chrome_close();
+    }
+
+    /**
+     * EMAIL TEMPLATES (3.106.0).
+     *
+     * Every message a registrant receives, with its variants indented under
+     * it, down the left; a language at the top; the chosen one on the right as
+     * it will arrive, filled with the sample event. Every preview is rendered
+     * here, by the builder that sends, and handed to the script, so switching
+     * message or language draws the next one without a page load.
+     *
+     * Edit opens the text under the preview: the subject, the words above the
+     * details and the line under them. Tokens are chips the script protects;
+     * with no script they are the plain {tokens} in a text box, which the save
+     * checks all the same.
+     */
+    private function render_email_templates( $user ) {
+        if ( ! $this->is_admin_role( $user ) ) {
+            $this->render_dashboard( $user );
+            return;
+        }
+        $this->chrome_open( $user, 'email-templates' );
+
+        $catalog = SFAF_Messages::catalog();
+        $tokens  = SFAF_Messages::tokens();
+        $data    = array();
+        foreach ( $catalog as $key => $m ) {
+            foreach ( array_keys( $m['variants'] ) as $variant ) {
+                foreach ( array_keys( SFAF_Messages::languages() ) as $lang ) {
+                    $r = SFAF_Messages::render_sample( $key, $variant, $lang );
+                    $data[ $key . '|' . $variant . '|' . $lang ] = array(
+                        'subject'    => (string) $r['subject'],
+                        'html'       => (string) $r['html'],
+                        'fields'     => SFAF_Messages::get( $key, $variant, $lang ),
+                        'overridden' => null !== SFAF_Messages::override( $key, $variant, $lang ),
+                    );
+                }
+            }
+        }
+        $pick_key  = isset( $_GET['key'] ) && isset( $catalog[ sanitize_key( wp_unslash( $_GET['key'] ) ) ] ) ? sanitize_key( wp_unslash( $_GET['key'] ) ) : 'confirmation';
+        $variants  = array_keys( $catalog[ $pick_key ]['variants'] );
+        $pick_var  = ( isset( $_GET['variant'] ) && in_array( sanitize_key( wp_unslash( $_GET['variant'] ) ), $variants, true ) ) ? sanitize_key( wp_unslash( $_GET['variant'] ) ) : $variants[0];
+        $pick_lang = SFAF_Messages::lang( isset( $_GET['lang'] ) ? sanitize_key( wp_unslash( $_GET['lang'] ) ) : 'en' );
+        $first     = $data[ $pick_key . '|' . $pick_var . '|' . $pick_lang ];
+
+        $err = get_transient( 'sfaf_tpl_error_' . $user->ID );
+        if ( false !== $err ) {
+            delete_transient( 'sfaf_tpl_error_' . $user->ID );
+        }
+        ?>
+        <div class="uc-page-head">
+            <h1>Email Templates</h1>
+        </div>
+        <?php if ( $err ) : ?>
+            <p class="uc-field-error" role="alert"><?php echo esc_html( $err ); ?></p>
+        <?php endif; ?>
+
+        <div class="uc-tpl" data-uc-tpl
+             data-uc-tpl-key="<?php echo esc_attr( $pick_key ); ?>"
+             data-uc-tpl-variant="<?php echo esc_attr( $pick_var ); ?>">
+            <div class="uc-tpl-top">
+                <label class="uc-field uc-tpl-lang">
+                    <span class="uc-field-label">Language</span>
+                    <select data-uc-tpl-lang>
+                        <?php foreach ( SFAF_Messages::languages() as $code => $name ) : ?>
+                            <option value="<?php echo esc_attr( $code ); ?>" <?php selected( $pick_lang, $code ); ?>><?php echo esc_html( $name ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+            </div>
+            <div class="uc-tpl-cols">
+                <nav class="uc-tpl-list" aria-label="Messages">
+                    <ul>
+                        <?php foreach ( $catalog as $key => $m ) :
+                            $vs = $m['variants'];
+                            ?>
+                            <li>
+                                <?php if ( 1 === count( $vs ) ) : ?>
+                                    <button type="button" class="uc-tpl-pick" data-uc-tpl-pick="<?php echo esc_attr( $key . '|' . key( $vs ) ); ?>"
+                                            aria-pressed="<?php echo ( $key === $pick_key ) ? 'true' : 'false'; ?>"><?php echo esc_html( $m['label'] ); ?></button>
+                                <?php else : ?>
+                                    <span class="uc-tpl-group"><?php echo esc_html( $m['label'] ); ?></span>
+                                    <ul>
+                                        <?php foreach ( $vs as $vk => $vlabel ) : ?>
+                                            <li><button type="button" class="uc-tpl-pick uc-tpl-variant" data-uc-tpl-pick="<?php echo esc_attr( $key . '|' . $vk ); ?>"
+                                                        aria-pressed="<?php echo ( $key === $pick_key && $vk === $pick_var ) ? 'true' : 'false'; ?>"><?php echo esc_html( $vlabel ); ?></button></li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                <?php endif; ?>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </nav>
+
+                <section class="uc-tpl-main" aria-live="polite">
+                    <p class="uc-tpl-subject"><span class="uc-field-label">Subject</span> <span data-uc-tpl-subject><?php echo esc_html( $first['subject'] ); ?></span></p>
+                    <iframe class="uc-tpl-preview" data-uc-tpl-preview title="Preview of the message" srcdoc="<?php echo esc_attr( $first['html'] ); ?>"></iframe>
+                    <p class="uc-tpl-state" data-uc-tpl-state><?php echo $first['overridden'] ? 'Edited on this site.' : 'The shipped text.'; ?></p>
+                    <div class="uc-form-actions">
+                        <button type="button" class="uc-btn" data-uc-tpl-edit aria-expanded="false" aria-controls="uc-tpl-form">Edit</button>
+                    </div>
+
+                    <form method="post" action="<?php echo esc_url( $this->url( 'email-templates' ) ); ?>" class="uc-tpl-form" id="uc-tpl-form" data-uc-tpl-form hidden>
+                        <?php wp_nonce_field( 'uc_portal_save_email_template', 'uc_nonce' ); ?>
+                        <input type="hidden" name="uc_action" value="save_email_template" />
+                        <input type="hidden" name="tpl_key" value="<?php echo esc_attr( $pick_key ); ?>" data-uc-tpl-field="key" />
+                        <input type="hidden" name="tpl_variant" value="<?php echo esc_attr( $pick_var ); ?>" data-uc-tpl-field="variant" />
+                        <input type="hidden" name="tpl_lang" value="<?php echo esc_attr( $pick_lang ); ?>" data-uc-tpl-field="lang" />
+
+                        <div class="uc-tpl-tokens" data-uc-tpl-tokens role="group" aria-label="Insert a token">
+                            <span class="uc-field-label">Insert</span>
+                            <?php foreach ( $tokens as $tk => $tlabel ) : ?>
+                                <button type="button" class="uc-tpl-token" data-uc-tpl-token="<?php echo esc_attr( $tk ); ?>"><?php echo esc_html( $tlabel ); ?></button>
+                            <?php endforeach; ?>
+                        </div>
+
+                        <label class="uc-field">
+                            <span class="uc-field-label">Subject</span>
+                            <textarea name="tpl_subject" rows="1" data-uc-tpl-text="subject"><?php echo esc_textarea( $first['fields']['subject'] ); ?></textarea>
+                        </label>
+                        <label class="uc-field">
+                            <span class="uc-field-label">Above the details</span>
+                            <textarea name="tpl_intro" rows="7" data-uc-tpl-text="intro"><?php echo esc_textarea( $first['fields']['intro'] ); ?></textarea>
+                            <span class="uc-hint">The first paragraph is the heading. Leave a blank line between paragraphs.</span>
+                        </label>
+                        <label class="uc-field">
+                            <span class="uc-field-label">Under the details</span>
+                            <textarea name="tpl_closing" rows="3" data-uc-tpl-text="closing"><?php echo esc_textarea( $first['fields']['closing'] ); ?></textarea>
+                        </label>
+                        <div class="uc-form-actions">
+                            <button type="submit" class="uc-btn uc-btn-primary" name="tpl_do" value="save">Save</button>
+                            <button type="submit" class="uc-btn" name="tpl_do" value="reset" data-uc-tpl-reset
+                                    data-uc-confirm="Put this message back to the shipped text? Your edits to it are removed.">Reset to default</button>
+                        </div>
+                    </form>
+                </section>
+            </div>
+            <script type="application/json" data-uc-tpl-data><?php
+                echo wp_json_encode( array(
+                    'messages' => $data,
+                    'catalog'  => $catalog,
+                    'tokens'   => $tokens,
+                ), JSON_HEX_TAG | JSON_HEX_AMP );
+            ?></script>
+        </div>
         <?php
         $this->chrome_close();
     }

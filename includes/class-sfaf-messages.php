@@ -143,8 +143,8 @@ class SFAF_Messages {
                 'es' => array( 'subject' => 'Su inscripción en {title} está confirmada', 'intro' => "Su inscripción está confirmada, {first_name}.\n\nTenemos su lugar reservado. Estos son los detalles, y el enlace para participar está más abajo.", 'closing' => $cancel_es ),
             ),
             'online_pending' => array(
-                'en' => array( 'subject' => 'You are registered for {title}', 'intro' => "You are registered, {first_name}.\n\nWe have your place. Here are the details. The link to join will be sent before the event.", 'closing' => $cancel_en ),
-                'es' => array( 'subject' => 'Su inscripción en {title} está confirmada', 'intro' => "Su inscripción está confirmada, {first_name}.\n\nTenemos su lugar reservado. Estos son los detalles. Le enviaremos el enlace para participar antes del evento.", 'closing' => $cancel_es ),
+                'en' => array( 'subject' => 'You are registered for {title}', 'intro' => "You are registered, {first_name}.\n\nWe have your place. Here are the details, and how to join is below.", 'closing' => $cancel_en ),
+                'es' => array( 'subject' => 'Su inscripción en {title} está confirmada', 'intro' => "Su inscripción está confirmada, {first_name}.\n\nTenemos su lugar reservado. Estos son los detalles, y cómo participar está más abajo.", 'closing' => $cancel_es ),
             ),
         );
 
@@ -153,7 +153,7 @@ class SFAF_Messages {
                 'intro' => "You are on the waitlist, {first_name}.\n\n{title} is full. You are number {position} on the waitlist. If a place opens, we will email you an offer, and you will have a set time to confirm it.",
                 'closing' => 'No longer interested? {cancel_link}.' ),
             'es' => array( 'subject' => 'Está en la lista de espera de {title}',
-                'intro' => "Está en la lista de espera, {first_name}.\n\n{title} está completo. Usted es el número {position} de la lista de espera. Si se libera un lugar, le enviaremos una oferta por correo electrónico y tendrá un plazo para confirmarla.",
+                'intro' => "Está en la lista de espera, {first_name}.\n\n{title} ya no tiene lugares disponibles. Usted es el número {position} de la lista de espera. Si se libera un lugar, le enviaremos una oferta por correo electrónico y tendrá un plazo para confirmarla.",
                 'closing' => '¿Ya no le interesa? {cancel_link}.' ),
         ) );
 
@@ -185,8 +185,8 @@ class SFAF_Messages {
                 'es' => array( 'subject' => 'Hoy: {title}', 'intro' => "Su evento es hoy.\n\nEl enlace para participar está más abajo.", 'closing' => $cancel_es ),
             ),
             'online_pending' => array(
-                'en' => array( 'subject' => 'Today: {title}', 'intro' => "Your event is today.\n\nThe link to join will be sent before the event starts.", 'closing' => $cancel_en ),
-                'es' => array( 'subject' => 'Hoy: {title}', 'intro' => "Su evento es hoy.\n\nLe enviaremos el enlace para participar antes de que comience el evento.", 'closing' => $cancel_es ),
+                'en' => array( 'subject' => 'Today: {title}', 'intro' => "Your event is today.\n\nHow to join is below.", 'closing' => $cancel_en ),
+                'es' => array( 'subject' => 'Hoy: {title}', 'intro' => "Su evento es hoy.\n\nCómo participar está más abajo.", 'closing' => $cancel_es ),
             ),
         );
 
@@ -322,6 +322,20 @@ class SFAF_Messages {
      * @return string
      */
     public static function label( $id, $lang = 'en' ) {
+        $t = self::labels();
+        if ( ! isset( $t[ $id ] ) ) {
+            return $id;
+        }
+        return ( 'es' === $lang ) ? $t[ $id ][1] : $t[ $id ][0];
+    }
+
+    /**
+     * Every fixed label: id => array( English, Spanish ). EMAILS.md lists them
+     * for the reviewer beside the messages they sit in.
+     *
+     * @return array<string,string[]>
+     */
+    public static function labels() {
         static $t = null;
         if ( null === $t ) {
             $t = array(
@@ -366,10 +380,7 @@ class SFAF_Messages {
                 'in_person_online' => array( 'In person and online', 'En persona y en línea' ),
             );
         }
-        if ( ! isset( $t[ $id ] ) ) {
-            return $id;
-        }
-        return ( 'es' === $lang ) ? $t[ $id ][1] : $t[ $id ][0];
+        return $t;
     }
 
     /* ---------------------------------------------------------------------
@@ -526,6 +537,11 @@ class SFAF_Messages {
      */
     public static function fill_text( $key, $p, $values, $lang ) {
         $out = preg_replace_callback( '/\{([a-z_]+)\}/', function ( $m ) use ( $key, $values, $lang ) {
+            // A name that is not a token stays in its braces, so the fault is
+            // visible in the message and to the render test, not silently blank.
+            if ( ! isset( self::tokens()[ $m[1] ] ) ) {
+                return $m[0];
+            }
             $v = isset( $values[ $m[1] ] ) ? (string) $values[ $m[1] ] : '';
             if ( in_array( $m[1], self::link_tokens(), true ) ) {
                 if ( 'meeting_link' === $m[1] ) {
@@ -550,6 +566,9 @@ class SFAF_Messages {
             if ( in_array( $m[1], self::link_tokens(), true ) ) {
                 $marks[] = $m[1];
                 return "\x01" . ( count( $marks ) - 1 ) . "\x02";
+            }
+            if ( ! isset( self::tokens()[ $m[1] ] ) ) {
+                return $m[0];   // not a token: left visible, as in fill_text()
             }
             return isset( $values[ $m[1] ] ) ? (string) $values[ $m[1] ] : '';
         }, $p );
@@ -833,7 +852,9 @@ class SFAF_Messages {
 
         if ( 'page' === $kind ) {
             $p = SFAF_Reminders::page_parts( $key, $variant, $lang, $s );
-            return array( 'subject' => $p['title'], 'html' => sfaf_notice_page_html( $p['title'], $p['html'] ), 'text' => wp_strip_all_tags( $p['html'] ) );
+            // The text keeps its paragraph breaks, for EMAILS.md.
+            $text = trim( wp_strip_all_tags( preg_replace( '#</(p|button)>#', "\$0\n\n", $p['html'] ) ) );
+            return array( 'subject' => $p['title'], 'html' => sfaf_notice_page_html( $p['title'], $p['html'] ), 'text' => $text );
         }
         if ( 'line' === $kind ) {
             $line = self::get( 'donate_line', 'default', $lang );
@@ -845,7 +866,7 @@ class SFAF_Messages {
             return SFAF_Announce::several_sample( $key, $person, $s );
         }
         if ( 'follow_confirm' === $key ) {
-            return SFAF_Follow::build_confirmation( $s['series'], $s['confirm_link'], $s['stop_link'], (int) $s['days'], $lang );
+            return SFAF_Follow::build_confirmation( $s['series'], 'https://resources.sfaf.org/?uc_follow_confirm=SAMPLE', $s['stop_link'], (int) $s['days'], $lang );
         }
         $person = (object) array( 'first_name' => $s['first_name'], 'last_name' => $s['last_name'], 'name' => $s['first_name'] . ' ' . $s['last_name'],
             'email' => 'alex@example.org', 'token' => 'SAMPLE', 'format' => '' );

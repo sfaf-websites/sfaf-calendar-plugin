@@ -658,19 +658,21 @@ function sfaf_output_ics() {
      * ONE SENTENCE FROM ONE PLACE, so the file and the page cannot drift into
      * saying different things about the same event.
      */
-    $format_line = sfaf_event_format_line( $post_id );
+    // In the event's language (3.106.0).
+    $ics_lang    = sfaf_event_language( $post_id );
+    $format_line = sfaf_event_format_line( $post_id, $ics_lang );
     if ( '' !== $format_line ) {
         $description = $format_line . ( '' !== $description ? "\n\n" . $description : '' );
     }
     if ( '' !== $join ) {
-        $description = 'Join: ' . $join . ( '' !== $description ? "\n\n" . $description : '' );
+        $description = SFAF_Messages::label( 'ics_join', $ics_lang ) . ': ' . $join . ( '' !== $description ? "\n\n" . $description : '' );
     }
 
     $lines[] = 'SUMMARY:' . sfaf_ics_escape( get_the_title( $post_id ) );
     $lines[] = 'DESCRIPTION:' . sfaf_ics_escape( $description );
     $lines[] = 'LOCATION:' . sfaf_ics_escape( sfaf_event_location( $post_id ) );
     if ( '' !== $join ) {
-        $lines[] = 'CONFERENCE;VALUE=URI;FEATURE=VIDEO;LABEL=Join the event:' . $join;
+        $lines[] = 'CONFERENCE;VALUE=URI;FEATURE=VIDEO;LABEL=' . SFAF_Messages::label( 'ics_join_event', $ics_lang ) . ':' . $join;
     }
     $lines[] = 'URL:' . esc_url_raw( get_permalink( $post_id ) );
     $lines[] = 'END:VEVENT';

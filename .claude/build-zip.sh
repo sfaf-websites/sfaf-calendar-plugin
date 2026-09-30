@@ -32,6 +32,17 @@ php "$ROOT/.claude/version-check.php" "$ROOT" "$VERSION" || exit 1
 # cut is let through by naming the file: --allow-shrink=includes/class-x.php.
 php "$ROOT/.claude/shrink-check.php" "$ROOT" "$@" || exit 1
 
+# EMAILS.md IS REGENERATED, AND MAY NOT DRIFT (3.106.0). It is every registrant
+# message in English and Spanish for the Spanish reviewer, written from the
+# shipped text by the builders that send. If writing it changed the tracked
+# file, the text changed since it was last committed: nothing is built until
+# the new file is committed with the change that caused it.
+php "$ROOT/.claude/emails-md.php" --write >/dev/null || exit 1
+if [ -n "$( git -C "$ROOT" status --porcelain -- EMAILS.md )" ]; then
+    echo "FAIL: EMAILS.md was out of date and has been rewritten. Commit it, then build again."
+    exit 1
+fi
+
 rm -rf "$STAGE"
 mkdir -p "$STAGE/sfaf-calendar"
 

@@ -89,6 +89,11 @@ echo "=== the section reader ==="
 run "section-layout --self-test" php .claude/section-layout-test.php --self-test
 
 echo
+# EMAILS.md. The glob above ran its --check; this proves the check can fail.
+echo "=== the EMAILS.md check ==="
+run "emails-md --self-test" php .claude/emails-md.php --self-test
+
+echo
 # The bulk publish rule, which is the only thing on the schedule screen that
 # reaches the public calendar and acts on a whole series at once.
 echo "=== the bulk publish rule ==="

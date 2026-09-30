@@ -464,6 +464,10 @@ $ALLOWED = array(
     'POST:delete_team'            => array( 'caladmin' ),
     'GET:pending'                 => array( 'caladmin' ),
     'GET:users'                   => array( 'caladmin' ),
+    // The words of every registrant message (3.106.0): administrators only,
+    // one route whose button says save or reset.
+    'POST:save_email_template'    => array( 'caladmin' ),
+    'GET:email-templates'         => array( 'caladmin' ),
 
     /*
      * ONE'S OWN PREFERENCES (3.102.0). The save writes the caller's own user
