@@ -81,6 +81,17 @@ class SFAF_Embed {
         add_action( 'created_uc_event_category', array( $this, 'flush_cache' ), 99 );
         add_action( 'edited_uc_event_category', array( $this, 'flush_cache' ), 99 );
         add_action( 'update_option_uc_settings', array( $this, 'flush_cache' ) );
+        /*
+         * CLOSURES ARE AN OPTION, NOT A POST (3.106.0), so none of the hooks
+         * above fires when one is saved. A closure added, edited or given a
+         * still-open row reached the shortcode at once and the embed only when
+         * its ten-minute cache ran out, which is what "sfaf.org still shows
+         * only Closed" was. add_ is the first closure ever; update_ is every
+         * one after; delete_ is the option removed outright.
+         */
+        add_action( 'add_option_' . SFAF_Closures::OPTION, array( $this, 'flush_cache' ) );
+        add_action( 'update_option_' . SFAF_Closures::OPTION, array( $this, 'flush_cache' ) );
+        add_action( 'delete_option_' . SFAF_Closures::OPTION, array( $this, 'flush_cache' ) );
 
         /*
          * AND ON A PLUGIN UPDATE (3.88.0), WHICH CLOSES A GAP FLAGGED TWICE.
