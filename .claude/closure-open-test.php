@@ -79,8 +79,12 @@ co( 'and the spoken label carries them',
 
 /* ---- The colour. ------------------------------------------------------- */
 $css = (string) file_get_contents( dirname( __DIR__ ) . '/public/css/calendar.css' );
-preg_match( '/--uc-open-ink:\s*(#[0-9A-Fa-f]{6})/', $css, $m );
-$ink = isset( $m[1] ) ? strtoupper( $m[1] ) : '';
+// The token may name another one (3.106.0: var(--uc-green-ink)); follow it to the hex.
+$ink = '';
+for ( $tok = 'uc-open-ink', $hops = 0; $hops < 4 && '' === $ink; $hops++ ) {
+    if ( ! preg_match( '/--' . preg_quote( $tok, '/' ) . ':\s*(#[0-9A-Fa-f]{6}|var\(\s*--([a-z-]+)\s*\))/', $css, $m ) ) { break; }
+    if ( '#' === $m[1][0] ) { $ink = strtoupper( $m[1] ); } else { $tok = $m[2]; }
+}
 co( 'the line\'s ink is the green family\'s, from the category ramp', $ink, strtoupper( sfaf_category_shades( '#8CC745' )['ink'] ) );
 co( 'the line is set in that token', (bool) preg_match( '/\.uc-closed-open \{[^}]*color: var\( --uc-open-ink \)/', $css ), true );
 co( 'and in no other colour anywhere', preg_match_all( '/\.uc-closed-open[^{]*\{[^}]*\bcolor:/', $css ), 1 );
