@@ -3088,7 +3088,7 @@ function sfaf_category_icon_key( $name ) {
  * @param bool   $meridiem  false drops the am/pm, for the open end of a range.
  * @return string
  */
-function sfaf_ap_time( $raw, $meridiem = true ) {
+function sfaf_ap_time( $raw, $meridiem = true, $lang = 'en' ) {
     $raw = trim( (string) $raw );
     if ( '' === $raw ) {
         return '';
@@ -3102,7 +3102,22 @@ function sfaf_ap_time( $raw, $meridiem = true ) {
     if ( ! $meridiem ) {
         return $clock;
     }
-    return $clock . ' ' . strtolower( date_i18n( 'A', $ts ) );
+    return $clock . ' ' . sfaf_ap_meridiem( date_i18n( 'A', $ts ), $lang );
+}
+
+/**
+ * am and pm, in the message's language (3.106.0). Spanish is "a. m." and
+ * "p. m.", with the space the style guides ask for.
+ *
+ * @param string $upper 'AM' or 'PM'.
+ * @param string $lang
+ * @return string
+ */
+function sfaf_ap_meridiem( $upper, $lang = 'en' ) {
+    if ( 'es' === $lang ) {
+        return ( 'AM' === strtoupper( (string) $upper ) ) ? 'a. m.' : 'p. m.';
+    }
+    return strtolower( (string) $upper );
 }
 
 /*
@@ -3347,7 +3362,7 @@ function sfaf_normalize_time_post( $names = null ) {
  * @param string $style '' or 'zone'.
  * @return string
  */
-function sfaf_ap_time_range( $start, $end = '', $style = '' ) {
+function sfaf_ap_time_range( $start, $end = '', $style = '', $lang = 'en' ) {
     $start = trim( (string) $start );
     $end   = trim( (string) $end );
     if ( '' === $start ) {
@@ -3358,17 +3373,17 @@ function sfaf_ap_time_range( $start, $end = '', $style = '' ) {
     $sts   = strtotime( $start );
     $ets   = ( '' === $end ) ? false : strtotime( $end );
     if ( false === $sts || false === $ets ) {
-        $clock = sfaf_ap_time( $start );
+        $clock = sfaf_ap_time( $start, true, $lang );
     } else {
         $dash = "\xE2\x80\x93"; // en dash, U+2013
         $same = ( date_i18n( 'A', $sts ) === date_i18n( 'A', $ets ) );
 
         // The rule is "it's OK to omit the FIRST mention", so the meridiem is
         // dropped from the start and kept on the end.
-        $clock = sfaf_ap_time( $start, ! $same ) . $dash . sfaf_ap_time( $end );
+        $clock = sfaf_ap_time( $start, ! $same, $lang ) . $dash . sfaf_ap_time( $end, true, $lang );
     }
 
-    return ( 'zone' === $style ) ? sfaf_ap_zoned( $clock ) : $clock;
+    return ( 'zone' === $style ) ? sfaf_ap_zoned( $clock, $lang ) : $clock;
 }
 
 /**
@@ -3384,10 +3399,18 @@ function sfaf_ap_time_range( $start, $end = '', $style = '' ) {
  * @param string $clock
  * @return string
  */
-function sfaf_ap_zoned( $clock ) {
+function sfaf_ap_zoned( $clock, $lang = 'en' ) {
     $clock = trim( (string) $clock );
     $zone  = sfaf_ap_time_zone();
-    return ( '' === $clock || '' === $zone ) ? $clock : $clock . ' ' . $zone;
+    if ( '' === $clock || '' === $zone ) {
+        return $clock;
+    }
+    // Spanish says the zone in words (3.106.0): "6 p. m., hora del Pacífico".
+    $es = array( 'PT' => 'hora del Pacífico', 'MT' => 'hora de la montaña', 'CT' => 'hora del centro', 'ET' => 'hora del este' );
+    if ( 'es' === $lang ) {
+        return $clock . ', ' . ( isset( $es[ $zone ] ) ? $es[ $zone ] : $zone );
+    }
+    return $clock . ' ' . $zone;
 }
 
 /**
@@ -3489,7 +3512,7 @@ function sfaf_local_timestamp( $when ) {
  *                          | 'weekday' | 'month' | 'daynum'
  * @return string
  */
-function sfaf_ap_date( $when, $style = 'full' ) {
+function sfaf_ap_date( $when, $style = 'full', $lang = 'en' ) {
     if ( is_string( $when ) ) {
         $when = sfaf_local_timestamp( $when );
     }
@@ -3529,7 +3552,42 @@ function sfaf_ap_date( $when, $style = 'full' ) {
         'daynum'     => 'j',
     );
     $fmt = isset( $formats[ $style ] ) ? $formats[ $style ] : $formats['full'];
+    if ( 'es' === $lang ) {
+        return sfaf_ap_date_es( (int) $when, isset( $formats[ $style ] ) ? $style : 'full' );
+    }
     return date_i18n( $fmt, (int) $when );
+}
+
+/**
+ * The same styles in Spanish (3.106.0). NOT A SECOND FORMATTER: it is reached
+ * only through sfaf_ap_date() with $lang 'es', and it uses the same timestamp
+ * and the same style names. Spanish writes the day before the month, lower
+ * case, with "de": "jueves, 12 de noviembre de 2026".
+ *
+ * @param int    $ts
+ * @param string $style
+ * @return string
+ */
+function sfaf_ap_date_es( $ts, $style ) {
+    $months = array( 1 => 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre' );
+    $days   = array( 'domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado' );
+    $m = $months[ (int) date_i18n( 'n', $ts ) ];
+    $d = $days[ (int) date_i18n( 'w', $ts ) ];
+    $j = date_i18n( 'j', $ts );
+    $y = date_i18n( 'Y', $ts );
+    $short = substr( $m, 0, 3 ) . '.';
+    switch ( $style ) {
+        case 'day':           return $j . ' de ' . $m;
+        case 'short':         return $j . ' ' . $short;
+        case 'short_year':    return $j . ' ' . $short . ' ' . $y;
+        case 'month_year':    return $m . ' de ' . $y;
+        case 'weekday':       return substr( $d, 0, 3 ) . '.';
+        case 'weekday_comma': return $d . ',';
+        case 'day_year':      return $j . ' de ' . $m . ' de ' . $y;
+        case 'month':         return $short;
+        case 'daynum':        return $j;
+    }
+    return $d . ', ' . $j . ' de ' . $m . ' de ' . $y;
 }
 
 /**
@@ -3550,7 +3608,7 @@ function sfaf_ap_date( $when, $style = 'full' ) {
  * @param string     $style Any sfaf_ap_date() style; the date half.
  * @return string
  */
-function sfaf_ap_datetime( $when, $style = 'short_year' ) {
+function sfaf_ap_datetime( $when, $style = 'short_year', $lang = 'en', $zone = false ) {
     if ( is_string( $when ) ) {
         // The site's clock, not UTC. See sfaf_local_timestamp(): these strings
         // come from current_time( 'mysql' ) and carry no zone, and reading them
@@ -3561,10 +3619,15 @@ function sfaf_ap_datetime( $when, $style = 'short_year' ) {
         return '';
     }
     $when  = (int) $when;
-    $date  = sfaf_ap_date( $when, $style );
+    $date  = sfaf_ap_date( $when, $style, $lang );
     $clock = ( '00' === date_i18n( 'i', $when ) ) ? date_i18n( 'g', $when ) : date_i18n( 'g:i', $when );
+    $clock .= ' ' . sfaf_ap_meridiem( date_i18n( 'A', $when ), $lang );
+    // With the zone for a message read elsewhere (3.106.0): an offer's expiry.
+    if ( $zone ) {
+        $clock = sfaf_ap_zoned( $clock, $lang );
+    }
 
-    return $date . ' at ' . $clock . ' ' . strtolower( date_i18n( 'A', $when ) );
+    return $date . ( 'es' === $lang ? ' a las ' : ' at ' ) . $clock;
 }
 
 /**

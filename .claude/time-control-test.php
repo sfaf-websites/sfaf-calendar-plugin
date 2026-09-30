@@ -62,7 +62,7 @@ $slice = function ( $name ) use ( $tpl ) {
 };
 
 foreach ( array(
-    'sfaf_ap_time',
+    'sfaf_ap_time', 'sfaf_ap_meridiem',
     'sfaf_time_minutes',
     'sfaf_time_parts',
     'sfaf_time_hour_label',

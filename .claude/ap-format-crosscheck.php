@@ -67,7 +67,7 @@ function slice_function( $src, $name ) {
 
 $missing = array();
 $code    = '';
-foreach ( array( 'sfaf_local_timestamp', 'sfaf_ap_date', 'sfaf_ap_time', 'sfaf_ap_time_range' ) as $fn ) {
+foreach ( array( 'sfaf_local_timestamp', 'sfaf_ap_date', 'sfaf_ap_date_es', 'sfaf_ap_time', 'sfaf_ap_meridiem', 'sfaf_ap_time_range' ) as $fn ) {
     $slice = slice_function( $tpl, $fn );
     if ( '' === $slice ) {
         $missing[] = $fn;

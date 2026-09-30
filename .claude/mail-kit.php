@@ -322,7 +322,7 @@ $mk_tpl  = file_get_contents( $mk_root . '/includes/sfaf-template-functions.php'
 $mk_main = file_get_contents( $mk_root . '/sfaf-calendar.php' );
 $mk_port = file_get_contents( $mk_root . '/includes/class-sfaf-portal.php' );
 
-foreach ( array( 'function sfaf_local_timestamp(', 'function sfaf_ap_date(', 'function sfaf_ap_time(', 'function sfaf_ap_time_range(',
+foreach ( array( 'function sfaf_local_timestamp(', 'function sfaf_ap_date(', 'function sfaf_ap_date_es(', 'function sfaf_ap_time(', 'function sfaf_ap_meridiem(', 'function sfaf_ap_time_range(',
                  'function sfaf_ap_time_zone(', 'function sfaf_ap_zoned(', 'function sfaf_location_part_keys(', 'function sfaf_event_location_name(',
                  'function sfaf_event_location(', 'function sfaf_event_takes_rsvps(', 'function sfaf_flatten_html(',
                  'function sfaf_email_required_locked(', 'function sfaf_email_required(' ) as $mk_n ) {

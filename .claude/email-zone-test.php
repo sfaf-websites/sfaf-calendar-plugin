@@ -46,7 +46,7 @@ $slice = function ( $src, $name ) {
     }
     return '';
 };
-foreach ( array( 'sfaf_ap_time', 'sfaf_ap_time_range', 'sfaf_ap_time_zone', 'sfaf_ap_zoned' ) as $fn ) {
+foreach ( array( 'sfaf_ap_time', 'sfaf_ap_meridiem', 'sfaf_ap_time_range', 'sfaf_ap_time_zone', 'sfaf_ap_zoned' ) as $fn ) {
     $code = $slice( $tpl, $fn );
     if ( '' === $code ) { echo "FAIL: $fn() is not in the formatter.\n"; exit( 1 ); }
     eval( $code );

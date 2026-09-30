@@ -99,7 +99,7 @@ $sfaf_slice = function ( $name ) use ( $sfaf_tpl ) {
     }
     return '';
 };
-foreach ( array( 'sfaf_ap_time', 'sfaf_ap_time_range', 'sfaf_ap_time_zone', 'sfaf_ap_zoned' ) as $sfaf_fn ) {
+foreach ( array( 'sfaf_ap_time', 'sfaf_ap_meridiem', 'sfaf_ap_time_range', 'sfaf_ap_time_zone', 'sfaf_ap_zoned' ) as $sfaf_fn ) {
     $sfaf_code = $sfaf_slice( $sfaf_fn );
     if ( '' === $sfaf_code ) { echo "FAIL: $sfaf_fn() could not be sliced from the formatter.\n"; exit( 1 ); }
     eval( $sfaf_code );

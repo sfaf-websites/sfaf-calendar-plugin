@@ -55,7 +55,7 @@ $slice = function ( $name ) use ( $tpl ) {
     }
     return '';
 };
-foreach ( array( 'sfaf_ap_time', 'sfaf_time_minutes', 'sfaf_time_parts', 'sfaf_time_hour_label', 'sfaf_time_field' ) as $fn ) {
+foreach ( array( 'sfaf_ap_time', 'sfaf_ap_meridiem', 'sfaf_time_minutes', 'sfaf_time_parts', 'sfaf_time_hour_label', 'sfaf_time_field' ) as $fn ) {
     $code = $slice( $fn );
     if ( '' === $code ) { echo "FAIL: $fn() could not be sliced.\n"; exit( 1 ); }
     eval( $code );
