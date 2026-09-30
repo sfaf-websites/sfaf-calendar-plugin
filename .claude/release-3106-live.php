@@ -163,7 +163,7 @@ function box(el) {
   var r = el.getBoundingClientRect(), cs = getComputedStyle(el);
   return { text: text(el), seen: seen(el), top: Math.round(r.top), left: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom),
     w: Math.round(r.width), h: Math.round(r.height), color: cs.color, bg: cs.backgroundColor, radius: cs.borderRadius,
-    font: cs.fontSize + ' ' + cs.fontWeight + ' ' + cs.fontFamily.split(',')[0], pad: cs.padding, contrast: seen(el) ? contrast(el) : null };
+    font: cs.fontSize + ' ' + cs.fontWeight + ' ' + cs.fontFamily.split(',')[0], pad: cs.padding, tt: cs.textTransform, contrast: seen(el) ? contrast(el) : null };
 }
 function pairs(fd) { var a = []; fd.forEach(function (v, k) { if (typeof v === 'string') { a.push([k, v]); } }); return a; }
 document.addEventListener('submit', function (e) {
@@ -397,6 +397,7 @@ if ( in_array( '--run', array_slice( $argv, 1 ), true ) ) {
         // Width is the label's, as Register's is: RSVP and Volunteer for this event are different lengths.
         rl_check( isset( $vb['right'] ) && $vb['right'] <= $pages[ $t ]['w'], "$t: the Volunteer button runs off the screen" );
         rl_check( isset( $vb['bg'] ) && $GREEN === $vb['bg'] && 'rgb(255, 255, 255)' === $vb['color'], "PLANT E: $t: the Volunteer button is not white on --uc-green-ink: " . json_encode( $vb ) );
+        rl_check( isset( $vb['tt'] ) && 'none' === $vb['tt'], "$t: the Volunteer button renders in " . ( isset( $vb['tt'] ) ? $vb['tt'] : '?' ) );
         rl_check( isset( $vb['contrast'] ) && $vb['contrast'] >= 4.5, "$t: the Volunteer button measures " . json_encode( isset( $vb['contrast'] ) ? $vb['contrast'] : null ) );
         rl_check( isset( $vb['top'], $g[ $t ]['share']['bottom'] ) && $vb['top'] > $g[ $t ]['share']['bottom'], "$t: the Volunteer button is not under the share buttons" );
         $at = (array) $v( $t, 'volAttrs' );
@@ -433,6 +434,7 @@ if ( in_array( '--run', array_slice( $argv, 1 ), true ) ) {
         rl_check( array( 'Fay Fox', 'Cam Chen', 'Dee Diaz', 'Eve Evans' ) === array_column( $rows, 'name' ), "$t: the waitlist rows read " . json_encode( array_column( $rows, 'name' ) ) );
         rl_check( array( "\xE2\x80\x93", '1', '2', '3' ) === array_column( $rows, 'pos' ), "$t: the positions read " . json_encode( array_column( $rows, 'pos' ) ) );
         foreach ( $rows as $r ) {
+            rl_check( 'none' === $r['pill']['tt'], "$t: " . $r['name'] . '\'s pill renders in ' . $r['pill']['tt'] );
             rl_check( $r['confirm'] && $r['remove'], "$t: " . $r['name'] . '\'s row has no Confirm or no Remove' );
             rl_check( is_numeric( $r['pill']['contrast'] ) && $r['pill']['contrast'] >= 4.5, "$t: " . $r['name'] . '\'s pill measures ' . json_encode( $r['pill']['contrast'] ) );
         }

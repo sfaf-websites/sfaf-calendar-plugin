@@ -114,6 +114,7 @@ $pages = array(
     'caladmin-media'       => cs_screen( 'render_media', array( $user ) ),
     'caladmin-preferences' => cs_screen( 'render_preferences', array( $user ) ),
     'caladmin-optins'      => cs_screen( 'render_optins', array( $user ) ),
+    'caladmin-email-templates' => cs_screen( 'render_email_templates', array( $user ) ),
 );
 
 /* The public calendar, in the stylesheet it loads, in each view. */
