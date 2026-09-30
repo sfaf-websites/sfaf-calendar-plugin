@@ -55,6 +55,7 @@ for f in .claude/*.php; do
     closure-live.php) continue ;;      # run below with --run
     caps-sweep-live.php) continue ;;   # run below with --run
     release-3106-live.php) continue ;; # run below with --run
+    plant-3106.php) continue ;;        # a fault planter for release-3106-live, not a check
   esac
   run "$(basename "$f" .php)" php "$f"
 done

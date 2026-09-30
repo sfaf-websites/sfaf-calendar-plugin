@@ -3582,6 +3582,8 @@ function sfaf_ap_date( $when, $style = 'full', $lang = 'en' ) {
 function sfaf_ap_date_es( $ts, $style ) {
     $months = array( 1 => 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre' );
     $days   = array( 'domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado' );
+    // Written out, not cut with substr(): three bytes of "miércoles" end inside the é.
+    $abbr   = array( 'dom.', 'lun.', 'mar.', 'mié.', 'jue.', 'vie.', 'sáb.' );
     $m = $months[ (int) date_i18n( 'n', $ts ) ];
     $d = $days[ (int) date_i18n( 'w', $ts ) ];
     $j = date_i18n( 'j', $ts );
@@ -3592,7 +3594,7 @@ function sfaf_ap_date_es( $ts, $style ) {
         case 'short':         return $j . ' ' . $short;
         case 'short_year':    return $j . ' ' . $short . ' ' . $y;
         case 'month_year':    return $m . ' de ' . $y;
-        case 'weekday':       return substr( $d, 0, 3 ) . '.';
+        case 'weekday':       return $abbr[ (int) date_i18n( 'w', $ts ) ];
         case 'weekday_comma': return $d . ',';
         case 'day_year':      return $j . ' de ' . $m . ' de ' . $y;
         case 'month':         return $short;

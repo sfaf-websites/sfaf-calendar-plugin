@@ -106,6 +106,18 @@ $staffcopy = SFAF_Notifications::build( 'reminder', $es, (object) array( 'is_sta
 em( 'the reminder\'s staff copy for a Spanish event stays English', false !== strpos( $staffcopy['text'], 'is today.' ), true );
 delete_term_meta( 11, SFAF_Series::META_LANGUAGE );
 
+/* The formatter's Spanish, every style on every weekday: valid UTF-8, and the
+   forms written out. Cutting a weekday with substr() ended inside the é of
+   miércoles. */
+foreach ( array( '2026-11-08', '2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13', '2026-11-14' ) as $day ) {
+    foreach ( array( 'full', 'day', 'short', 'short_year', 'month_year', 'weekday', 'weekday_comma', 'day_year', 'month', 'daynum' ) as $style ) {
+        $out = sfaf_ap_date( $day, $style, 'es' );
+        if ( ! preg_match( '//u', $out ) ) { $fails[] = "PLANT C: sfaf_ap_date( $day, $style, es ) is not valid UTF-8"; }
+    }
+}
+em( 'the Spanish weekday abbreviations', array_map( function ( $d ) { return sfaf_ap_date( $d, 'weekday', 'es' ); }, array( '2026-11-08', '2026-11-11', '2026-11-14' ) ), array( 'dom.', 'mié.', 'sáb.' ) );
+em( 'the Spanish full date', sfaf_ap_date( '2026-11-11', 'full', 'es' ), 'miércoles, 11 de noviembre de 2026' );
+
 /* ---- F: the donate line. ------------------------------------------------ */
 $line_en = 'Support this work: donate to SFAF';
 $ev = em_event();

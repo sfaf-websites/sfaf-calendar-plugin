@@ -9,8 +9,8 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 215 items.** Quick 180, needs real conditions 32, blocked on other
-people 3.
+**Outstanding: 224 items.** Quick 187, needs real conditions 33, blocked on other
+people 4.
 
 ---
 
@@ -2594,33 +2594,34 @@ and save: the series picture comes back.
 **Why it needs a person:** the renderers were read in the test kit, not on the
 real pages or the embed on sfaf.org.
 
-### 1.176 Existing events now show a Donate button (3.105.0)
+### 1.176 Existing events' emails now carry the donate line (3.105.0, moved into email in 3.106.0)
 
-**Do this first after updating.** From this release an event with no donation
-link of its own inherits one: its series' link, or the SFAF default in
-Settings. So published events that showed no Donate button now show one on
-their event page, unless their Display card's Donate tick is off. Open three
-event pages: one with its own GoFundMe link (it should still go there), one in
-a series (it should go to the SFAF default, since no series has a link yet),
-and one on its own (the SFAF default). If Donate should not be on most events,
-empty **Settings, Display, Default donation link** and save: the button leaves
-every event that has neither its own link nor a series link. The public list's
-rows are unchanged: only an event with its own link shows Donate there.
+**Do this first after updating.** 3.105.0 put a Donate button on every event
+page; 3.106.0 took every Donate button off the public pages and put one line in
+two emails instead: "Support this work: donate to SFAF." in the confirmation and
+the morning-of reminder, after the details and before the cancel line. An event
+with no link of its own inherits one: its series' link, or the SFAF default in
+Settings. Open three event pages and confirm **no Donate button** on any, nor on
+the public list's rows. Then register yourself for one event with its own
+GoFundMe link, one in a series and one on its own: each confirmation's line
+goes to the event's link, the SFAF default, and the SFAF default. If the line
+should not be in most emails, empty **Settings, Display, Default donation link
+in emails** and save.
 
-**Why it needs a person:** it changes live public pages, and whether that is
-wanted is Mark's call.
+**Why it needs a person:** real mail through Postmark, and whether the line is
+wanted in every registrant's email is Mark's call.
 
 ### 1.177 The donate list in the editor, and a series link (3.105.0)
 
-New Event: the Donate card's list starts on **SFAF default**. Choose **Custom**:
-the link box appears. Choose a series in "Is this part of a series?" that you
-have given a **Donation link** on its series screen: the first entry reads
-**Series link**, and that series is also offered by name. Save one event on
-**None** and one on the series: the first shows no Donate button, the second
-goes to the series link.
+New Event: the card's list starts on **SFAF default**. Choose **Custom**: the
+link box appears. Choose a series in "Is this part of a series?" that you have
+given a **Donation link** on its series screen: the first entry reads **Series
+link**, and that series is also offered by name. Save one event on **None** and
+one on the series, and register for each: the first's confirmation has no donate
+line, the second's goes to the series link.
 
 **Why it needs a person:** the list was driven in the test kit's browser; the
-real series screen save and the real event page were not.
+real series screen save and real mail were not.
 
 ### 1.178 A closure with what stays open (3.105.0)
 
@@ -2681,6 +2682,84 @@ and it does not come back.
 
 **Why it needs a person:** WordPress's own Settings save, which the kit does not
 run.
+
+### 1.184 After saving a closure, the public calendar shows it (3.106.0)
+
+Edit a closure's still-open rows and save. Open the public calendar on sfaf.org
+in a **private window** straight away: the rows are there. If they are, the
+report that they were not visible was the embed's ten-minute cache, which saving
+a closure now clears. **If a normal window still shows the old version**, press
+Ctrl+Shift+R (Cmd+Shift+R on a Mac): that is the browser's own copy of
+`embed.js`, which the plugin cannot clear. If the private window does not show
+them either, report it with the closure's name, since then it is not cache.
+
+**Why it needs a person:** the live embed on sfaf.org and a real browser cache.
+
+### 1.185 The Email Templates screen (3.106.0)
+
+As an administrator, open **Email Templates** in caladmin's sidebar. Click
+through a few messages and switch **Language** to Spanish: the subject and the
+preview change with no page load. Press **Edit** on the Waitlist confirmation,
+put the cursor just after a token and press Backspace once (it turns red), then
+again (it goes). Use the **Insert** bar to put it back, **Save**, and send
+yourself a waitlist email by joining a full test event: your wording arrives.
+**Reset to default** asks first, then puts the shipped text back. Then sign in as
+a calendar manager who is not an administrator: there is no Email Templates
+entry, and the address `/caladmin/email-templates` shows the dashboard.
+
+**Why it needs a person:** the real caladmin, real fonts, and real mail.
+
+### 1.186 The Volunteer button (3.106.0)
+
+Give a test event a **Volunteer link** under the donation list and save. On its
+event page, under the share buttons: **Volunteer for this event**, green, the
+same height and shape as Register, opening the link in a new tab. Clear the link
+and save: the button is gone and nothing is left in its place. Repeat on a
+weekly event with "all upcoming": every date gets it. A new event in a series
+starts with no link.
+
+**Why it needs a person:** the live event page in the sfaf.org theme.
+
+### 1.187 Email required to register (3.106.0)
+
+On a test in-person event tick **Email required to register** and save. On its
+public form the "I do not use email" box is gone, and submitting with no email
+is refused. Untick it: the box is back. On an online event the tick is on and
+cannot be changed. On a hybrid event with the tick off, choosing Online hides
+the box and choosing In person shows it.
+
+**Why it needs a person:** the live form and a real submission.
+
+### 1.188 A Spanish event (3.106.0)
+
+Give a test series **Default language: Spanish**. New Event in that series: the
+**Language** field shows Spanish. Register yourself: the confirmation is in
+Spanish, with the date as "jueves, 12 de noviembre de 2026" and the time as
+"6–7:30 p. m., hora del Pacífico"; the calendar file's words are Spanish; the
+cancel page is Spanish. The staff alert to the notification list stays English.
+Set one event in that series to English: its registrants get English.
+
+**Why it needs a person:** real mail, a real calendar app opening the `.ics`,
+and a Spanish reader's eye.
+
+### 1.189 The registrations table updated to schema 10 (3.106.0)
+
+After updating, open any event's registrations list. **If it shows a database
+error, or joining a waitlist fails, the schema update to version 10 did not
+run**, and that is the thing to report. It adds three columns and a key to
+`uc_rsvps`; nothing existing is changed.
+
+**Why it needs a person:** a real database, whose columns are added on the first
+load after updating. The update could not be run here against a copy of the
+live table, since there is no database in the build environment.
+
+### 1.190 No Donate button anywhere public (3.106.0)
+
+Look for Donate on an event page, the list view, the month grid and the embed on
+sfaf.org. There is none. The editor's card is **Donation link in emails** and no
+longer offers a fundraising progress bar.
+
+**Why it needs a person:** the live theme and embed.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -3186,6 +3265,34 @@ Report the numbers from steps 3 and 4, and any row the box named.
 **Why it needs real conditions:** real imported rows in the queue, a real series
 and the real public calendar.
 
+### 2.35 The waitlist, end to end (3.106.0)
+
+A test event with **capacity 1** and RSVPs on, starting more than a day away.
+
+1. Register person **A** with a real address you can read. The button then reads
+   **Join the waitlist**.
+2. Join as **B** (a real address) and as **C** (ticking "I do not use email",
+   with a phone number). B's email says **You are number 1 on the waitlist**,
+   and has no calendar file.
+3. On the registrations list: counts under the heading, a **Waitlist** card with
+   B at 1 and C at 2.
+4. Cancel A with the link in A's email. B gets **A place is open**, with a
+   deadline 24 hours ahead. B's row reads **Offered** with the expiry.
+5. Open B's confirm link: a page asks; press confirm. B gets the normal
+   confirmation, the list gets the usual alert, B is confirmed.
+6. Remove B on the list. C has no email, so the notification list gets C's name
+   and phone, C's row reads **Needs a call**, and the offer moves on (to nobody).
+7. Join as **D**, cancel someone to open a place, and **do not answer**. After 24
+   hours (2, if the event is within a day) the next cron run emails D that the
+   offer passed and marks the row **Offer passed**.
+8. Raise the capacity by one in the editor with somebody waiting: they are
+   offered the place at once.
+
+Report any step whose email, row status or count is not as written.
+
+**Why it needs real conditions:** real mail, real cron, and a day of waiting
+for the expiry.
+
 ## 3. Blocked on other people
 
 Nothing here can move until somebody outside the build answers.
@@ -3194,6 +3301,7 @@ Nothing here can move until somebody outside the build answers.
 |---|---|---|
 | **Aaron** | DNS records for `calendar.sfaf.org` so `events@calendar.sfaf.org` can send | Asked. From stays `websites@sfaf.org` meanwhile. It is a setting, so nothing needs deploying when the mailbox exists. |
 | **Val** | Remove the tracker's duplicates: **the 2027 Saturdays under two runs of UUIDs**, and **the coffee social under two names** ("50-Plus Saturday AM Coffee Social" and "Saturday AM Coffee Social") | Before Auto-Import goes on. The import copies what the tracker holds and de-duplicates nothing. `PROJECT.md` 3. |
+| **A Spanish-speaking reviewer**, chosen by Mark | Read `EMAILS.md`: every registrant message in English and Spanish side by side, in formal usted. Corrections go into the Email Templates screen or `class-sfaf-messages.php`, never into `EMAILS.md` | Not asked. The Spanish was written without a native reader. |
 | **Salesforce admin** | Pardot connected app: client ID and secret, Business Unit ID, service user, OAuth flow | Asked. Campaign IDs store; nothing talks to Pardot. |
 
 ---

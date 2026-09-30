@@ -129,11 +129,12 @@
        2.02:1 on white. Green because the palette gives it "success state" and
        this line is the good news on a red day; the word carries it, the colour
        only agrees. */
-    --uc-open-ink: #46661F;
+    --uc-open-ink: var(--uc-green-ink);
 
-    /* THE GREEN FAMILY, FOR THE VOLUNTEER BUTTON (3.106.0): the Green ramp's ink
-       and tint from DESIGN.md. White on the ink measures 6.60:1; the ink on the
-       tint, which is the hover, 6.08:1. */
+    /* THE GREEN FAMILY, ONCE (3.106.0): the Green ramp's ink and tint from
+       DESIGN.md, for the still-open line above and the Volunteer button. White
+       on the ink measures 6.60:1; the ink on the tint, the button's hover,
+       6.08:1. */
     --uc-green-ink: #46661F;
     --uc-green-tint: #F1F8E9;
 

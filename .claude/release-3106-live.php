@@ -345,7 +345,7 @@ if ( in_array( '--run', array_slice( $argv, 1 ), true ) ) {
         rl_check( isset( $wl['subject'] ) && 'You are on the waitlist for Coffee and Conversation' === $wl['subject'] && $wl['srcHasPosition'], "$t: choosing Waitlist does not change the subject and preview: " . json_encode( $wl ) );
         $es = (array) $v( $t, 'spanish' );
         rl_check( isset( $es['subject'] ) && 'Está en la lista de espera de Coffee and Conversation' === $es['subject'] && $es['srcSpanish'], "$t: choosing Spanish does not change the subject and preview: " . json_encode( $es ) );
-        rl_check( 'still here' === $v( $t, 'stillHere' ), "PLANT: $t: switching reloaded the page" );
+        rl_check( 'still here' === $v( $t, 'stillHere' ), "$t: switching reloaded the page" );
         rl_check( 3 === $v( $t, 'editors' ) && true === $v( $t, 'textareasHidden' ), "$t: Edit does not replace the three boxes with chip editors" );
         $chip = (array) $v( $t, 'chip' );
         rl_check( isset( $chip['color'] ) && $TEAL_INK === $chip['color'] && $BAND === $chip['bg'], "$t: a chip is not --uc-accent-text on --uc-band: " . json_encode( $chip ) );

@@ -211,6 +211,14 @@ closure's solid white panel, which is what it is measured against.
 `closure-live.php` reads the rendered colour of every line in Chrome and
 measures it against the nearest opaque background.
 
+**The Volunteer button is the same green family (3.106.0)**: white on
+`--uc-green-ink` `#46661F` (6.60:1), and on hover or focus the ink on
+`--uc-green-tint` `#F1F8E9` (6.08:1) with an ink border. It is Register's size
+and shape (height, radius, padding and type measured equal in Chrome), and
+green rather than yellow because yellow is the one primary action per view,
+which on the event page is Register. `--uc-green-ink` is the one declaration of
+`#46661F` in `calendar.css`; `--uc-open-ink` refers to it.
+
 **The closed-day warning under a date field is the Red family's ink**, `#AD1C0D`,
 the closure's own colour: 7.12:1 on white, 6.58:1 on caladmin's `#F5F6F7`, and
 6.10:1 on the tint `#FDE9E7` that the pending row's "Closed: Thanksgiving" flag
@@ -892,6 +900,19 @@ there.
 The 600 weights are what a palette hands you first and neither survives white
 text. **One weight across the three** so the row is one family rather than three
 borrowed palettes, and the amber was already on this screen at that value.
+
+**The waitlist's pills (3.106.0)** keep their case, because "Needs a call" in
+capitals reads as three shouted words. Waiting and Offer passed are the pill's
+own grey. **Offered** is `--uc-accent-text` on `--uc-band` (4.94:1): teal, since
+it is the calendar's own state, somebody holding a place. **Needs a call** is
+the system amber `#92400E` on `#FFFBEB` (7.53:1), the pair `.uc-hint-warn`
+already uses, because it is a step a person must take.
+
+**The Email Templates screen's token chips (3.106.0)** are `--uc-accent-text` on
+`--uc-band`, weight 600, and the message chosen in the list is drawn the same
+way. A chip the next Backspace will remove gains a `--p-danger-text` border and
+nothing else: the colour warns, the second press acts. The editors and the
+token buttons take the control edge `--p-border-strong`.
 
 ### A corner is a square, not a point (3.94.0)
 

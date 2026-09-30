@@ -9,7 +9,7 @@ typography, layout, CSS failure modes) or `CLAUDE.md` (standing working rules,
 the build gate, shell rules). When something here contradicts one of those,
 those win in their own remit and this file is wrong and should be fixed.
 
-Current version at last update of this file: **3.105.0**.
+Current version at last update of this file: **3.106.0**.
 
 ---
 
@@ -3487,6 +3487,14 @@ It reaches the embed by not being special: the embed payload is built by calling
 the same shortcode renderers, so a closure the shortcode draws is a closure the
 embed serves.
 
+**SAVING A CLOSURE RETIRES THE EMBED'S CACHED PAGES (3.106.0).** The embed
+keeps each payload for ten minutes, and until 3.106.0 only an event save flushed
+it, so a closure's new still-open rows reached caladmin at once and the public
+calendar up to ten minutes later, which is what "the rows are not visible" was.
+`SFAF_Embed` hooks `add_option_`, `update_option_` and `delete_option_` on
+`SFAF_Closures::OPTION` to `flush_cache()`. The browser's own copy of
+`embed.js` is a separate matter and is named, not prevented (§8).
+
 **A closure can carry a free text note** (3.84.0), because SFAF can be closed
 overall while one site stays open and "Closed for Labor Day" alone is then wrong
 for whoever is standing outside the 6th Street Center. It is optional, and a
@@ -3564,13 +3572,20 @@ methods each of those files may call.
 - **Save draft never asks**, nor does Save changes on a live event, nor either
   public form: the question guards putting an event in front of people.
 
-### Where the Donate button goes is resolved in one place (3.105.0)
+### Where the donation link goes is resolved in one place (3.105.0; email only from 3.106.0)
 
-**`sfaf_donate_resolve( $post_id )` is the one answer**, and every reader asks
-it: the event page's donate block, the fundraising progress, the public list
-row and the editor's progress toggle. It returns the link and where it came
-from, `own`, `series`, `default` or `none`. **The rule: the event's choice, else
-its series' link, else the default in Settings.**
+**`sfaf_donate_resolve( $post_id )` is the one answer.** It returns the link and
+where it came from, `own`, `series`, `default` or `none`. **The rule: the event's
+choice, else its series' link, else the default in Settings.**
+
+**ITS ONLY READER, FROM 3.106.0, IS ONE LINE IN TWO EMAILS.** "Support this
+work: donate to SFAF." in the confirmation and the morning-of reminder, after
+the event details and before the cancel line, linked to what resolves, and
+absent when it resolves to `none`. It is the `donate_line` entry in the message
+catalogue (§4), so it has a Spanish version and can be edited. **No public page
+draws a Donate button**: the event page's block, the list row's button and the
+fundraising progress bar were removed in 3.106.0, and the editor no longer
+offers the progress tick. The staff copy of the reminder carries no line.
 
 | Stored on the event, `_uc_donate_choice` | What it resolves to |
 |---|---|
@@ -3596,15 +3611,23 @@ its series' link, else the default in Settings.**
 - **The choice is stored, never the link it resolves to**, so it travels across
   a recurrence group with the other donate keys and a corrected series link
   reaches every event.
-- **THE LIST ROW DRAWS ONLY `own`.** The event page draws whatever resolves; the
-  list row asks the same function and draws Donate only for an event's own
-  campaign, as it did before, so the default does not put one button on every
-  row. The progress bar is `own` only too, since the figures belong to that
-  campaign.
-- **Existing events without a link of their own inherit**, so from 3.105.0 they
-  show a Donate button on the event page (series link or default) unless the
-  Display card's Donate tick is off. That follows from the rule as asked; the
-  default in Settings is the switch for all of them at once.
+- **Existing events without a link of their own inherit**, so their registrants'
+  confirmation and reminder carry the line, to the series link or the default.
+  The default in Settings is the switch for all of them at once.
+
+### The volunteer link is the event's own (3.106.0)
+
+`_uc_volunteer_url`, typed in the editor under the donation list. The event
+page draws **"Volunteer for this event"** under the share buttons, in Register's
+shape and the green family, opening a new tab with `rel="noopener"` and the
+hidden "(opens in a new tab)" that `sfaf_action_button()` adds for any external
+link. `sfaf_volunteer_url()` accepts only an http or https address, and no
+address draws nothing at all, not an empty row.
+
+- **It travels with a repeating event** (the recurrence copy lists and
+  `apply_to_group`), because the dates of one programme share a volunteer page.
+- **It is never taken from the series.** A series has no volunteer link, and a
+  new event in a series starts with none.
 
 ### FAQ sets are made in one place and copied, never linked
 
@@ -5294,6 +5317,23 @@ to cancel is the token link in an email, and these people get none, and
 place on the event at once. **Remove** on the registrations list releases one
 row by its id, so it works for them. See "Removing a registration", below.
 
+**AN EVENT CAN TAKE THE BOX AWAY (3.106.0).** "Email required to register" is a
+tick in the editor's RSVP settings, `_uc_email_required`, off by default. On,
+the form does not offer the box and `submit()` refuses a registration with no
+address: "This event needs an email address to register." **One rule,
+`sfaf_email_required( $event_id, $format )`, and both the form and the server
+ask it:**
+
+| Event | Email required |
+|---|---|
+| online | always; the tick is drawn on and locked |
+| hybrid, joining online | always |
+| hybrid, in person | follows the tick |
+| in person | follows the tick |
+
+The button carries `data-uc-email-required` for the form. The key travels with
+a repeating event and through the group copy, as every RSVP setting does.
+
 ### Removing a registration (3.105.0)
 
 **Remove on each confirmed row of the caladmin registrations list**, behind a
@@ -5318,6 +5358,141 @@ self-cancel does: the reminder pass selects on `confirmed`.
   per event on the list across every event. A row whose event is gone has no
   gate to pass and cannot be removed.
 - **Nothing reinstates a removed row**, which is why the confirmation says so.
+
+### Every registrant message is one catalogue, in two languages (3.106.0)
+
+`SFAF_Messages` holds the words of every message a registrant receives, and the
+two pages they land on: the messages, their variants, the shipped text in
+English and Spanish, the fixed labels around that text, and the overrides saved
+on the **Email Templates** screen. **The builders take their words from here and
+nowhere else**, and the screen and `EMAILS.md` render through
+`SFAF_Messages::render_sample()`, which calls the same builders with a sample
+event. So what the screen shows is what goes out, and a render test
+(`.claude/email-messages-test.php`) walks every message, variant and language
+for an unresolved token or an em dash.
+
+| Message | Variants | Who, and when |
+|---|---|---|
+| Confirmation | in person; online, with link; online, link to come | on registering |
+| Waitlist confirmation | one | on joining the waitlist; the position, no calendar file |
+| Waitlist offer | one | a place opened; the confirm link and the expiry |
+| Offer passed | one | an offer ran out unanswered |
+| Morning-of reminder | the confirmation's three | the morning of the event |
+| Event cancelled | one date; several dates | the event, or several of a person's dates, cancelled |
+| Event changed | one date; several dates | a date, time or place changed |
+| Event back on | same date; new date; several dates | a cancelled event reinstated |
+| Follow a series: confirm | one | the double opt-in for following |
+| Donate line | one | the one line in the confirmation and the reminder (§2) |
+| Cancel your place page | asking; released; leaving the waitlist; left; nothing to cancel | the cancel link's page |
+| Confirm your place page | asking; confirmed; offer passed | the offer's confirm link's page |
+
+- **Three editable pieces per message**: the subject (a page's title), the words
+  above the event details, and a closing line under them. The details table,
+  the joining block, the calendar buttons and the donate line are drawn by the
+  builder between them, because they are facts. Their labels are in
+  `labels()`, in both languages, and are not editable, the `.ics` words among
+  them.
+- **Tokens are `{name}`**, and each message allows its own set. A paragraph that
+  is only a link token draws as a button; a link token in a sentence is a link
+  with its label; a paragraph whose link has no address (a test send has no
+  cancel link) is left out. **A save using a token the message cannot fill is
+  refused**, and an unknown token left in stored text renders in braces rather
+  than as a blank, so a typo shows.
+- **One option per message per language, `sfaf_email_{key}_{lang}`**, holding
+  every variant's three pieces. Reset deletes the variant's entry, and the option
+  when it is empty. Nothing is stored for a message nobody has edited.
+- **The Settings screen's site-wide confirmation subject and body moved into
+  the English confirmation templates, once** (`migrate_settings()`, marked by
+  `sfaf_email_settings_moved`), with the old tokens renamed, and left
+  `uc_settings`. **An event's own custom confirmation text still wins over the
+  template**, as it did over the Settings text.
+- **Staff messages are not in it** and stay English with their own builders: the
+  alert, the cancel alert, the summary, the day-before count, the digest and the
+  submission notices. **There is no follower new-dates email to put in it**;
+  followers are established and nothing sends to them (§8).
+- **`EMAILS.md` is every message side by side, for the Spanish review**, written
+  by `.claude/emails-md.php --write` from the shipped text with no overrides.
+  `build-zip.sh` writes it and refuses to build when that changed the tracked
+  file; the suite runs `--check`.
+
+**The Email Templates screen** is caladmin, administrators only, in the sidebar.
+The list down the left indents variants under their message; a language menu
+above it; the right side shows the subject and the message in a preview frame.
+All of it is in the page as JSON, so choosing a message or a language needs no
+page load. **Edit** replaces the three boxes with editors where each token is a
+chip that cannot be typed into: one Backspace or Delete beside a chip marks it
+red, a second removes it. The token bar offers only the tokens this message can
+fill and puts a chip at the caret. Save and Reset to default post one route,
+`save_email_template`, with `tpl_do` saying which.
+
+### An event's language, and what speaks it (3.106.0)
+
+**The event's own `_uc_language`, else its series' default
+(`SFAF_Series::META_LANGUAGE`), else English**: `sfaf_event_language()`. The
+editor's Language field starts on what the event would inherit and follows a
+series change until somebody picks; **the save stores a value only when the
+event already has one or the choice differs from what it inherits**, so an
+event left alone goes on following its series. It travels with a repeating
+event.
+
+**Everything a registrant reads is built in it**: every message and page in
+the catalogue, the joining block, and the `.ics` file's words. Dates and times
+go through the one formatter, which takes a `$lang` (`sfaf_ap_date( ..., $lang )`
+and its Spanish table), so "jueves, 12 de noviembre de 2026, 6–7:30 p. m., hora
+del Pacífico" is the formatter's output, not a translation of it. **Staff
+messages stay English whatever the event's language**, including the staff copy
+of the reminder. The event's own words (title, location, organizer) are printed
+as entered.
+
+### The waitlist (3.106.0)
+
+**A full event's form offers "Join the waitlist" instead of Register**, per
+format on a hybrid event: with in person full and online open the button says
+RSVP, and the form says Join the waitlist when in person is picked. A waitlisted
+person is a row in `uc_rsvps` with a status of its own, ordered by
+`created_at`:
+
+| Status | Meaning |
+|---|---|
+| `waitlisted` | in the queue |
+| `offered` | a place is held for them until `offer_expires` |
+| `offered_manual` | no email to offer it by; the notification list was told their name and phone, and the offer moved on |
+| `expired` | their offer ran out unanswered |
+| `confirmed` | in, by accepting or by staff |
+| `cancelled` | left the waitlist, or removed |
+
+- **EVERY COUNT STILL ASKS FOR `confirmed`.** Reminders, announcements, the
+  summary, `has_registrations()` and the count cache never see another status,
+  so nobody waiting is reminded or counted as coming. `.claude/waitlist-test.php`
+  asserts the reads agree with every waitlist status present. **Waitlisted
+  people are therefore not told if the event is cancelled**, since the
+  cancellation notice reads the same audience.
+- **What changes is only whether a format is FULL.** `sfaf_format_full()` adds
+  the places held by open offers and treats anybody still waiting as full, so a
+  newcomer joins the queue rather than taking a place on offer.
+- **A place opens three ways, and each calls `SFAF_Waitlist::advance()`**: the
+  cancel link, Remove on the list (both fire `uc_rsvp_cancelled`), and capacity
+  raised in the editor. The first person for that format is offered it for 24
+  hours, or 2 when the event starts within 24, and it keeps going while places
+  are free.
+- **The confirm link is a token** (`?uc_rsvp_offer=`, `offer_token`). A GET shows
+  a page that asks; the POST confirms and sends the normal confirmation, and the
+  staff alert goes to the list as for any registration. The page refuses an
+  offer whose time has passed even if cron has not run.
+- **Expiry runs on the existing cron**, task `waitlist`: the person is told, the
+  row becomes `expired`, and the offer moves on.
+- **The RSVP list** carries the counts under the heading and a Waitlist card per
+  format: position, name, email, joined, offer status and expiry, with Confirm
+  (moves them in and sends the confirmation, or nothing when there is no email)
+  and Remove. The all-registrations view shows confirmed and cancelled rows only.
+- **A third-party event and one with RSVPs off never have a waitlist**:
+  `sfaf_rsvp_block()` returns before the button for both, and `applies()` says
+  no.
+- **Schema 10** added `offer_token`, `offered_at`, `offer_expires` and a key on
+  `offer_token`. dbDelta adds them; existing rows are untouched and need no
+  backfill: no existing status is one of the four new ones, and the new
+  columns are read only for rows that are.
+
 ### Cancellation tokens
 
 A registration gets a **128-bit token** (`SFAF_Reminders::new_token()`). The
@@ -6548,6 +6723,13 @@ plugin code reproduces it; `--run-all-compositor-stages-before-draw` fixes the
 bare page and not the real ones. `closure-live.php` sends the event itself when
 the dialog has closed and it has not arrived, and counts that. **Suspect the
 harness's clock before the code when an answered dialog does nothing.**
+
+**Headless Chrome will not open a window narrower than 504px (3.106.0).**
+`--window-size=390,...` gives a 504px viewport and no error, so every "phone"
+measurement taken that way was a 504px one. `release-3106-live.php` puts a phone
+page in a 390px `<iframe>` inside a wider window, and the page inside reports
+its probe to the page around it by `postMessage`, since that is the document
+`--dump-dom` prints. Media queries inside the frame answer to the frame.
 
 ### An empty file parses, and both gates pass it (3.105.0)
 
