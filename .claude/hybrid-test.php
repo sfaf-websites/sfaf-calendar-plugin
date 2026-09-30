@@ -567,10 +567,10 @@ check( (bool) preg_match( '/SFAF_Online::sends_with\( \$post_id, \'confirmation\
 /* AND THE FILE SAYS WHAT THE PAGE SAYS ABOUT THE FORMAT, from the same
  * function, so the two cannot drift. In the DESCRIPTION and never in LOCATION:
  * a client hands LOCATION to a map. */
-check( (bool) preg_match( '/\$format_line = sfaf_event_format_line\( \$post_id \);/', $main ),
+check( (bool) preg_match( '/\$format_line = sfaf_event_format_line\( \$post_id, \$ics_lang \);/', $main ),
     'the calendar file no longer says a hybrid event is also online' );
 $loc_at = strpos( $main, "\$lines[] = 'LOCATION:'" );
-$fmt_at = strpos( $main, '$format_line = sfaf_event_format_line( $post_id );' );
+$fmt_at = strpos( $main, '$format_line = sfaf_event_format_line( $post_id, $ics_lang );' );
 check( false !== $loc_at && false !== $fmt_at,
     'the LOCATION line or the format line could not be found' );
 if ( false !== $loc_at ) {

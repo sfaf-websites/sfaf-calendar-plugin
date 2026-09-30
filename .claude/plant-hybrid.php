@@ -222,7 +222,7 @@ $plants = array(
 
     'the calendar file stops saying a hybrid event is also online' => array(
         'file' => 'sfaf-calendar.php',
-        'from' => "    \$format_line = sfaf_event_format_line( \$post_id );",
+        'from' => "    \$format_line = sfaf_event_format_line( \$post_id, \$ics_lang );",
         'to'   => "    \$format_line = '';",
     ),
 
