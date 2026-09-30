@@ -1883,11 +1883,11 @@ class SFAF_Admin {
                             be shown.
                         </p>
                         <div class="uc-field-row">
-                            <label for="uc_donate_default_url">Default donation link</label>
+                            <label for="uc_donate_default_url">Default donation link in emails</label>
                             <input type="url" name="uc_settings[donate_default_url]" id="uc_donate_default_url"
                                    value="<?php echo esc_attr( $s( 'donate_default_url', SFAF_DONATE_DEFAULT ) ); ?>" class="uc-input" />
                         </div>
-                        <p class="description">Where an event's Donate button goes when neither the event nor its series has a link. Leave empty for no button on those events.</p>
+                        <p class="description">Linked from one line in the confirmation and reminder emails when neither the event nor its series has a link. Leave empty to leave the line out of those emails.</p>
                         <div class="uc-field-row uc-field-row-top">
                             <label>Pagination style</label>
                             <div class="uc-radio-stack">

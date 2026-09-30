@@ -319,7 +319,7 @@ $after      = date( 'Y-m', strtotime( 'first day of +2 months' ) );
 $eom = (int) date( 't' );
 $id  = 100;
 foreach ( array(
-    array( date( 'Y-m-' ) . str_pad( (string) max( 1, $eom - 1 ), 2, '0', STR_PAD_LEFT ), 'This Month One', 'Strut' ),
+    array( date( 'Y-m-' ) . str_pad( (string) max( (int) date( 'j' ), $eom - 1 ), 2, '0', STR_PAD_LEFT ), 'This Month One', 'Strut' ),
     array( date( 'Y-m-t' ),      'This Month Two', '' ),
     array( $next_month . '-05',  'Next Month One', '1035 Market St' ),
     array( $next_month . '-19',  'Next Month Two', '' ),

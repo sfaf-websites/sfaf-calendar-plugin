@@ -192,9 +192,6 @@ while ( have_posts() ) :
                     </div>
 
                     <?php
-                    // Donate block (only shows when a campaign URL is set).
-                    echo sfaf_donate_block( $post_id );
-
                     // Galaxy Digital volunteer signup (imported needs only).
                     echo sfaf_galaxy_block( $post_id );
 
@@ -396,6 +393,9 @@ while ( have_posts() ) :
                         <?php
                         // Social share (full variant).
                         echo sfaf_social_share_buttons( $post_id );
+
+                        // Volunteer, when the event has a page for it (3.106.0).
+                        echo sfaf_volunteer_block( $post_id );
                         ?>
                     </div>
                 </aside>

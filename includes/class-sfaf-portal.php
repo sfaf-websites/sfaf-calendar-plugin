@@ -2616,6 +2616,15 @@ class SFAF_Portal {
          * this event. A series is accepted only while it has a link to offer;
          * anything unrecognised is left as it was rather than guessed at.
          */
+        // The volunteer page (3.106.0): http or https, or nothing.
+        if ( isset( $_POST['volunteer_url'] ) ) {
+            $vol = esc_url_raw( trim( (string) wp_unslash( $_POST['volunteer_url'] ) ), array( 'http', 'https' ) );
+            if ( '' !== $vol ) {
+                update_post_meta( $event_id, '_uc_volunteer_url', $vol );
+            } else {
+                delete_post_meta( $event_id, '_uc_volunteer_url' );
+            }
+        }
         if ( isset( $_POST['donate_choice'] ) ) {
             $dc = sanitize_text_field( wp_unslash( $_POST['donate_choice'] ) );
             $ok = in_array( $dc, array( 'inherit', 'none', 'custom' ), true )
@@ -3174,7 +3183,7 @@ class SFAF_Portal {
              * link and the delivery ticks along with it, the same way
              * SFAF_Online::set() clears them on the source.
              */
-            '_uc_rsvp_enabled', '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_donate_choice',
+            '_uc_rsvp_enabled', '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_donate_choice', '_uc_volunteer_url',
             '_uc_pardot_campaigns', '_uc_organizer_email', '_uc_notify_organizer',
             '_uc_email_subject', '_uc_email_body', '_uc_email_replyto',
             '_uc_show_rsvp', '_uc_show_donate', '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
@@ -3386,7 +3395,7 @@ class SFAF_Portal {
         $copy_keys = array(
             '_uc_start_time', '_uc_end_time', '_uc_location',
             '_uc_capacity', '_uc_rsvp_enabled',
-            '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_donate_choice', sfaf_fundraising_progress_meta_key(),
+            '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_donate_choice', '_uc_volunteer_url', sfaf_fundraising_progress_meta_key(),
             '_uc_pardot_campaigns',
             '_uc_organizer_email', '_uc_notify_organizer',
             '_uc_email_subject', '_uc_email_body', '_uc_email_replyto',
@@ -7573,11 +7582,13 @@ class SFAF_Portal {
         // campaign URL typed by hand. A control over nothing is worse than no
         // control: it invites a manager to set something with no effect.
         // Its own campaign only: the figures are that campaign's (3.105.0).
-        $has_donate = $ctx['event_id'] && 'own' === sfaf_donate_resolve( $ctx['event_id'] )['from'];
-        $fields     = array_diff( $fields, array( 'fundraising_progress' ) );
-        if ( $has_donate ) {
-            $fields[] = 'fundraising_progress';
-        }
+        /*
+         * NOT OFFERED FROM 3.106.0. The figures had one public surface, the
+         * donate block on the event page, and it is gone. The stored value is
+         * left alone; the field is always "filled" for completeness, so no
+         * event waits on it.
+         */
+        $fields = array_diff( $fields, array( 'fundraising_progress' ) );
 
         /*
          * THE FOUR LINES A COMMUNITY SUBMISSION PUTS ON THE LISTING (3.46.0).
@@ -9462,7 +9473,7 @@ class SFAF_Portal {
                     <input type="url" name="series_donate_url"
                            value="<?php echo esc_attr( $term_id ? SFAF_Series::donate_url( $term_id ) : '' ); ?>"
                            placeholder="https://donate.sfaf.org/&hellip;" />
-                    <span class="uc-hint">Used by every event in this series whose donate button is set to Series link. Leave empty to use the SFAF default.</span>
+                    <span class="uc-hint">Goes in the confirmation and reminder emails of every event in this series set to Series link. Leave empty to use the SFAF default.</span>
                 </label>
 
                 <?php
@@ -12862,7 +12873,7 @@ class SFAF_Portal {
                 <section class="uc-bento-card" data-uc-donate>
                     <h2 class="uc-bento-title">Donate</h2>
                     <label class="uc-field">
-                        <span class="uc-field-label">Donate button</span>
+                        <span class="uc-field-label">Donation link in emails</span>
                         <select name="donate_choice" data-uc-donate-choice
                                 data-uc-donate-series-links="<?php echo esc_attr( wp_json_encode( array_map( 'strval', array_keys( $don_links ) ) ) ); ?>">
                             <option value="inherit" data-uc-donate-inherit <?php selected( 'inherit', $don_choice ); ?>><?php echo esc_html( $don_inherit ); ?></option>
@@ -12872,12 +12883,24 @@ class SFAF_Portal {
                             <?php endforeach; ?>
                             <option value="custom" <?php selected( 'custom', $don_choice ); ?>>Custom</option>
                         </select>
+                        <span class="uc-hint">The link goes in the confirmation and reminder emails. None leaves it out.</span>
                     </label>
                     <label class="uc-field<?php echo esc_attr( $this->field_class( $s_url ) ); ?>" data-uc-donate-custom<?php echo 'custom' === $don_choice ? '' : ' hidden'; ?>>
                         <span class="uc-field-label">Donation link <?php echo $this->field_badge( $s_url, $prov['label'] ); ?></span>
                         <input type="url" name="gofundme_url" value="<?php echo esc_attr( $g( '_uc_gofundme_url' ) ); ?>" placeholder="https://gofund.me/…"<?php echo $this->field_disabled( $s_url ); ?> />
                     </label>
-                    <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'fundraising_progress' ), $placed ) ); ?>
+                    <?php
+                    /*
+                     * THE VOLUNTEER PAGE (3.106.0). A button under the share buttons on
+                     * the event page, and nowhere else. It travels with a repeating
+                     * event and is not copied from the series.
+                     */
+                    ?>
+                    <label class="uc-field">
+                        <span class="uc-field-label">Volunteer link</span>
+                        <input type="url" name="volunteer_url" value="<?php echo esc_attr( $g( '_uc_volunteer_url' ) ); ?>" placeholder="https://" />
+                        <span class="uc-hint">Paste the volunteer page for this event.</span>
+                    </label>
                 </section>
 
                 <?php

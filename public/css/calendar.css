@@ -131,6 +131,12 @@
        only agrees. */
     --uc-open-ink: #46661F;
 
+    /* THE GREEN FAMILY, FOR THE VOLUNTEER BUTTON (3.106.0): the Green ramp's ink
+       and tint from DESIGN.md. White on the ink measures 6.60:1; the ink on the
+       tint, which is the hover, 6.08:1. */
+    --uc-green-ink: #46661F;
+    --uc-green-tint: #F1F8E9;
+
     /* THE HATCH ITSELF, ONCE. The grid cell cannot use the shared class — it
        has to out-specify `.uc-calendar .uc-month-grid td`, which sets the white
        background at two classes and a type — so it writes its own rule. It
@@ -1654,7 +1660,6 @@
 .uc-calendar .uc-lrow-time,
 .uc-calendar .uc-lrow-venue,
 .uc-calendar .uc-lrow-note { color: var(--uc-secondary); }
-.uc-calendar .uc-lrow-donate { align-self: flex-start; margin-top: 2px; font-size: 13px; font-weight: 600; color: var(--uc-teal-text); }
 
 /* ===========================================================================
  * THREE THINGS ABOUT A LIST ROW, ALL MEASURED AT THE EMBED WIDTH (3.95.1).
@@ -1979,6 +1984,14 @@
 .uc-sidebar .uc-actionbtn-primary {
     background: var(--uc-teal-text); color: #fff; border-color: var(--uc-teal-text);
 }
+/* VOLUNTEER (3.106.0): Register's size and shape, in the green family. */
+.uc-single .uc-actionbtn-volunteer {
+    background: var(--uc-green-ink); color: #fff; border-color: var(--uc-green-ink);
+}
+.uc-single .uc-actionbtn-volunteer:hover, .uc-single .uc-actionbtn-volunteer:focus-visible {
+    background: var(--uc-green-tint); color: var(--uc-green-ink); border-color: var(--uc-green-ink);
+}
+.uc-single .uc-volunteer { margin-top: 16px; }
 .uc-calendar .uc-actionbtn-primary:hover, .uc-calendar .uc-actionbtn-primary:focus-visible,
 .uc-single .uc-actionbtn-primary:hover, .uc-single .uc-actionbtn-primary:focus-visible,
 .uc-sidebar .uc-actionbtn-primary:hover, .uc-sidebar .uc-actionbtn-primary:focus-visible {
@@ -2521,8 +2534,6 @@ dialog.uc-rsvp-modal-overlay::backdrop { background: transparent; }
 /* Donate block. The figures come from the same renderer the card uses, so
    there is one set of .uc-lc-fund rules and this block only spaces them. The
    button is .uc-actionbtn like every other primary action. */
-.uc-donate-block { margin-top: 14px; padding: 16px; background: var(--uc-bg); border: 1px solid var(--uc-border); border-radius: 12px; }
-.uc-single .uc-donate-block .uc-lc-fund { margin: 0 0 12px; }
 
 /* Add to Calendar dropdown */
 .uc-addcal { position: relative; }
@@ -2600,7 +2611,6 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
 .uc-single-actions .uc-addcal, .uc-single-actions .uc-addcal-toggle, .uc-single-actions .uc-follow-btn { width: 100%; }
 .uc-single-actions .uc-addcal-toggle, .uc-single-actions .uc-follow-btn { text-align: center; }
 .uc-single-card .uc-share { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--uc-border); }
-.uc-single-card .uc-donate-block { margin-top: 16px; }
 
 /* ---------------------------------------------------------------------------
    THE EVENT PAGE STACKS AT 860px, AND THE CARD GOES ON TOP (3.75.0)

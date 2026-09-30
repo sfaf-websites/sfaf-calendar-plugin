@@ -4281,24 +4281,11 @@ class SFAF_Shortcodes {
          * page, so it says so, on every event and on every surface. There is
          * no per-event variation left to get wrong.
          *
-         * DONATE IS THE ONE EXCEPTION, and it is an exception because it is
-         * not the same button doing something else: it is a second button
-         * going somewhere else entirely, straight to the donation page,
-         * rendered only when there is one. It carries the heavier weight of
-         * the two because it is the action with a consequence; View event is
-         * navigation and takes the outline.
+         * NO DONATE BUTTON ON A ROW (3.106.0). sfaf.org carries Donate in its
+         * own header, and two competing buttons was the wrong result. The
+         * donation link now appears only as one line in the confirmation and
+         * the morning-of reminder; see sfaf_donate_resolve().
          */
-        /*
-         * AN EVENT'S OWN CAMPAIGN ONLY, ON A LIST ROW (3.105.0). The event page
-         * draws whatever sfaf_donate_resolve() answers, including the series
-         * link and the SFAF default; drawn here, that default would put the
-         * same Donate button on every row of the list. So the row asks the
-         * same resolver and keeps what it always showed, an event raising
-         * money for itself, and None takes it away here too.
-         */
-        $donate     = sfaf_donate_resolve( $post_id );
-        $donate_url = ( 'own' === $donate['from'] ) ? $donate['url'] : '';
-        $can_donate = ( '' !== $donate_url && sfaf_show_feature( $post_id, 'donate' ) );
 
         /*
          * The footer's supporting line. Still worth saying even though the
@@ -4488,9 +4475,6 @@ class SFAF_Shortcodes {
                 <?php endif; ?>
                 <?php if ( '' !== $note ) : ?>
                     <span class="uc-lrow-note"><?php echo esc_html( $note ); ?></span>
-                <?php endif; ?>
-                <?php if ( $can_donate ) : ?>
-                    <a class="uc-lrow-donate" href="<?php echo esc_url( $donate_url ); ?>" target="_blank" rel="noopener">Donate</a>
                 <?php endif; ?>
             </div>
         </div>

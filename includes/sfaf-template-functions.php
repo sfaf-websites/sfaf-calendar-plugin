@@ -451,7 +451,8 @@ function sfaf_action_button( $args = array() ) {
         return '';
     }
 
-    $classes = 'uc-actionbtn uc-actionbtn-' . ( 'primary' === $args['variant'] ? 'primary' : 'secondary' );
+    // volunteer (3.106.0) is the green family's fill; see calendar.css.
+    $classes = 'uc-actionbtn uc-actionbtn-' . ( in_array( $args['variant'], array( 'primary', 'volunteer' ), true ) ? $args['variant'] : 'secondary' );
     if ( '' !== trim( (string) $args['class'] ) ) {
         $classes .= ' ' . trim( (string) $args['class'] );
     }
@@ -1013,54 +1014,6 @@ function sfaf_donate_url( $post_id ) {
     return $r['url'];
 }
 
-/**
- * Donate / GoFundMe block: progress bar (only with real figures) + outbound
- * button. Only renders when the resolved link is not empty and the feature is
- * enabled. The link is sfaf_donate_resolve()'s answer, never a meta key read
- * here (3.105.0).
- *
- * NO INVENTED FUNDRAISING NUMBERS. EVER.
- * ---------------------------------------------------------------------------
- * Until 2.9.0 this block fell back to a hardcoded 65% when it had no raised
- * figure, and then multiplied the goal by it to print "$65,000 raised". That
- * number was a design placeholder from before the GoFundMe Pro integration
- * existed. It was not an estimate, a projection or a rounding: it was made up,
- * and it was rendered to donors, on a nonprofit's public pages, next to a real
- * goal, in a way nobody reading it could tell from a real total.
- *
- * How it got there does not matter. It is gone.
- *
- * The rule now: a raised amount is displayed if and only if a real one has
- * been stored, and the progress bar is drawn if and only if there is a real
- * amount AND a goal to measure it against. There is no fallback percentage, no
- * assumed figure, and no bar drawn from one. An event with a goal and no
- * raised figure shows the goal by itself, which is a true statement; an event
- * with neither shows the Donate button alone.
- *
- * _uc_gofundme_raised is only ever written by the GoFundMe Pro importer from
- * the campaign's own gross_amount (see SFAF_Source_GFMP::raised_amount), so
- * "we have a figure" and "the platform told us the figure" are the same thing.
- */
-function sfaf_donate_block( $post_id ) {
-    $url = sfaf_donate_url( $post_id );
-    if ( '' === $url || ! sfaf_show_feature( $post_id, 'donate' ) ) {
-        return '';
-    }
-
-    ob_start();
-    ?>
-    <div class="uc-donate-block">
-        <?php echo sfaf_fundraising_progress( $post_id ); ?>
-        <?php echo sfaf_action_button( array(
-            'label'    => 'Donate',
-            'href'     => $url,
-            'variant'  => 'primary',
-            'external' => true,
-        ) ); ?>
-    </div>
-    <?php
-    return ob_get_clean();
-}
 
 /**
  * The meta key holding the per-event fundraising progress choice.
@@ -1074,30 +1027,6 @@ function sfaf_fundraising_progress_meta_key() {
     return '_uc_show_fund_progress';
 }
 
-/**
- * Whether this event shows its fundraising figures. OFF unless switched on.
- *
- * OPT IN, NOT OPT OUT, AND THE DEFAULT IS THE POINT. Until 3.2.0 a bar
- * appeared on any event that had a goal, which meant importing a campaign was
- * enough to publish its fundraising position on a page nobody had reviewed.
- * A goal is a number GoFundMe Pro happens to hold; whether this calendar
- * should be repeating it in public is a decision, and decisions are made by
- * people. An unset value is therefore no, permanently, and stays no until a
- * manager says otherwise on the event.
- *
- * The site-wide switch is still respected on top of this. It is a master off
- * for the whole calendar, not a default on for each event.
- *
- * @param int $post_id
- * @return bool
- */
-function sfaf_show_fundraising_progress( $post_id ) {
-    $settings = get_option( 'uc_settings', array() );
-    if ( isset( $settings['gofundme_show_progress'] ) && $settings['gofundme_show_progress'] !== '1' ) {
-        return false;
-    }
-    return '1' === (string) get_post_meta( $post_id, sfaf_fundraising_progress_meta_key(), true );
-}
 
 /**
  * "Add to Calendar" dropdown: Google Calendar link + .ics download.
@@ -1369,6 +1298,35 @@ function sfaf_rsvp_block( $post_id ) {
  * @param array  $data     RSVP data (name, email...) plus, for the morning-of
  *                         reminder, a per-recipient cancel_url.
  */
+/**
+ * The event's volunteer page as a button, or nothing (3.106.0).
+ *
+ * "Volunteer for this event", in a new tab, below the share buttons. Only an
+ * http or https address draws it, and no address draws nothing at all, not an
+ * empty row.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_volunteer_block( $post_id ) {
+    $url = sfaf_volunteer_url( $post_id );
+    if ( '' === $url ) {
+        return '';
+    }
+    return '<div class="uc-volunteer">' . sfaf_action_button( array(
+        'label'    => 'Volunteer for this event',
+        'href'     => $url,
+        'variant'  => 'volunteer',
+        'external' => true,
+    ) ) . '</div>';
+}
+
+/** The event's volunteer page, or '' when there is none or it is not a web address. */
+function sfaf_volunteer_url( $post_id ) {
+    $url = trim( (string) get_post_meta( (int) $post_id, '_uc_volunteer_url', true ) );
+    return preg_match( '#^https?://\S+$#i', $url ) ? $url : '';
+}
+
 function sfaf_replace_tokens( $text, $event_id, $data = array() ) {
     /*
      * AP STYLE, NOT THE SITE'S DATE FORMAT SETTING.
@@ -3760,65 +3718,6 @@ function sfaf_day_event_thumb( $post_id ) {
         . '</span>';
 }
 
-/**
- * Fundraising progress for the list card: the bar and the sentence, without
- * the Donate button (which is now the card's footer action).
- *
- * NO INVENTED FUNDRAISING NUMBERS. EVER. This is the same rule sfaf_donate_block()
- * documents at length, enforced identically here because this is a second
- * place the figures reach a donor. A bar needs two real numbers. A goal with
- * no total behind it states the goal and draws nothing, because a bar at zero
- * is a claim about how the appeal is going, and we do not have that fact.
- *
- * @param int $post_id
- * @return string
- */
-function sfaf_fundraising_progress( $post_id ) {
-    /*
-     * ONLY BESIDE THE EVENT'S OWN LINK (3.105.0). The goal and the total belong
-     * to the campaign at _uc_gofundme_url. Drawn beside a series link or the
-     * default they would be one campaign's figures under another's button.
-     */
-    $donate = sfaf_donate_resolve( $post_id );
-    if ( 'own' !== $donate['from'] || ! sfaf_show_feature( $post_id, 'donate' ) ) {
-        return '';
-    }
-
-    // Off unless a manager switched it on for this event. See
-    // sfaf_show_fundraising_progress() for why the default is no.
-    if ( ! sfaf_show_fundraising_progress( $post_id ) ) {
-        return '';
-    }
-
-    $goal = (float) get_post_meta( $post_id, '_uc_gofundme_goal', true );
-    if ( $goal <= 0 ) {
-        return '';
-    }
-
-    /*
-     * SWITCHED ON WITH NOTHING TO SHOW IS SILENCE, NOT A GOAL ON ITS OWN.
-     *
-     * The previous behaviour printed "$50,000 goal" when no raised figure had
-     * arrived. Read on a fundraiser's page, a goal with no progress beside it
-     * does not read as "we have not been told the total". It reads as zero
-     * raised, which is a claim about how the appeal is going and one we have
-     * no basis for. The rule from sfaf_donate_block() has not changed, only
-     * hardened: a figure is displayed if and only if a real one is stored, and
-     * where there is nothing real to say the section does not appear.
-     */
-    $raised_raw = get_post_meta( $post_id, '_uc_gofundme_raised', true );
-    if ( '' === $raised_raw || ! is_numeric( $raised_raw ) ) {
-        return '';
-    }
-
-    $raised  = (float) $raised_raw;
-    $percent = (int) min( 100, round( $raised / $goal * 100 ) );
-
-    return '<div class="uc-lc-fund">'
-        . '<span class="uc-lc-fund-bar"><span class="uc-lc-fund-fill" style="width: ' . (int) $percent . '%"></span></span>'
-        . '<span class="uc-lc-fund-text">$' . number_format( $raised ) . ' raised of $' . number_format( $goal ) . ' goal</span>'
-        . '</div>';
-}
 
 /**
  * How many RSVP places are left, phrased for a visitor, or ''.
