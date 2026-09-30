@@ -24,7 +24,7 @@ define( 'SFAF_VERSION', '3.105.0' );
  * hook — still gets its new tables, instead of throwing "table doesn't exist"
  * the first time the runner looks for one.
  */
-define( 'SFAF_DB_VERSION', '9' );
+define( 'SFAF_DB_VERSION', '10' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -125,6 +125,12 @@ $sfaf_includes = array(
     'includes/class-sfaf-rich-text.php',
     'includes/sfaf-notify-consent.php',
     'includes/class-sfaf-email.php',
+    // The words of every registrant message in both languages, and the
+    // Templates screen's overrides (3.106.0). After SFAF_Email, whose parts it
+    // composes; before the builders that take their words from it.
+    'includes/class-sfaf-messages.php',
+    // The waitlist (3.106.0). After the mail layer it sends through.
+    'includes/class-sfaf-waitlist.php',
     'includes/class-sfaf-notifications.php',
     'includes/class-sfaf-announce.php',
     'includes/class-sfaf-reminders.php',
@@ -250,6 +256,10 @@ function sfaf_init() {
     $reminders = new SFAF_Reminders();
     $reminders->register();
 
+    // The waitlist (3.106.0): offers a released place on, and the confirm link.
+    $waitlist = new SFAF_Waitlist();
+    $waitlist->register();
+
     // Following a series: the dialog's ajax route, and the confirm and
     // unsubscribe links. A front-end query var, like the cancel link, for the
     // reason given in the class.
@@ -356,6 +366,9 @@ add_action( 'init', 'sfaf_init' );
  * as it arrived.
  */
 add_action( 'init', 'sfaf_normalize_time_post', 0 );
+// The Settings screen's confirmation and reminder text becomes the English
+// templates, once (3.106.0). See SFAF_Messages::migrate_settings().
+add_action( 'init', array( 'SFAF_Messages', 'migrate_settings' ), 20 );
 
 /**
  * Enqueue frontend styles and scripts
@@ -900,6 +913,14 @@ function sfaf_install_tables() {
     // already says that they did; this says when, which is the question an
     // organizer looking at a half-empty room actually asks.
     //
+    // THE WAITLIST (3.106.0) is four more statuses on the same rows,
+    // waitlisted, offered, offered_manual and expired, and three columns for the
+    // offer: its own token (the confirm link, never the cancel token), when it
+    // went out, and when it runs out, both on the site's clock like created_at.
+    // Every existing row takes the defaults, '' and NULL, and needs no migration:
+    // nothing is on a waitlist until 3.106.0 puts somebody there. The counts ask
+    // for 'confirmed' and so never see a waitlist row. See SFAF_Waitlist.
+    //
     // removed_by IS WHO, WHEN IT WAS NOT THEM (3.105.0). A member of staff can
     // release a place from the registrations list, and the row records their
     // user id; the time is cancelled_at, written in the same statement. 0 is a
@@ -937,11 +958,15 @@ function sfaf_install_tables() {
         created_at datetime DEFAULT CURRENT_TIMESTAMP,
         cancelled_at datetime NULL,
         removed_by bigint(20) unsigned NOT NULL DEFAULT 0,
+        offer_token char(32) NOT NULL DEFAULT '',
+        offered_at datetime NULL,
+        offer_expires datetime NULL,
         format varchar(20) NOT NULL DEFAULT '',
         PRIMARY KEY (id),
         KEY event_id (event_id),
         KEY email (email),
         KEY token (token),
+        KEY offer_token (offer_token),
         KEY event_format (event_id, format)
     ) $charset;";
     /*
@@ -1605,6 +1630,20 @@ function sfaf_format_full( $event_id, $format ) {
     $taken = SFAF_Online::is_hybrid( $event_id )
         ? sfaf_get_rsvp_count_by_format( $event_id, $format )
         : sfaf_get_rsvp_count( $event_id );
+    /*
+     * A PLACE ON OFFER IS TAKEN, AND A QUEUE MEANS FULL (3.106.0). The count
+     * above still asks only for 'confirmed', as every count does; what makes a
+     * format full also counts the places held for somebody on the waitlist,
+     * and anybody still waiting, so a newcomer joins the queue behind them
+     * rather than taking a place that is being offered. See SFAF_Waitlist.
+     */
+    if ( class_exists( 'SFAF_Waitlist' ) ) {
+        $fmt = SFAF_Online::is_hybrid( $event_id ) ? $format : '';
+        if ( SFAF_Waitlist::waiting( $event_id, $fmt ) > 0 ) {
+            return true;
+        }
+        $taken += SFAF_Waitlist::held( $event_id, $fmt );
+    }
     return ( $taken >= $capacity );
 }
 

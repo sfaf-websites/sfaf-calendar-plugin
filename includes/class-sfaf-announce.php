@@ -196,117 +196,75 @@ class SFAF_Announce {
      * reader needs is the list.
      */
     private static function several_events( $type, $event_ids, $person, $changes_by_event ) {
-        $first = ( $person && ! empty( $person->first_name ) ) ? trim( (string) $person->first_name ) : '';
-        if ( '' === $first && $person && ! empty( $person->name ) ) {
-            $first = trim( (string) $person->name );
-        }
-        $hello = ( '' !== $first ) ? $first . ', ' : '';
-
-        $n     = count( $event_ids );
-        $title = get_the_title( $event_ids[0] );
-
-        if ( 'cancelled' === $type ) {
-            $head = sprintf( '%d dates are cancelled.', $n );
-            $lead = $hello . 'you were registered for these, and they are not going ahead. You do not need to do anything.';
-        } elseif ( 'reinstated' === $type ) {
-            /*
-             * A THIRD HEADLINE, NOT THE "changed" ONE (3.73.0). Without this
-             * branch a person registered for two reinstated dates would be
-             * told they "have changed", which is the wrong fact: they were
-             * told these were off, and what they need to read first is that
-             * they are on.
-             */
-            $head = sprintf( '%d dates are back on.', $n );
-            $lead = $hello . 'these were cancelled and are happening after all. Your registrations were kept and still hold.';
-        } else {
-            $head = sprintf( '%d dates have changed.', $n );
-            $lead = $hello . 'you were registered for these, and they have moved.';
-        }
-
+        // One group, one language: the first date's (3.106.0).
+        $lang = sfaf_event_language( $event_ids[0] );
         $rows = array();
-        $text_rows = '';
         foreach ( $event_ids as $id ) {
             $date  = (string) get_post_meta( $id, '_uc_event_date', true );
             $start = (string) get_post_meta( $id, '_uc_start_time', true );
             $end   = (string) get_post_meta( $id, '_uc_end_time', true );
-            $when  = sfaf_ap_date( $date, 'full' );
-            $clock = sfaf_ap_time_range( $start, $end, 'zone' );
+            $when  = sfaf_ap_date( $date, 'full', $lang );
+            $clock = sfaf_ap_time_range( $start, $end, 'zone', $lang );
 
             if ( 'changed' === $type && ! empty( $changes_by_event[ $id ] ) ) {
-                $bits = array();
+                $bits  = array();
+                $kinds = array( 'Date' => 'date', 'Time' => 'time', 'Location' => 'location' );
                 foreach ( $changes_by_event[ $id ] as $label => $pair ) {
-                    /* The pair is the phrase each time was SHOWN as, which the
-                     * page gives without a zone; this is mail, so it gets one.
-                     * "not set" is not a time and stays as it is. */
-                    if ( 'Time' === $label ) {
-                        foreach ( array( 'from', 'to' ) as $end ) {
-                            if ( 'not set' !== $pair[ $end ] ) {
-                                $pair[ $end ] = sfaf_ap_zoned( $pair[ $end ] );
-                            }
-                        }
+                    $kind = isset( $kinds[ $label ] ) ? $kinds[ $label ] : '';
+                    $from = sfaf_ap_restate( $kind, (string) $pair['from'], $lang );
+                    $to   = sfaf_ap_restate( $kind, (string) $pair['to'], $lang );
+                    if ( 'time' === $kind ) {
+                        if ( 'not set' !== $pair['from'] ) { $from = sfaf_ap_zoned( $from, $lang ); }
+                        if ( 'not set' !== $pair['to'] ) { $to = sfaf_ap_zoned( $to, $lang ); }
                     }
-                    $bits[] = strtolower( $label ) . ' ' . $pair['from'] . ' to ' . $pair['to'];
+                    $name   = '' !== $kind ? SFAF_Messages::label( $kind, $lang ) : $label;
+                    $bits[] = strtolower( $name ) . ' ' . $from . ' ' . SFAF_Messages::label( 'to', $lang ) . ' ' . $to;
                 }
                 $value = implode( '; ', $bits );
             } else {
-                $value = $clock ? $when . ', ' . $clock : $when;
+                $value = $clock;
             }
-
-            $rows[ get_the_title( $id ) . ' ' ] = $value;
-            $text_rows .= '- ' . get_the_title( $id ) . ': ' . $value . "\n";
+            /*
+             * KEYED BY THE DATE, NOT THE TITLE (3.106.0). Every date in a
+             * series has the same title, so keying on it kept only the last
+             * row of six. The title is in the heading and the subject.
+             */
+            $key = $when;
+            while ( isset( $rows[ $key ] ) ) {
+                $key .= ' ';
+            }
+            $rows[ $key ] = $value;
         }
+        $cancel = ( $person && ! empty( $person->token ) && 'cancelled' !== $type ) ? SFAF_Reminders::cancel_url( $person->token ) : '';
+        return self::several_compose( $type, $lang, $person, get_the_title( $event_ids[0] ), count( $event_ids ), $rows, $cancel );
+    }
 
-        $html  = SFAF_Email::heading( $head );
-        $html .= SFAF_Email::para( $lead );
-        $html .= SFAF_Email::details( $rows );
-
-        if ( 'cancelled' === $type ) {
-            $html .= SFAF_Email::small_para( 'Your registrations have been kept as a record that you signed up. Nothing else will be sent about these dates.' );
-        } elseif ( 'reinstated' === $type ) {
-            /* THE WAY OUT IS OFFERED HERE TOO. Several dates coming back at
-             * once is more likely to clash with something, not less. */
-            $cancel = ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '';
-            if ( $cancel ) {
-                $html .= SFAF_Email::rule();
-                $html .= SFAF_Email::small_para(
-                    'No longer able to come to one of them? <a href="' . esc_url( $cancel ) . '" style="color:' . SFAF_Email::C_TEAL . ';">Cancel your registration</a> so somebody else can take your place. We will ask you to confirm.'
-                );
-            }
-        } else {
-            $cancel = ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '';
-            if ( $cancel ) {
-                $html .= SFAF_Email::rule();
-                $html .= SFAF_Email::small_para(
-                    'Cannot make the new times? <a href="' . esc_url( $cancel ) . '" style="color:' . SFAF_Email::C_TEAL . ';">Cancel your registration</a> so somebody else can take your place. We will ask you to confirm.'
-                );
-            }
-        }
-
-        $text  = $head . "\n\n" . $lead . "\n\n" . $text_rows . "\n";
-        if ( 'cancelled' === $type ) {
-            $text .= "Your registrations have been kept as a record that you signed up. Nothing else will be\nsent about these dates.\n";
-        } elseif ( 'reinstated' === $type ) {
-            $cancel = ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '';
-            if ( $cancel ) {
-                $text .= "\nNo longer able to come to one of them? Cancel your registration so somebody else can\ntake your place. We will ask you to confirm: " . $cancel . "\n";
-            }
-        } else {
-            $cancel = ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '';
-            if ( $cancel ) {
-                $text .= "\nCannot make the new times? Cancel your registration so somebody else can take your place. We will ask\nyou to confirm: " . $cancel . "\n";
-            }
-        }
-        $text .= "\n" . SFAF_Email::POSTAL;
-
-        $subject = ( 'cancelled' === $type )
-            ? sprintf( 'Cancelled: %d dates for %s', $n, $title )
-            : sprintf( 'Changed: %d dates for %s', $n, $title );
-
-        return array(
-            'subject' => $subject,
-            'html'    => SFAF_Email::shell( $head, $html ),
-            'text'    => $text,
+    /**
+     * The several-dates message with the sample event, for the Templates
+     * screen and EMAILS.md (3.106.0): two dates, through the same composer.
+     */
+    public static function several_sample( $type, $person, $s ) {
+        $rows = array(
+            sfaf_ap_date( '2026-11-12', 'full', $s['lang'] ) => $s['time'],
+            sfaf_ap_date( '2026-11-19', 'full', $s['lang'] ) => $s['time'],
         );
+        return self::several_compose( $type, $s['lang'], $person, $s['title'], 2, $rows, 'cancelled' === $type ? '' : $s['cancel_link'] );
+    }
+
+    /** One email for several dates, from the catalogue's "several" variant. */
+    private static function several_compose( $type, $lang, $person, $title, $n, $rows, $cancel ) {
+        $first = ( $person && ! empty( $person->first_name ) ) ? trim( (string) $person->first_name ) : '';
+        if ( '' === $first && $person && ! empty( $person->name ) ) {
+            $first = trim( (string) $person->name );
+        }
+        $values = array(
+            'first_name' => $first, 'title' => $title, 'count' => (string) (int) $n, 'cancel_link' => $cancel,
+            'date' => '', 'time' => '', 'location' => '', 'event_link' => '',
+        );
+        return SFAF_Messages::compose( $type, 'several', $lang, $values, array(
+            'details'   => $rows,
+            'preheader' => $title,
+        ) );
     }
 
     /* ---------------------------------------------------------------------

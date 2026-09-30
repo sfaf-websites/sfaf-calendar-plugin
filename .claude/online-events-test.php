@@ -150,6 +150,7 @@ function sfaf_ics_url( $post_id ) {
     return add_query_arg( 'uc_ics', (int) $post_id, home_url( '/' ) );
 }
 
+require_once __DIR__ . '/lang-shim.php'; // 3.106.0
 require_once $root . '/includes/class-sfaf-online.php';
 
 /* =========================================================================
@@ -282,6 +283,9 @@ $WHITELIST = array(
 
     'class-sfaf-notifications.php::build_confirmation' => 'the confirmation, when the manager ticked it',
     'class-sfaf-notifications.php::build_reminder'     => 'the morning-of reminder, when the manager ticked it',
+    // 3.106.0: the two above reach the link through this, and it reads it only
+    // after SFAF_Online::joining_html() has answered with a block, the gate itself.
+    'class-sfaf-notifications.php::joining'            => 'the confirmation and reminder variant, after the gate has passed',
 
     'sfaf-calendar.php::sfaf_output_ics' => 'the .ics, and only on a request carrying a valid join token',
 

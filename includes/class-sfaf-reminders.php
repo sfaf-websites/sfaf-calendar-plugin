@@ -802,10 +802,13 @@ class SFAF_Reminders {
 
         $row = self::resolve_token( $token );
         if ( ! $row ) {
+            // No event, so no language to speak in: English, as before.
             self::cancel_page( 'That link is not valid', 'This cancellation link has expired or was not recognized. If you need to cancel, reply to the email you received and we will sort it out.' );
         }
 
-        $event_title = get_the_title( $row->event_id );
+        $event_id = (int) $row->event_id;
+        $lang     = sfaf_event_language( $event_id );
+        $values   = self::page_values( $event_id, $lang );
 
         $confirmed = isset( $_SERVER['REQUEST_METHOD'] )
             && 'POST' === $_SERVER['REQUEST_METHOD']
@@ -813,81 +816,89 @@ class SFAF_Reminders {
             && hash_equals( $token, sanitize_text_field( wp_unslash( $_POST['uc_cancel_token'] ) ) );
 
         /*
-         * DOES THIS EVENT ACTUALLY HAVE A CAPACITY?
-         *
-         * "Places are limited, so canceling puts yours back for someone else"
-         * was printed unconditionally, and on an event with no cap it is a claim
-         * nobody made: nothing is limited, so nothing goes back. `_uc_capacity`
-         * at 0 or absent means unlimited everywhere else in the plugin, and
-         * sfaf_spots_left_line() already refuses to produce a sentence on that
-         * basis. Same test here, same reason.
+         * DOES THIS EVENT ACTUALLY HAVE A CAPACITY? The places-go-back
+         * sentence is only true on one that does; on an uncapped event nothing
+         * is limited and nothing goes back, so it is left out rather than
+         * reworded.
          */
-        $capped = (int) get_post_meta( (int) $row->event_id, '_uc_capacity', true ) > 0;
+        $capped = (int) get_post_meta( $event_id, '_uc_capacity', true ) > 0;
 
         /*
-         * WHICH DATE, AND THIS IS THE WHOLE OF PART B.
-         *
-         * Every occurrence in a series carries the SAME TITLE, so somebody
-         * registered for three Thursdays saw three identical pages and had no
-         * way to tell which one they were cancelling. The title alone does not
-         * identify the thing being cancelled on a repeating event, which is
-         * most of what this calendar carries.
-         *
-         * THE HOUSE FORMATTERS, NOT A NEW FORMAT. sfaf_ap_date( ..., 'full' )
-         * and sfaf_ap_time_range() are what every email already prints, so the
-         * date on this page reads exactly like the date in the message that
-         * linked here. See the date-callsite sweep for why there is one
-         * formatter rather than a call to date() per screen.
+         * SOMEBODY STILL WAITING leaves the waitlist rather than cancelling a
+         * place they do not have (3.106.0). Their confirmation carries the
+         * same kind of link.
          */
-        $when = trim(
-            sfaf_ap_date( (string) get_post_meta( (int) $row->event_id, '_uc_event_date', true ), 'full' )
-            . ' '
-            . sfaf_ap_time_range(
-                (string) get_post_meta( (int) $row->event_id, '_uc_start_time', true ),
-                (string) get_post_meta( (int) $row->event_id, '_uc_end_time', true )
-            )
-        );
-        $when_line = '' !== $when ? '<p class="uc-notice-when">' . esc_html( $when ) . '</p>' : '';
+        $waiting = isset( $row->status ) && in_array( (string) $row->status, SFAF_Waitlist::waiting_statuses(), true );
 
         if ( $confirmed ) {
-            $freed = self::cancel_rsvp( (int) $row->event_id, (string) $row->email );
-
-            if ( ! $freed ) {
-                self::cancel_page(
-                    'Nothing to cancel',
-                    sprintf( 'We could not find an active registration for %s against this address. It may already have been canceled.', $event_title )
-                );
+            if ( $waiting ) {
+                SFAF_Waitlist::leave( (int) $row->id );
+                $p = self::page_parts( 'cancel_page', 'left', $lang, $values );
+                sfaf_notice_page( $p['title'], $p['html'], $lang );
             }
-
-            /*
-             * THE DATE IS ON THE SUCCESS PAGE TOO, and for a different reason
-             * than on the question. This is the confirmation somebody keeps;
-             * scanning an inbox three weeks later, "which Thursday did I drop?"
-             * is exactly the question the title cannot answer.
-             *
-             * THE PLACE ONLY "GOES BACK" IF THERE WAS A COUNT TO GO BACK TO.
-             * The capacity sentence is dropped on an uncapped event rather than
-             * reworded, because there is nothing true to say in its place.
-             */
-            $done  = '<p>Your registration for <strong>' . esc_html( $event_title ) . '</strong> has been canceled.</p>';
-            $done .= $when_line;
-            if ( $capped ) {
-                $done .= '<p>Your place has gone back to the count for someone else.</p>';
+            if ( ! self::cancel_rsvp( $event_id, (string) $row->email ) ) {
+                $p = self::page_parts( 'cancel_page', 'nothing', $lang, $values );
+                sfaf_notice_page( $p['title'], $p['html'], $lang );
             }
-            self::cancel_page( 'Registration canceled', $done, false );
+            $p = self::page_parts( 'cancel_page', 'done', $lang, $values, array( 'capped' => $capped ) );
+            sfaf_notice_page( $p['title'], $p['html'], $lang );
         }
 
-        // The ask.
-        $html  = '<p>Cancel your registration for <strong>' . esc_html( $event_title ) . '</strong>?</p>';
-        $html .= $when_line;
-        if ( $capped ) {
-            $html .= '<p>Places are limited, so canceling puts yours back for someone else.</p>';
+        // The ask. A GET never cancels anything: mail clients and scanners
+        // fetch links without a person clicking, so only the POST acts.
+        $p = self::page_parts( 'cancel_page', $waiting ? 'leave' : 'ask', $lang, $values, array( 'capped' => $capped, 'token' => $token ) );
+        sfaf_notice_page( $p['title'], $p['html'], $lang );
+    }
+
+    /**
+     * The event's facts for a page, in its language (3.106.0).
+     *
+     * @return array
+     */
+    public static function page_values( $event_id, $lang ) {
+        $event_id = (int) $event_id;
+        return array(
+            'title' => get_the_title( $event_id ),
+            'date'  => sfaf_ap_date( (string) get_post_meta( $event_id, '_uc_event_date', true ), 'full', $lang ),
+            'time'  => sfaf_ap_time_range(
+                (string) get_post_meta( $event_id, '_uc_start_time', true ),
+                (string) get_post_meta( $event_id, '_uc_end_time', true ),
+                '',
+                $lang
+            ),
+        );
+    }
+
+    /**
+     * EVERY PAGE A REGISTRANT LANDS ON, BUILT IN ONE PLACE (3.106.0): the
+     * cancel page, the waitlist leave page and the offer confirm page, for
+     * the handlers and for the Templates screen's preview.
+     *
+     * THE DATE IS ON EVERY ONE OF THEM. Every date in a series carries the
+     * same title, so somebody registered for three Thursdays needs the date to
+     * know which one this is.
+     *
+     * @param array $ctx capped: bool; token: string for the form.
+     * @return array{title:string,html:string}
+     */
+    public static function page_parts( $key, $variant, $lang, $values, $ctx = array() ) {
+        $when  = trim( ( isset( $values['date'] ) ? $values['date'] : '' ) . ' ' . ( isset( $values['time'] ) ? $values['time'] : '' ) );
+        $token = isset( $ctx['token'] ) ? (string) $ctx['token'] : 'SAMPLE';
+        $parts = array( 'when' => 'nothing' === $variant || 'gone' === $variant ? '' : $when );
+        if ( 'cancel_page' === $key ) {
+            // The places-go-back line: the handler says whether the event is
+            // capped; a preview, which says nothing, shows it.
+            $parts['show_closing'] = isset( $ctx['capped'] ) ? (bool) $ctx['capped'] : true;
+            if ( 'ask' === $variant ) {
+                $parts += array( 'button' => 'cancel_button', 'field' => array( 'uc_cancel_token', $token ) );
+            } elseif ( 'leave' === $variant ) {
+                $parts += array( 'button' => 'leave_button', 'field' => array( 'uc_cancel_token', $token ) );
+            }
         }
-        $html .= '<form method="post" class="uc-notice-form">';
-        $html .= '<input type="hidden" name="uc_cancel_token" value="' . esc_attr( $token ) . '" />';
-        $html .= '<button type="submit" class="uc-notice-btn">Yes, cancel my registration</button>';
-        $html .= '</form>';
-        self::cancel_page( "Can't make it?", $html, false );
+        if ( 'offer_page' === $key && 'ask' === $variant ) {
+            $parts += array( 'button' => 'confirm_button', 'field' => array( 'uc_offer_token', $token ) );
+        }
+        return SFAF_Messages::page( $key, $variant, $lang, $values, $parts );
     }
 
     /**
@@ -914,9 +925,11 @@ class SFAF_Reminders {
             return null;
         }
 
+        // The row's id and status too (3.106.0): a waitlisted row's link
+        // leaves the waitlist rather than cancelling a place.
         $rsvps = $wpdb->prefix . 'uc_rsvps';
         $row   = $wpdb->get_row( $wpdb->prepare(
-            "SELECT event_id, email FROM $rsvps WHERE token = %s AND token <> '' LIMIT 1",
+            "SELECT id, event_id, email, status FROM $rsvps WHERE token = %s AND token <> '' LIMIT 1",
             $token
         ) );
         if ( $row ) {

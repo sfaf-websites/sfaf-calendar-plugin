@@ -91,6 +91,13 @@ class SFAF_Series {
     const META_DONATE = '_sfaf_series_donate_url';
 
     /**
+     * Term meta: the language an event in this series writes to its
+     * registrants in when it has none of its own (3.106.0). Read by
+     * sfaf_event_language(), never copied.
+     */
+    const META_LANGUAGE = '_sfaf_series_language';
+
+    /**
      * Post meta on the EVENT: what apply_defaults() wrote, keyed by field.
      *
      * READ ONLY TO SAY "this came from the series" under the field in the
@@ -480,6 +487,12 @@ class SFAF_Series {
      */
     public static function video( $term_id ) {
         return (string) get_term_meta( (int) $term_id, self::META_VIDEO, true );
+    }
+
+    /** The series' default language, 'en' when it names none (3.106.0). */
+    public static function language( $term_id ) {
+        $lang = $term_id ? (string) get_term_meta( (int) $term_id, self::META_LANGUAGE, true ) : '';
+        return in_array( $lang, array( 'en', 'es' ), true ) ? $lang : 'en';
     }
 
     /** The series' own donation link, or '' (3.105.0). */
@@ -1217,6 +1230,15 @@ class SFAF_Series {
                 update_term_meta( $term_id, self::META_VIDEO, $video );
             } else {
                 delete_term_meta( $term_id, self::META_VIDEO );
+            }
+        }
+        if ( array_key_exists( 'language', $args ) ) {
+            $lang = (string) $args['language'];
+            if ( 'es' === $lang ) {
+                update_term_meta( $term_id, self::META_LANGUAGE, 'es' );
+            } else {
+                // English is what no value means, so it is stored as nothing.
+                delete_term_meta( $term_id, self::META_LANGUAGE );
             }
         }
         if ( array_key_exists( 'donate_url', $args ) ) {

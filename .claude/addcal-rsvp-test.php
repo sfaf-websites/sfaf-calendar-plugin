@@ -213,8 +213,11 @@ check( 'the predicate is not written out longhand anywhere any more',
  * is the thing that should stop the build.
  */
 $notify = file_get_contents( dirname( __DIR__ ) . '/includes/class-sfaf-notifications.php' );
+/* 3.106.0: the words come from the catalogue, in the event's language. */
+$msgsrc = file_get_contents( dirname( __DIR__ ) . '/includes/class-sfaf-messages.php' );
 check( 'the registration confirmation still carries Add to calendar',
-    (bool) strpos( $notify, "SFAF_Email::label( 'Add to calendar' )" ), true );
+    (bool) preg_match( "/function build_confirmation\\(.*?'calendar'\\s*=>\\s*array\\( 'label' => 'add_to_calendar'/s", $notify )
+    && false !== strpos( $msgsrc, "'add_to_calendar'  => array( 'Add to calendar'" ), true );
 
 echo "\nTHE EDITOR SAYS SO RATHER THAN LOOKING SETTABLE\n";
 

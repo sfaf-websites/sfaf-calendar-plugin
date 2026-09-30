@@ -20,7 +20,7 @@ $plants = array(
     /* ---- THE RADIO UNDER THE SEGMENT. ---------------------------------- */
     'A SEGMENT WITHOUT ITS RADIO' => array(
         'file' => 'public/js/calendar.js',
-        'from' => "                '<input type=\"radio\" name=\"uc_rsvp_format\" value=\"' + f + '\"' +\n                (isFull ? ' disabled' : '') + ' />' +",
+        'from' => "                '<input type=\"radio\" name=\"uc_rsvp_format\" value=\"' + f + '\" />' +",
         'to'   => "",
     ),
 

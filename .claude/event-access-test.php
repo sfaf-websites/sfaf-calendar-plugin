@@ -391,6 +391,8 @@ $ALLOWED = array(
     // Releasing one registration (3.105.0): the event gate, asked of the event
     // the ROW belongs to, looked up from the row rather than taken from the form.
     'POST:remove_rsvp'            => array( 'event' ),
+    // Confirming somebody off the waitlist (3.106.0), the same gate, of the row's event.
+    'POST:confirm_waitlist'       => array( 'event' ),
     'POST:save_manager_fields'    => array( 'event', 'viewall' ),
     'POST:refresh_source_event'   => array( 'event' ),
     'POST:faq_set_apply'          => array( 'event' ),

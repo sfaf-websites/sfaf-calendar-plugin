@@ -162,6 +162,7 @@ function sfaf_get_rsvp_count_by_format( $event_id, $format ) {
 }
 
 require $root . '/includes/class-sfaf-email.php';
+require_once __DIR__ . '/lang-shim.php'; // 3.106.0
 /* THE REAL CLASS. The confirmation and the reminder both compose a joining
  * block from it, so stubbing it would render two of the five messages without
  * the part that was added to them. The event under test is in person, so the

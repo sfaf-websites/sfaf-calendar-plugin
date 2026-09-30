@@ -196,7 +196,10 @@ check( (bool) preg_match( '/People register on <\?php echo esc_html\( \$ctx\[.pr
 /* BOTH CAPACITY BOXES ARE HIDDEN, and hidden rather than locked: a disabled box
  * reading 0 is a number that looks like a limit, and there is no number of
  * places this calendar could hold for an event counted somewhere else. */
-check( (bool) preg_match( "/if \( \\\$event_id && SFAF_Sources::takes_rsvps_at_source\( \\\$event_id \) \) \{\s*\n\s*break;/", $portal ),
+/* The capacity case's OWN guard (3.106.0): the email-required case above it
+ * returns early with the same line, so a search of the whole file found that
+ * one after this one was gone. */
+check( (bool) preg_match( "/if \( \\\$event_id && SFAF_Sources::takes_rsvps_at_source\( \\\$event_id \) \) \{\s*\n\s*break;\s*\n\s*\}\s*\n\s*\\\$s_cap /", $portal ),
     'the in-person capacity box is still drawn on a source event' );
 /* THE ONLINE BOX IS GUARDED SEPARATELY INSIDE THE ROW (3.98.0). Capacity is one
  * row now, so the whole row is refused by the guard above and the online box

@@ -609,59 +609,31 @@ class SFAF_Follow {
      * @return bool
      */
     private static function send_confirmation( $term, $row ) {
-        $name    = $term->name;
-        $confirm = self::confirm_url( (string) $row->confirm_token );
-        $stop    = self::stop_url( (string) $row->token );
-        $days    = (int) self::CONFIRM_DAYS;
-
-        /*
-         * THE SERIES NAME APPEARS ONCE, IN THE HEADING. The body used to say it
-         * again, which on a name like "Programa Latino: Grupo de Apoyo" is most
-         * of two consecutive lines. The heading has already answered "which
-         * one"; the body's job is what will arrive.
-         *
-         * PLAINER THAN THE PAGE, ON PURPOSE. This calendar carries HIV,
-         * substance use and trans health programming, and the subject line is
-         * the part that shows in a preview pane or a shared inbox. It states
-         * what the message is and stops. "Almost there!" is in the body, where
-         * somebody has already chosen to open it.
-         */
-        $subject = "Confirm you're following " . $name;
-
-        $html  = SFAF_Email::heading( $subject );
-        // Raw, not escaped: SFAF_Email::para() escapes what it is given, and a
-        // series called "Women & Trans Night" would otherwise arrive as
-        // "Women &amp;amp; Trans Night".
-        $html .= SFAF_Email::para(
-            "Almost there! Confirm below and we'll email you whenever a new date is added."
+        // In the series' language (3.106.0): a follower follows the series,
+        // not one event.
+        $built = self::build_confirmation(
+            $term->name,
+            self::confirm_url( (string) $row->confirm_token ),
+            self::stop_url( (string) $row->token ),
+            (int) self::CONFIRM_DAYS,
+            SFAF_Series::language( (int) $term->term_id )
         );
-        $html .= SFAF_Email::button_row( array( SFAF_Email::button( $confirm, 'Yes, follow this series' ) ) );
-        $html .= SFAF_Email::small_para( 'This link works for the next ' . $days . ' days.' );
-        $html .= SFAF_Email::rule();
-        /*
-         * THE UNSUBSCRIBE LINK STAYS IN THIS FIRST MESSAGE. It is the guarantee
-         * 3.53.0 was built around: a follower is never without a route out, and
-         * the mechanism this replaced minted a token and delivered it to nobody.
-         * The sentence around it got shorter; the link did not move.
-         */
-        $html .= SFAF_Email::small_para(
-            "Didn't ask for this? Ignore it and nothing happens. You can "
-            . '<a href="' . esc_url( $stop ) . '" style="color:' . SFAF_Email::C_TEAL . ';">stop these emails</a> any time.'
-        );
+        return SFAF_Email::send( (string) $row->email, $built['subject'], $built['html'], $built['text'] );
+    }
 
-        $text  = $subject . "\n\n";
-        $text .= "Almost there! Confirm below and we'll email you whenever a new date is added.\n\n";
-        $text .= $confirm . "\n\n";
-        $text .= 'This link works for the next ' . $days . " days.\n\n";
-        $text .= "Didn't ask for this? Ignore it and nothing happens.\n";
-        $text .= 'You can stop these emails any time: ' . $stop . "\n";
-        $text .= "\n" . SFAF_Email::POSTAL;
-
-        return SFAF_Email::send(
-            (string) $row->email,
-            $subject,
-            SFAF_Email::shell( $subject, $html ),
-            $text
-        );
+    /**
+     * The confirm-you're-following message, built from the catalogue
+     * (3.106.0). Public so the Templates screen renders it through this and
+     * not a copy.
+     *
+     * @return array{subject:string,html:string,text:string}
+     */
+    public static function build_confirmation( $series_name, $confirm, $stop, $days, $lang ) {
+        return SFAF_Messages::compose( 'follow_confirm', 'default', $lang, array(
+            'series'       => (string) $series_name,
+            'confirm_link' => (string) $confirm,
+            'stop_link'    => (string) $stop,
+            'days'         => (string) (int) $days,
+        ), array() );
     }
 }

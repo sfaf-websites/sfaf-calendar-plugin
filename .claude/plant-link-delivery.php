@@ -101,7 +101,7 @@ $plants = array(
     /* ---- THE ADDRESS, the other half of the same rule. ------------------ */
     'an online registrant of a hybrid event is sent the street address' => array(
         'file' => 'includes/class-sfaf-notifications.php',
-        'from' => "        if ( '' !== (string) \$format\n            && SFAF_Online::MODE_ONLINE === (string) \$format\n            && SFAF_Online::is_hybrid( \$event_id ) ) {\n            \$location = SFAF_Online::LABEL;\n        }",
+        'from' => "        if ( '' !== (string) \$format\n            && SFAF_Online::MODE_ONLINE === (string) \$format\n            && SFAF_Online::is_hybrid( \$event_id ) ) {\n            \$location = ( 'en' === \$lang ) ? SFAF_Online::LABEL : SFAF_Messages::label( 'online_event', \$lang );\n        }",
         'to'   => "        // address given to everybody",
     ),
 

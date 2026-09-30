@@ -179,6 +179,7 @@ $GLOBALS['wpdb'] = new Fake_WPDB();
 
 /* THE CODE UNDER TEST. The gate and the mailer, both real. */
 require_once $root . '/includes/sfaf-notify-consent.php';
+require_once __DIR__ . '/lang-shim.php'; // 3.106.0
 require_once $root . '/includes/class-sfaf-notifications.php';
 require_once $root . '/includes/class-sfaf-announce.php';
 

@@ -203,9 +203,9 @@ class SFAF_Notifications {
     public static function build( $type, $event_id, $person = null, $context = array() ) {
         switch ( $type ) {
             case 'confirmation':
-                return self::build_confirmation( $event_id, $person );
+                return self::build_confirmation( $event_id, $person, $context );
             case 'reminder':
-                return self::build_reminder( $event_id, $person );
+                return self::build_reminder( $event_id, $person, $context );
             case 'alert':
                 return self::build_alert( $event_id, $person, $context );
             /*
@@ -221,7 +221,7 @@ class SFAF_Notifications {
             case 'day_before':
                 return self::build_day_before( $event_id, $context );
             case 'cancelled':
-                return self::build_cancelled( $event_id, $person );
+                return self::build_cancelled( $event_id, $person, $context );
             case 'changed':
                 return self::build_changed( $event_id, $person, $context );
             /*
@@ -230,55 +230,126 @@ class SFAF_Notifications {
              */
             case 'reinstated':
                 return self::build_reinstated( $event_id, $person, $context );
+            /* THE WAITLIST (3.106.0). See SFAF_Waitlist. */
+            case 'waitlist':
+                return self::build_waitlist( $event_id, $person, $context );
+            case 'offer':
+                return self::build_offer( $event_id, $person, $context );
+            case 'offer_passed':
+                return self::build_offer_passed( $event_id, $person, $context );
         }
         return null;
     }
 
     /** The event's facts, once, for every builder. */
-    private static function facts( $event_id, $format = '' ) {
+    private static function facts( $event_id, $format = '', $lang = 'en', $context = array() ) {
+        /*
+         * THE SAMPLE EVENT (3.106.0). The Templates screen, EMAILS.md and the
+         * render test hand in fixed facts rather than an event, so they go
+         * through the builder that sends and not a copy of it.
+         */
+        if ( ! empty( $context['sample'] ) ) {
+            $x = $context['sample'];
+            return array(
+                'title' => $x['title'], 'date' => $x['date'], 'time' => $x['time'], 'location' => $x['location'],
+                'url' => $x['event_link'], 'lang' => $x['lang'], 'sample' => $x,
+            );
+        }
         $date  = (string) get_post_meta( $event_id, '_uc_event_date', true );
         $start = (string) get_post_meta( $event_id, '_uc_start_time', true );
         $end   = (string) get_post_meta( $event_id, '_uc_end_time', true );
 
-        /*
-         * THE ADDRESS GOES TO THE PEOPLE COMING TO IT, AND TO NOBODY ELSE
-         * (3.96.0).
-         *
-         * A hybrid event has a place AND a meeting link, and the rule is that
-         * no message carries both. Somebody who said they are joining online is
-         * not being sent a street address they are not going to; they get the
-         * link, through SFAF_Online::joining_html(), which refuses the other
-         * half of the same pair.
-         *
-         * IT IS DECIDED HERE BECAUSE THIS IS WHERE THE LOCATION IS READ. Every
-         * message in this class builds its rows from these facts, so replacing
-         * the value once means the confirmation, the reminder, the change
-         * notice and the reinstated message all obey it without four separate
-         * conditions that could disagree.
-         *
-         * "Online Event" RATHER THAN NOTHING, because a row that vanishes reads
-         * as a message that forgot to say where, and this person does know
-         * where: in the joining block below it.
-         */
-        /*
-         * THE EMPTY CASE IS ANSWERED FIRST AND COSTS NOTHING. Every message to
-         * every registrant of every non-hybrid event arrives here with no
-         * format, which is the overwhelming majority of them, and none of them
-         * needs a meta read to find out it is not hybrid.
-         */
         $location = sfaf_event_location( $event_id );
         if ( '' !== (string) $format
             && SFAF_Online::MODE_ONLINE === (string) $format
             && SFAF_Online::is_hybrid( $event_id ) ) {
-            $location = SFAF_Online::LABEL;
+            $location = ( 'en' === $lang ) ? SFAF_Online::LABEL : SFAF_Messages::label( 'online_event', $lang );
         }
 
         return array(
             'title'    => get_the_title( $event_id ),
-            'date'     => sfaf_ap_date( $date, 'full' ),
-            'time'     => sfaf_ap_time_range( $start, $end, 'zone' ),
+            'date'     => sfaf_ap_date( $date, 'full', $lang ),
+            'time'     => sfaf_ap_time_range( $start, $end, 'zone', $lang ),
             'location' => $location,
             'url'      => (string) get_permalink( $event_id ),
+            'lang'     => $lang,
+            'sample'   => null,
+        );
+    }
+
+    /**
+     * The language a registrant message goes out in (3.106.0): the sample's,
+     * else the event's. Staff messages never ask this and stay English.
+     */
+    private static function lang_for( $event_id, $context ) {
+        if ( ! empty( $context['sample'] ) ) {
+            return SFAF_Messages::lang( $context['sample']['lang'] );
+        }
+        return sfaf_event_language( $event_id );
+    }
+
+    /** A person's first name, falling back to the whole name, or ''. */
+    private static function first_name( $person ) {
+        $first = ( $person && ! empty( $person->first_name ) ) ? trim( (string) $person->first_name ) : '';
+        if ( '' === $first && $person && ! empty( $person->name ) ) {
+            $first = trim( (string) $person->name );
+        }
+        return $first;
+    }
+
+    /**
+     * The tokens every registrant message can use (3.106.0).
+     *
+     * THE MEETING LINK IS ONLY EVER HANDED OVER BY THE CALLER, which has asked
+     * SFAF_Online's gates first. It is '' here, so a template that names
+     * {meeting_link} in a message nobody may be sent it prints nothing.
+     */
+    private static function values( $event_id, $f, $person ) {
+        $x = $f['sample'];
+        $cancel = $x ? $x['cancel_link'] : ( ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '' );
+        return array(
+            'first_name'   => self::first_name( $person ),
+            'last_name'    => ( $person && ! empty( $person->last_name ) ) ? (string) $person->last_name : '',
+            'title'        => $f['title'],
+            'date'         => $f['date'],
+            'time'         => $f['time'],
+            'location'     => $f['location'],
+            'organizer'    => $x ? $x['organizer'] : ( class_exists( 'SFAF_Organizers' ) ? SFAF_Organizers::phrase( $event_id ) : '' ),
+            'event_link'   => $f['url'],
+            'cancel_link'  => $cancel,
+            'meeting_link' => '',
+        );
+    }
+
+    /**
+     * The joining block and which variant of the message it makes, for the
+     * confirmation and the reminder. The block comes from SFAF_Online, whose
+     * two gates decide whether this person may be sent the link; the variant
+     * is read off what they answered, so there is no third opinion.
+     *
+     * @return array{variant:string,html:string,text:string,link:string}
+     */
+    private static function joining( $event_id, $kind, $person, $f, $context ) {
+        $lang = $f['lang'];
+        if ( $f['sample'] ) {
+            $variant = isset( $context['variant'] ) ? (string) $context['variant'] : 'in_person';
+            if ( 'in_person' === $variant ) {
+                return array( 'variant' => 'in_person', 'html' => '', 'text' => '', 'link' => '' );
+            }
+            $link = ( 'online_link' === $variant ) ? $f['sample']['meeting_link'] : '';
+            return array( 'variant' => $variant, 'html' => SFAF_Messages::joining_html( $link, $lang ),
+                'text' => SFAF_Messages::joining_text( $link, $lang ), 'link' => $link );
+        }
+        $html = SFAF_Online::joining_html( $event_id, $kind, self::person_format( $person ), $lang );
+        if ( '' === $html ) {
+            return array( 'variant' => 'in_person', 'html' => '', 'text' => '', 'link' => '' );
+        }
+        $link = SFAF_Online::link( $event_id );
+        return array(
+            'variant' => ( '' !== $link ) ? 'online_link' : 'online_pending',
+            'html'    => $html,
+            'text'    => SFAF_Online::joining_text( $event_id, $kind, self::person_format( $person ), $lang ),
+            'link'    => $link,
         );
     }
 
@@ -302,11 +373,12 @@ class SFAF_Notifications {
 
     /** The detail rows every message shows, in the same order every time. */
     private static function detail_rows( $f ) {
+        $lang = isset( $f['lang'] ) ? $f['lang'] : 'en';
         return array(
-            'Event'    => $f['title'],
-            'Date'     => $f['date'],
-            'Time'     => $f['time'],
-            'Location' => $f['location'],
+            SFAF_Messages::label( 'event', $lang )    => $f['title'],
+            SFAF_Messages::label( 'date', $lang )     => $f['date'],
+            SFAF_Messages::label( 'time', $lang )     => $f['time'],
+            SFAF_Messages::label( 'location', $lang ) => $f['location'],
         );
     }
 
@@ -330,188 +402,92 @@ class SFAF_Notifications {
      * opens this email to re-read. Half of the imported events have no
      * photograph at all and would render a flat colour block in its place.
      */
-    private static function build_confirmation( $event_id, $person ) {
-        $f = self::facts( $event_id, self::person_format( $person ) );
+    private static function build_confirmation( $event_id, $person, $context = array() ) {
+        $lang = self::lang_for( $event_id, $context );
+        $f    = self::facts( $event_id, self::person_format( $person ), $lang, $context );
+        $x    = $f['sample'];
+        $join = self::joining( $event_id, 'confirmation', $person, $f, $context );
 
-        /*
-         * THE GREETING IS THE FIRST NAME. "You are registered, Mark." is how a
-         * person is addressed; "You are registered, Mark Sapoznikov." is how a
-         * database addresses a record, and it lands in front of somebody who
-         * has just handed over their details for a health service. The full
-         * name is still what the staff-facing messages and the list show, where
-         * identifying somebody exactly is the point.
-         *
-         * $person->name is the fallback and it matters: a caller that predates
-         * the split, or the test send, hands over one string. Falling back to
-         * the whole of it is better than greeting nobody.
-         */
-        $first = ( $person && ! empty( $person->first_name ) ) ? trim( (string) $person->first_name ) : '';
-        if ( '' === $first && $person && ! empty( $person->name ) ) {
-            $first = trim( (string) $person->name );
-        }
-        $hello  = ( '' !== $first ) ? sprintf( 'You are registered, %s.', $first ) : 'You are registered.';
-        $cancel = ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '';
+        $values = self::values( $event_id, $f, $person );
+        $values['meeting_link'] = $join['link'];
 
-        // {attendee_name} in custom copy still means the whole name, because
-        // that is what it has always meant and somebody's template says so.
-        // {first_name} and {last_name} are the new pair, for a writer who wants
-        // the greeting's reading.
-        $tokens = array(
-            'name'       => ( $person && ! empty( $person->name ) ) ? (string) $person->name : $first,
-            'first_name' => $first,
-            'last_name'  => ( $person && ! empty( $person->last_name ) ) ? (string) $person->last_name : '',
-            'cancel_url' => $cancel,
-        );
-
-        $gcal = sfaf_google_calendar_url( $event_id );
         /*
          * THE .ics ADDRESS, WHICH IS THE ONE PLACE THAT DIFFERS FROM EVERY
-         * OTHER MESSAGE.
-         *
-         * ics_url_with_link() returns the ordinary public address unless this
-         * event's link is going out with the confirmation, in which case it
-         * adds the token that lets the file carry it. Nothing else in this
-         * class calls it, and the reminder deliberately does not: the .ics is
-         * offered here and nowhere else, so "the link is only in the reminder"
-         * means it is in no calendar file. See SFAF_Online and sfaf_output_ics().
+         * OTHER MESSAGE. ics_url_with_link() adds the token that lets the file
+         * carry the meeting link when this event's link goes out with the
+         * confirmation. See SFAF_Online and sfaf_output_ics().
          */
-        $ics = SFAF_Online::ics_url_with_link( $event_id, self::person_format( $person ) );
-
-        $custom = self::custom_body( $event_id, 'confirmation' );
-
-        $html  = SFAF_Email::heading( $hello );
-        if ( '' !== $custom ) {
-            $html .= self::paragraphs( sfaf_replace_tokens( $custom, $event_id, $tokens ) );
+        if ( $x ) {
+            $gcal = $x['gcal'];
+            $ics  = $x['ics'];
+            $donate = $x['donate_link'];
+            $custom = '';
         } else {
-            $html .= SFAF_Email::para( 'We have your place. Here are the details.' );
-        }
-        $html .= SFAF_Email::details( self::detail_rows( $f ) );
-
-        /*
-         * HOW TO JOIN, ABOVE ADD TO CALENDAR.
-         *
-         * Empty unless this event is online AND the manager ticked this
-         * message, so the condition lives in one place rather than here and in
-         * the reminder. With the tick on and no link entered yet it is the
-         * sentence saying one is coming, which is what somebody who has just
-         * registered for a meeting with no address needs to be told.
-         */
-        $html .= SFAF_Online::joining_html( $event_id, 'confirmation', self::person_format( $person ) );
-
-        /*
-         * ADD TO CALENDAR: A HEADING AND TWO SHORT LABELS.
-         *
-         * The pair read "Add to Google Calendar" and "Add to Apple or Outlook"
-         * until 3.34.0, which wrapped to three lines and two inside their
-         * buttons and made a matched pair of different heights. The words that
-         * wrapped are the words both buttons shared, so they are said once,
-         * above, and each button now carries only the thing that tells them
-         * apart. The glyph is the plugin's own calendar mark and not a platform
-         * logo; see SFAF_Email::icon() for why, and for what a reader sees when
-         * their client blocks pictures.
-         */
-        $buttons = array();
-        if ( $gcal ) { $buttons[] = SFAF_Email::button( $gcal, 'Google', 'primary', true, true ); }
-        if ( $ics )  { $buttons[] = SFAF_Email::button( $ics, 'Apple or Outlook', 'outline', true, true ); }
-        if ( $buttons ) {
-            $html .= SFAF_Email::label( 'Add to calendar' );
-            $html .= SFAF_Email::button_row( $buttons );
+            $gcal = sfaf_google_calendar_url( $event_id );
+            $ics = SFAF_Online::ics_url_with_link( $event_id, self::person_format( $person ) );
+            $donate = sfaf_donate_url( $event_id );
+            $custom = self::custom_body( $event_id, 'confirmation' );
         }
 
-        if ( $f['url'] ) {
-            $html .= SFAF_Email::link_para( $f['url'], 'See the event page' );
-        }
-        if ( $cancel ) {
-            $html .= SFAF_Email::rule();
-            $html .= SFAF_Email::small_para(
-                'Cannot make it? <a href="' . esc_url( $cancel ) . '" style="color:' . SFAF_Email::C_TEAL . ';">Cancel your registration</a> so somebody else can take your place. We will ask you to confirm.'
-            );
-        }
-
-        $text = $hello . "\n\n";
-        if ( '' !== $custom ) {
-            $text .= sfaf_replace_tokens( $custom, $event_id, $tokens ) . "\n\n";
-        } else {
-            $text .= "We have your place. Here are the details.\n\n";
-        }
-        $text .= self::detail_text( $f ) . "\n\n";
-        $text .= SFAF_Online::joining_text( $event_id, 'confirmation', self::person_format( $person ) );
-        if ( $gcal || $ics ) { $text .= "Add to calendar\n"; }
-        if ( $gcal ) { $text .= 'Google: ' . $gcal . "\n"; }
-        if ( $ics )  { $text .= 'Apple or Outlook: ' . $ics . "\n"; }
-        if ( $f['url'] ) { $text .= 'Event page: ' . $f['url'] . "\n"; }
-        if ( $cancel ) {
-            $text .= "\nCannot make it? Cancel your registration so somebody else can take your place. We will ask you to confirm: " . $cancel . "\n";
-        }
-        $text .= "\n" . SFAF_Email::POSTAL;
-
-        return array(
-            'subject' => self::subject( $event_id, 'confirmation', sprintf( 'You are registered for %s', $f['title'] ) ),
-            'html'    => SFAF_Email::shell( sprintf( '%s, %s', $f['date'], $f['time'] ? $f['time'] : 'time to be confirmed' ), $html ),
-            'text'    => $text,
+        // {attendee_name} in an event's own custom copy still means the whole
+        // name, because that is what it has always meant.
+        $tokens = array(
+            'name'       => ( $person && ! empty( $person->name ) ) ? (string) $person->name : $values['first_name'],
+            'first_name' => $values['first_name'],
+            'last_name'  => $values['last_name'],
+            'cancel_url' => $values['cancel_link'],
         );
+
+        $out = SFAF_Messages::compose( 'confirmation', $join['variant'], $lang, $values, array(
+            'intro_override' => '' !== $custom ? sfaf_replace_tokens( $custom, $event_id, $tokens ) : '',
+            'details'        => self::detail_rows( $f ),
+            'joining'        => $join['html'],
+            'joining_text'   => $join['text'],
+            'calendar'       => array( 'label' => 'add_to_calendar', 'gcal' => $gcal, 'ics' => $ics ),
+            'event_url'      => $f['url'],
+            'donate'         => $donate,
+            'preheader'      => sprintf( '%s, %s', $f['date'], $f['time'] ? $f['time'] : SFAF_Messages::label( 'tbc', $lang ) ),
+        ) );
+        if ( ! $x ) {
+            $out['subject'] = self::subject( $event_id, 'confirmation', $out['subject'] );
+        }
+        return $out;
     }
 
     /** (b) THE MORNING-OF REMINDER. */
-    private static function build_reminder( $event_id, $person ) {
-        $f      = self::facts( $event_id, self::person_format( $person ) );
-        $cancel = ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '';
-        $staff  = ( $person && ! empty( $person->is_staff ) );
-        $custom = self::custom_body( $event_id, 'reminder' );
-
-        $head = $staff ? sprintf( '%s is today.', $f['title'] ) : 'Your event is today.';
-
-        $html  = SFAF_Email::heading( $head );
-        if ( '' !== $custom ) {
-            $html .= self::paragraphs( sfaf_replace_tokens( $custom, $event_id, array( 'cancel_url' => $cancel ) ) );
-        } elseif ( $staff ) {
-            $html .= SFAF_Email::para( 'This is the copy of the reminder everybody registered has just been sent.' );
-        }
-        $html .= SFAF_Email::details( self::detail_rows( $f ) );
-
+    private static function build_reminder( $event_id, $person, $context = array() ) {
         /*
-         * HOW TO JOIN, BEFORE THE EVENT PAGE BUTTON.
-         *
-         * This message arrives on the morning of, so it is the one somebody
-         * opens at five to eleven looking for a way in. The link goes above the
-         * link to the page, which does not carry it.
-         *
-         * THE STAFF COPY GETS IT TOO. The notification list is copied in on
-         * this message and its members are the people running the meeting, so
-         * withholding the address of their own event to be careful would be
-         * carefulness pointed at the wrong people.
+         * THE STAFF COPY IS ENGLISH, like every staff message (3.106.0), and
+         * says it is the copy. Registrants get the event's language.
          */
-        $html .= SFAF_Online::joining_html( $event_id, 'reminder', self::person_format( $person ) );
+        $staff = ( $person && ! empty( $person->is_staff ) );
+        $lang  = $staff ? 'en' : self::lang_for( $event_id, $context );
+        $f     = self::facts( $event_id, self::person_format( $person ), $lang, $context );
+        $x     = $f['sample'];
+        $join  = self::joining( $event_id, 'reminder', $person, $f, $context );
 
-        if ( $f['url'] ) {
-            $html .= SFAF_Email::button( $f['url'], 'See the event page', 'primary' );
-        }
-        if ( $cancel ) {
-            $html .= SFAF_Email::rule();
-            $html .= SFAF_Email::small_para(
-                'Cannot make it? <a href="' . esc_url( $cancel ) . '" style="color:' . SFAF_Email::C_TEAL . ';">Cancel your registration</a> so somebody else can take your place. We will ask you to confirm.'
-            );
-        }
+        $values = self::values( $event_id, $f, $person );
+        $values['meeting_link'] = $join['link'];
 
-        $text = $head . "\n\n";
-        if ( '' !== $custom ) {
-            $text .= sfaf_replace_tokens( $custom, $event_id, array( 'cancel_url' => $cancel ) ) . "\n\n";
-        } elseif ( $staff ) {
-            $text .= "This is the copy of the reminder everybody registered has just been sent.\n\n";
-        }
-        $text .= self::detail_text( $f ) . "\n\n";
-        $text .= SFAF_Online::joining_text( $event_id, 'reminder', self::person_format( $person ) );
-        if ( $f['url'] ) { $text .= 'Event page: ' . $f['url'] . "\n"; }
-        if ( $cancel ) {
-            $text .= "\nCannot make it? Cancel your registration so somebody else can take your place. We will ask you to confirm: " . $cancel . "\n";
-        }
-        $text .= "\n" . SFAF_Email::POSTAL;
-
-        return array(
-            'subject' => self::subject( $event_id, 'reminder', sprintf( 'Today: %s', $f['title'] ) ),
-            'html'    => SFAF_Email::shell( sprintf( 'Today, %s', $f['time'] ? $f['time'] : $f['date'] ), $html ),
-            'text'    => $text,
+        $parts = array(
+            'details'      => self::detail_rows( $f ),
+            'joining'      => $join['html'],
+            'joining_text' => $join['text'],
+            'event_url'    => $f['url'],
+            'event_button' => true,
+            // The donate line goes to registrants, not to the staff copy.
+            'donate'       => $staff ? '' : ( $x ? $x['donate_link'] : sfaf_donate_url( $event_id ) ),
+            'preheader'    => sprintf( SFAF_Messages::label( 'pre_today', $lang ), $f['time'] ? $f['time'] : $f['date'] ),
         );
+        if ( $staff ) {
+            $parts['heading']        = sprintf( '%s is today.', $f['title'] );
+            $parts['intro_override'] = 'This is the copy of the reminder everybody registered has just been sent.';
+        }
+        $out = SFAF_Messages::compose( 'reminder', $join['variant'], $lang, $values, $parts );
+        if ( ! $x ) {
+            $out['subject'] = self::subject( $event_id, 'reminder', $out['subject'] );
+        }
+        return $out;
     }
 
     /**
@@ -707,68 +683,25 @@ class SFAF_Notifications {
      * than below. Somebody reading "cancelled" wants to know why before they
      * want to be reminded when it was going to be.
      */
-    private static function build_cancelled( $event_id, $person ) {
-        $f      = self::facts( $event_id );
-        $reason = trim( (string) get_post_meta( $event_id, '_uc_cancelled_reason', true ) );
+    private static function build_cancelled( $event_id, $person, $context = array() ) {
+        $lang = self::lang_for( $event_id, $context );
+        $f    = self::facts( $event_id, '', $lang, $context );
+        $x    = $f['sample'];
 
-        $first = ( $person && ! empty( $person->first_name ) ) ? trim( (string) $person->first_name ) : '';
-        if ( '' === $first && $person && ! empty( $person->name ) ) {
-            $first = trim( (string) $person->name );
+        // The public reason and the note to registrants are the manager's own
+        // words, printed as written. See SFAF_Cancellation.
+        $extra = array();
+        if ( ! $x ) {
+            $extra[] = trim( (string) get_post_meta( $event_id, '_uc_cancelled_reason', true ) );
+            $extra[] = SFAF_Cancellation::message( $event_id );
         }
 
-        $head = sprintf( '%s is cancelled.', $f['title'] );
-
-        $html  = SFAF_Email::heading( $head );
-        $html .= SFAF_Email::para(
-            ( '' !== $first ? $first . ', this' : 'This' )
-            . ' event is not going ahead, and you do not need to do anything.'
-        );
-        if ( '' !== $reason ) {
-            $html .= SFAF_Email::para( $reason );
-        }
-        /*
-         * THE MESSAGE FOR THE PEOPLE REGISTERED, AND NOBODY ELSE (3.72.0).
-         *
-         * Under the public reason, because that is the order they were written
-         * in and the order they answer questions in: why it is off, then
-         * anything the organizer wanted to add to the people who had a place.
-         * It renders nowhere but here. See SFAF_Cancellation::MESSAGE_META for
-         * why the two are separate keys.
-         */
-        $note = SFAF_Cancellation::message( $event_id );
-        if ( '' !== $note ) {
-            $html .= SFAF_Email::para( $note );
-        }
-        $html .= SFAF_Email::para( 'It was going to be:' );
-        $html .= SFAF_Email::details( self::detail_rows( $f ) );
-        /*
-         * EVERYBODY READING THIS HOLDS A PLACE. Until 3.53.0 this sentence had
-         * a second version for somebody who had pressed "Get Reminders" and had
-         * no registration to have kept. That row no longer exists, so there is
-         * one sentence again and it is true of every reader.
-         */
-        $html .= SFAF_Email::small_para(
-            'Your registration has been kept as a record that you signed up. Nothing else will be sent about this event.'
-        );
-
-        $text  = $head . "\n\n";
-        $text .= ( '' !== $first ? $first . ', this' : 'This' ) . " event is not going ahead, and you do not need to do anything.\n\n";
-        if ( '' !== $reason ) {
-            $text .= $reason . "\n\n";
-        }
-        if ( '' !== $note ) {
-            $text .= $note . "\n\n";
-        }
-        $text .= "It was going to be:\n\n";
-        $text .= self::detail_text( $f ) . "\n\n";
-        $text .= "Your registration has been kept as a record that you signed up. Nothing else will be sent\nabout this event.\n";
-        $text .= "\n" . SFAF_Email::POSTAL;
-
-        return array(
-            'subject' => sprintf( 'Cancelled: %s', $f['title'] ),
-            'html'    => SFAF_Email::shell( sprintf( 'Cancelled, %s', $f['date'] ), $html ),
-            'text'    => $text,
-        );
+        return SFAF_Messages::compose( 'cancelled', 'default', $lang, self::values( $event_id, $f, $person ), array(
+            'extra'     => $extra,
+            'lead'      => 'was_going_to_be',
+            'details'   => self::detail_rows( $f ),
+            'preheader' => sprintf( SFAF_Messages::label( 'pre_cancelled', $lang ), $f['date'] ),
+        ) );
     }
 
     /**
@@ -791,95 +724,43 @@ class SFAF_Notifications {
      *                       Keyed by the field label, already formatted.
      */
     private static function build_changed( $event_id, $person, $context = array() ) {
-        $f       = self::facts( $event_id, self::person_format( $person ) );
+        $lang    = self::lang_for( $event_id, $context );
+        $f       = self::facts( $event_id, self::person_format( $person ), $lang, $context );
+        $x       = $f['sample'];
         $changes = ( isset( $context['changes'] ) && is_array( $context['changes'] ) ) ? $context['changes'] : array();
-        $cancel  = ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '';
-
-        $first = ( $person && ! empty( $person->first_name ) ) ? trim( (string) $person->first_name ) : '';
-        if ( '' === $first && $person && ! empty( $person->name ) ) {
-            $first = trim( (string) $person->name );
+        if ( $x && ! $changes ) {
+            $changes = array( 'Date' => array( 'from' => sfaf_ap_date( '2026-11-05', 'full' ), 'to' => sfaf_ap_date( '2026-11-12', 'full' ) ) );
         }
 
         /*
-         * THE HEADLINE NAMES THE CHANGE WHEN THERE IS EXACTLY ONE, because that
-         * is the case where a sentence can carry the whole message and the
-         * reader is done. With two or more it says so and the list below does
-         * the work; a headline trying to hold three moves is a headline nobody
-         * finishes.
+         * WHAT MOVED, OLD VALUE TO NEW. The values arrive as the formatter's
+         * English, because that is what the save compared; they are said again
+         * in the event's language by the same formatter. The labels are the
+         * detail labels in that language.
          */
-        if ( 1 === count( $changes ) ) {
-            $only  = key( $changes );
-            $pair  = current( $changes );
-            $head  = sprintf( '%s has a new %s.', $f['title'], strtolower( $only ) );
-            $lead  = sprintf(
-                'It has moved from %s to %s.',
-                $pair['from'],
-                $pair['to']
-            );
-        } else {
-            $head = sprintf( '%s has changed.', $f['title'] );
-            $lead = 'Some details have moved. Here is what is different.';
-        }
-
-        $html  = SFAF_Email::heading( $head );
-        $html .= SFAF_Email::para( ( '' !== $first ? $first . ', ' : '' ) . lcfirst( $lead ) );
-
-        if ( count( $changes ) > 1 ) {
-            $rows = array();
-            foreach ( $changes as $label => $pair ) {
-                $rows[ $label ] = $pair['from'] . '  to  ' . $pair['to'];
+        $kinds = array( 'Date' => 'date', 'Time' => 'time', 'Location' => 'location' );
+        $rows  = array();
+        foreach ( $changes as $label => $pair ) {
+            $kind  = isset( $kinds[ $label ] ) ? $kinds[ $label ] : '';
+            $from  = sfaf_ap_restate( $kind, (string) $pair['from'], $lang );
+            $to    = sfaf_ap_restate( $kind, (string) $pair['to'], $lang );
+            if ( 'time' === $kind ) {
+                $from = ( 'not set' === $pair['from'] ) ? $from : sfaf_ap_zoned( sfaf_ap_restate( 'time', (string) $pair['from'], $lang ), $lang );
+                $to   = ( 'not set' === $pair['to'] ) ? $to : sfaf_ap_zoned( sfaf_ap_restate( 'time', (string) $pair['to'], $lang ), $lang );
             }
-            $html .= SFAF_Email::details( $rows );
+            $rows[ '' !== $kind ? SFAF_Messages::label( $kind, $lang ) : $label ] = array( $from, $to );
         }
 
-        $html .= SFAF_Email::para( 'The event is now:' );
-        $html .= SFAF_Email::details( self::detail_rows( $f ) );
-
-        $gcal = sfaf_google_calendar_url( $event_id );
-        $ics  = sfaf_ics_url( $event_id );
-        $buttons = array();
-        if ( $gcal ) { $buttons[] = SFAF_Email::button( $gcal, 'Google', 'primary', true, true ); }
-        if ( $ics )  { $buttons[] = SFAF_Email::button( $ics, 'Apple or Outlook', 'outline', true, true ); }
-        if ( $buttons ) {
-            // The old entry in somebody's calendar is now wrong, so the one
-            // thing they most likely need is a corrected one.
-            $html .= SFAF_Email::label( 'Update your calendar' );
-            $html .= SFAF_Email::button_row( $buttons );
-        }
-
-        if ( $f['url'] ) {
-            $html .= SFAF_Email::link_para( $f['url'], 'See the event page' );
-        }
-        if ( $cancel ) {
-            $html .= SFAF_Email::rule();
-            $html .= SFAF_Email::small_para(
-                'Cannot make the new time? <a href="' . esc_url( $cancel ) . '" style="color:' . SFAF_Email::C_TEAL . ';">Cancel your registration</a> so somebody else can take your place. We will ask you to confirm.'
-            );
-        }
-
-        $text  = $head . "\n\n";
-        $text .= ( '' !== $first ? $first . ', ' : '' ) . lcfirst( $lead ) . "\n\n";
-        if ( count( $changes ) > 1 ) {
-            foreach ( $changes as $label => $pair ) {
-                $text .= $label . ': ' . $pair['from'] . ' to ' . $pair['to'] . "\n";
-            }
-            $text .= "\n";
-        }
-        $text .= "The event is now:\n\n" . self::detail_text( $f ) . "\n\n";
-        if ( $gcal || $ics ) { $text .= "Update your calendar\n"; }
-        if ( $gcal ) { $text .= 'Google: ' . $gcal . "\n"; }
-        if ( $ics )  { $text .= 'Apple or Outlook: ' . $ics . "\n"; }
-        if ( $f['url'] ) { $text .= 'Event page: ' . $f['url'] . "\n"; }
-        if ( $cancel ) {
-            $text .= "\nCannot make the new time? Cancel your registration so somebody else can take your place. We will ask\nyou to confirm: " . $cancel . "\n";
-        }
-        $text .= "\n" . SFAF_Email::POSTAL;
-
-        return array(
-            'subject' => sprintf( 'Changed: %s', $f['title'] ),
-            'html'    => SFAF_Email::shell( sprintf( 'Now %s, %s', $f['date'], $f['time'] ? $f['time'] : 'time to be confirmed' ), $html ),
-            'text'    => $text,
-        );
+        return SFAF_Messages::compose( 'changed', 'default', $lang, self::values( $event_id, $f, $person ), array(
+            'changes'   => $rows,
+            'lead'      => 'now_is',
+            'details'   => self::detail_rows( $f ),
+            'calendar'  => array( 'label' => 'update_calendar',
+                'gcal' => $x ? $x['gcal'] : sfaf_google_calendar_url( $event_id ),
+                'ics'  => $x ? $x['ics'] : sfaf_ics_url( $event_id ) ),
+            'event_url' => $f['url'],
+            'preheader' => sprintf( SFAF_Messages::label( 'pre_now', $lang ), sprintf( '%s, %s', $f['date'], $f['time'] ? $f['time'] : SFAF_Messages::label( 'tbc', $lang ) ) ),
+        ) );
     }
 
     /**
@@ -918,104 +799,75 @@ class SFAF_Notifications {
      * }
      */
     private static function build_reinstated( $event_id, $person, $context = array() ) {
-        $f      = self::facts( $event_id, self::person_format( $person ) );
-        $was    = isset( $context['was'] ) ? trim( (string) $context['was'] ) : '';
-        $moved  = ( '' !== $was && $was !== (string) get_post_meta( $event_id, '_uc_event_date', true ) );
-        $cancel = ( $person && ! empty( $person->token ) ) ? SFAF_Reminders::cancel_url( $person->token ) : '';
-
-        $first = ( $person && ! empty( $person->first_name ) ) ? trim( (string) $person->first_name ) : '';
-        if ( '' === $first && $person && ! empty( $person->name ) ) {
-            $first = trim( (string) $person->name );
+        $lang  = self::lang_for( $event_id, $context );
+        $f     = self::facts( $event_id, self::person_format( $person ), $lang, $context );
+        $x     = $f['sample'];
+        $was   = isset( $context['was'] ) ? trim( (string) $context['was'] ) : '';
+        if ( $x ) {
+            $moved = ( 'moved' === ( isset( $context['variant'] ) ? $context['variant'] : '' ) );
+        } else {
+            $moved = ( '' !== $was && $was !== (string) get_post_meta( $event_id, '_uc_event_date', true ) );
         }
 
-        $head = sprintf( '%s is back on.', $f['title'] );
+        $values = self::values( $event_id, $f, $person );
+        $values['old_date'] = $x ? $x['old_date'] : ( '' !== $was ? sfaf_ap_date( $was, 'full', $lang ) : '' );
 
-        /*
-         * THE OPENING SENTENCE IS THE SAME EITHER WAY, and the date change
-         * is a second sentence rather than a different message. Somebody
-         * reading this was told it was cancelled; "it is happening after
-         * all" is the fact, and "on a different day" is the qualification.
-         */
-        $lead = ( '' !== $first ? $first . ', this' : 'This' )
-            . ' event was cancelled and is happening after all.';
+        return SFAF_Messages::compose( 'reinstated', $moved ? 'moved' : 'same_date', $lang, $values, array(
+            'details'   => self::detail_rows( $f ),
+            'calendar'  => array( 'label' => 'back_in_calendar',
+                'gcal' => $x ? $x['gcal'] : sfaf_google_calendar_url( $event_id ),
+                'ics'  => $x ? $x['ics'] : sfaf_ics_url( $event_id ) ),
+            'event_url' => $f['url'],
+            'preheader' => sprintf( SFAF_Messages::label( 'pre_back', $lang ), $f['date'] ),
+        ) );
+    }
 
-        $html  = SFAF_Email::heading( $head );
-        $html .= SFAF_Email::para( $lead );
-        if ( $moved ) {
-            $html .= SFAF_Email::para( sprintf(
-                'It has also moved: it was %s and it is now %s.',
-                sfaf_ap_date( $was, 'full' ),
-                $f['date']
-            ) );
-        }
-        $html .= SFAF_Email::para( 'Your registration was kept and still holds, so there is nothing to do if the new details suit you.' );
-        $html .= SFAF_Email::details( self::detail_rows( $f ) );
+    /**
+     * (h) ON THE WAITLIST (3.106.0). Their position, no calendar file: they do
+     * not have a place, and a calendar entry would say they did.
+     *
+     * @param array $context position: int.
+     */
+    private static function build_waitlist( $event_id, $person, $context = array() ) {
+        $lang   = self::lang_for( $event_id, $context );
+        $f      = self::facts( $event_id, self::person_format( $person ), $lang, $context );
+        $values = self::values( $event_id, $f, $person );
+        $values['position'] = $f['sample'] ? $f['sample']['position'] : (string) ( isset( $context['position'] ) ? (int) $context['position'] : 0 );
+        return SFAF_Messages::compose( 'waitlist', 'default', $lang, $values, array(
+            'details'   => self::detail_rows( $f ),
+            'event_url' => $f['url'],
+            'preheader' => sprintf( SFAF_Messages::label( 'pre_waitlist', $lang ), $f['date'] ),
+        ) );
+    }
 
-        /*
-         * THE CALENDAR BUTTONS, for the reason build_changed() has them:
-         * whatever is in somebody's calendar for this event is wrong now,
-         * either because they deleted it when it was cancelled or because
-         * the date moved under it.
-         */
-        $gcal = sfaf_google_calendar_url( $event_id );
-        $ics  = sfaf_ics_url( $event_id );
-        $buttons = array();
-        if ( $gcal ) { $buttons[] = SFAF_Email::button( $gcal, 'Google', 'primary', true, true ); }
-        if ( $ics )  { $buttons[] = SFAF_Email::button( $ics, 'Apple or Outlook', 'outline', true, true ); }
-        if ( $buttons ) {
-            $html .= SFAF_Email::label( 'Put it back in your calendar' );
-            $html .= SFAF_Email::button_row( $buttons );
-        }
+    /**
+     * (i) A PLACE IS OPEN (3.106.0). The confirm link and when it runs out.
+     *
+     * @param array $context confirm_url: string; expires: 'Y-m-d H:i:s', the site's clock.
+     */
+    private static function build_offer( $event_id, $person, $context = array() ) {
+        $lang   = self::lang_for( $event_id, $context );
+        $f      = self::facts( $event_id, self::person_format( $person ), $lang, $context );
+        $x      = $f['sample'];
+        $values = self::values( $event_id, $f, $person );
+        $values['confirm_link'] = $x ? $x['confirm_link'] : (string) ( isset( $context['confirm_url'] ) ? $context['confirm_url'] : '' );
+        // The site's wall-clock time the offer runs out, as stored on the row.
+        $values['expiry']       = $x ? $x['expiry'] : sfaf_ap_datetime( (string) ( isset( $context['expires'] ) ? $context['expires'] : '' ), 'full', $lang, true );
+        return SFAF_Messages::compose( 'offer', 'default', $lang, $values, array(
+            'details'   => self::detail_rows( $f ),
+            'event_url' => $f['url'],
+            'preheader' => sprintf( SFAF_Messages::label( 'pre_offer', $lang ), $values['expiry'] ),
+        ) );
+    }
 
-        if ( $f['url'] ) {
-            $html .= SFAF_Email::link_para( $f['url'], 'See the event page' );
-        }
-
-        /*
-         * ALWAYS OFFERED, and the wording changes with the reason. A moved
-         * date is the case where somebody most likely cannot come any more,
-         * so it is named; on the original date the offer is quieter but it
-         * is still there, because a fortnight has passed and plans move.
-         */
-        if ( $cancel ) {
-            $html .= SFAF_Email::rule();
-            $html .= SFAF_Email::small_para(
-                ( $moved
-                    ? 'Cannot make the new date? '
-                    : 'No longer able to come? ' )
-                . '<a href="' . esc_url( $cancel ) . '" style="color:' . SFAF_Email::C_TEAL . ';">Cancel your registration</a>'
-                . ' so somebody else can take your place. We will ask you to confirm.'
-            );
-        }
-
-        $text  = $head . "\n\n" . $lead . "\n\n";
-        if ( $moved ) {
-            $text .= sprintf(
-                "It has also moved: it was %s and it is now %s.\n\n",
-                sfaf_ap_date( $was, 'full' ),
-                $f['date']
-            );
-        }
-        $text .= "Your registration was kept and still holds, so there is nothing to do if the new\ndetails suit you.\n\n";
-        $text .= self::detail_text( $f ) . "\n\n";
-        if ( $gcal || $ics ) { $text .= "Put it back in your calendar\n"; }
-        if ( $gcal ) { $text .= 'Google: ' . $gcal . "\n"; }
-        if ( $ics )  { $text .= 'Apple or Outlook: ' . $ics . "\n"; }
-        if ( $f['url'] ) { $text .= 'Event page: ' . $f['url'] . "\n"; }
-        if ( $cancel ) {
-            $text .= "\n" . ( $moved ? 'Cannot make the new date?' : 'No longer able to come?' )
-                . " Cancel your registration so somebody else can\ntake your place. We will ask you to confirm: " . $cancel . "\n";
-        }
-        $text .= "\n" . SFAF_Email::POSTAL;
-
-        return array(
-            'subject' => sprintf( 'Back on: %s', $f['title'] ),
-            'html'    => SFAF_Email::shell(
-                sprintf( 'Back on, %s', $f['date'] ),
-                $html
-            ),
-            'text'    => $text,
-        );
+    /** (j) THE OFFER HAS PASSED (3.106.0). */
+    private static function build_offer_passed( $event_id, $person, $context = array() ) {
+        $lang = self::lang_for( $event_id, $context );
+        $f    = self::facts( $event_id, self::person_format( $person ), $lang, $context );
+        return SFAF_Messages::compose( 'offer_passed', 'default', $lang, self::values( $event_id, $f, $person ), array(
+            'details'   => self::detail_rows( $f ),
+            'preheader' => $f['title'],
+        ) );
     }
 
     private static function build_summary( $event_id, $context = array() ) {
@@ -1209,18 +1061,12 @@ class SFAF_Notifications {
      * right, and a manager who wants different wording wants different WORDING.
      */
     private static function custom_body( $event_id, $kind ) {
+        // The event's own copy only. The Settings screen's site-wide copy
+        // became the English templates in 3.106.0; see
+        // SFAF_Messages::migrate_settings().
         $per_event = array( 'confirmation' => '_uc_email_body' );
         if ( isset( $per_event[ $kind ] ) ) {
-            $own = trim( (string) get_post_meta( $event_id, $per_event[ $kind ], true ) );
-            if ( '' !== $own ) {
-                return $own;
-            }
-        }
-
-        $settings = get_option( 'uc_settings', array() );
-        $keys     = array( 'confirmation' => 'email_rsvp_body', 'reminder' => 'email_dayof_body' );
-        if ( isset( $keys[ $kind ] ) && ! empty( $settings[ $keys[ $kind ] ] ) ) {
-            return trim( (string) $settings[ $keys[ $kind ] ] );
+            return trim( (string) get_post_meta( $event_id, $per_event[ $kind ], true ) );
         }
         return '';
     }
@@ -1233,11 +1079,6 @@ class SFAF_Notifications {
             if ( '' !== $own ) {
                 return sfaf_replace_tokens( $own, $event_id, array() );
             }
-        }
-        $settings = get_option( 'uc_settings', array() );
-        $keys     = array( 'confirmation' => 'email_rsvp_subject', 'reminder' => 'email_dayof_subject' );
-        if ( isset( $keys[ $kind ] ) && ! empty( $settings[ $keys[ $kind ] ] ) ) {
-            return sfaf_replace_tokens( trim( (string) $settings[ $keys[ $kind ] ] ), $event_id, array() );
         }
         return $default;
     }

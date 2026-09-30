@@ -199,6 +199,7 @@ class Fake_WPDB {
 $GLOBALS['wpdb'] = new Fake_WPDB();
 
 require_once $root . '/includes/class-sfaf-cancellation.php';
+require_once __DIR__ . '/lang-shim.php'; // 3.106.0
 require_once $root . '/includes/class-sfaf-notifications.php';
 require_once $root . '/includes/class-sfaf-announce.php';
 

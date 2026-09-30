@@ -60,6 +60,8 @@ class SFAF_Sent extends Exception {}
  * ------------------------------------------------------------------------ */
 class SFAF_Series {
     const TAXONOMY = 'uc_series';
+    /** No series here names a language (3.106.0). */
+    public static function language( $term_id ) { return 'en'; }
     public static $terms = array();
     public static function get( $term_id ) {
         $id = (int) $term_id;
@@ -98,6 +100,7 @@ class SFAF_Submissions {
 
 class SFAF_Email {
     const C_TEAL = '#0E7680';
+    const C_INK = '#373433'; const FONT = 'Arial'; // read by SFAF_Messages' paragraphs (3.106.0)
     const POSTAL = 'San Francisco AIDS Foundation, 940 Howard Street, San Francisco, CA 94103';
     public static $sent = array();
     public static function heading( $t ) { return '<h1>' . esc_html( $t ) . '</h1>'; }
@@ -260,6 +263,7 @@ class SFAF_Wpdb_Stub {
 if ( ! defined( 'OBJECT' ) ) { define( 'OBJECT', 'OBJECT' ); }
 $GLOBALS['wpdb'] = new SFAF_Wpdb_Stub();
 
+require_once __DIR__ . '/lang-shim.php'; // 3.106.0
 require_once $root . '/includes/class-sfaf-follow.php';
 
 /* ---------------------------------------------------------------------------

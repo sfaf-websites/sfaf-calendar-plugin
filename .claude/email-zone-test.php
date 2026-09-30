@@ -91,6 +91,11 @@ if ( false === strpos( $slice( $tpl, 'sfaf_ap_time_zone' ), "'PST'  => 'PT', 'PD
 $MAIL_HELPERS = array(
     'includes/class-sfaf-notifications.php' => array( 'facts' ),
     'includes/sfaf-template-functions.php'  => array( 'sfaf_replace_tokens' ),
+    // 3.106.0: these reach mail through SFAF_Messages::compose() rather than
+    // calling SFAF_Email themselves. sample() is the preview event every email
+    // is shown with, so its times are the mail's times.
+    'includes/class-sfaf-announce.php'      => array( 'several_events', 'several_sample' ),
+    'includes/class-sfaf-messages.php'      => array( 'sample' ),
 );
 
 /**
@@ -151,7 +156,8 @@ function sfaf_zone_calls( $src, $callee, $helpers ) {
             'line' => $t[ $i ][2],
             'func' => $fname,
             'mail' => $mail,
-            'zone' => (bool) preg_match( "/,\s*'zone'\s*$/", trim( $args ) ),
+            // 'zone' as the style, with the language after it from 3.106.0.
+            'zone' => (bool) preg_match( "/,\s*'zone'\s*(,[^,]*)?$/", trim( $args ) ),
         );
     }
     return $out;
@@ -229,7 +235,7 @@ foreach ( $MAIL_HELPERS as $rel => $names ) {
 
 /* The change announcement carries times as phrases, so the zone goes on there. */
 $announce = file_get_contents( $root . '/includes/class-sfaf-announce.php' );
-if ( false === strpos( $announce, 'sfaf_ap_zoned( $pair[ $end ] )' ) ) {
+if ( false === strpos( $announce, '$from = sfaf_ap_zoned( $from, $lang );' ) || false === strpos( $announce, '$to = sfaf_ap_zoned( $to, $lang );' ) ) {
     $fails[] = 'class-sfaf-announce.php: the moved-time pair in the change email is not zoned';
 }
 

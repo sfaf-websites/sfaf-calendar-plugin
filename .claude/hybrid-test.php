@@ -72,6 +72,7 @@ class SFAF_Email {
     public static function button( $u, $l, $v = '' ) { return '[button ' . $u . ']' . $l . "\n"; }
 }
 
+require_once __DIR__ . '/lang-shim.php'; // 3.106.0
 require_once $root . '/includes/class-sfaf-online.php';
 
 $EVENT = 42;
@@ -260,14 +261,20 @@ check( (bool) preg_match( '/SFAF_Online::MODE_ONLINE === \(string\) \$format\s*\
 
 /* THE FOUR MESSAGES THE BRIEF NAMES. Counted, not found: three of four passing
  * the format and one not is exactly the shape that ships a leak. */
-$with_format = preg_match_all( '/self::facts\( \$event_id, self::person_format\( \$person \) \)/', $notif );
-check( 4 === $with_format,
-    sprintf( 'only %d of the four messages pass the recipient format to facts()', $with_format ) );
+/* 3.106.0: facts() also takes the language and the context, and the three
+   waitlist messages pass the format too: seven builders in all. */
+$with_format = preg_match_all( '/self::facts\( \$event_id, self::person_format\( \$person \), \$lang, \$context \)/', $notif );
+check( 7 === $with_format,
+    sprintf( 'only %d of the seven messages pass the recipient format to facts()', $with_format ) );
 
 /* AND BOTH HALVES OF BOTH MESSAGES THAT CARRY A JOINING BLOCK. */
-$joining_calls = preg_match_all( '/SFAF_Online::joining_(?:html|text)\( \$event_id, \'[a-z]+\', self::person_format\( \$person \) \)/', $notif );
-check( 4 === $joining_calls,
-    sprintf( 'only %d of the four joining blocks are told who they are for', $joining_calls ) );
+/* 3.106.0: both messages reach the block through joining(), which passes the
+   message kind and the language along with who it is for. */
+$joining_calls = preg_match_all( '/SFAF_Online::joining_(?:html|text)\( \$event_id, \$kind, self::person_format\( \$person \), \$lang \)/', $notif );
+check( 2 === $joining_calls,
+    sprintf( 'only %d of the two joining calls are told who they are for', $joining_calls ) );
+check( 2 === preg_match_all( "/self::joining\\( \\\$event_id, '(?:confirmation|reminder)', \\\$person, \\\$f, \\\$context \\)/", $notif ),
+    'the confirmation and the reminder do not both reach the joining block with the person' );
 
 /* =========================================================================
  * 4. CAPACITY IS PER FORMAT.
@@ -356,7 +363,8 @@ check( false !== strpos( $tpl, "'data-uc-full'" ),
 /* THE FUNCTION MUST STILL SAY SOMETHING, not merely exist: a body returning ''
  * matched "the function is there" perfectly, and the plant that emptied it went
  * straight past. */
-check( false !== strpos( $tpl, "is_hybrid( (int) \$post_id ) ? 'In person and online' : ''" ),
+check( false !== strpos( $tpl, "is_hybrid( (int) \$post_id ) ? SFAF_Messages::label( 'in_person_online', \$lang ) : ''" )
+    && 'In person and online' === SFAF_Messages::label( 'in_person_online', 'en' ),
     'the hybrid format line no longer says anything, so a hybrid event shows a street address and nothing about joining online' );
 check( ! preg_match( '/function sfaf_event_location\([^)]*\)\s*\{[\s\S]{0,2500}?is_hybrid/', $tpl ),
     'sfaf_event_location() answers the hybrid question itself, and its answer goes into a maps query, the JSON-LD address and the .ics' );
@@ -501,6 +509,20 @@ check( (bool) preg_match( '/\$hybrid_show = \( \$event_id && SFAF_Online::is_hyb
  * source-reading assertion here passed while that was true, because the
  * handlers were all correctly wired; see .claude/hybrid-live.php, which drives
  * the real script and reads the box back. */
+/* READ FROM THE HYBRID LOCK'S OWN BODY (3.106.0). The email-required lock
+ * beside it remembers its box the same way, in the same words, so a search of
+ * the whole file found them there after they were gone from this one: two
+ * planted faults passed. */
+$hl_at = strpos( $js, 'function applyHybridRsvpLock(' );
+$hl_d  = 0;
+$hl    = '';
+for ( $hl_i = ( false === $hl_at ? strlen( $js ) : strpos( $js, '{', $hl_at ) ); $hl_i < strlen( $js ); $hl_i++ ) {
+    if ( '{' === $js[ $hl_i ] ) { $hl_d++; }
+    elseif ( '}' === $js[ $hl_i ] ) { $hl_d--; if ( 0 === $hl_d ) { $hl = substr( $js, $hl_at, $hl_i - $hl_at + 1 ); break; } }
+}
+check( '' !== $hl, 'applyHybridRsvpLock() is not in portal.js, so nothing below is asking about it' );
+$js_all = $js;
+$js     = $hl;
 check( (bool) preg_match( '/box\.disabled = isHybrid;/', $js ),
     'the lock is not lifted when hybrid is unticked' );
 check( (bool) preg_match( "/box\.setAttribute\('data-uc-was-checked', box\.checked \? '1' : '0'\);/", $js ),

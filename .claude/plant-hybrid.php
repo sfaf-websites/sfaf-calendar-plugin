@@ -28,7 +28,7 @@ $plants = array(
 
     'an online registrant of a hybrid event is sent the street address' => array(
         'file' => 'includes/class-sfaf-notifications.php',
-        'from' => "        if ( '' !== (string) \$format\n            && SFAF_Online::MODE_ONLINE === (string) \$format\n            && SFAF_Online::is_hybrid( \$event_id ) ) {\n            \$location = SFAF_Online::LABEL;\n        }",
+        'from' => "        if ( '' !== (string) \$format\n            && SFAF_Online::MODE_ONLINE === (string) \$format\n            && SFAF_Online::is_hybrid( \$event_id ) ) {\n            \$location = ( 'en' === \$lang ) ? SFAF_Online::LABEL : SFAF_Messages::label( 'online_event', \$lang );\n        }",
         'to'   => "        // address given to everybody",
     ),
 
@@ -41,14 +41,14 @@ $plants = array(
 
     'one of the four messages stops passing the recipient format' => array(
         'file' => 'includes/class-sfaf-notifications.php',
-        'from' => "        \$f = self::facts( \$event_id, self::person_format( \$person ) );",
-        'to'   => "        \$f = self::facts( \$event_id );",
+        'from' => "        \$f    = self::facts( \$event_id, self::person_format( \$person ), \$lang, \$context );",
+        'to'   => "        \$f    = self::facts( \$event_id, '', \$lang, \$context );",
     ),
 
     'one of the four joining blocks is no longer told who it is for' => array(
         'file' => 'includes/class-sfaf-notifications.php',
-        'from' => "SFAF_Online::joining_html( \$event_id, 'confirmation', self::person_format( \$person ) )",
-        'to'   => "SFAF_Online::joining_html( \$event_id, 'confirmation' )",
+        'from' => "SFAF_Online::joining_html( \$event_id, \$kind, self::person_format( \$person ), \$lang )",
+        'to'   => "SFAF_Online::joining_html( \$event_id, \$kind, '', \$lang )",
     ),
 
     'the calendar file hands the join copy to an in-person registrant' => array(
@@ -109,8 +109,8 @@ $plants = array(
     /* ---- THE DISPLAY, THE ALERT AND THE SUMMARY (3.96.0). --------------- */
     'the hybrid line is folded into the address, where it reaches the maps query' => array(
         'file' => 'includes/sfaf-template-functions.php',
-        'from' => "function sfaf_event_format_line( \$post_id ) {\n    return SFAF_Online::is_hybrid( (int) \$post_id ) ? 'In person and online' : '';",
-        'to'   => "function sfaf_event_format_line( \$post_id ) {\n    return '';",
+        'from' => "function sfaf_event_format_line( \$post_id, \$lang = 'en' ) {\n    return SFAF_Online::is_hybrid( (int) \$post_id ) ? SFAF_Messages::label( 'in_person_online', \$lang ) : '';",
+        'to'   => "function sfaf_event_format_line( \$post_id, \$lang = 'en' ) {\n    return '';",
     ),
 
     'the event page stops saying a hybrid event is also online' => array(

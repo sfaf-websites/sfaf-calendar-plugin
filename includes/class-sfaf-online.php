@@ -474,7 +474,7 @@ class SFAF_Online {
      * @param string $kind A key from deliveries().
      * @return string
      */
-    public static function joining_html( $event_id, $kind, $format = '' ) {
+    public static function joining_html( $event_id, $kind, $format = '', $lang = 'en' ) {
         if ( ! self::sends_with( $event_id, $kind ) ) {
             return '';
         }
@@ -495,22 +495,14 @@ class SFAF_Online {
         if ( self::is_hybrid( $event_id ) && self::MODE_ONLINE !== (string) $format ) {
             return '';
         }
-        $url  = self::link( $event_id );
-        $html = SFAF_Email::label( self::JOIN_LABEL );
-
-        if ( '' === $url ) {
-            return $html . SFAF_Email::para( self::NO_LINK_YET );
-        }
-
+        // The words are SFAF_Messages', in the event's language (3.106.0);
+        // the two gates above are what decide whether there are any.
         /*
-         * A BUTTON AND THE URL IN FULL UNDER IT. A meeting link is pasted into
-         * a browser as often as it is clicked, and a button on its own gives
-         * somebody nothing to copy. The full URL is also what a reader whose
-         * client has stripped the styling ends up with.
+         * A BUTTON AND THE URL IN FULL UNDER IT, drawn there. A meeting link is
+         * pasted into a browser as often as it is clicked, and a button on its
+         * own gives somebody nothing to copy.
          */
-        return $html
-            . SFAF_Email::button( $url, 'Join the event', 'primary' )
-            . SFAF_Email::small_para( 'Or paste this into your browser: ' . esc_html( $url ) );
+        return SFAF_Messages::joining_html( self::link( $event_id ), $lang );
     }
 
     /**
@@ -520,7 +512,7 @@ class SFAF_Online {
      * @param string $kind
      * @return string
      */
-    public static function joining_text( $event_id, $kind, $format = '' ) {
+    public static function joining_text( $event_id, $kind, $format = '', $lang = 'en' ) {
         if ( ! self::sends_with( $event_id, $kind ) ) {
             return '';
         }
@@ -541,11 +533,7 @@ class SFAF_Online {
         if ( self::is_hybrid( $event_id ) && self::MODE_ONLINE !== (string) $format ) {
             return '';
         }
-        $url = self::link( $event_id );
-        if ( '' === $url ) {
-            return self::JOIN_LABEL . "\n" . self::NO_LINK_YET . "\n\n";
-        }
-        return self::JOIN_LABEL . "\n" . $url . "\n\n";
+        return SFAF_Messages::joining_text( self::link( $event_id ), $lang );
     }
 
     /* =====================================================================

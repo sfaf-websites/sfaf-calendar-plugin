@@ -56,8 +56,8 @@ $plants = array(
 
     'the capacity box is drawn on a source event' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => "                if ( \$event_id && SFAF_Sources::takes_rsvps_at_source( \$event_id ) ) {\n                    break;\n                }",
-        'to'   => "",
+        'from' => "                if ( \$event_id && SFAF_Sources::takes_rsvps_at_source( \$event_id ) ) {\n                    break;\n                }\n                \$s_cap",
+        'to'   => "                \$s_cap",
     ),
 
     /* ---- THE EVENT PAGE. ------------------------------------------------ */
@@ -76,7 +76,7 @@ $plants = array(
 
     'the schema version is not bumped, so the pass never runs' => array(
         'file' => 'sfaf-calendar.php',
-        'from' => "define( 'SFAF_DB_VERSION', '9' );",
+        'from' => "define( 'SFAF_DB_VERSION', '10' );",
         'to'   => "define( 'SFAF_DB_VERSION', '7' );",
     ),
 

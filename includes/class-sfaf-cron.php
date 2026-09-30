@@ -426,6 +426,18 @@ class SFAF_Cron {
                 'on'       => '__return_true',
                 'off'      => '',
             ),
+            /*
+             * THE WAITLIST'S OFFERS (3.106.0), on this schedule rather than one
+             * of their own. The confirm page refuses a late acceptance itself,
+             * so a quarter hour between runs costs nobody a place.
+             */
+            'waitlist'  => array(
+                'label'    => 'Waitlist offers',
+                'plain'    => 'Passes an unanswered waitlist offer to the next person once its time runs out, and tells the person it passed.',
+                'callback' => array( 'SFAF_Waitlist', 'run_expiry' ),
+                'on'       => '__return_true',
+                'off'      => '',
+            ),
             'summaries' => array(
                 'label'    => 'Who is coming',
                 'plain'    => 'Emails the people running an event a list of who has registered, two hours before it starts.',

@@ -143,6 +143,7 @@ class SFAF_Reminders {
 }
 
 require_once $root . '/includes/class-sfaf-email.php';
+require_once __DIR__ . '/lang-shim.php'; // 3.106.0
 require_once $root . '/includes/class-sfaf-online.php';
 require_once $root . '/includes/class-sfaf-notifications.php';
 

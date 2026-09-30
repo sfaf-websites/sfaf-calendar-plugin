@@ -335,6 +335,9 @@ $RENDERERS = array(
     // Allowed to know about closures: they draw them.
     'class-sfaf-shortcodes.php' => 'the month grid marks the day and the card list shows a flat card',
     'class-sfaf-admin.php'      => 'the screen closures are entered on',
+    // 3.106.0: it names the option only to retire its cached pages when a
+    // closure changes. It still renders through the shortcode class.
+    'class-sfaf-embed.php'      => 'the embed endpoint, flushing its cache when a closure is saved',
     'class-sfaf-closures.php'   => 'itself',
     // 3.105.0: a line under the date on the editor and both public forms, and a
     // flag on the pending row. Warnings only; none of them refuses a save.
@@ -358,7 +361,6 @@ $MUST_NOT_SEE = array(
     'class-sfaf-cancellation.php'  => 'cancellation: post meta on uc_event',
     'class-sfaf-announce.php'      => 'the cancelled and changed emails: registrations, keyed by event_id',
     'class-sfaf-cron.php'          => 'the scheduled runner: it runs the three jobs above and nothing else',
-    'class-sfaf-embed.php'         => 'the embed endpoint: it renders through the shortcode class, which draws them correctly',
     'class-sfaf-sync.php'          => 'the satellite feed: WP_Query over uc_event',
     'class-sfaf-venues.php'        => 'venues: a taxonomy relationship on uc_event',
     'class-sfaf-faq-sets.php'      => 'FAQ sets: post meta on uc_event',

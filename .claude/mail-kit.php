@@ -236,7 +236,14 @@ class MK_DB {
         $conds = array();
         if ( ! preg_match( '/\bWHERE\s+(.+?)(?:\s+ORDER BY|\s+LIMIT|\s+GROUP BY|$)/s', $sql, $m ) ) { return $conds; }
         foreach ( preg_split( '/\s+AND\s+/', trim( $m[1] ) ) as $c ) {
-            if ( preg_match( "/^(\\w+(?:\\.\\w+)?)\\s*(=|<>)\\s*(?:'((?:[^'\\\\]|\\\\.)*)'|(-?\\d+))$/", trim( $c ), $x ) ) {
+            // IN ( 'a', 'b' ), for the waitlist's statuses (3.106.0).
+            if ( preg_match( "/^(\\w+(?:\\.\\w+)?)\\s+IN\\s*\\(([^)]*)\\)$/", trim( $c ), $x ) ) {
+                preg_match_all( "/'((?:[^'\\\\]|\\\\.)*)'/", $x[2], $vals );
+                $conds[] = array( preg_replace( '/^\w+\./', '', $x[1] ), 'IN', $vals[1] );
+                continue;
+            }
+            // Comparisons as well as equality, for an offer's expiry (3.106.0).
+            if ( preg_match( "/^(\\w+(?:\\.\\w+)?)\\s*(=|<>|>=|<=|>|<)\\s*(?:'((?:[^'\\\\]|\\\\.)*)'|(-?\\d+))$/", trim( $c ), $x ) ) {
                 $conds[] = array( preg_replace( '/^\w+\./', '', $x[1] ), $x[2], isset( $x[4] ) && '' !== $x[4] ? $x[4] : stripslashes( $x[3] ) );
             } else {
                 throw new RuntimeException( 'mail-kit: a WHERE clause it cannot read: ' . $c );
@@ -253,7 +260,14 @@ class MK_DB {
             $ok = true;
             foreach ( $this->where( $sql ) as $c ) {
                 $v = isset( $row[ $c[0] ] ) ? (string) $row[ $c[0] ] : '';
-                if ( ( '=' === $c[1] && $v !== (string) $c[2] ) || ( '<>' === $c[1] && $v === (string) $c[2] ) ) { $ok = false; }
+                if ( 'IN' === $c[1] ) {
+                    if ( ! in_array( $v, $c[2], true ) ) { $ok = false; }
+                    continue;
+                }
+                $w = (string) $c[2];
+                if ( ( '=' === $c[1] && $v !== $w ) || ( '<>' === $c[1] && $v === $w )
+                    || ( '>' === $c[1] && ! ( strcmp( $v, $w ) > 0 ) ) || ( '<' === $c[1] && ! ( strcmp( $v, $w ) < 0 ) )
+                    || ( '>=' === $c[1] && strcmp( $v, $w ) < 0 ) || ( '<=' === $c[1] && strcmp( $v, $w ) > 0 ) ) { $ok = false; }
             }
             if ( $ok ) { $out[] = $row; }
         }
@@ -325,9 +339,13 @@ $mk_port = file_get_contents( $mk_root . '/includes/class-sfaf-portal.php' );
 foreach ( array( 'function sfaf_local_timestamp(', 'function sfaf_ap_date(', 'function sfaf_ap_date_es(', 'function sfaf_ap_time(', 'function sfaf_ap_meridiem(', 'function sfaf_ap_time_range(',
                  'function sfaf_ap_time_zone(', 'function sfaf_ap_zoned(', 'function sfaf_location_part_keys(', 'function sfaf_event_location_name(',
                  'function sfaf_event_location(', 'function sfaf_event_takes_rsvps(', 'function sfaf_flatten_html(',
-                 'function sfaf_email_required_locked(', 'function sfaf_email_required(' ) as $mk_n ) {
+                 'function sfaf_email_required_locked(', 'function sfaf_email_required(',
+                 'function sfaf_event_language(', 'function sfaf_ap_restate(', 'function sfaf_ap_datetime(', 'function sfaf_donate_default_url(',
+                 'function sfaf_donate_choice_key(', 'function sfaf_donate_resolve(', 'function sfaf_donate_url(', 'function sfaf_event_datetimes(' ) as $mk_n ) {
     eval( mk_lift( $mk_tpl, $mk_n ) );
 }
+// The default donation link, a constant the template functions define (3.106.0).
+if ( preg_match( "/define\( 'SFAF_DONATE_DEFAULT'[^;]*;/", $mk_tpl, $mk_m ) ) { eval( $mk_m[0] ); }
 foreach ( array( 'function &sfaf_rsvp_count_store(', 'function &sfaf_rsvp_format_count_store(', 'function sfaf_clear_rsvp_count_cache(',
                  'function sfaf_get_rsvp_count_by_format(', 'function sfaf_get_rsvp_count(', 'function sfaf_capacity_meta_key(', 'function sfaf_event_capacity(',
                  'function sfaf_event_formats(', 'function sfaf_format_full(', 'function sfaf_event_full(' ) as $mk_n ) {
@@ -353,7 +371,8 @@ eval( 'class SFAF_Portal {'
 class SFAF_Optins { public static $recorded = array(); public static function record( $e, $n, $id, $src ) { self::$recorded[] = $e; return true; } }
 
 foreach ( array( 'class-sfaf-email', 'class-sfaf-online', 'class-sfaf-cancellation', 'class-sfaf-teams', 'class-sfaf-venues', 'class-sfaf-series',
-                 'class-sfaf-sources', 'class-sfaf-reminders', 'class-sfaf-notifications', 'class-sfaf-digest', 'class-sfaf-rsvp' ) as $mk_f ) {
+                 'class-sfaf-sources', 'class-sfaf-reminders', 'class-sfaf-notifications', 'class-sfaf-digest', 'class-sfaf-rsvp',
+                 'class-sfaf-organizers', 'class-sfaf-messages', 'class-sfaf-waitlist', 'class-sfaf-announce' ) as $mk_f ) {
     require_once $mk_root . '/includes/' . $mk_f . '.php';
 }
 

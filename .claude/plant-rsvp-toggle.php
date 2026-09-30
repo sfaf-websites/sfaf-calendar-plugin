@@ -29,12 +29,12 @@ $plants = array(
     ),
     'an imported event loses its RSVP controls' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => "            \$draw_rsvp( array( 'rsvp_enabled', 'capacity' ) );\n            return \$rsvp_placed;",
+        'from' => "            \$draw_rsvp( array( 'rsvp_enabled', 'email_required', 'capacity' ) );\n            return \$rsvp_placed;",
         'to'   => "            return \$rsvp_placed;",
     ),
     'the Location card stops drawing Accept RSVPs' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => "            \$draw_rsvp( array( 'rsvp_enabled' ) );",
+        'from' => "            \$draw_rsvp( array( 'rsvp_enabled', 'email_required' ) );",
         'to'   => "",
     ),
     /* CAPACITY IS ONE ROW NOW (3.98.0), drawn once below the address and the

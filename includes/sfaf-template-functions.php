@@ -597,6 +597,11 @@ function sfaf_rsvp_status_label( $status ) {
     $known = array(
         'confirmed' => 'Registered',
         'cancelled' => 'Canceled',
+        // The waitlist (3.106.0).
+        'waitlisted'     => 'Waitlisted',
+        'offered'        => 'Offered a place',
+        'offered_manual' => 'Waitlisted, needs a call',
+        'expired'        => 'Offer passed',
     );
     $status = (string) $status;
     return isset( $known[ $status ] ) ? $known[ $status ] : ucfirst( str_replace( '_', ' ', $status ) );
@@ -1225,15 +1230,21 @@ function sfaf_rsvp_block( $post_id ) {
     //
     // UNREACHABLE TODAY AND KEPT ON PURPOSE, for the reason set out in full on
     // sfaf_follow_series_button() above. Do not delete in a cleanup.
+    /*
+     * JOIN THE WAITLIST (3.106.0) when every format is full. On a hybrid event
+     * with one format still open the button stays RSVP, and the form offers
+     * the waitlist for the full one when it is picked.
+     */
+    $rsvp_label = sfaf_event_full( $post_id ) ? 'Join the waitlist' : 'RSVP';
     $button = sfaf_is_embed_context()
         ? sfaf_action_button( array(
-            'label'   => 'RSVP',
+            'label'   => $rsvp_label,
             'href'    => get_permalink( $post_id ),
             'variant' => 'primary',
             'class'   => 'uc-embed-link',
         ) )
         : sfaf_action_button( array(
-            'label'   => 'RSVP',
+            'label'   => $rsvp_label,
             'variant' => 'primary',
             'class'   => 'uc-rsvp-btn',
             // data-event-title carried on the button, exactly as the reminders
@@ -2491,8 +2502,8 @@ function sfaf_event_location_parts( $post_id ) {
  * @param int $post_id
  * @return string '' unless the event runs both formats.
  */
-function sfaf_event_format_line( $post_id ) {
-    return SFAF_Online::is_hybrid( (int) $post_id ) ? 'In person and online' : '';
+function sfaf_event_format_line( $post_id, $lang = 'en' ) {
+    return SFAF_Online::is_hybrid( (int) $post_id ) ? SFAF_Messages::label( 'in_person_online', $lang ) : '';
 }
 /**
  * The shortest honest answer to "where is this".
@@ -3637,6 +3648,64 @@ function sfaf_ap_datetime( $when, $style = 'short_year', $lang = 'en', $zone = f
  * @param string $end   Y-m-d
  * @return string
  */
+/**
+ * A value this formatter wrote in English, said again in another language
+ * (3.106.0). NOT A SECOND FORMATTER.
+ *
+ * The change notice compares what an event said before a save with what it
+ * says after, as the English strings this file produced, so a registrant of a
+ * Spanish event would be told the date moved "from Thursday, November 5, 2026".
+ * A date is read back and handed to sfaf_ap_date() in the language; a time
+ * range only ever differs in its meridiem and its zone, so those two are
+ * swapped for what sfaf_ap_meridiem() and sfaf_ap_zoned() say. Anything else,
+ * a location, is returned as entered.
+ *
+ * @param string $kind  'date', 'time' or anything else.
+ * @param string $text  The English value, or 'not set'.
+ * @param string $lang
+ * @return string
+ */
+function sfaf_ap_restate( $kind, $text, $lang ) {
+    $text = (string) $text;
+    if ( 'en' === $lang || '' === $text ) {
+        return $text;
+    }
+    if ( 'not set' === $text ) {
+        return 'es' === $lang ? 'sin definir' : $text;
+    }
+    if ( 'date' === $kind ) {
+        $ts = strtotime( $text . ' 12:00:00' );
+        return $ts ? sfaf_ap_date( $ts, 'full', $lang ) : $text;
+    }
+    if ( 'time' === $kind ) {
+        $zone  = sfaf_ap_time_zone();
+        $zoned = ( '' !== $zone && ' ' . $zone === substr( $text, -1 - strlen( $zone ) ) );
+        $bare  = $zoned ? substr( $text, 0, -1 - strlen( $zone ) ) : $text;
+        $bare  = preg_replace_callback( '/\b(am|pm)\b/', function ( $m ) use ( $lang ) {
+            return sfaf_ap_meridiem( strtoupper( $m[1] ), $lang );
+        }, $bare );
+        return $zoned ? sfaf_ap_zoned( $bare, $lang ) : $bare;
+    }
+    return $text;
+}
+
+/**
+ * The language an event's messages go out in (3.106.0): its own, else its
+ * series' default, else English.
+ *
+ * @param int $event_id
+ * @return string 'en' or 'es'
+ */
+function sfaf_event_language( $event_id ) {
+    $own = (string) get_post_meta( (int) $event_id, '_uc_language', true );
+    if ( in_array( $own, array( 'en', 'es' ), true ) ) {
+        return $own;
+    }
+    $series = class_exists( 'SFAF_Series' ) ? (int) SFAF_Series::id_for_event( (int) $event_id ) : 0;
+    $inherit = $series ? SFAF_Series::language( $series ) : '';
+    return in_array( $inherit, array( 'en', 'es' ), true ) ? $inherit : 'en';
+}
+
 function sfaf_ap_date_range( $start, $end ) {
     $s = strtotime( trim( (string) $start ) . ' 12:00:00' );
     $e = strtotime( trim( (string) $end ) . ' 12:00:00' );
@@ -4174,14 +4243,29 @@ function sfaf_favicon_links() {
 <?php
 }
 
-function sfaf_notice_page( $title, $html ) {
+function sfaf_notice_page( $title, $html, $lang = '' ) {
     nocache_headers();
     status_header( 200 );
     header( 'Content-Type: text/html; charset=utf-8' );
     /* Nothing here should ever be framed or indexed: the URL is a token. */
     header( 'X-Frame-Options: SAMEORIGIN' );
+    echo sfaf_notice_page_html( $title, $html, $lang );
+    exit;
+}
+
+/**
+ * The notice page's document, returned rather than sent (3.106.0), so the
+ * Email Templates screen previews exactly what a registrant lands on.
+ *
+ * @param string $title
+ * @param string $html
+ * @param string $lang 'es' marks the document Spanish; '' is the site's own.
+ * @return string
+ */
+function sfaf_notice_page_html( $title, $html, $lang = '' ) {
+    ob_start();
     ?><!DOCTYPE html>
-<html <?php language_attributes(); ?>>
+<html <?php if ( 'es' === $lang ) { echo 'lang="es"'; } else { language_attributes(); } ?>>
 <head>
 <meta charset="<?php bloginfo( 'charset' ); ?>" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -4200,7 +4284,7 @@ function sfaf_notice_page( $title, $html ) {
 </body>
 </html>
     <?php
-    exit;
+    return (string) ob_get_clean();
 }
 
 /**

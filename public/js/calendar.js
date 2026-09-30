@@ -8,6 +8,7 @@
     var currentEventId = null;
     var currentFormats = '';   // the opened button's data-uc-formats (3.102.0)
     var currentEmailRequired = false; // the opened button's data-uc-email-required (3.106.0)
+    var currentFull = [];      // the formats with no place left: the waitlist (3.106.0)
 
     /**
      * Run one initialiser without letting it take the others down.
@@ -1508,7 +1509,7 @@
         var modalHTML = '<dialog class="uc-rsvp-modal-overlay" id="uc-rsvp-modal">' +
             '<div class="uc-rsvp-modal">' +
                 '<div class="uc-rsvp-form-view">' +
-                    '<h3>Register for this Event</h3>' +
+                    '<h3 id="uc-rsvp-heading">Register for this Event</h3>' +
                     '<p class="uc-modal-subtitle" id="uc-rsvp-event-title"></p>' +
                     '<div class="uc-rsvp-form">' +
                         // HOW WILL YOU ATTEND, ON A HYBRID EVENT AND NOWHERE
@@ -1582,7 +1583,7 @@
                 '<div class="uc-rsvp-success" id="uc-rsvp-success" style="display:none;">' +
                     '<div class="uc-check">&#10003;</div>' +
                     '<p id="uc-rsvp-success-msg">You are registered!</p>' +
-                    '<p class="uc-modal-subtitle">We look forward to seeing you.</p>' +
+                    '<p class="uc-modal-subtitle" id="uc-rsvp-success-sub">We look forward to seeing you.</p>' +
                     // THE EMAIL, STATED NEUTRALLY.
                     //
                     // "It may be in your spam folder" undercuts a message that
@@ -1644,6 +1645,7 @@
             renderFormatChoice(this);
             currentFormats = ($(this).attr('data-uc-formats') || '');
             currentEmailRequired = ($(this).attr('data-uc-email-required') === '1');
+            currentFull = ($(this).attr('data-uc-full') || '').split(',').filter(Boolean);
 
             // Reset form. The opt-in is cleared with everything else: it must
             // never carry a previous visitor's tick into a fresh form.
@@ -1654,6 +1656,7 @@
             // The previous registrant's greeting and their add-to-calendar
             // links belong to their event, not to this one.
             $('#uc-rsvp-success-msg').text('You are registered!');
+            $('#uc-rsvp-success-sub').text('We look forward to seeing you.');
             $('#uc-rsvp-addcal').hide();
             // A cleared field is not an invalid field. Reopening the modal must
             // not show last time's complaint about an empty box.
@@ -1663,6 +1666,7 @@
             $('#uc-rsvp-success').hide();
             $('#uc-rsvp-success .uc-rsvp-inbox-note').show();
             syncNoEmail();
+            syncWaitlist();
 
             openOverlay(modal);
         });
@@ -1681,6 +1685,7 @@
         // The no-email box, and a format choice that can take it away.
         $(document).on('change', '#uc-rsvp-noemail, #uc-rsvp-format input[type="radio"]', function () {
             syncNoEmail();
+            syncWaitlist();
         });
 
         // Submit RSVP
@@ -1766,6 +1771,25 @@
      * It does not ask what a format is or count anything, so what is on the
      * screen and what SFAF_RSVP::submit() will accept cannot drift apart.
      */
+    /* THE WAITLIST'S WORDS (3.106.0). The format this person is signing up
+       for decides it: the one they picked on a hybrid event, else the event's
+       one format. The server decides again when the form is sent, so this only
+       keeps the screen honest. */
+    function waitlistChosen() {
+        var formats = (currentFormats || '').split(',').filter(Boolean);
+        var chosen = $('#uc-rsvp-format input[type="radio"]:checked').val() || '';
+        if (formats.length === 1) { return currentFull.indexOf(formats[0]) !== -1; }
+        return chosen !== '' && currentFull.indexOf(chosen) !== -1;
+    }
+    function submitLabel() {
+        return waitlistChosen() ? 'Join the waitlist' : 'Register Now';
+    }
+    function syncWaitlist() {
+        var wait = waitlistChosen();
+        $('#uc-rsvp-heading').text(wait ? 'Join the waitlist' : 'Register for this Event');
+        $('#uc-rsvp-submit-btn').text(submitLabel());
+    }
+
     function renderFormatChoice(btn) {
         var box = $('#uc-rsvp-format');
         var formats = ($(btn).attr('data-uc-formats') || '').split(',').filter(Boolean);
@@ -1803,16 +1827,15 @@
             var isFull = (full.indexOf(f) !== -1);
             if (!isFull) { open++; }
             html += '<label class="uc-segment' + (isFull ? ' is-full' : '') + '">' +
-                '<input type="radio" name="uc_rsvp_format" value="' + f + '"' +
-                (isFull ? ' disabled' : '') + ' />' +
-                '<span class="uc-segment-label">' + (labels[f] || f) + (isFull ? ' (full)' : '') + '</span>' +
+                '<input type="radio" name="uc_rsvp_format" value="' + f + '" />' +
+                '<span class="uc-segment-label">' + (labels[f] || f) + (isFull ? ' (waitlist)' : '') + '</span>' +
                 '</label>';
         }
         html += '</div>';
         if (0 === open) {
-            html += '<p class="uc-rsvp-note">Both options are full.</p>';
+            html += '<p class="uc-rsvp-note">Both options are full. Pick one to join its waitlist.</p>';
         } else if (open === 1) {
-            html += '<p class="uc-rsvp-note">One option is full. The other still has places.</p>';
+            html += '<p class="uc-rsvp-note">One option is full. Picking it puts you on its waitlist.</p>';
         }
         html += '</fieldset>';
         box.html(html).removeAttr('hidden');
@@ -1820,9 +1843,8 @@
         // WITH ONE OPTION LEFT IT IS CHOSEN, NOT LEFT BLANK. There is nothing to
         // decide, and making somebody press the only button there is before the
         // form will take them is a step that answers nothing.
-        if (1 === open) {
-            box.find('input[type="radio"]').not('[disabled]').prop('checked', true);
-        }
+        // Nothing is picked for them: which format, and so whether it is the
+        // waitlist, is the person's choice.
     }
 
     function submitRSVP() {
@@ -1907,7 +1929,12 @@
                      * email greets from, so the screen and the email say the
                      * same word.
                      */
-                    if (response.first_name) {
+                    if (response.waitlisted) {
+                        $('#uc-rsvp-success-msg').text('You are on the waitlist.');
+                        $('#uc-rsvp-success-sub').text('You are number ' + response.position + '. If a place opens, we will offer it to you.');
+                        response.gcal = '';
+                        response.ics = '';
+                    } else if (response.first_name) {
                         $('#uc-rsvp-success-msg').text('You are registered, ' + response.first_name + '!');
                     }
 
@@ -1957,12 +1984,12 @@
                     }
                 } else {
                     $('#uc-rsvp-error').text(response.message || 'Something went wrong.').show();
-                    btn.prop('disabled', false).text('Register Now');
+                    btn.prop('disabled', false).text(submitLabel());
                 }
             },
             error: function() {
                 $('#uc-rsvp-error').text('Network error. Please try again.').show();
-                btn.prop('disabled', false).text('Register Now');
+                btn.prop('disabled', false).text(submitLabel());
             }
         });
     }

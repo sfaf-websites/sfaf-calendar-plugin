@@ -344,7 +344,17 @@ class SFAF_RSVP {
          * form can still take them, and turning them away would refuse a
          * registration the event wanted.
          */
+        $data['phone'] = self::format_phone( $data['phone'] ?? '' );
+        $data['name']  = trim( $data['first_name'] . ' ' . $data['last_name'] );
+
         if ( sfaf_format_full( $data['event_id'], $hybrid ? $format : '' ) ) {
+            /*
+             * FULL IS THE WAITLIST NOW (3.106.0), for the format this person
+             * picked. Everything a registration checks has been checked above.
+             */
+            if ( SFAF_Waitlist::applies( $data['event_id'], $hybrid ? $format : '' ) ) {
+                return SFAF_Waitlist::join( $data );
+            }
             if ( $hybrid && ! sfaf_event_full( $data['event_id'] ) ) {
                 $other = ( SFAF_Online::MODE_ONLINE === $format ) ? 'in person' : 'online';
                 return array(
@@ -363,13 +373,9 @@ class SFAF_RSVP {
         // generator the reminder ledger uses, and it is the only credential the
         // cancel page accepts: no account, no session, nothing derived from the
         // address.
-        // The phone is punctuated here, once, on the way in. See format_phone()
-        // for why this is on save rather than on the keyboard.
-        $data['phone'] = self::format_phone( $data['phone'] ?? '' );
-
-        // The single string, derived from the pair and written with them. One
-        // writer, so it cannot disagree with the columns it comes from.
-        $data['name'] = trim( $data['first_name'] . ' ' . $data['last_name'] );
+        // The phone is punctuated and the single name string derived above,
+        // once, before the full check, so a waitlist row gets them too
+        // (3.106.0). See format_phone() for why this is on save.
 
         $token    = SFAF_Reminders::new_token();
         $inserted = $wpdb->insert( $table, array(

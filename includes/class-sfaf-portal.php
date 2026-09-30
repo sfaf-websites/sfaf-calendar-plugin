@@ -1951,6 +1951,21 @@ class SFAF_Portal {
              * the status change on: the count, the cancel alert, and the
              * reminder ledger left alone. It records who and when on the row.
              */
+            /*
+             * CONFIRM SOMEBODY OFF THE WAITLIST (3.106.0). The event gate, of the
+             * event the row belongs to, read from the row.
+             */
+            case 'confirm_waitlist':
+                $rsvp_id = isset( $_POST['rsvp_id'] ) ? (int) $_POST['rsvp_id'] : 0;
+                $row     = $rsvp_id ? SFAF_RSVP::row( $rsvp_id ) : null;
+                $post    = $row ? get_post( (int) $row->event_id ) : null;
+                if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
+                    wp_die( 'Denied' );
+                }
+                $done = SFAF_Waitlist::staff_confirm( $rsvp_id );
+                $this->redirect( 'rsvps', array( 'event_id' => (int) $row->event_id, 'msg' => $done ? 'waitlist_confirmed' : 'waitlist_not_confirmed' ) );
+                break;
+
             case 'remove_rsvp':
                 $rsvp_id = isset( $_POST['rsvp_id'] ) ? (int) $_POST['rsvp_id'] : 0;
                 $row     = $rsvp_id ? SFAF_RSVP::row( $rsvp_id ) : null;
@@ -1958,7 +1973,11 @@ class SFAF_Portal {
                 if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
                     wp_die( 'Denied' );
                 }
-                $done = SFAF_Reminders::remove_rsvp( $rsvp_id, (int) $user->ID );
+                // A waitlist row leaves the waitlist; a registration is released
+                // through the cancel link's path (3.106.0).
+                $done = in_array( (string) $row->status, array_merge( SFAF_Waitlist::waiting_statuses(), array( SFAF_Waitlist::EXPIRED ) ), true )
+                    ? SFAF_Waitlist::leave( $rsvp_id, (int) $user->ID )
+                    : SFAF_Reminders::remove_rsvp( $rsvp_id, (int) $user->ID );
                 $back = array( 'msg' => $done ? 'rsvp_removed' : 'rsvp_not_removed' );
                 if ( ! empty( $_POST['back_event'] ) ) {
                     $back['event_id'] = (int) $row->event_id;
@@ -4074,6 +4093,8 @@ class SFAF_Portal {
             'rsvp_settings_saved' => 'Registration settings saved. These are the same controls the event editor shows, on the same event, so it now reads the same in both places.',
             'rsvp_removed'        => 'Registration removed. The place is free.',
             'rsvp_not_removed'    => 'Nothing to remove: that registration was already cancelled.',
+            'waitlist_confirmed'  => 'Confirmed. They are registered now.',
+            'waitlist_not_confirmed' => 'Nothing to confirm: they are no longer on the waitlist.',
 
             // The schedule.
             'schedule_added'    => 'Date added. It is an ordinary event, identical to the others, with nobody registered yet. A time change to the group reaches it; a change to the pattern leaves it where it is.',
@@ -8797,6 +8818,9 @@ class SFAF_Portal {
         );
         // Under its own presence check, so a form that does not draw the box
         // cannot clear a link it never showed (3.105.0).
+        if ( isset( $_POST['series_language'] ) ) {
+            $args['language'] = sanitize_key( wp_unslash( $_POST['series_language'] ) );
+        }
         if ( isset( $_POST['series_donate_url'] ) ) {
             $args['donate_url'] = trim( (string) wp_unslash( $_POST['series_donate_url'] ) );
         }
@@ -9468,6 +9492,21 @@ class SFAF_Portal {
                  * events fall through to the default in Settings.
                  */
                 ?>
+                <?php
+                /* THE SERIES' DEFAULT LANGUAGE (3.106.0), for the messages of an
+                   event that names none of its own. */
+                $series_lang = $term_id ? SFAF_Series::language( $term_id ) : 'en';
+                ?>
+                <label class="uc-field">
+                    <span class="uc-field-label">Default language</span>
+                    <select name="series_language">
+                        <?php foreach ( SFAF_Messages::languages() as $code => $name ) : ?>
+                            <option value="<?php echo esc_attr( $code ); ?>" <?php selected( $series_lang, $code ); ?>><?php echo esc_html( $name ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <span class="uc-hint">Messages to registrants of events in this series go out in this language unless the event sets its own.</span>
+                </label>
+
                 <label class="uc-field">
                     <span class="uc-field-label">Donation link</span>
                     <input type="url" name="series_donate_url"
@@ -14949,6 +14988,8 @@ class SFAF_Portal {
     private function save_rsvp_settings_from_post( $user, $event_id, $is_locked ) {
         $event_id = (int) $event_id;
         $imported = ( '' !== (string) get_post_meta( $event_id, SFAF_Sources::META_SOURCE, true ) );
+        // The limits before this save, so a raise can be told apart (3.106.0).
+        $caps_before = array( (int) get_post_meta( $event_id, '_uc_capacity', true ), (int) get_post_meta( $event_id, '_uc_capacity_online', true ) );
 
         if ( ! $is_locked( 'capacity' ) && isset( $_POST['capacity'] ) ) {
             update_post_meta( $event_id, '_uc_capacity', sanitize_text_field( wp_unslash( $_POST['capacity'] ) ) );
@@ -14967,6 +15008,15 @@ class SFAF_Portal {
          */
         if ( ! $is_locked( 'capacity' ) && isset( $_POST['capacity_online'] ) ) {
             update_post_meta( $event_id, '_uc_capacity_online', sanitize_text_field( wp_unslash( $_POST['capacity_online'] ) ) );
+        }
+        /*
+         * CAPACITY RAISED IS A PLACE OPENED (3.106.0): the waitlist is offered
+         * the new places. Either number, any raise; a limit taken off (0) is
+         * not a raise, and an unlimited event never had anybody waiting.
+         */
+        $caps_after = array( (int) get_post_meta( $event_id, '_uc_capacity', true ), (int) get_post_meta( $event_id, '_uc_capacity_online', true ) );
+        if ( $caps_after[0] > $caps_before[0] || $caps_after[1] > $caps_before[1] ) {
+            SFAF_Waitlist::advance_all( $event_id );
         }
 
         if ( isset( $_POST['uc_rsvp_toggle_present'] ) ) {
@@ -16791,6 +16841,28 @@ class SFAF_Portal {
          * SFAF_Optins::consent_index().
          */
         $consented = SFAF_Optins::consent_index( wp_list_pluck( $rsvps, 'email' ) );
+
+        /*
+         * THE WAITLIST IS NOT A REGISTRATION (3.106.0), so its rows leave this
+         * table and are listed under it, per format, with their place in the
+         * queue. The counts say both, for one event.
+         */
+        $wait_statuses = array_merge( SFAF_Waitlist::waiting_statuses(), array( SFAF_Waitlist::EXPIRED ) );
+        $rsvps = array_values( array_filter( $rsvps, function ( $r ) use ( $wait_statuses ) {
+            return ! in_array( (string) $r->status, $wait_statuses, true );
+        } ) );
+        if ( $event ) {
+            $waiting_n = count( array_filter( SFAF_Waitlist::rows_for_list( $event_id ), function ( $r ) {
+                return in_array( (string) $r->status, SFAF_Waitlist::waiting_statuses(), true );
+            } ) );
+            ?>
+            <p class="uc-rsvp-counts" data-uc-rsvp-counts>
+                <strong><?php echo (int) sfaf_get_rsvp_count( $event_id ); ?></strong> registered
+                <span aria-hidden="true">&middot;</span>
+                <strong><?php echo (int) $waiting_n; ?></strong> waitlisted
+            </p>
+            <?php
+        }
         ?>
 
         <div class="uc-card">
@@ -16936,7 +17008,88 @@ class SFAF_Portal {
             <?php endif; ?>
         </div>
         <?php
+        if ( $event ) {
+            $this->render_waitlist_section( $user, $event_id );
+        }
         $this->chrome_close();
+    }
+
+    /**
+     * THE WAITLIST, UNDER THE REGISTRANTS (3.106.0). One table per format on a
+     * hybrid event, since each has its own queue. Nothing is drawn for an event
+     * nobody has waited for.
+     *
+     * Confirm moves somebody in whatever the count says, with or without an
+     * email, and sends the confirmation when there is an address. It is how
+     * staff admit the person a no-email offer was about. Remove takes them off.
+     * Both are the event gate's, asked again at the route.
+     */
+    private function render_waitlist_section( $user, $event_id ) {
+        $rows = SFAF_Waitlist::rows_for_list( $event_id );
+        if ( empty( $rows ) ) {
+            return;
+        }
+        $hybrid  = SFAF_Online::is_hybrid( $event_id );
+        $formats = $hybrid ? sfaf_event_formats( $event_id ) : array( '' );
+        $names   = array( SFAF_Online::MODE_IN_PERSON => 'in person', SFAF_Online::MODE_ONLINE => 'online' );
+        $status  = array(
+            SFAF_Waitlist::WAITING => 'Waiting',
+            SFAF_Waitlist::OFFERED => 'Offered',
+            SFAF_Waitlist::MANUAL  => 'Needs a call',
+            SFAF_Waitlist::EXPIRED => 'Offer passed',
+        );
+        foreach ( $formats as $format ) {
+            $mine = array_values( array_filter( $rows, function ( $r ) use ( $format, $hybrid ) {
+                return ! $hybrid || (string) $r->format === (string) $format;
+            } ) );
+            if ( empty( $mine ) ) {
+                continue;
+            }
+            $place = 0;
+            ?>
+            <div class="uc-card uc-waitlist" data-uc-waitlist="<?php echo esc_attr( $format ); ?>">
+                <div class="uc-card-head"><h2><?php echo esc_html( $hybrid ? 'Waitlist, ' . $names[ $format ] : 'Waitlist' ); ?></h2></div>
+                <table class="uc-table">
+                    <thead><tr><th>Position</th><th>Name</th><th>Email</th><th>Joined</th><th>Offer</th><th>Expires</th><th><span class="uc-visually-hidden">Actions</span></th></tr></thead>
+                    <tbody>
+                    <?php foreach ( $mine as $r ) :
+                        $waiting = in_array( (string) $r->status, SFAF_Waitlist::waiting_statuses(), true );
+                        $who     = SFAF_RSVP::display_name( $r );
+                        $who     = '' !== $who ? $who : 'this person';
+                        ?>
+                        <tr data-uc-waitlist-row="<?php echo (int) $r->id; ?>">
+                            <td><?php echo $waiting ? (int) ++$place : '<span class="uc-muted">&ndash;</span>'; ?></td>
+                            <td><strong><?php echo esc_html( SFAF_RSVP::display_name( $r ) ); ?></strong></td>
+                            <td><?php echo '' !== (string) $r->email ? esc_html( $r->email ) : '<span class="uc-muted">No email</span>'; ?></td>
+                            <td><?php echo esc_html( sfaf_ap_datetime( $r->created_at ) ); ?></td>
+                            <td><span class="uc-pill uc-pill-<?php echo esc_attr( $r->status ); ?>"><?php echo esc_html( $status[ (string) $r->status ] ); ?></span></td>
+                            <td><?php echo ( SFAF_Waitlist::OFFERED === (string) $r->status && ! empty( $r->offer_expires ) ) ? esc_html( sfaf_ap_datetime( $r->offer_expires ) ) : '<span class="uc-muted">&ndash;</span>'; ?></td>
+                            <td class="uc-rsvp-actions">
+                                <form method="post" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>">
+                                    <input type="hidden" name="uc_action" value="confirm_waitlist" />
+                                    <?php wp_nonce_field( 'uc_portal_confirm_waitlist', 'uc_nonce' ); ?>
+                                    <input type="hidden" name="rsvp_id" value="<?php echo (int) $r->id; ?>" />
+                                    <button type="submit" class="uc-btn uc-btn-sm" data-uc-waitlist-confirm
+                                            data-uc-confirm="<?php echo esc_attr( '' !== (string) $r->email
+                                                ? 'Confirm ' . $who . '\'s place? They are moved in and sent the confirmation.'
+                                                : 'Confirm ' . $who . '\'s place? They are moved in. They have no email, so nothing is sent.' ); ?>">Confirm</button>
+                                </form>
+                                <form method="post" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>">
+                                    <input type="hidden" name="uc_action" value="remove_rsvp" />
+                                    <?php wp_nonce_field( 'uc_portal_remove_rsvp', 'uc_nonce' ); ?>
+                                    <input type="hidden" name="rsvp_id" value="<?php echo (int) $r->id; ?>" />
+                                    <input type="hidden" name="back_event" value="1" />
+                                    <button type="submit" class="uc-link-danger uc-btn-sm" data-uc-waitlist-remove
+                                            data-uc-confirm="<?php echo esc_attr( 'Remove ' . $who . ' from the waitlist?' ); ?>">Remove</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php
+        }
     }
 
     /* =====================================================================

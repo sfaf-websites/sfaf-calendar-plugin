@@ -4713,3 +4713,21 @@ body.uc-modal-open { overflow: hidden; }
    ------------------------------------------------------------------------ */
 .uc-prefs .uc-fieldset { margin: 0 0 14px; }
 .uc-user-id .uc-user-digest { display: block; margin-top: 2px; }
+
+/* ---------------------------------------------------------------------------
+   THE WAITLIST ON THE REGISTRATIONS LIST (3.106.0).
+
+   The counts sit under the page head, as body text. Each waitlist is its own
+   card under the registrants. Its pills keep their case: .uc-pill capitalises,
+   which is right for one word and turns "Needs a call" into three. Waiting and
+   passed are the pill's own grey; an open offer is teal, #0E7680 on the band
+   #E8F9FA at 4.94:1; a call to make is amber, #92400E on #FEF3C7 at 6.37:1,
+   caladmin's system colour for a step in the job.
+   ------------------------------------------------------------------------- */
+.uc-rsvp-counts { margin: 0 0 16px; font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--sfaf-darkgray); }
+.uc-rsvp-counts strong { font-weight: 600; }
+.uc-waitlist { margin-top: 20px; }
+.uc-waitlist .uc-pill { text-transform: none; }
+.uc-waitlist .uc-pill-offered { background: #E8F9FA; color: #0E7680; }
+.uc-waitlist .uc-pill-offered_manual { background: #FEF3C7; color: #92400E; }
+.uc-waitlist .uc-rsvp-actions form { display: inline-block; margin-left: 8px; }

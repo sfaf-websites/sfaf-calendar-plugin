@@ -217,6 +217,7 @@ $GLOBALS['sfaf_editors'] = $EDITORS;
 $GLOBALS['sfaf_claims']  = array();
 
 require $root . '/includes/class-sfaf-email.php';
+require_once __DIR__ . '/lang-shim.php'; // 3.106.0
 
 /* CAPACITY, WHICH MOVED INTO THE MAIN FILE IN 3.96.0 (sfaf_event_capacity).
  * Stubbed rather than loaded, because the main file is the whole plugin. The
