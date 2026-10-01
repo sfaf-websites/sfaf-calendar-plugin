@@ -82,9 +82,9 @@ $edits = array(
 
     /* Display starts asking about the folder, which is how an event with an
      * older picture loses it. */
-    'display-filters' => array( 'includes/sfaf-template-functions.php',
-        'function sfaf_event_location( $post_id ) {',
-        "function sfaf_event_location( \$post_id ) {\n    \$unused = SFAF_Media_Folder::FOLDER;" ),
+    'display-filters' => array( 'includes/class-sfaf-shortcodes.php',
+        '    public function is_floor_month( $month ) {',
+        "    public function is_floor_month( \$month ) {\n        \$unused = SFAF_Media_Folder::FOLDER;" ),
 
     /* The domain check is loosened to "ends with", so notsfaf.org gets a link
      * and the form is open to anybody who can register that name. */
@@ -94,9 +94,9 @@ $edits = array(
 
     /* The image check drops the folder half, so any attachment id in the
      * library can be attached to a public event. */
-    'any-attachment' => array( 'includes/class-sfaf-request.php',
-        "                && SFAF_Media_Folder::holds( \$id ) ) {",
-        '                ) {' ),
+    'any-attachment' => array( 'includes/class-sfaf-submissions.php',
+        "        return SFAF_Media_Folder::holds( \$id ) ? \$id : 0;",
+        "        return \$id;" ),
 
     /* The date is taken as posted, so 2026-02-30 rolls into March. */
     'loose-date' => array( 'includes/class-sfaf-request.php',
@@ -104,7 +104,7 @@ $edits = array(
         '' ),
 
     /* The rate limiter always says yes. */
-    'no-rate-limit' => array( 'includes/class-sfaf-request.php',
+    'no-rate-limit' => array( 'includes/class-sfaf-submissions.php',
         "        \$count = (int) get_transient( \$key );\n        if ( \$count >= \$limit ) {\n            return false;\n        }\n",
         "        \$count = (int) get_transient( \$key );\n" ),
 
@@ -120,9 +120,9 @@ $edits = array(
         "'post_status'  => isset( \$_POST['post_status'] ) ? \$_POST['post_status'] : 'pending'," ),
 
     /* The queue stops marking a request, so it reads as a contributor draft. */
-    'unmarked-request' => array( $P,
-        '<span class="uc-source-badge uc-badge-request">Staff request</span>',
-        '' ),
+    'unmarked-request' => array( 'includes/class-sfaf-submissions.php',
+        "            self::KIND_STAFF     => 'Staff request',",
+        "            self::KIND_STAFF     => 'Community submission'," ),
 
     /* The series screen goes back to its own copy of the markup, which is the
      * 3.43.1 bug exactly: hooks the binder never finds. */
@@ -133,7 +133,7 @@ $edits = array(
     /* The series picker loses the folder attributes, so that screen would
      * offer the whole media library while the editor offers the folder. */
     'picker-unfiltered' => array( $P,
-        '<div class="uc-field uc-image-field"<?php echo $this->image_picker_atts( SFAF_Media_Folder::has_any() ); ?>>',
+        '<div class="uc-field uc-image-field"<?php echo $this->image_picker_atts( SFAF_Media_Folder::has_any(), 0 ); ?>>',
         '<div class="uc-field uc-image-field">' ),
 
     /* A screen stops loading the media library. */
@@ -153,9 +153,9 @@ $edits = array(
         "    private function description_editor( \$ctx, \$state ) {\n        if ( false ) { wp_editor( '', 'x', array( 'tinymce' => array( 'toolbar1' => 'bold,forecolor' ) ) ); }" ),
 
     /* The value contexts go back to joining paragraphs. */
-    'joins-paragraphs' => array( 'includes/class-sfaf-seo.php',
-        "return wp_trim_words( sfaf_flatten_html( \$source ), 40 );",
-        "return wp_trim_words( \$source, 40 );" ),
+    'joins-paragraphs' => array( 'includes/sfaf-template-functions.php',
+        "    return sfaf_flatten_html( sfaf_event_description_html( \$post_id ) );",
+        "    return wp_strip_all_tags( sfaf_event_description_html( \$post_id ) );" ),
 
     /* An FAQ answer is stripped on save again, so formatting is lost. */
     'faq-stripped' => array( 'includes/class-sfaf-faq-sets.php',
@@ -195,7 +195,7 @@ $edits = array(
     /* The month binding loses its lower bound, which is the fault the outcome
      * test caught before this release shipped. */
     'month-upper-only' => array( 'includes/class-sfaf-shortcodes.php',
-        "            \$args['meta_query'][] = array(\n                'key'     => '_uc_event_date',\n                'value'   => \$filters['month'] . '-01',\n                'compare' => '>=',\n                'type'    => 'DATE',\n            );\n",
+        "            \$args['meta_query'][] = array(\n                'key'     => '_uc_event_date',\n                'value'   => \$filters['bound_month'] . '-01',\n                'compare' => '>=',\n                'type'    => 'DATE',\n            );\n",
         '' ),
 
     /* The floor month offers a way back again. */
@@ -253,11 +253,11 @@ $edits = array(
          * else, and the run that follows is measuring the wrong thing. */
         array( $P,
             "                    /*\n"
-            . "                     * ON AN EDIT ONLY. A new event asks this at the top of the",
+            . "                     * \$all_series AND \$cur_series ARE RESOLVED AT THE TOP OF THE",
             "                    \$all_series = SFAF_Series::all();\n"
             . "                    \$cur_series = \$event_id ? SFAF_Series::id_for_event( \$event_id ) : 0;\n"
             . "                    /*\n"
-            . "                     * ON AN EDIT ONLY. A new event asks this at the top of the" ),
+            . "                     * \$all_series AND \$cur_series ARE RESOLVED AT THE TOP OF THE" ),
     ),
 
     /* A multi-select on a taxonomy both readers take the FIRST term of. The
@@ -311,7 +311,7 @@ $edits = array(
 
     /* The formatter ignores the style, so no email carries a zone. */
     'email-no-zone-formatter' => array( 'includes/sfaf-template-functions.php',
-        "    return ( 'zone' === \$style ) ? sfaf_ap_zoned( \$clock ) : \$clock;",
+        "    return ( 'zone' === \$style ) ? sfaf_ap_zoned( \$clock, \$lang ) : \$clock;",
         "    return \$clock;" ),
     /* ---- 3.100.0: the EveryAction panel. ---- */
 

@@ -122,7 +122,9 @@ foreach ( array( 'h1', 'h2', 'h4' ) as $level ) {
  * tag. A hit is a statement doing both.
  * ------------------------------------------------------------------------ */
 $joiners = array( 'wp_strip_all_tags', 'strip_tags', 'wp_trim_words' );
-$prose   = array( 'get_the_excerpt', 'post_content', "['answer']", 'term->description', '$description' );
+// The description resolver is prose too (3.106.3): it is where the event page,
+// the cards and the SEO text all read the description from.
+$prose   = array( 'get_the_excerpt', 'post_content', "['answer']", 'term->description', '$description', 'sfaf_event_description_html(' );
 
 /*
  * PROSE HELD IN A VARIABLE COUNTS TOO.
