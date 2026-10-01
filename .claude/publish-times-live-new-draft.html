@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Events - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.106.2" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.106.2" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.106.2" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.106.3" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.106.3" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.106.3" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.106.2" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.106.3" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -800,74 +800,128 @@
                                         <span class="uc-hint uc-hint-spec">0 means unlimited.</span>
                 </div>
                         </div>
-                <div class="uc-field uc-questions" data-uc-questions data-uc-questions-max="5">
+                        </section>
+
+                                    <section class="uc-bento-card uc-questions-card" data-uc-questions-card>
+                        <h2 class="uc-bento-title">Questions for registrants</h2>
+                                <div class="uc-questions" data-uc-questions data-uc-questions-max="5">
             <input type="hidden" name="uc_questions_present" value="1" />
-            <span class="uc-field-label">Questions for registrants</span>
-            <span class="uc-hint">Ask registrants anything you need to know before the event.</span>
+            <p class="uc-hint uc-questions-hint">Ask registrants anything you need to know before the event.</p>
             <ol class="uc-q-list" data-uc-q-list>
-                            </ol>
-            <button type="button" class="uc-btn uc-btn-sm" data-uc-q-add>Add question</button>
+                        <li class="uc-q" data-uc-q>
+            <input type="hidden" name="uc_questions[0][id]" value="" data-uc-q-name="id" />
+            <div class="uc-q-top">
+                <label class="uc-q-text">
+                    <span class="uc-visually-hidden">Question</span>
+                    <input type="text" name="uc_questions[0][text]" data-uc-q-name="text" placeholder="Question"
+                           value="" maxlength="300" />
+                </label>
+                <div class="uc-q-ticks">
+                    <label class="uc-check">
+                        <input type="checkbox" name="uc_questions[0][required]" value="1" data-uc-q-name="required"  />
+                        Required
+                    </label>
+                    <label class="uc-check" data-uc-q-inperson hidden>
+                        <input type="checkbox" name="uc_questions[0][in_person]" value="1" data-uc-q-name="in_person"  />
+                        In person only
+                    </label>
+                    <button type="button" class="uc-icon-btn" data-uc-q-remove aria-label="Remove question"><svg class="sfaf-icon sfaf-icon-x" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></svg></button>
+                </div>
+            </div>
+            <div class="uc-seg uc-q-style" role="radiogroup" aria-label="Answer style">
+                                    <label class="uc-seg-opt">
+                        <input type="radio" name="uc_questions[0][style]" value="any" data-uc-q-name="style"  checked="checked" />
+                        <span>Pick any</span>
+                    </label>
+                                    <label class="uc-seg-opt">
+                        <input type="radio" name="uc_questions[0][style]" value="one" data-uc-q-name="style"  />
+                        <span>Pick one</span>
+                    </label>
+                            </div>
+            <ul class="uc-q-options" data-uc-o-list aria-label="Answer options">
+                        <li class="uc-q-option" data-uc-o>
+            <button type="button" class="uc-icon-btn uc-q-grip" data-uc-o-grip aria-label="Move option up or down"><svg class="sfaf-icon sfaf-icon-menu" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+            <input type="hidden" name="uc_questions[0][options][0][id]" value="" data-uc-o-name="id" />
+            <input type="text" name="uc_questions[0][options][0][text]" data-uc-o-name="text" aria-label="Option" placeholder="Option"
+                   value="" maxlength="300" />
+            <span class="uc-q-option-tail">
+                <label class="uc-check">
+                    <input type="checkbox" name="uc_questions[0][options][0][more]" value="1" data-uc-o-name="more"  />
+                    Allow additional info
+                </label>
+                <button type="button" class="uc-icon-btn" data-uc-o-remove aria-label="Remove option"><svg class="sfaf-icon sfaf-icon-x" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></svg></button>
+            </span>
+        </li>
+                    </ul>
+            <button type="button" class="uc-o-add" data-uc-o-add>+ Add option</button>
+        </li>
+                    </ol>
+            <button type="button" class="uc-q-add" data-uc-q-add>+ Add question</button>
             <template data-uc-q-template>        <li class="uc-q" data-uc-q>
             <input type="hidden" name="uc_questions[__Q__][id]" value="" data-uc-q-name="id" />
-            <label class="uc-field">
-                <span class="uc-field-label">Question</span>
-                <input type="text" name="uc_questions[__Q__][text]" data-uc-q-name="text"
-                       value="" maxlength="300" />
-            </label>
-            <fieldset class="uc-q-style">
-                <legend class="uc-field-label">Answer style</legend>
-                <label class="uc-radio-row">
-                    <input type="radio" name="uc_questions[__Q__][style]" value="any" data-uc-q-name="style"  checked="checked" />
-                    <span>Checkboxes (pick any)</span>
+            <div class="uc-q-top">
+                <label class="uc-q-text">
+                    <span class="uc-visually-hidden">Question</span>
+                    <input type="text" name="uc_questions[__Q__][text]" data-uc-q-name="text" placeholder="Question"
+                           value="" maxlength="300" />
                 </label>
-                <label class="uc-radio-row">
-                    <input type="radio" name="uc_questions[__Q__][style]" value="one" data-uc-q-name="style"  />
-                    <span>Radio (pick one)</span>
-                </label>
-            </fieldset>
-            <label class="uc-check">
-                <input type="checkbox" name="uc_questions[__Q__][required]" value="1" data-uc-q-name="required"  />
-                Required
-            </label>
-            <label class="uc-check" data-uc-q-inperson hidden>
-                <input type="checkbox" name="uc_questions[__Q__][in_person]" value="1" data-uc-q-name="in_person"  />
-                In person only
-            </label>
-            <div class="uc-field">
-                <span class="uc-field-label">Answer options</span>
-                <ul class="uc-q-options" data-uc-o-list>
-                            <li class="uc-q-option" data-uc-o draggable="true">
-            <span class="uc-q-grip" data-uc-o-grip aria-hidden="true"><svg class="sfaf-icon sfaf-icon-menu" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>
-            <input type="hidden" name="uc_questions[__Q__][options][0][id]" value="" data-uc-o-name="id" />
-            <input type="text" name="uc_questions[__Q__][options][0][text]" data-uc-o-name="text" aria-label="Option"
-                   value="" maxlength="300" />
-            <label class="uc-check">
-                <input type="checkbox" name="uc_questions[__Q__][options][0][more]" value="1" data-uc-o-name="more"  />
-                Allow additional info
-            </label>
-            <button type="button" class="uc-btn uc-btn-sm" data-uc-o-remove>Remove</button>
-        </li>
-                        </ul>
-                <button type="button" class="uc-btn uc-btn-sm" data-uc-o-add>Add option</button>
+                <div class="uc-q-ticks">
+                    <label class="uc-check">
+                        <input type="checkbox" name="uc_questions[__Q__][required]" value="1" data-uc-q-name="required"  />
+                        Required
+                    </label>
+                    <label class="uc-check" data-uc-q-inperson hidden>
+                        <input type="checkbox" name="uc_questions[__Q__][in_person]" value="1" data-uc-q-name="in_person"  />
+                        In person only
+                    </label>
+                    <button type="button" class="uc-icon-btn" data-uc-q-remove aria-label="Remove question"><svg class="sfaf-icon sfaf-icon-x" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></svg></button>
+                </div>
             </div>
-            <button type="button" class="uc-btn uc-btn-sm" data-uc-q-remove>Remove question</button>
+            <div class="uc-seg uc-q-style" role="radiogroup" aria-label="Answer style">
+                                    <label class="uc-seg-opt">
+                        <input type="radio" name="uc_questions[__Q__][style]" value="any" data-uc-q-name="style"  checked="checked" />
+                        <span>Pick any</span>
+                    </label>
+                                    <label class="uc-seg-opt">
+                        <input type="radio" name="uc_questions[__Q__][style]" value="one" data-uc-q-name="style"  />
+                        <span>Pick one</span>
+                    </label>
+                            </div>
+            <ul class="uc-q-options" data-uc-o-list aria-label="Answer options">
+                        <li class="uc-q-option" data-uc-o>
+            <button type="button" class="uc-icon-btn uc-q-grip" data-uc-o-grip aria-label="Move option up or down"><svg class="sfaf-icon sfaf-icon-menu" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+            <input type="hidden" name="uc_questions[__Q__][options][0][id]" value="" data-uc-o-name="id" />
+            <input type="text" name="uc_questions[__Q__][options][0][text]" data-uc-o-name="text" aria-label="Option" placeholder="Option"
+                   value="" maxlength="300" />
+            <span class="uc-q-option-tail">
+                <label class="uc-check">
+                    <input type="checkbox" name="uc_questions[__Q__][options][0][more]" value="1" data-uc-o-name="more"  />
+                    Allow additional info
+                </label>
+                <button type="button" class="uc-icon-btn" data-uc-o-remove aria-label="Remove option"><svg class="sfaf-icon sfaf-icon-x" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></svg></button>
+            </span>
+        </li>
+                    </ul>
+            <button type="button" class="uc-o-add" data-uc-o-add>+ Add option</button>
         </li>
         </template>
-            <template data-uc-o-template>        <li class="uc-q-option" data-uc-o draggable="true">
-            <span class="uc-q-grip" data-uc-o-grip aria-hidden="true"><svg class="sfaf-icon sfaf-icon-menu" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>
+            <template data-uc-o-template>        <li class="uc-q-option" data-uc-o>
+            <button type="button" class="uc-icon-btn uc-q-grip" data-uc-o-grip aria-label="Move option up or down"><svg class="sfaf-icon sfaf-icon-menu" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
             <input type="hidden" name="uc_questions[__Q__][options][__O__][id]" value="" data-uc-o-name="id" />
-            <input type="text" name="uc_questions[__Q__][options][__O__][text]" data-uc-o-name="text" aria-label="Option"
+            <input type="text" name="uc_questions[__Q__][options][__O__][text]" data-uc-o-name="text" aria-label="Option" placeholder="Option"
                    value="" maxlength="300" />
-            <label class="uc-check">
-                <input type="checkbox" name="uc_questions[__Q__][options][__O__][more]" value="1" data-uc-o-name="more"  />
-                Allow additional info
-            </label>
-            <button type="button" class="uc-btn uc-btn-sm" data-uc-o-remove>Remove</button>
+            <span class="uc-q-option-tail">
+                <label class="uc-check">
+                    <input type="checkbox" name="uc_questions[__Q__][options][__O__][more]" value="1" data-uc-o-name="more"  />
+                    Allow additional info
+                </label>
+                <button type="button" class="uc-icon-btn" data-uc-o-remove aria-label="Remove option"><svg class="sfaf-icon sfaf-icon-x" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></svg></button>
+            </span>
         </li>
         </template>
         </div>
-                        </section>
-
+                            </section>
+                
                 
                                     <section class="uc-bento-card" data-uc-notifications-card>
                         <h2 class="uc-bento-title">Notifications</h2>
@@ -1100,8 +1154,8 @@
                         </main>
             </div>
         </div>
-        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.106.2"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.106.2"></script>
-<script src="../public/js/portal.js?ver=3.106.2"></script>
+        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.106.3"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.106.3"></script>
+<script src="../public/js/portal.js?ver=3.106.3"></script>
 <script>window.PT_CASE={"set":{"title":"Half done","start_time_h":"09","start_time_m":"15","end_time_h":"10","end_time_m":"45"},"press":"draft"};(function () {
 var C = window.PT_CASE, out = { errors: [], posted: null, pressed: false };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });

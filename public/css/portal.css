@@ -4801,7 +4801,7 @@ body.uc-modal-open { overflow: hidden; }
 .uc-questions .uc-q-text input { width: 100%; }
 .uc-questions .uc-q-ticks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 .uc-questions .uc-q-ticks .uc-check,
-.uc-questions .uc-q-option .uc-check { margin: 0; align-items: center; }
+.uc-questions .uc-q-option .uc-check { margin: 0; }
 .uc-questions .uc-q-style { align-self: flex-start; }
 .uc-questions .uc-q-options { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .uc-questions .uc-q-option { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }

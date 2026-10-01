@@ -5984,6 +5984,8 @@ function ucDismissOnBackdrop(dialog) {
                 if (t.hasAttribute('data-uc-q-remove')) {
                     t.closest('[data-uc-q]').remove();
                     renumber();
+                    // The pressed button is gone; focus goes to Add question.
+                    if (addQ) { addQ.focus(); }
                 } else if (t.hasAttribute('data-uc-o-add')) {
                     var ul = t.closest('[data-uc-q]').querySelector('[data-uc-o-list]');
                     var o = fromTemplate(oTpl);
@@ -5991,12 +5993,32 @@ function ucDismissOnBackdrop(dialog) {
                     renumber();
                     o.querySelector('input[type="text"]').focus();
                 } else if (t.hasAttribute('data-uc-o-remove')) {
+                    var q = t.closest('[data-uc-q]');
                     t.closest('[data-uc-o]').remove();
                     renumber();
+                    q.querySelector('[data-uc-o-add]').focus();
                 }
             });
 
-            /* Drag an option by its row to reorder it within its question. */
+            /* MOVING AN OPTION (3.106.3). The grip is a button: drag it, or press
+             * Up or Down on it, and the option moves within its question. The row
+             * is draggable only while the grip is held, so selecting text in the
+             * option's box never starts a drag. */
+            root.addEventListener('pointerdown', function (e) {
+                var g = e.target.closest && e.target.closest('[data-uc-o-grip]');
+                if (g) { g.closest('[data-uc-o]').setAttribute('draggable', 'true'); }
+            });
+            root.addEventListener('keydown', function (e) {
+                var g = e.target.closest && e.target.closest('[data-uc-o-grip]');
+                if (!g || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) { return; }
+                var o = g.closest('[data-uc-o]');
+                var other = e.key === 'ArrowUp' ? o.previousElementSibling : o.nextElementSibling;
+                e.preventDefault();
+                if (!other) { return; }
+                o.parentNode.insertBefore(o, e.key === 'ArrowUp' ? other : other.nextSibling);
+                g.focus();
+                renumber();
+            });
             var dragging = null;
             root.addEventListener('dragstart', function (e) {
                 var o = e.target.closest && e.target.closest('[data-uc-o]');
@@ -6014,7 +6036,7 @@ function ucDismissOnBackdrop(dialog) {
                 over.parentNode.insertBefore(dragging, (e.clientY - r.top) > r.height / 2 ? over.nextSibling : over);
             });
             root.addEventListener('dragend', function () {
-                if (dragging) { dragging.classList.remove('is-dragging'); }
+                if (dragging) { dragging.classList.remove('is-dragging'); dragging.removeAttribute('draggable'); }
                 dragging = null;
                 renumber();
             });
