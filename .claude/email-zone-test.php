@@ -89,7 +89,8 @@ if ( false === strpos( $slice( $tpl, 'sfaf_ap_time_zone' ), "'PST'  => 'PT', 'PD
 
 /* ------------------------------------------------------------- 2. call sites */
 $MAIL_HELPERS = array(
-    'includes/class-sfaf-notifications.php' => array( 'facts' ),
+    // 3.106.1: the waitlist's cancellation and its next dates, through compose().
+    'includes/class-sfaf-notifications.php' => array( 'facts', 'build_waitlist_cancelled', 'next_in_series' ),
     'includes/sfaf-template-functions.php'  => array( 'sfaf_replace_tokens' ),
     // 3.106.0: these reach mail through SFAF_Messages::compose() rather than
     // calling SFAF_Email themselves. sample() is the preview event every email

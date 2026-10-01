@@ -612,7 +612,7 @@ function sfaf_rsvp_status_label( $status ) {
  * Defaults to true when the meta has never been saved (new events).
  *
  * @param int    $post_id Event ID.
- * @param string $feature One of: rsvp, donate, social, calendar, reminders.
+ * @param string $feature One of: rsvp, social, calendar, reminders.
  * @return bool
  */
 function sfaf_show_feature( $post_id, $feature ) {

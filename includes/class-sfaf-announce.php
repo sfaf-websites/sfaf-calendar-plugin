@@ -22,7 +22,7 @@
  * Teams are not notified, and neither is the notification list. Those people
  * were presumably part of the decision to cancel or move it, and a team that
  * chose a new date does not need an email telling them the date changed.
- * Registrants only.
+ * Registrants only, and for a cancellation the waitlist as well (3.106.1).
  *
  * WHAT IT DOES NOT DO
  * ---------------------------------------------------------------------------
@@ -39,7 +39,7 @@ class SFAF_Announce {
      * Tell everybody registered for these events that they are cancelled.
      *
      * @param int[] $event_ids
-     * @return array{people:int,sent:int,failed:int,events:int}
+     * @return array{people:int,sent:int,failed:int,events:int,waitlist:int}
      */
     public static function cancelled( $event_ids ) {
         return self::run( 'cancelled', $event_ids, array() );
@@ -50,7 +50,7 @@ class SFAF_Announce {
      *
      * @param int[] $event_ids
      * @param array $changes_by_event event_id => array<label,array{from,to}>
-     * @return array{people:int,sent:int,failed:int,events:int}
+     * @return array{people:int,sent:int,failed:int,events:int,waitlist:int}
      */
     public static function changed( $event_ids, $changes_by_event ) {
         return self::run( 'changed', $event_ids, $changes_by_event );
@@ -71,7 +71,7 @@ class SFAF_Announce {
      *
      * @param int[] $event_ids
      * @param array $was_by_event event_id => previous Y-m-d, where it moved
-     * @return array{people:int,sent:int,failed:int,events:int}
+     * @return array{people:int,sent:int,failed:int,events:int,waitlist:int}
      */
     public static function reinstated( $event_ids, $was_by_event = array() ) {
         return self::run( 'reinstated', $event_ids, $was_by_event );
@@ -86,7 +86,7 @@ class SFAF_Announce {
      * @return array
      */
     private static function run( $type, $event_ids, $changes_by_event ) {
-        $result = array( 'people' => 0, 'sent' => 0, 'failed' => 0, 'events' => 0 );
+        $result = array( 'people' => 0, 'sent' => 0, 'failed' => 0, 'events' => 0, 'waitlist' => 0 );
 
         $event_ids = array_values( array_unique( array_map( 'absint', (array) $event_ids ) ) );
         if ( empty( $event_ids ) ) {
@@ -128,6 +128,53 @@ class SFAF_Announce {
                  * 'subscribed' one, because the two produced different copy;
                  * with one status there is nothing left to prefer.
                  */
+            }
+        }
+
+        /*
+         * THE WAITLIST HEARS ABOUT A CANCELLATION, AND ONLY THAT (3.106.1).
+         *
+         * Waiting rows are read here and nowhere else in this class, so
+         * registrants() and has_registrations(), the delete guard and every
+         * count stay confirmed only. Grouped by address with everybody else:
+         * somebody with a place at one cancelled date and waiting for another
+         * is in $by_person already, and that one message lists both dates.
+         * Somebody only waiting gets the waitlist's own message, once.
+         */
+        $waiting = array();
+        if ( 'cancelled' === $type ) {
+            foreach ( $event_ids as $event_id ) {
+                foreach ( self::waitlisted( $event_id ) as $row ) {
+                    $email = strtolower( trim( (string) $row->email ) );
+                    if ( ! is_email( $email ) ) {
+                        continue;
+                    }
+                    if ( isset( $by_person[ $email ] ) ) {
+                        if ( ! in_array( (int) $event_id, $by_person[ $email ]['events'], true ) ) {
+                            $by_person[ $email ]['events'][] = (int) $event_id;
+                        }
+                        continue;
+                    }
+                    if ( ! isset( $waiting[ $email ] ) ) {
+                        $waiting[ $email ] = array( 'person' => $row, 'events' => array() );
+                    }
+                    if ( ! in_array( (int) $event_id, $waiting[ $email ]['events'], true ) ) {
+                        $waiting[ $email ]['events'][] = (int) $event_id;
+                    }
+                }
+            }
+        }
+        foreach ( $waiting as $email => $bundle ) {
+            $their_events = $bundle['events'];
+            sort( $their_events );
+            $built = SFAF_Notifications::build( 'waitlist_cancelled', $their_events[0], $bundle['person'], array( 'events' => $their_events ) );
+            if ( ! $built ) {
+                continue;
+            }
+            if ( SFAF_Email::send( $email, $built['subject'], $built['html'], $built['text'], SFAF_Reminders::reply_to_for( $their_events[0] ) ) ) {
+                $result['waitlist']++;
+            } else {
+                $result['failed']++;
             }
         }
 
@@ -301,6 +348,28 @@ class SFAF_Announce {
         $rows = $wpdb->get_results( $wpdb->prepare(
             "SELECT * FROM {$table} WHERE event_id = %d AND status = 'confirmed' ORDER BY id ASC",
             (int) $event_id
+        ) );
+
+        return is_array( $rows ) ? $rows : array();
+    }
+
+    /**
+     * Everybody still on this event's waitlist: waiting, offered, or marked
+     * for a call. Read only by the cancellation (3.106.1); no count, prompt or
+     * guard asks it.
+     *
+     * @param int $event_id
+     * @return object[]
+     */
+    public static function waitlisted( $event_id ) {
+        global $wpdb;
+        $table    = $wpdb->prefix . 'uc_rsvps';
+        $statuses = SFAF_Waitlist::waiting_statuses();
+        $in       = implode( ', ', array_fill( 0, count( $statuses ), '%s' ) );
+
+        $rows = $wpdb->get_results( $wpdb->prepare(
+            "SELECT * FROM {$table} WHERE event_id = %d AND status IN ( {$in} ) ORDER BY id ASC",
+            array_merge( array( (int) $event_id ), $statuses )
         ) );
 
         return is_array( $rows ) ? $rows : array();

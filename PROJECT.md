@@ -9,7 +9,7 @@ typography, layout, CSS failure modes) or `CLAUDE.md` (standing working rules,
 the build gate, shell rules). When something here contradicts one of those,
 those win in their own remit and this file is wrong and should be fixed.
 
-Current version at last update of this file: **3.106.0**.
+Current version at last update of this file: **3.106.1**.
 
 ---
 
@@ -3614,6 +3614,13 @@ offers the progress tick. The staff copy of the reminder carries no line.
 - **Existing events without a link of their own inherit**, so their registrants'
   confirmation and reminder carry the line, to the series link or the default.
   The default in Settings is the switch for all of them at once.
+- **The Display card's Donate tick went in 3.106.1**, with the meta it wrote,
+  `_uc_show_donate`: it switched the public button, which no longer exists. It
+  was deleted from every event once (`sfaf_drop_show_donate()`, marked by the
+  option `sfaf_show_donate_dropped`), and left the WordPress admin's Display
+  box, the group and duplicate copy lists, the embed's cache keys and the
+  satellite payload's `show` block with it. The donation list, the series and
+  Settings links, and `sfaf_donate_resolve()` are untouched.
 
 ### The volunteer link is the event's own (3.106.0)
 
@@ -4788,6 +4795,52 @@ holds that source back from the scheduled run (3.101.0). These are kept on purpo
 same spirit as the satellite feed. Do not report them as working, and do not
 delete them assuming they are.
 
+### No author on a public event page, and the theme's byline (3.106.1)
+
+**An event's `post_author` is the staff account that made it in caladmin, and
+on this site a login can be an email address.** The theme on resources.sfaf.org
+(`wp-content/themes/sfaf`, not in this repository) printed it under every event
+it listed, linked to `/collections/author/{login}`. `SFAF_Bylines` keeps the
+author off every public surface an event reaches:
+
+| Where | What happens |
+|---|---|
+| The theme's byline | Taken out of the page, inside an event's `<article>` only |
+| An author archive | A user with a calendar role (administrators included) redirects to the calendar home, else the events archive; anybody else's archive is untouched |
+| oEmbed | An event's answer has no `author_name` or `author_url` |
+| Feeds and templates | An event's author, through `the_author`, is the site's name |
+| The public REST API | Calendar users are not listed by `/wp/v2/users`, nor fetched by id, to a visitor who is not signed in |
+
+- **The redirect runs at priority 1 on `template_redirect`**, before WordPress's
+  canonical redirect at 10, which would otherwise turn `?author=55` into the
+  address with the login in it.
+- **Signed-in requests are untouched**, because the block editor's author list
+  is a REST call an Editor makes, and an Editor cannot `list_users`.
+- **The structured data never carried an author**: the plugin's Event JSON-LD
+  names the organizer taxonomy, `uc_event` does not support `author` so its REST
+  objects have no author field, and Yoast's graph on an event page has no
+  Person. The events feed redirects to the archive on the live site.
+
+> **THE BYLINE IS REMOVED BY MARKUP, AND THAT IS A KNOWN WEAKNESS.** The theme
+> offers no filter for it, so `SFAF_Bylines::strip()` buffers every front-end
+> page and edits the HTML, inside any `<article>` carrying `type-uc_event`:
+> first the theme's footer, `<div class="sfaf-entry-athors">`; then any
+> `<ul class="sfaf-authors-list">`; then any link to one of this site's author
+> archives, with its text. **A theme update that renames those classes or stops
+> using `post_class()` on the article brings the byline back without an error.**
+> The third pattern still catches the link while the article class holds. The
+> check is `php .claude/byline-live.php --live` against the site, after a
+> LiteSpeed purge. Other posts in a date archive or a search keep their bylines.
+>
+> **The rule above the byline stays.** On a listing it is the only line between
+> one event and the next; taking it with the byline ran the events together,
+> which the Chrome measurement showed and the first version of the strip did.
+
+**The real name and login are never committed.** The two captured pages in
+`.claude/fixtures/bylines/` carry a stand-in, "Pat Example", and
+`people.local.json`, which the live check reads, is ignored by git. The public
+mirror of this repository is where that would otherwise go.
+
 ---
 
 ## 4. Email
@@ -5025,6 +5078,28 @@ was `IN ('confirmed','subscribed')`, to catch somebody who had pressed Get
 Reminders; 3.53.0 removed that status from the table, so the three agree at the
 narrow end instead. Somebody who released their place is `cancelled` and is not
 written to.
+
+**THE WAITLIST IS TOLD OF A CANCELLATION, AND OF NOTHING ELSE (3.106.1).**
+`SFAF_Announce::cancelled()` also reads `waitlisted()`, the event's waiting,
+offered and offered-manual rows, and sends them **Event cancelled, waitlist**:
+the event is off, the dates it was going to be, and the series' next three
+published dates with a link to each, or none when there is no series or
+nothing ahead. No cancel link, no donate line, and the public reason but not
+the note to registrants, which was written for the people holding a place.
+`waitlisted()` is read there and nowhere else, so the three reads above, the
+delete guard, the prompt's count and every other message stay confirmed only.
+
+- **One email per address still holds.** The waitlist rows are grouped with the
+  registrants: somebody with a place at one cancelled date and waiting for
+  another gets the registrants' message listing both; somebody only waiting
+  gets the waitlist's, once, listing every date they were waiting for.
+- **The next dates** are `SFAF_Notifications::next_in_series()`: published,
+  public, not cancelled, not already begun, and none of the dates being
+  cancelled, soonest first, from the first cancelled date's series.
+- **The screen states the waitlist apart**: "N people were told. M people on the
+  waitlist were told too." The first number is the one the dialog asked about.
+- **A waiting row is not changed by the cancellation**, as no registration is.
+  Reinstating sends the waitlist nothing.
 
 **Following a series is not in this audience and never was meant to be.** A
 follower hears about new dates and nothing else. See "Following a series".
@@ -5377,6 +5452,7 @@ for an unresolved token or an em dash.
 | Waitlist confirmation | one | on joining the waitlist; the position, no calendar file |
 | Waitlist offer | one | a place opened; the confirm link and the expiry |
 | Offer passed | one | an offer ran out unanswered |
+| Event cancelled, waitlist | with dates; without dates | the event they were waiting for cancelled; the series' next three dates when there are any (3.106.1) |
 | Morning-of reminder | the confirmation's three | the morning of the event |
 | Event cancelled | one date; several dates | the event, or several of a person's dates, cancelled |
 | Event changed | one date; several dates | a date, time or place changed |
@@ -5464,9 +5540,9 @@ person is a row in `uc_rsvps` with a status of its own, ordered by
 - **EVERY COUNT STILL ASKS FOR `confirmed`.** Reminders, announcements, the
   summary, `has_registrations()` and the count cache never see another status,
   so nobody waiting is reminded or counted as coming. `.claude/waitlist-test.php`
-  asserts the reads agree with every waitlist status present. **Waitlisted
-  people are therefore not told if the event is cancelled**, since the
-  cancellation notice reads the same audience.
+  asserts the reads agree with every waitlist status present. **The one
+  exception is a cancellation (3.106.1)**, which reads the waitlist separately
+  and tells it: see "Telling registrants", above.
 - **What changes is only whether a format is FULL.** `sfaf_format_full()` adds
   the places held by open offers and treats anybody still waiting as full, so a
   newcomer joins the queue rather than taking a place on offer.

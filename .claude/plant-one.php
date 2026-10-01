@@ -529,6 +529,51 @@ $edits = array(
         "    if ( \$own === (string) get_post_meta( \$post_id, '_uc_image_url_typed', true ) ) {",
         "    if ( false ) {" ),
 
+    /* 3.106.1, A.3. The waitlist widened into the registrants' audience. */
+    'wl-registrants-widened' => array( 'includes/class-sfaf-announce.php',
+        "WHERE event_id = %d AND status = 'confirmed' ORDER BY id ASC\"",
+        "WHERE event_id = %d AND status IN ('confirmed','waitlisted','offered') ORDER BY id ASC\"" ),
+
+    /* Somebody holding a place is sent the waitlist's message as well. */
+    'wl-sent-twice' => array( 'includes/class-sfaf-announce.php',
+        "                    if ( isset( \$by_person[ \$email ] ) ) {",
+        "                    if ( false ) {" ),
+
+    /* The cancellation never reads the waitlist. */
+    'wl-not-read' => array( 'includes/class-sfaf-announce.php',
+        "foreach ( self::waitlisted( \$event_id ) as \$row ) {",
+        "foreach ( array() as \$row ) {" ),
+
+    /* The series' next dates are never looked up. */
+    'wl-no-dates' => array( 'includes/class-sfaf-notifications.php',
+        "        \$term      = \$event_ids ? SFAF_Series::id_for_event( \$event_ids[0] ) : 0;",
+        "        \$term      = 0;" ),
+
+    /* 3.106.1, C.4. The byline is never stripped. */
+    'byline-kept' => array( 'includes/class-sfaf-bylines.php',
+        "if ( ! is_string( \$html ) || false === strpos( \$html, 'type-uc_event' ) ) {",
+        "if ( true ) {" ),
+
+    /* The rule above the byline goes with it, and the events run together. */
+    'byline-rule-taken' => array( 'includes/class-sfaf-bylines.php',
+        "            '#<div\\b[^>]*\\bclass=\"[^\"]*\\bsfaf-entry-athors\\b",
+        "            '#(?:<div class=\"sfaf-separator\">\\s*<hr\\s*/?>\\s*</div>\\s*)?<div\\b[^>]*\\bclass=\"[^\"]*\\bsfaf-entry-athors\\b" ),
+
+    /* No fallback once the theme renames its classes. */
+    'byline-fallback-gone' => array( 'includes/class-sfaf-bylines.php',
+        "            '#<a\\b[^>]*\\bhref=",
+        "            '#<nothing\\b[^>]*\\bhref=" ),
+
+    /* A calendar user's author archive stays open. */
+    'author-archive-open' => array( 'includes/class-sfaf-bylines.php',
+        "        if ( ! self::has_calendar_role( \$id ) ) {",
+        "        if ( true ) {" ),
+
+    /* An event's oEmbed answer keeps its author. */
+    'oembed-author-kept' => array( 'includes/class-sfaf-bylines.php',
+        "            unset( \$data['author_name'], \$data['author_url'] );",
+        "" ),
+
 );
 
 if ( 'off-ladder' === $which ) {

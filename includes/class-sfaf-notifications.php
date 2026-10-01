@@ -237,6 +237,9 @@ class SFAF_Notifications {
                 return self::build_offer( $event_id, $person, $context );
             case 'offer_passed':
                 return self::build_offer_passed( $event_id, $person, $context );
+            /* THE WAITLIST, TOLD THE EVENT IS OFF (3.106.1). See SFAF_Announce. */
+            case 'waitlist_cancelled':
+                return self::build_waitlist_cancelled( $event_id, $person, $context );
         }
         return null;
     }
@@ -868,6 +871,96 @@ class SFAF_Notifications {
             'details'   => self::detail_rows( $f ),
             'preheader' => $f['title'],
         ) );
+    }
+
+    /**
+     * (k) THE EVENT THEY WERE WAITING FOR IS CANCELLED (3.106.1).
+     *
+     * No cancel link, because there is nothing left to give up, and no donate
+     * line. The public reason goes in; the note to registrants does not,
+     * because it was written for the people holding a place.
+     *
+     * @param array $context events: int[], every cancelled date this person
+     *                       was waiting for, this one first. One date draws
+     *                       the details; several draw a row per date.
+     */
+    private static function build_waitlist_cancelled( $event_id, $person, $context = array() ) {
+        $lang   = self::lang_for( $event_id, $context );
+        $f      = self::facts( $event_id, '', $lang, $context );
+        $x      = $f['sample'];
+        $values = self::values( $event_id, $f, $person );
+        $values['cancel_link'] = '';
+        $values['series']      = $x ? $x['series'] : SFAF_Series::name_for_event( $event_id );
+
+        $ids = ( isset( $context['events'] ) && is_array( $context['events'] ) && $context['events'] )
+            ? array_values( array_map( 'intval', $context['events'] ) ) : array( (int) $event_id );
+
+        if ( $x ) {
+            $variant = ( isset( $context['variant'] ) && 'no_dates' === $context['variant'] ) ? 'no_dates' : 'dates';
+            $next    = ( 'dates' === $variant ) ? $x['next'] : array();
+            $extra   = array();
+        } else {
+            $next    = self::next_in_series( $ids, $lang );
+            $variant = $next ? 'dates' : 'no_dates';
+            $extra   = array( trim( (string) get_post_meta( $event_id, '_uc_cancelled_reason', true ) ) );
+        }
+
+        if ( count( $ids ) > 1 ) {
+            // A row per date, keyed by the date, as the several-dates messages do.
+            $details = array();
+            foreach ( $ids as $id ) {
+                $key = sfaf_ap_date( (string) get_post_meta( $id, '_uc_event_date', true ), 'full', $lang );
+                while ( isset( $details[ $key ] ) ) {
+                    $key .= ' ';
+                }
+                $details[ $key ] = sfaf_ap_time_range( (string) get_post_meta( $id, '_uc_start_time', true ), (string) get_post_meta( $id, '_uc_end_time', true ), 'zone', $lang );
+            }
+        } else {
+            $details = self::detail_rows( $f );
+        }
+
+        return SFAF_Messages::compose( 'waitlist_cancelled', $variant, $lang, $values, array(
+            'extra'     => $extra,
+            'lead'      => 'was_going_to_be',
+            'details'   => $details,
+            'more'      => $next,
+            'preheader' => sprintf( SFAF_Messages::label( 'pre_cancelled', $lang ), $f['date'] ),
+        ) );
+    }
+
+    /**
+     * The next three published dates in the series of the first of these
+     * events, each array( "date, time", url ): not cancelled, not private, not
+     * started, and none of the events given. Empty when there is no series.
+     *
+     * @param int[]  $event_ids
+     * @param string $lang
+     * @return array[]
+     */
+    public static function next_in_series( $event_ids, $lang = 'en' ) {
+        $event_ids = array_values( array_map( 'intval', (array) $event_ids ) );
+        $term      = $event_ids ? SFAF_Series::id_for_event( $event_ids[0] ) : 0;
+        if ( ! $term ) {
+            return array();
+        }
+        $now = current_time( 'mysql' );
+        $out = array();
+        foreach ( SFAF_Series::events( $term, array( 'upcoming' => true, 'status' => array( 'publish' ), 'limit' => 50, 'public_only' => true ) ) as $id ) {
+            if ( in_array( (int) $id, $event_ids, true ) || SFAF_Cancellation::is_cancelled( $id ) ) {
+                continue;
+            }
+            $dt = sfaf_event_datetimes( $id );
+            if ( $dt && $dt[0]->format( 'Y-m-d H:i:s' ) <= $now ) {
+                continue;   // today's, already begun
+            }
+            $when  = sfaf_ap_date( (string) get_post_meta( $id, '_uc_event_date', true ), 'full', $lang );
+            $clock = sfaf_ap_time_range( (string) get_post_meta( $id, '_uc_start_time', true ), (string) get_post_meta( $id, '_uc_end_time', true ), 'zone', $lang );
+            $out[] = array( '' !== $clock ? $when . ', ' . $clock : $when, (string) get_permalink( $id ) );
+            if ( 3 === count( $out ) ) {
+                break;
+            }
+        }
+        return $out;
     }
 
     private static function build_summary( $event_id, $context = array() ) {

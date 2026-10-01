@@ -4,29 +4,29 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-09-30, at 3.106.0, released.
+**Last updated:** 2026-10-01, at 3.106.1, released.
 
 ---
 
 ## What shipped last
 
-**3.106.0**: a **waitlist** (schema 10); **Email Templates**, one catalogue of
-registrant messages in **English and Spanish**, with `EMAILS.md` side by side;
-an event **Language** with a series default; **Email required to register**;
-a **Volunteer** button; **no Donate button on any public page**, one donate line
-in the confirmation and reminder instead; saving a closure clears the embed's
-cache. `PROJECT.md` 2 and 4.
+**3.106.1**: **the waitlist is told when an event is cancelled**, with the
+series' next three dates; **the Display card's Donate tick is gone** with its
+meta; **no author on any public event page**: the theme's byline is stripped,
+calendar users' author archives redirect, oEmbed and the public REST users list
+name nobody. **The byline goes by editing the HTML**, a known weakness:
+`PROJECT.md` 3. Purge LiteSpeed after updating, then `TESTING.md` 1.192.
+**3.106.0**: a **waitlist** (schema 10); **Email Templates** in **English and
+Spanish**, `EMAILS.md` side by side; an event **Language**; **Email required**;
+a **Volunteer** button; **no public Donate button**. `PROJECT.md` 2 and 4.
 > **THE SPANISH HAS NOT BEEN READ BY A SPANISH SPEAKER.** `EMAILS.md` is for that
 > review (`TESTING.md` 3). Nothing is Spanish until an event or series is set to
 > it, so nothing reaches a registrant in it before then.
-> **WAITLISTED PEOPLE ARE NOT TOLD IF AN EVENT IS CANCELLED**: every audience
-> still reads `confirmed` only, on purpose. `PROJECT.md` 4, the waitlist.
-**3.105.0**: what stays open on a closure, the closed-day warning, Remove.
-**3.104.0**: times saved on a real request again, and both public forms took
-submissions again (`TESTING.md` 1.173, 1.174). **3.103.0**: series defaults,
-bulk Pending, one publish rule. **3.102.0**: Preferences, digests, registering
-without an email. **3.101.0 IMPORTS EVERYACTION**, **Auto-Import off**.
-**`readme.txt` is the changelog** and has the reasoning for all of it.
+> **AN OFFER'S CONFIRM LINK STILL WORKS ON A CANCELLED EVENT** (found in 3.106.1,
+> not fixed): `SFAF_Waitlist::accept()` never asks, so an offered person told
+> the event is off can still confirm and get a normal confirmation. Mark's call.
+Earlier releases, and the reasoning for all of it: **`readme.txt` is the changelog**.
+**3.101.0 IMPORTS EVERYACTION**, with **Auto-Import off**.
 
 > **AN IMPORTED EVENT NEVER TAKES RSVPS HERE (3.97.0).** The tick is locked off,
 > a one-time pass switched it off where it was on, and **it deleted nobody**. A
@@ -97,9 +97,9 @@ without an email. **3.101.0 IMPORTS EVERYACTION**, **Auto-Import off**.
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 224 items.** **1.176** first,
-the donate line every existing event's emails now carry, and **1.189**, that
-schema 10 ran. Then two, in this order:
+**`TESTING.md` holds the manual testing backlog: 228 items.** **1.192** first,
+the byline check on the site after updating, then **1.176**, the donate line,
+and **1.189**, that schema 10 ran. Then two, in this order:
 **1.74**, naming and tagging the six pictures, which is what makes every
 picker's work visible at all, and **1.80**, the preview's two targets. Then
 **1.171**, which settles whether Add category on the events list was erroring

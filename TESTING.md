@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 224 items.** Quick 187, needs real conditions 33, blocked on other
+**Outstanding: 228 items.** Quick 190, needs real conditions 34, blocked on other
 people 4.
 
 ---
@@ -2760,6 +2760,48 @@ sfaf.org. There is none. The editor's card is **Donation link in emails** and no
 longer offers a fundraising progress bar.
 
 **Why it needs a person:** the live theme and embed.
+
+### 1.191 No Donate tick on the Display card (3.106.1)
+
+Open any event in caladmin. The **Display** card has four ticks: RSVP, Add to
+calendar, Social share, Follow the series. There is no Donate. The **Donate**
+card above it still has **Donation link in emails**. In WordPress admin, the
+event's Display box has no "Show Donate Button" either. Save an event and
+reopen it: nothing has changed on its page or in its emails.
+
+**Why it needs a person:** the real editor and a real save.
+
+### 1.192 No author on any event listing, measured on the site (3.106.1)
+
+After updating to 3.106.1, **purge the LiteSpeed cache** (LiteSpeed, Toolbox,
+Purge All): every listing cached before the update still carries the byline.
+Then, on this machine, run
+
+```
+php .claude/byline-live.php --live
+```
+
+It reads the community events category and one event page as Chrome renders
+them, the event's oEmbed answer, the public REST users list, and the author
+archive of the login the bylines used. It ends "live: no author name or login"
+when all is well; anything else is a list of what is still showing. Then open
+the category page yourself: no name under any event, and a rule still between
+one event and the next.
+
+**Why it needs a person:** it can only pass once 3.106.1 is installed and the
+cache purged. Before the update it found nine things, recorded in `readme.txt`.
+
+### 1.193 Other authors keep their bylines, and the block editor still lists people (3.106.1)
+
+Open a news or resources category on resources.sfaf.org: an article that is not
+an event still shows its author. Then, signed in as an Editor, open any post in
+the block editor and the **Author** list in its sidebar: calendar users are
+still in it. The REST users list hides them from visitors who are not signed in
+only.
+
+**Why it needs a person:** the theme's other templates and the signed-in REST
+calls the block editor makes.
+
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -3293,6 +3335,32 @@ Report any step whose email, row status or count is not as written.
 **Why it needs real conditions:** real mail, real cron, and a day of waiting
 for the expiry.
 
+### 2.36 A cancellation with a waitlist (3.106.1)
+
+A test event in a series that has **at least three published dates ahead**,
+capacity 1, RSVPs on.
+
+1. Register **A** (a real address), then join the waitlist as **B** (a real
+   address). Cancel A's place and do not answer B's offer yet, so B is
+   **Offered**. Join as **C** (a real address), who is **Waitlisted**.
+2. Cancel the event from the editor and choose **Cancel and email them**. The
+   screen says how many people were told, then "N people on the waitlist were
+   told too".
+3. B and C each get **one** email: "Cancelled:" and the title, "you were on the
+   waitlist", the date it was going to be, and **Next dates** with three dates,
+   each a link to its event page, the soonest first. No cancel link and no
+   donate line. A gets the usual cancellation.
+4. Cancel a series date that has nothing published after it, with somebody
+   waiting: their email has no Next dates.
+5. Spanish: repeat 2 on an event set to Spanish. The email is Spanish, with
+   **Próximas fechas**.
+
+Report any message that arrives twice, any waiting person not told, or a date
+in Next dates that is cancelled, private, a draft or already past.
+
+**Why it needs real conditions:** real registrations, a real cancellation and
+real mail, which cannot be recalled. Use addresses you own.
+
 ## 3. Blocked on other people
 
 Nothing here can move until somebody outside the build answers.
@@ -3301,7 +3369,7 @@ Nothing here can move until somebody outside the build answers.
 |---|---|---|
 | **Aaron** | DNS records for `calendar.sfaf.org` so `events@calendar.sfaf.org` can send | Asked. From stays `websites@sfaf.org` meanwhile. It is a setting, so nothing needs deploying when the mailbox exists. |
 | **Val** | Remove the tracker's duplicates: **the 2027 Saturdays under two runs of UUIDs**, and **the coffee social under two names** ("50-Plus Saturday AM Coffee Social" and "Saturday AM Coffee Social") | Before Auto-Import goes on. The import copies what the tracker holds and de-duplicates nothing. `PROJECT.md` 3. |
-| **A Spanish-speaking reviewer**, chosen by Mark | Read `EMAILS.md`: every registrant message in English and Spanish side by side, in formal usted. Corrections go into the Email Templates screen or `class-sfaf-messages.php`, never into `EMAILS.md` | Not asked. The Spanish was written without a native reader. |
+| **A Spanish-speaking reviewer**, chosen by Mark | Read `EMAILS.md`: every registrant message in English and Spanish side by side, in formal usted, including **Event cancelled, waitlist** (3.106.1). Corrections go into the Email Templates screen or `class-sfaf-messages.php`, never into `EMAILS.md` | Not asked. The Spanish was written without a native reader. |
 | **Salesforce admin** | Pardot connected app: client ID and secret, Business Unit ID, service user, OAuth flow | Asked. Campaign IDs store; nothing talks to Pardot. |
 
 ---

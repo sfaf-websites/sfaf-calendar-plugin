@@ -124,7 +124,6 @@ class SFAF_Sync {
             'recurrence_group'=> SFAF_Recurrence::group_of( $post_id ),
             'show'            => array(
                 'rsvp'      => get_post_meta( $post_id, '_uc_show_rsvp', true ),
-                'donate'    => get_post_meta( $post_id, '_uc_show_donate', true ),
                 'social'    => get_post_meta( $post_id, '_uc_show_social', true ),
                 'calendar'  => get_post_meta( $post_id, '_uc_show_calendar', true ),
                 'reminders' => get_post_meta( $post_id, '_uc_show_reminders', true ),

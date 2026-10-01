@@ -99,6 +99,8 @@ class SFAF_Messages {
                 'tokens' => array_merge( $event, array( 'expiry', 'confirm_link' ) ) ),
             'offer_passed'   => array( 'label' => 'Offer passed', 'kind' => 'email', 'variants' => array( 'default' => '' ),
                 'tokens' => $event ),
+            'waitlist_cancelled' => array( 'label' => 'Event cancelled, waitlist', 'kind' => 'email', 'variants' => array( 'dates' => 'With dates', 'no_dates' => 'Without dates' ),
+                'tokens' => array_merge( $event, array( 'series' ) ) ),
             'reminder'       => array( 'label' => 'Morning-of reminder', 'kind' => 'email', 'variants' => $three,
                 'tokens' => array_merge( $event, array( 'last_name', 'organizer', 'meeting_link', 'cancel_link' ) ) ),
             'cancelled'      => array( 'label' => 'Event cancelled', 'kind' => 'email', 'variants' => array( 'default' => 'One date', 'several' => 'Several dates' ),
@@ -174,6 +176,28 @@ class SFAF_Messages {
                 'intro' => "La oferta ha vencido, {first_name}.\n\nEl lugar que le ofrecimos en {title} no se confirmó a tiempo, así que pasó a la siguiente persona de la lista de espera. Ya no está en la lista de espera de este evento.",
                 'closing' => '' ),
         ) );
+
+        /*
+         * THE WAITLIST, TOLD AN EVENT IS CANCELLED (3.106.1). With dates when
+         * the series has published dates still to come, listed under the
+         * details; without when it has none or there is no series.
+         */
+        $wl_en = "{title} is cancelled.\n\n{first_name}, you were on the waitlist, and it is not going ahead. You do not need to do anything.";
+        $wl_es = "{title} se canceló.\n\n{first_name}, usted estaba en la lista de espera y el evento no se llevará a cabo. No necesita hacer nada.";
+        $d['waitlist_cancelled'] = array(
+            'dates' => array(
+                'en' => array( 'subject' => 'Cancelled: {title}',
+                    'intro' => $wl_en . "\n\nThe next dates in {series} are below, if you would like to register for one.",
+                    'closing' => '' ),
+                'es' => array( 'subject' => 'Cancelado: {title}',
+                    'intro' => $wl_es . "\n\nLas próximas fechas de {series} están más abajo, por si desea inscribirse en alguna.",
+                    'closing' => '' ),
+            ),
+            'no_dates' => array(
+                'en' => array( 'subject' => 'Cancelled: {title}', 'intro' => $wl_en, 'closing' => '' ),
+                'es' => array( 'subject' => 'Cancelado: {title}', 'intro' => $wl_es, 'closing' => '' ),
+            ),
+        );
 
         $d['reminder'] = array(
             'in_person' => array(
@@ -356,6 +380,7 @@ class SFAF_Messages {
                 'was_going_to_be'  => array( 'It was going to be:', 'Esto era lo previsto:' ),
                 'now_is'           => array( 'The event is now:', 'El evento ahora es:' ),
                 'what_changed'     => array( 'What changed', 'Qué cambió' ),
+                'next_dates'       => array( 'Next dates', 'Próximas fechas' ),
                 'to'               => array( 'to', 'a' ),
                 'online_event'     => array( 'Online Event', 'Evento en línea' ),
                 'tbc'              => array( 'time to be confirmed', 'hora por confirmar' ),
@@ -625,6 +650,7 @@ class SFAF_Messages {
      *   joining_text string|null
      *   calendar    array{label:string,gcal:string,ics:string}
      *   event_url   string
+     *   more        array     other dates, each array( text, url ), under "Next dates"
      *   donate      string    a donation link, for the donate line
      *   intro_override string replaces the intro under its first paragraph
      *   preheader   string
@@ -733,6 +759,20 @@ class SFAF_Messages {
         }
 
         /*
+         * OTHER DATES (3.106.1): a label and one link per date, each to its
+         * event page. Each row is array( text, url ).
+         */
+        if ( ! empty( $parts['more'] ) ) {
+            $html .= SFAF_Email::label( self::label( 'next_dates', $lang ) );
+            $text .= self::label( 'next_dates', $lang ) . "\n";
+            foreach ( $parts['more'] as $row ) {
+                $html .= SFAF_Email::link_para( $row[1], $row[0] );
+                $text .= $row[0] . ': ' . $row[1] . "\n";
+            }
+            $text .= "\n";
+        }
+
+        /*
          * THE DONATE LINE (3.106.0): after the details and before the cancel
          * line, only in the messages that ask for it, and only with a link.
          */
@@ -835,6 +875,12 @@ class SFAF_Messages {
             'donate_link'  => SFAF_DONATE_DEFAULT,
             'gcal'         => 'https://calendar.google.com/calendar/render?action=TEMPLATE',
             'ics'          => 'https://resources.sfaf.org/?uc_ics=SAMPLE',
+            // The next three dates in the series, for the waitlist's cancellation.
+            'next'         => array(
+                array( sfaf_ap_date( '2026-11-19', 'full', $lang ) . ', ' . sfaf_ap_time_range( '18:00', '19:30', 'zone', $lang ), 'https://resources.sfaf.org/collections/events/coffee-and-conversation-2/' ),
+                array( sfaf_ap_date( '2026-11-26', 'full', $lang ) . ', ' . sfaf_ap_time_range( '18:00', '19:30', 'zone', $lang ), 'https://resources.sfaf.org/collections/events/coffee-and-conversation-3/' ),
+                array( sfaf_ap_date( '2026-12-03', 'full', $lang ) . ', ' . sfaf_ap_time_range( '18:00', '19:30', 'zone', $lang ), 'https://resources.sfaf.org/collections/events/coffee-and-conversation-4/' ),
+            ),
         );
     }
 

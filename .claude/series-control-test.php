@@ -949,9 +949,10 @@ $display_boxes = nodes_matching( $new, '//input[@type="checkbox"][starts-with(@n
 $display_order = array();
 foreach ( $display_boxes as $b ) { $display_order[] = $b->getAttribute( 'name' ); }
 
-expect( 'the Display card renders its five ticks in one order',
+/* No Donate tick from 3.106.1: the public button it switched went in 3.106.0. */
+expect( 'the Display card renders its four ticks in one order, and no Donate',
     $display_order,
-    array( 'show_rsvp', 'show_calendar', 'show_donate', 'show_social', 'show_reminders' ) );
+    array( 'show_rsvp', 'show_calendar', 'show_social', 'show_reminders' ) );
 
 /* The greyed-out line moves with the tick it belongs to, and says why before
    it says what happens instead. */

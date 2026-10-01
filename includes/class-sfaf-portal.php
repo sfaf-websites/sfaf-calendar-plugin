@@ -1185,6 +1185,7 @@ class SFAF_Portal {
                 $this->redirect( 'events/edit/' . $event_id, array(
                     'msg'  => 'cancelled',
                     'told' => (int) $told['sent'],
+                    'wl'   => isset( $told['waitlist'] ) ? (int) $told['waitlist'] : 0,
                 ) );
                 break;
 
@@ -1273,6 +1274,7 @@ class SFAF_Portal {
                             'msg'  => 'series_cancelled',
                             'n'    => count( $in_series ),
                             'told' => (int) $told['sent'],
+                            'wl'   => isset( $told['waitlist'] ) ? (int) $told['waitlist'] : 0,
                         ) );
                     }
                 }
@@ -2768,7 +2770,6 @@ class SFAF_Portal {
             // more: whether a registration alert goes out is one of the four
             // per-event email switches, saved above under its own marker.
             'show_rsvp'       => '_uc_show_rsvp',
-            'show_donate'     => '_uc_show_donate',
             'show_social'     => '_uc_show_social',
             'show_calendar'   => '_uc_show_calendar',
             'show_reminders'  => '_uc_show_reminders',
@@ -3255,7 +3256,7 @@ class SFAF_Portal {
             '_uc_rsvp_enabled', '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_donate_choice', '_uc_volunteer_url', '_uc_email_required', '_uc_language',
             '_uc_pardot_campaigns', '_uc_organizer_email', '_uc_notify_organizer',
             '_uc_email_subject', '_uc_email_body', '_uc_email_replyto',
-            '_uc_show_rsvp', '_uc_show_donate', '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
+            '_uc_show_rsvp', '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
             '_uc_image_url', '_uc_image_url_typed', '_uc_image_override',
             // Whether the fundraising figures are published. It travels with
             // the donate URL and goal it governs: a group that shares a
@@ -3468,7 +3469,7 @@ class SFAF_Portal {
             '_uc_pardot_campaigns',
             '_uc_organizer_email', '_uc_notify_organizer',
             '_uc_email_subject', '_uc_email_body', '_uc_email_replyto',
-            '_uc_show_rsvp', '_uc_show_donate', '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
+            '_uc_show_rsvp', '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
             '_uc_image_url', '_uc_image_url_typed', '_uc_image_override',
             SFAF_Reminders::NOTIFY_USERS_META,
             SFAF_Reminders::NOTIFY_EMAILS_META,
@@ -4250,6 +4251,7 @@ class SFAF_Portal {
                     . ( $told
                         ? sprintf( '%d %s told.', $told, _n( 'person was', 'people were', $told ) )
                         : 'Nobody was emailed.' )
+                    . $this->waitlist_told()
                 )
                 . '</div>';
             return;
@@ -4266,7 +4268,7 @@ class SFAF_Portal {
                     $told
                         ? sprintf( '%d %s told, one email each however many dates they were registered for.', $told, _n( 'person was', 'people were', $told ) )
                         : 'Nobody was emailed.'
-                ) )
+                ) . $this->waitlist_told() )
                 . '</div>';
             return;
         }
@@ -4537,6 +4539,17 @@ class SFAF_Portal {
             $extra = ( 'saved' === $key ) ? $this->notify_outcome() : '';
             echo '<div class="uc-flash">' . esc_html( $map[ $key ] . $extra ) . '</div>';
         }
+    }
+
+    /**
+     * The waitlist's share of a cancellation's mail (3.106.1), said apart from
+     * the number the cancel dialog asked about, which counts registrations.
+     *
+     * @return string Empty, or a sentence to append.
+     */
+    private function waitlist_told() {
+        $wl = isset( $_GET['wl'] ) ? absint( $_GET['wl'] ) : 0;
+        return $wl ? sprintf( ' %d %s on the waitlist %s told too.', $wl, _n( 'person', 'people', $wl ), _n( 'was', 'were', $wl ) ) : '';
     }
 
     /**
@@ -13075,7 +13088,7 @@ class SFAF_Portal {
                      * RSVPs and then wonder why a tick four rows down went
                      * grey.
                      */
-                    $feat = array( 'show_rsvp' => 'RSVP', 'show_calendar' => 'Add to calendar', 'show_donate' => 'Donate', 'show_social' => 'Social share', 'show_reminders' => 'Follow the series' );
+                    $feat = array( 'show_rsvp' => 'RSVP', 'show_calendar' => 'Add to calendar', 'show_social' => 'Social share', 'show_reminders' => 'Follow the series' );
 
                     /*
                      * ADD TO CALENDAR IS NOT A CHOICE WHILE REGISTRATIONS ARE

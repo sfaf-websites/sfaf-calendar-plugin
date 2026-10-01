@@ -10,7 +10,7 @@
  * user 1, which is right for rendering a form and useless for "which events may
  * this person see" or "did the ledger refuse the second send". This kit has
  * posts, meta, terms, users with roles, options, a WP_Query that filters on
- * status, date and meta, and a $wpdb that runs the handful of SQL shapes the
+ * status, meta (nested groups and comparisons), series and date order, and a $wpdb that runs the handful of SQL shapes the
  * mail code writes, with the reminder ledger's two UNIQUE keys enforced. That
  * enforcement is the send-once guarantee, so a model without it would prove
  * nothing about sending twice.
@@ -67,6 +67,7 @@ function wp_unslash( $v ) { return $v; }
 function wp_json_encode( $d, $o = 0 ) { return json_encode( $d, $o ); }
 function wp_list_pluck( $l, $f ) { $o = array(); foreach ( (array) $l as $k => $i ) { $o[ $k ] = is_object( $i ) ? $i->$f : $i[ $f ]; } return $o; }
 function absint( $n ) { return abs( (int) $n ); }
+function wp_parse_args( $a, $d = array() ) { return array_merge( $d, is_array( $a ) ? $a : array() ); }
 function __( $t, $d = '' ) { return $t; }
 function _n( $s, $p, $n, $d = '' ) { return 1 === (int) $n ? $s : $p; }
 function wp_rand( $a = 0, $b = 0 ) { return mt_rand( $a, $b ?: mt_getrandmax() ); }
@@ -125,20 +126,68 @@ class WP_Query {
         foreach ( $GLOBALS['mk_posts'] as $id => $p ) {
             if ( isset( $a['post_type'] ) && $p->post_type !== $a['post_type'] ) { continue; }
             if ( ! in_array( $p->post_status, $st, true ) ) { continue; }
-            $ok = true;
-            foreach ( isset( $a['meta_query'] ) ? $a['meta_query'] : array() as $k => $c ) {
-                if ( 'relation' === $k || ! is_array( $c ) ) { continue; }
-                $has  = isset( $GLOBALS['mk_meta'][ $id ][ $c['key'] ] );
-                $have = $has ? (string) $GLOBALS['mk_meta'][ $id ][ $c['key'] ] : null;
-                $cmp  = isset( $c['compare'] ) ? strtoupper( $c['compare'] ) : '=';
-                if ( 'NOT EXISTS' === $cmp ) { if ( $has ) { $ok = false; } continue; }
-                if ( 'EXISTS' === $cmp ) { if ( ! $has ) { $ok = false; } continue; }
-                if ( 'BETWEEN' === $cmp ) { if ( ! $has || $have < $c['value'][0] || $have > $c['value'][1] ) { $ok = false; } continue; }
-                if ( ! $has || $have !== (string) $c['value'] ) { $ok = false; }
-            }
-            if ( $ok ) { $out[] = (int) $id; }
+            if ( isset( $a['meta_query'] ) && ! self::meta_ok( $id, $a['meta_query'] ) ) { continue; }
+            if ( isset( $a['tax_query'] ) && ! self::tax_ok( $id, $a['tax_query'] ) ) { continue; }
+            $out[] = (int) $id;
+        }
+        // The one ordering the plugin names, by event date then id (3.106.1).
+        if ( isset( $a['orderby'] ) && is_array( $a['orderby'] ) && isset( $a['orderby']['event_date'] ) ) {
+            usort( $out, function ( $x, $y ) {
+                $dx = (string) get_post_meta( $x, '_uc_event_date', true );
+                $dy = (string) get_post_meta( $y, '_uc_event_date', true );
+                return 0 !== strcmp( $dx, $dy ) ? strcmp( $dx, $dy ) : $x - $y;
+            } );
+        }
+        if ( isset( $a['posts_per_page'] ) && (int) $a['posts_per_page'] > 0 ) {
+            $out = array_slice( $out, 0, (int) $a['posts_per_page'] );
         }
         $this->posts = ( isset( $a['fields'] ) && 'ids' === $a['fields'] ) ? $out : array_map( 'get_post', $out );
+    }
+
+    /**
+     * A meta query, nested groups and their relation included, as WordPress
+     * reads it. A clause on a key the post does not have matches only NOT
+     * EXISTS, because the SQL join finds no row to compare (3.106.1).
+     */
+    private static function meta_ok( $id, $q ) {
+        if ( isset( $q['key'] ) ) {
+            $has  = isset( $GLOBALS['mk_meta'][ $id ][ $q['key'] ] );
+            $have = $has ? (string) $GLOBALS['mk_meta'][ $id ][ $q['key'] ] : null;
+            $cmp  = isset( $q['compare'] ) ? strtoupper( $q['compare'] ) : '=';
+            if ( 'NOT EXISTS' === $cmp ) { return ! $has; }
+            if ( 'EXISTS' === $cmp ) { return $has; }
+            if ( ! $has ) { return false; }
+            if ( 'BETWEEN' === $cmp ) { return ! ( $have < $q['value'][0] || $have > $q['value'][1] ); }
+            if ( 'IN' === $cmp ) { return in_array( $have, array_map( 'strval', (array) $q['value'] ), true ); }
+            $want = (string) $q['value'];
+            switch ( $cmp ) {
+                case '!=': return $have !== $want;
+                case '>=': return strcmp( $have, $want ) >= 0;
+                case '<=': return strcmp( $have, $want ) <= 0;
+                case '>':  return strcmp( $have, $want ) > 0;
+                case '<':  return strcmp( $have, $want ) < 0;
+            }
+            return $have === $want;
+        }
+        $or = isset( $q['relation'] ) && 'OR' === strtoupper( (string) $q['relation'] );
+        $any = false;
+        foreach ( $q as $k => $c ) {
+            if ( 'relation' === $k || ! is_array( $c ) ) { continue; }
+            $ok = self::meta_ok( $id, $c );
+            if ( $or && $ok ) { return true; }
+            if ( ! $or && ! $ok ) { return false; }
+            $any = true;
+        }
+        return $or ? ! $any : true;
+    }
+
+    private static function tax_ok( $id, $q ) {
+        foreach ( $q as $k => $c ) {
+            if ( 'relation' === $k || ! is_array( $c ) ) { continue; }
+            $have = isset( $GLOBALS['mk_obj_terms'][ $id ][ $c['taxonomy'] ] ) ? $GLOBALS['mk_obj_terms'][ $id ][ $c['taxonomy'] ] : array();
+            if ( ! array_intersect( $have, array_map( 'intval', (array) $c['terms'] ) ) ) { return false; }
+        }
+        return true;
     }
 }
 
@@ -370,7 +419,7 @@ eval( 'class SFAF_Portal {'
 
 class SFAF_Optins { public static $recorded = array(); public static function record( $e, $n, $id, $src ) { self::$recorded[] = $e; return true; } }
 
-foreach ( array( 'class-sfaf-email', 'class-sfaf-online', 'class-sfaf-cancellation', 'class-sfaf-teams', 'class-sfaf-venues', 'class-sfaf-series',
+foreach ( array( 'class-sfaf-email', 'class-sfaf-online', 'class-sfaf-cancellation', 'class-sfaf-privacy', 'class-sfaf-teams', 'class-sfaf-venues', 'class-sfaf-series',
                  'class-sfaf-sources', 'class-sfaf-reminders', 'class-sfaf-notifications', 'class-sfaf-digest', 'class-sfaf-rsvp',
                  'class-sfaf-organizers', 'class-sfaf-messages', 'class-sfaf-waitlist', 'class-sfaf-announce' ) as $mk_f ) {
     require_once $mk_root . '/includes/' . $mk_f . '.php';

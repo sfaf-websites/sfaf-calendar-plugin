@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.106.0
+ * Version: 3.106.1
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.106.0' );
+define( 'SFAF_VERSION', '3.106.1' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -157,6 +157,8 @@ $sfaf_includes = array(
     'includes/class-sfaf-source-gfmp.php',
     'includes/class-sfaf-source-everyaction.php',
     'includes/class-sfaf-seo.php',
+    // No author on a public event surface (3.106.1).
+    'includes/class-sfaf-bylines.php',
     'includes/class-sfaf-portal.php',
     'includes/class-sfaf-orphans.php',
     'includes/sfaf-sample-data.php',
@@ -309,6 +311,9 @@ function sfaf_init() {
     $seo = new SFAF_SEO();
     $seo->register();
 
+    $bylines = new SFAF_Bylines();
+    $bylines->register();
+
     /*
      * UPDATES FROM GITHUB RELEASES. Registered for every request rather than
      * admin only: WordPress runs its update check on cron, which has no admin
@@ -369,6 +374,19 @@ add_action( 'init', 'sfaf_normalize_time_post', 0 );
 // The Settings screen's confirmation and reminder text becomes the English
 // templates, once (3.106.0). See SFAF_Messages::migrate_settings().
 add_action( 'init', array( 'SFAF_Messages', 'migrate_settings' ), 20 );
+
+/**
+ * The Display card's Donate tick is gone (3.106.1), and with it the meta it
+ * wrote: the public button it switched went in 3.106.0. Once, on every event.
+ */
+function sfaf_drop_show_donate() {
+    if ( get_option( 'sfaf_show_donate_dropped' ) ) {
+        return;
+    }
+    delete_post_meta_by_key( '_uc_show_donate' );
+    update_option( 'sfaf_show_donate_dropped', 1 );
+}
+add_action( 'init', 'sfaf_drop_show_donate', 20 );
 
 /**
  * Enqueue frontend styles and scripts

@@ -52,6 +52,22 @@ Words in a message that come from the event, such as its title, location and org
 | Subject | The offer for Coffee and Conversation has passed | La oferta para Coffee and Conversation ha vencido |
 | Text | The offer has passed, Alex.<br><br>The place we offered you for Coffee and Conversation was not confirmed in time, so it has gone to the next person on the waitlist. You are no longer on the waitlist for this event.<br><br>Event: Coffee and Conversation<br>Date: Thursday, November 12, 2026<br>Time: 6–7:30 pm PT<br>Location: SFAF Main Office, 1035 Market St, San Francisco, CA 94103<br><br><br>San Francisco AIDS Foundation, 940 Howard Street, San Francisco, CA 94103 | La oferta ha vencido, Alex.<br><br>El lugar que le ofrecimos en Coffee and Conversation no se confirmó a tiempo, así que pasó a la siguiente persona de la lista de espera. Ya no está en la lista de espera de este evento.<br><br>Evento: Coffee and Conversation<br>Fecha: jueves, 12 de noviembre de 2026<br>Hora: 6–7:30 p. m., hora del Pacífico<br>Lugar: SFAF Main Office, 1035 Market St, San Francisco, CA 94103<br><br><br>San Francisco AIDS Foundation, 940 Howard Street, San Francisco, CA 94103 |
 
+## Event cancelled, waitlist
+
+### With dates
+
+| | English | Spanish |
+|---|---|---|
+| Subject | Cancelled: Coffee and Conversation | Cancelado: Coffee and Conversation |
+| Text | Coffee and Conversation is cancelled.<br><br>Alex, you were on the waitlist, and it is not going ahead. You do not need to do anything.<br><br>The next dates in Coffee and Conversation are below, if you would like to register for one.<br><br>It was going to be:<br><br>Event: Coffee and Conversation<br>Date: Thursday, November 12, 2026<br>Time: 6–7:30 pm PT<br>Location: SFAF Main Office, 1035 Market St, San Francisco, CA 94103<br><br>Next dates<br>Thursday, November 19, 2026, 6–7:30 pm PT: https://resources.sfaf.org/collections/events/coffee-and-conversation-2/<br>Thursday, November 26, 2026, 6–7:30 pm PT: https://resources.sfaf.org/collections/events/coffee-and-conversation-3/<br>Thursday, December 3, 2026, 6–7:30 pm PT: https://resources.sfaf.org/collections/events/coffee-and-conversation-4/<br><br><br>San Francisco AIDS Foundation, 940 Howard Street, San Francisco, CA 94103 | Coffee and Conversation se canceló.<br><br>Alex, usted estaba en la lista de espera y el evento no se llevará a cabo. No necesita hacer nada.<br><br>Las próximas fechas de Coffee and Conversation están más abajo, por si desea inscribirse en alguna.<br><br>Esto era lo previsto:<br><br>Evento: Coffee and Conversation<br>Fecha: jueves, 12 de noviembre de 2026<br>Hora: 6–7:30 p. m., hora del Pacífico<br>Lugar: SFAF Main Office, 1035 Market St, San Francisco, CA 94103<br><br>Próximas fechas<br>jueves, 19 de noviembre de 2026, 6–7:30 p. m., hora del Pacífico: https://resources.sfaf.org/collections/events/coffee-and-conversation-2/<br>jueves, 26 de noviembre de 2026, 6–7:30 p. m., hora del Pacífico: https://resources.sfaf.org/collections/events/coffee-and-conversation-3/<br>jueves, 3 de diciembre de 2026, 6–7:30 p. m., hora del Pacífico: https://resources.sfaf.org/collections/events/coffee-and-conversation-4/<br><br><br>San Francisco AIDS Foundation, 940 Howard Street, San Francisco, CA 94103 |
+
+### Without dates
+
+| | English | Spanish |
+|---|---|---|
+| Subject | Cancelled: Coffee and Conversation | Cancelado: Coffee and Conversation |
+| Text | Coffee and Conversation is cancelled.<br><br>Alex, you were on the waitlist, and it is not going ahead. You do not need to do anything.<br><br>It was going to be:<br><br>Event: Coffee and Conversation<br>Date: Thursday, November 12, 2026<br>Time: 6–7:30 pm PT<br>Location: SFAF Main Office, 1035 Market St, San Francisco, CA 94103<br><br><br>San Francisco AIDS Foundation, 940 Howard Street, San Francisco, CA 94103 | Coffee and Conversation se canceló.<br><br>Alex, usted estaba en la lista de espera y el evento no se llevará a cabo. No necesita hacer nada.<br><br>Esto era lo previsto:<br><br>Evento: Coffee and Conversation<br>Fecha: jueves, 12 de noviembre de 2026<br>Hora: 6–7:30 p. m., hora del Pacífico<br>Lugar: SFAF Main Office, 1035 Market St, San Francisco, CA 94103<br><br><br>San Francisco AIDS Foundation, 940 Howard Street, San Francisco, CA 94103 |
+
 ## Morning-of reminder
 
 ### In person
@@ -226,6 +242,7 @@ Labels, buttons and the calendar file's words. These are not edited on the Templ
 | It was going to be: | Esto era lo previsto: |
 | The event is now: | El evento ahora es: |
 | What changed | Qué cambió |
+| Next dates | Próximas fechas |
 | to | a |
 | Online Event | Evento en línea |
 | time to be confirmed | hora por confirmar |

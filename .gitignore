@@ -85,3 +85,8 @@ node_modules/
 # is not part of the plugin: the mail banner is SFAF_Email::banner_url(), which
 # resolves a URL from settings, and nothing in the tree reads this file.
 SFAF-generic-header-skyline-1200x212.png
+
+# The real names and logins byline-live.php --live looks for (3.106.1).
+# Never committed: the check exists to keep them off public pages.
+.claude/fixtures/bylines/people.local.json
+.claude/byline-live/live-*.html

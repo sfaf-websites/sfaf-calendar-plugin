@@ -56,6 +56,7 @@ for f in .claude/*.php; do
     caps-sweep-live.php) continue ;;   # run below with --run
     release-3106-live.php) continue ;; # run below with --run
     plant-3106.php) continue ;;        # a fault planter for release-3106-live, not a check
+    byline-live.php) continue ;;       # run below with --run; --live checks the site itself
   esac
   run "$(basename "$f" .php)" php "$f"
 done
@@ -274,6 +275,9 @@ run "caps-sweep-live --run" php .claude/caps-sweep-live.php --run
 # The Templates screen, the Volunteer button, the waitlist and the RSVP list
 # (3.106.0); phone pages run in a 390px frame, since headless will not go under 504.
 run "release-3106-live --run" php .claude/release-3106-live.php --run
+# No author name or login on an event page (3.106.1): the captured category
+# and event pages before and after the strip, in Chrome.
+run "byline-live --run" php .claude/byline-live.php --run
 
 echo
 echo "=== shell guards ==="

@@ -1,0 +1,5 @@
+{
+  "about": "A stand-in for the author of the calendar's events, put into the two captured pages in place of the real name and login so neither is committed. byline-live.php --live also reads people.local.json, which is not committed and holds the real ones.",
+  "names": ["Pat Example"],
+  "logins": ["pexample@sfaf.org", "pexamplesfaf-org"]
+}

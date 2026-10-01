@@ -105,7 +105,7 @@ class SFAF_Recurrence {
         '_uc_rsvp_enabled', '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_donate_choice', '_uc_volunteer_url', '_uc_email_required', '_uc_language',
         '_uc_pardot_campaigns', '_uc_organizer_email', '_uc_notify_organizer',
         '_uc_email_subject', '_uc_email_body', '_uc_email_replyto',
-        '_uc_show_rsvp', '_uc_show_donate', '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
+        '_uc_show_rsvp', '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
         '_uc_image_url', '_uc_image_url_typed',
         // FAQs travel with the copy. One key, no inheritance — see
         // sfaf_faq_meta_key().

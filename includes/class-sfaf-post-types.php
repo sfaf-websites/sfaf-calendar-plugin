@@ -350,7 +350,6 @@ class SFAF_Post_Types {
     public function render_display_meta_box( $post ) {
         $features = array(
             'rsvp'      => 'Show RSVP',
-            'donate'    => 'Show Donate Button',
             'social'    => 'Show Social Share',
             'calendar'  => 'Show Add to Calendar',
             'reminders' => 'Show Reminders Signup',
@@ -437,7 +436,6 @@ class SFAF_Post_Types {
                 <label for="uc_gofundme_url">Campaign URL</label>
                 <input type="url" id="uc_gofundme_url" name="uc_gofundme_url" value="<?php echo esc_attr( $gofundme_url ); ?>" placeholder="https://gofund.me/..." />
                 <input type="hidden" id="uc_gofundme_goal" name="uc_gofundme_goal" value="<?php echo esc_attr( $gofundme_goal ); ?>" />
-                <p class="description">Donate button shows on this event only when a URL is set.</p>
             </div>
 
             <?php
@@ -909,7 +907,6 @@ class SFAF_Post_Types {
         $toggles = array(
             'uc_rsvp_enabled'     => '_uc_rsvp_enabled',
             'uc_show_rsvp'        => '_uc_show_rsvp',
-            'uc_show_donate'      => '_uc_show_donate',
             'uc_show_social'      => '_uc_show_social',
             'uc_show_calendar'    => '_uc_show_calendar',
             'uc_show_reminders'   => '_uc_show_reminders',

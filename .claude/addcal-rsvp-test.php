@@ -92,7 +92,6 @@ eval( lift( $tf, 'sfaf_event_takes_rsvps' ) );
 function save_toggles( $event_id, $post ) {
     $toggles = array(
         'show_rsvp'      => '_uc_show_rsvp',
-        'show_donate'    => '_uc_show_donate',
         'show_social'    => '_uc_show_social',
         'show_calendar'  => '_uc_show_calendar',
         'show_reminders' => '_uc_show_reminders',
@@ -149,7 +148,7 @@ echo "\nTHE SAVE\n";
  * and overwrites a setting the manager never touched.
  */
 reset_event( 2, array( '_uc_rsvp_enabled' => '1', '_uc_show_calendar' => '1' ) );
-save_toggles( 2, array( 'show_rsvp' => '1', 'show_donate' => '1' ) );
+save_toggles( 2, array( 'show_rsvp' => '1', 'show_social' => '1' ) );
 check( 'a disabled tick does not clear the stored value',
     get_post_meta( 2, '_uc_show_calendar', true ), '1' );
 

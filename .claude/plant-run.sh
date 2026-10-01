@@ -138,6 +138,23 @@ try apply-unticked "Apply touches an unticked row"         $S
 # 3.104.0, times fold on a real request.
 try times-unfolded "a hook folds no time pair"           .claude/publish-times-live.php --run
 try typed-loses "a typed URL loses to the series picture" .claude/typed-image-test.php
+# 3.106.1, the waitlist told of a cancellation.
+W=.claude/waitlist-cancel-test.php
+try wl-registrants-widened "the waitlist joins the registrants" $W
+try wl-registrants-widened "the waitlist joins the registrants: reads" .claude/waitlist-test.php
+try wl-sent-twice "a place holder also sent the waitlist's" $W
+try wl-not-read "the waitlist is not told of a cancellation" $W
+try wl-no-dates "the series' next dates are left out" $W
+# 3.106.1, no author on a public event page.
+B=.claude/byline-test.php
+L=.claude/byline-live.php
+try byline-kept "the byline is never stripped" $B
+try byline-kept "the byline is never stripped: browser" $L --run
+try byline-rule-taken "the dividing rule goes with it" $B
+try byline-rule-taken "the dividing rule goes: browser" $L --run
+try byline-fallback-gone "renamed classes keep the author" $B
+try author-archive-open "an author archive stays open" $B
+try oembed-author-kept "oEmbed keeps the author" $B
 
 restore
 echo "-------------------------------------------"
