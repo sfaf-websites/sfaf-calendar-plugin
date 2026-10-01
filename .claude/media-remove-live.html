@@ -109,6 +109,8 @@ function ucDismissOnBackdrop(dialog) {
         run('faqSetPicker', initFaqSetPicker);
         run('seriesPrefill', initSeriesPrefill);
         run('donateChoice', initDonateChoice);
+        run('eventLanguage', initEventLanguage);
+        run('emailTemplates', initEmailTemplates);
         run('notifyPicker', initNotifyPicker);
         run('imagePicker', initImagePicker);
         // ORDER MATTERS between these three. Both the scope confirmation and
@@ -1830,6 +1832,25 @@ function ucDismissOnBackdrop(dialog) {
         /* Two causes, two sentences, and only one of them may be on screen. */
         if (plain && isHybrid) { plain.hidden = true; }
     }
+    /* EMAIL REQUIRED IS ON AND LOCKED FOR AN ONLINE EVENT (3.106.0), the
+     * arrangement applyHybridRsvpLock() uses: the value it arrived with is kept
+     * and given back when Online is unticked. The save writes it on either way. */
+    function applyEmailRequiredLock(isOnline) {
+        var label = document.querySelector('[data-uc-email-required-check]');
+        var box = label ? label.querySelector('input') : null;
+        if (!box) { return; }
+        if (isOnline) {
+            if (null === box.getAttribute('data-uc-was-checked')) {
+                box.setAttribute('data-uc-was-checked', box.checked ? '1' : '0');
+            }
+            box.checked = true;
+        } else if (null !== box.getAttribute('data-uc-was-checked')) {
+            box.checked = ('1' === box.getAttribute('data-uc-was-checked'));
+            box.removeAttribute('data-uc-was-checked');
+        }
+        box.disabled = isOnline;
+        label.classList.toggle('uc-check-locked', isOnline);
+    }
     function initLocationPicker() {
         document.querySelectorAll('[data-uc-location]').forEach(function (root) {
             var modes = Array.prototype.slice.call(root.querySelectorAll('[data-uc-location-mode]'));
@@ -1925,6 +1946,7 @@ function ucDismissOnBackdrop(dialog) {
                 });
 
                 applyHybridRsvpLock(isHybrid);
+                applyEmailRequiredLock(isOnline && !isHybrid);
             }
 
             modes.forEach(function (m) { m.addEventListener('change', apply); });
@@ -4673,6 +4695,238 @@ function ucDismissOnBackdrop(dialog) {
                 inherit.textContent = linked.indexOf(String(series.value)) > -1 ? 'Series link' : 'SFAF default';
             });
         }
+    }
+
+    /* ---------------------------------------------------------------------
+     * THE EMAIL TEMPLATES SCREEN (3.106.0).
+     *
+     * Every preview arrives rendered, by the builder that sends, in the JSON
+     * block; picking a message or a language only swaps which one is shown,
+     * so nothing is drawn here that the server did not draw.
+     *
+     * THE TOKENS ARE CHIPS THAT CANNOT BE TYPED OVER OR DELETED BY ACCIDENT.
+     * Each is a contenteditable=false span. Typing while a selection holds a
+     * chip is refused; Backspace or Delete next to a chip marks it first and
+     * removes it only on the second press. The text boxes underneath stay the
+     * real fields: each editor writes its text, with {tokens}, back into its
+     * box on every change and before the form is sent, and with no script the
+     * boxes are what somebody edits.
+     * ------------------------------------------------------------------- */
+    function initEmailTemplates() {
+        var root = document.querySelector('[data-uc-tpl]');
+        var node = root ? root.querySelector('[data-uc-tpl-data]') : null;
+        if (!root || !node) { return; }
+        var data;
+        try {
+            data = JSON.parse(node.textContent || '{}');
+        } catch (e) {
+            return;
+        }
+        var state = {
+            key: root.getAttribute('data-uc-tpl-key'),
+            variant: root.getAttribute('data-uc-tpl-variant'),
+            lang: (root.querySelector('[data-uc-tpl-lang]') || {}).value || 'en'
+        };
+        var form = root.querySelector('[data-uc-tpl-form]');
+        var preview = root.querySelector('[data-uc-tpl-preview]');
+        var subjectOut = root.querySelector('[data-uc-tpl-subject]');
+        var stateOut = root.querySelector('[data-uc-tpl-state]');
+        var editBtn = root.querySelector('[data-uc-tpl-edit]');
+        var editors = {};
+        var lastEditor = null;
+
+        function chip(token) {
+            var span = document.createElement('span');
+            span.className = 'uc-tpl-chip';
+            span.setAttribute('contenteditable', 'false');
+            span.setAttribute('data-token', token);
+            span.textContent = (data.tokens && data.tokens[token]) ? data.tokens[token] : token;
+            return span;
+        }
+        function fill(ed, text) {
+            ed.textContent = '';
+            String(text || '').split(/(\{[a-z_]+\})/).forEach(function (part) {
+                var m = part.match(/^\{([a-z_]+)\}$/);
+                ed.appendChild(m ? chip(m[1]) : document.createTextNode(part));
+            });
+        }
+        function serialise(ed) {
+            var out = '';
+            (function walk(n) {
+                Array.prototype.forEach.call(n.childNodes, function (c) {
+                    if (c.nodeType === 3) { out += c.nodeValue; return; }
+                    if (c.nodeType !== 1) { return; }
+                    if (c.hasAttribute('data-token')) { out += '{' + c.getAttribute('data-token') + '}'; return; }
+                    if (c.tagName === 'BR') { out += '\n'; return; }
+                    if ((c.tagName === 'DIV' || c.tagName === 'P') && out !== '' && out.slice(-1) !== '\n') { out += '\n'; }
+                    walk(c);
+                });
+            })(ed);
+            return out.replace(/ /g, ' ');
+        }
+        function chipBeside(ed, back) {
+            var sel = window.getSelection();
+            if (!sel || !sel.rangeCount || !sel.isCollapsed) { return null; }
+            var n = sel.anchorNode, o = sel.anchorOffset, sib = null;
+            if (n.nodeType === 3) {
+                if (back && o === 0) { sib = n.previousSibling; }
+                if (!back && o === n.nodeValue.length) { sib = n.nextSibling; }
+            } else {
+                sib = back ? n.childNodes[o - 1] : n.childNodes[o];
+            }
+            return (sib && sib.nodeType === 1 && sib.hasAttribute('data-token')) ? sib : null;
+        }
+        function selectionHasChip(ed) {
+            var sel = window.getSelection();
+            if (!sel || !sel.rangeCount || sel.isCollapsed) { return false; }
+            var r = sel.getRangeAt(0);
+            return Array.prototype.some.call(ed.querySelectorAll('[data-token]'), function (c) { return r.intersectsNode(c); });
+        }
+        function sync(name) {
+            var box = form.querySelector('[data-uc-tpl-text="' + name + '"]');
+            if (box && editors[name]) { box.value = serialise(editors[name]); }
+        }
+
+        Array.prototype.forEach.call(form.querySelectorAll('[data-uc-tpl-text]'), function (box) {
+            var name = box.getAttribute('data-uc-tpl-text');
+            var ed = document.createElement('div');
+            ed.className = 'uc-tpl-editor' + (name === 'subject' ? ' uc-tpl-editor-line' : '');
+            ed.setAttribute('contenteditable', 'true');
+            ed.setAttribute('role', 'textbox');
+            if (name !== 'subject') { ed.setAttribute('aria-multiline', 'true'); }
+            ed.setAttribute('data-uc-tpl-editor', name);
+            var label = box.closest('label');
+            var labelText = label ? (label.querySelector('.uc-field-label') || {}).textContent : name;
+            ed.setAttribute('aria-label', labelText || name);
+            fill(ed, box.value);
+            box.hidden = true;
+            box.parentNode.insertBefore(ed, box.nextSibling);
+            editors[name] = ed;
+
+            ed.addEventListener('focus', function () { lastEditor = ed; });
+            ed.addEventListener('keydown', function (e) {
+                if (name === 'subject' && e.key === 'Enter') { e.preventDefault(); return; }
+                if (e.key !== 'Backspace' && e.key !== 'Delete') {
+                    Array.prototype.forEach.call(ed.querySelectorAll('.is-armed'), function (c) { c.classList.remove('is-armed'); });
+                    return;
+                }
+                if (selectionHasChip(ed)) { e.preventDefault(); return; }
+                var c = chipBeside(ed, e.key === 'Backspace');
+                if (!c) { return; }
+                e.preventDefault();
+                if (c.classList.contains('is-armed')) {
+                    c.parentNode.removeChild(c);
+                    sync(name);
+                } else {
+                    c.classList.add('is-armed');
+                }
+            });
+            ed.addEventListener('beforeinput', function (e) {
+                if (selectionHasChip(ed)) { e.preventDefault(); }
+            });
+            ed.addEventListener('paste', function (e) {
+                e.preventDefault();
+                var text = (e.clipboardData || window.clipboardData).getData('text');
+                document.execCommand('insertText', false, text);
+            });
+            ed.addEventListener('input', function () { sync(name); });
+        });
+
+        Array.prototype.forEach.call(root.querySelectorAll('[data-uc-tpl-token]'), function (btn) {
+            btn.addEventListener('click', function () {
+                var ed = lastEditor || editors.intro;
+                if (!ed) { return; }
+                ed.focus();
+                var sel = window.getSelection();
+                var c = chip(btn.getAttribute('data-uc-tpl-token'));
+                if (sel && sel.rangeCount && ed.contains(sel.anchorNode) && !selectionHasChip(ed)) {
+                    var r = sel.getRangeAt(0);
+                    r.deleteContents();
+                    r.insertNode(c);
+                    r.setStartAfter(c);
+                    r.collapse(true);
+                    sel.removeAllRanges();
+                    sel.addRange(r);
+                } else {
+                    ed.appendChild(c);
+                }
+                sync(ed.getAttribute('data-uc-tpl-editor'));
+            });
+        });
+
+        form.addEventListener('submit', function () {
+            Object.keys(editors).forEach(sync);
+        });
+
+        function show() {
+            var m = data.messages[state.key + '|' + state.variant + '|' + state.lang];
+            if (!m) { return; }
+            preview.setAttribute('srcdoc', m.html);
+            subjectOut.textContent = m.subject;
+            stateOut.textContent = m.overridden ? 'Edited on this site.' : 'The shipped text.';
+            form.querySelector('[data-uc-tpl-field="key"]').value = state.key;
+            form.querySelector('[data-uc-tpl-field="variant"]').value = state.variant;
+            form.querySelector('[data-uc-tpl-field="lang"]').value = state.lang;
+            ['subject', 'intro', 'closing'].forEach(function (f) {
+                var box = form.querySelector('[data-uc-tpl-text="' + f + '"]');
+                if (box) { box.value = m.fields[f] || ''; }
+                if (editors[f]) { fill(editors[f], m.fields[f] || ''); }
+            });
+            var allowed = (data.catalog[state.key] || {}).tokens || [];
+            Array.prototype.forEach.call(root.querySelectorAll('[data-uc-tpl-token]'), function (b) {
+                b.hidden = allowed.indexOf(b.getAttribute('data-uc-tpl-token')) === -1;
+            });
+            Array.prototype.forEach.call(root.querySelectorAll('[data-uc-tpl-pick]'), function (b) {
+                b.setAttribute('aria-pressed', b.getAttribute('data-uc-tpl-pick') === state.key + '|' + state.variant ? 'true' : 'false');
+            });
+        }
+
+        Array.prototype.forEach.call(root.querySelectorAll('[data-uc-tpl-pick]'), function (b) {
+            b.addEventListener('click', function () {
+                var p = b.getAttribute('data-uc-tpl-pick').split('|');
+                state.key = p[0];
+                state.variant = p[1];
+                show();
+            });
+        });
+        var langSel = root.querySelector('[data-uc-tpl-lang]');
+        if (langSel) {
+            langSel.addEventListener('change', function () {
+                state.lang = langSel.value;
+                show();
+            });
+        }
+        if (editBtn) {
+            editBtn.addEventListener('click', function () {
+                var open = form.hidden;
+                form.hidden = !open;
+                editBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                if (open && editors.intro) { editors.intro.focus(); }
+            });
+        }
+        show();
+    }
+
+    /* THE EVENT'S LANGUAGE FOLLOWS ITS SERIES (3.106.0) until somebody picks
+     * one here, or the event already has its own. The series' defaults come
+     * from the server on the select. */
+    function initEventLanguage() {
+        var select = document.querySelector('[data-uc-event-language]');
+        if (!select) { return; }
+        var byseries = {};
+        try {
+            byseries = JSON.parse(select.getAttribute('data-uc-series-langs') || '{}');
+        } catch (e) {
+            byseries = {};
+        }
+        var picked = select.hasAttribute('data-uc-own');
+        select.addEventListener('change', function () { picked = true; });
+        var series = select.form ? select.form.querySelector('[name="series"]') : null;
+        if (!series) { return; }
+        series.addEventListener('change', function () {
+            if (picked) { return; }
+            select.value = byseries[String(series.value)] || 'en';
+        });
     }
 
     function initSeriesPrefill() {
