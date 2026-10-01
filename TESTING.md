@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 235 items.** Quick 195, needs real conditions 36, blocked on other
+**Outstanding: 237 items.** Quick 196, needs real conditions 37, blocked on other
 people 4.
 
 ---
@@ -2813,15 +2813,16 @@ you left it.
 
 **Why it needs a person:** the real editor and a real save.
 
-### 1.195 Questions for registrants in the editor (3.106.2)
+### 1.195 Questions for registrants in the editor (3.106.2, redrawn 3.106.3)
 
-On a test event, in the Location card under Capacity: **Questions for
-registrants**. Add a question, write it, choose Radio, tick Required, add three
-options, tick **Allow additional info** on one, drag the last option to the
-top, and save. Reopen: the order is as you dragged it. Add questions until
-there are five: **Add question** goes. Tick **This is a hybrid event**: each
-question offers **In person only**. Remove an option and save. Open the event's
-registrations page: its settings panel shows no questions section.
+On a test event, in the **Questions for registrants** card under the Location
+card. Write the first question, choose **Pick one**, tick Required, add three
+options with **+ Add option**, tick **Allow additional info** on one, drag the
+last option to the top by its handle, and save. Reopen: the order is as you
+dragged it. Add questions with **+ Add question** until there are five: the
+button goes. Tick **This is a hybrid event**: each question offers **In person
+only**. Remove an option with its x and save. Open the event's registrations
+page: its settings panel shows no questions section.
 
 **Why it needs a person:** dragging with a real mouse and a real save.
 
@@ -2857,8 +2858,21 @@ Spanish.
 
 **Why it needs a person:** the real caladmin.
 
-## 2. Needs real conditions
-Waiting for an unattended job to fire, a real removal at source, or a real event
+### 1.199 The questions card by keyboard and on a phone (3.106.3)
+
+On **Add event**, the **Questions for registrants** card opens on one empty
+question. Using the keyboard only: Tab into the question, type it, Tab to
+Required and press Space, Tab to the x and see the ring around it, Tab on to
+the options. On an option's handle, press Up and Down: the option moves and the
+handle keeps focus. Save, then reopen and check the order held. Open the same
+event on a phone: the question box takes its own line, Required, In person
+only and the x sit on the line under it, and nothing runs off the side.
+
+**Why it needs a person:** a real keyboard, a real screen reader reading the
+three button names ("Remove question", "Remove option", "Move option up or
+down"), and a real phone.
+
+## 2. Needs real conditionsWaiting for an unattended job to fire, a real removal at source, or a real event
 with real registrations and real mail.
 
 ### 2.20 A real cancellation, with a message for the registrants (3.72.0)
@@ -3441,8 +3455,22 @@ were told."
 **Why it needs real conditions:** real mail, which cannot be recalled. Use
 addresses you own.
 
-## 3. Blocked on other people
-Nothing here can move until somebody outside the build answers.
+### 2.39 Deleting a series that has only a waitlist (3.106.3)
+
+A test series with two events, capacity 1 each. Register **A** on one and put
+**B** and **C** (addresses you read) on its waitlist, then remove A on the
+registrations list so nobody is registered. On the series, **Remove**, choose
+deleting the events, and continue: the screen offers to cancel instead, saying
+"Nobody is registered, and 2 people are on a waitlist", with **Cancel these and
+email the 2 people**, **Cancel these without telling them** and **Delete them
+anyway**. Choose the first: B and C each get one waitlist cancellation, and the
+series screen says 2 people on the waitlist were told. On a second test series
+with somebody registered, the screen offers no **Delete them anyway**.
+
+**Why it needs real conditions:** real mail, which cannot be recalled. Use
+addresses you own.
+
+## 3. Blocked on other peopleNothing here can move until somebody outside the build answers.
 
 | Who | What is needed | Status |
 |---|---|---|

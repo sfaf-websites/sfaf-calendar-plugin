@@ -1245,19 +1245,33 @@ class SFAF_Portal {
                 if ( 'delete_events' === $mode ) {
                     $in_series = SFAF_Series::events( $term_id );
                     $counts    = SFAF_Announce::count_affected( $in_series );
+                    /*
+                     * THE WAITLIST IS OFFERED THE SAME CHANCE TO BE TOLD
+                     * (3.106.2 for one event, 3.106.3 for a series). Counted
+                     * apart, never added to the registrations: the guard below
+                     * that REFUSES deletion still asks for registrations only.
+                     */
+                    $waiting   = SFAF_Announce::count_waitlisted( $in_series );
+                    $instead   = isset( $_POST['instead'] ) ? sanitize_key( wp_unslash( $_POST['instead'] ) ) : '';
 
                     $confirmed = isset( $_POST['cancel_instead_confirmed'] );
 
-                    if ( $counts['people'] > 0 && ! $confirmed ) {
+                    if ( ( $counts['people'] > 0 || $waiting > 0 ) && ! $confirmed ) {
                         set_transient( 'sfaf_series_delete_blocked_' . $user->ID, array(
                             'series_id' => $term_id,
                             'counts'    => $counts,
+                            'waiting'   => $waiting,
                             'events'    => $in_series,
                         ), 300 );
+                        $this->redirect( 'series/remove/' . $term_id, array( 'msg' => $counts['people'] > 0 ? 'series_needs_cancel' : 'series_has_waitlist' ) );
+                    }
+
+                    // With anybody registered, deleting is refused whatever was posted.
+                    if ( $counts['people'] > 0 && 'cancel' !== $instead ) {
                         $this->redirect( 'series/remove/' . $term_id, array( 'msg' => 'series_needs_cancel' ) );
                     }
 
-                    if ( $counts['people'] > 0 && $confirmed && 'cancel' === ( isset( $_POST['instead'] ) ? sanitize_key( wp_unslash( $_POST['instead'] ) ) : '' ) ) {
+                    if ( ( $counts['people'] > 0 || $waiting > 0 ) && $confirmed && 'cancel' === $instead ) {
                         $visibility = ( isset( $_POST['cancel_visibility'] ) && 'hide' === $_POST['cancel_visibility'] ) ? 'hide' : 'stay';
                         foreach ( $in_series as $eid ) {
                             SFAF_Cancellation::set( $eid, true, $visibility );
@@ -4101,6 +4115,7 @@ class SFAF_Portal {
             'bulk_pub_none'  => 'Nothing was published. Tick the drafts you want on the public calendar, then press Publish. A draft that says why it cannot be published is not one this button can touch.',
             'delete_needs_cancel' => 'This event has people registered, so it cannot be deleted. Cancel it instead: that keeps the registrations, closes new ones, stops the reminders, and offers to tell everybody who signed up. Once it is cancelled you can delete it.',
             'series_needs_cancel' => 'Some events in this series have people registered, so deleting them is refused. Cancel them instead, below. Once they are cancelled and the people who signed up have been told, the series can be deleted.',
+            'series_has_waitlist' => 'Some events in this series have people on a waitlist. Cancel them instead, below, to email those people, or delete them anyway.',
             'cancelled'      => 'Event cancelled. It takes no new registrations, and neither the morning-of reminder nor the two-hour summary will go out for it.',
             'uncancelled'    => 'Event is on again. Registrations are open and its reminders will go out as usual.',
             'cancel_hidden'  => 'Off the public calendar. It is still cancelled, its page still opens and still says so, and the registrations are kept. Nobody has been told.',
@@ -9767,16 +9782,26 @@ class SFAF_Portal {
         }
 
         if ( $blocked ) :
-            $c = $blocked['counts'];
+            $c       = $blocked['counts'];
+            $waiting = isset( $blocked['waiting'] ) ? (int) $blocked['waiting'] : 0;
+            $people  = (int) $c['people'];
+            $told_n  = $people + $waiting;
             ?>
-            <div class="uc-card uc-cancel-instead">
+            <div class="uc-card uc-cancel-instead" data-uc-cancel-instead>
                 <div class="uc-card-head"><h2>Cancel these instead of deleting them</h2></div>
-                <p class="uc-hint">
-                    <strong><?php echo (int) $c['people']; ?></strong>
-                    <?php echo esc_html( 1 === (int) $c['people'] ? 'person is' : 'people are' ); ?>
-                    registered across <?php echo (int) $c['events']; ?>
-                    <?php echo esc_html( 1 === (int) $c['events'] ? 'event' : 'events' ); ?> in this series.
-                    Deleting them would leave those people with nothing: no page to visit and no message.
+                <?php // The two numbers apart (3.106.3): registered, then waiting. ?>
+                <p class="uc-hint" data-uc-cancel-instead-counts data-uc-people="<?php echo $people; ?>" data-uc-waiting="<?php echo $waiting; ?>">
+                    <?php if ( $people > 0 ) : ?>
+                        <strong><?php echo $people; ?></strong>
+                        <?php echo esc_html( 1 === $people ? 'person is' : 'people are' ); ?> registered<?php echo $waiting > 0 ? ' and' : ''; ?>
+                    <?php else : ?>
+                        Nobody is registered, and
+                    <?php endif; ?>
+                    <?php if ( $waiting > 0 ) : ?>
+                        <strong><?php echo $waiting; ?></strong>
+                        <?php echo esc_html( 1 === $waiting ? 'person is' : 'people are' ); ?> on a waitlist
+                    <?php endif; ?>
+                    across the events in this series.
                     Cancelling keeps every registration, closes new ones, and stops the reminders.
                 </p>
                 <form method="post" action="<?php echo esc_url( $this->url( 'series/remove/' . $term_id ) ); ?>">
@@ -9812,17 +9837,23 @@ class SFAF_Portal {
                      */
                     ?>
                     <p class="uc-hint">
-                        One email each, however many of these dates they were registered for.
+                        One email each, however many of these dates they were registered or waiting for.
                     </p>
 
                     <div class="uc-form-actions">
                         <button type="submit" name="notify_choice" value="send" class="uc-btn uc-btn-primary">
-                            Cancel these and email the <?php echo (int) $c['people']; ?>
-                            <?php echo esc_html( 1 === (int) $c['people'] ? 'person' : 'people' ); ?>
+                            Cancel these and email the <?php echo (int) $told_n; ?>
+                            <?php echo esc_html( 1 === $told_n ? 'person' : 'people' ); ?>
                         </button>
                         <button type="submit" name="notify_choice" value="silent" class="uc-btn">
                             Cancel these without telling them
                         </button>
+                        <?php if ( 0 === $people ) : ?>
+                            <?php // Nobody holds a place, so deleting is not refused. ?>
+                            <button type="submit" name="instead" value="delete" class="uc-btn" data-uc-delete-anyway>
+                                Delete them anyway
+                            </button>
+                        <?php endif; ?>
                         <a class="uc-btn" href="<?php echo esc_url( $this->url( 'series/edit/' . $term_id ) ); ?>">Leave everything alone</a>
                     </div>
                 </form>
@@ -13509,13 +13540,24 @@ class SFAF_Portal {
                         $rsvp_placed,
                         (array) $this->render_location_field( $event_id, $s_loc, $prov, $rsvp_ctx )
                     );
-                    // Questions for registrants, with the other RSVP settings (3.106.2).
-                    $rsvp_placed = array_merge(
-                        $rsvp_placed,
-                        (array) $this->render_rsvp_settings( $rsvp_ctx, array( 'questions' ), $rsvp_placed )
-                    );
                     ?>
                 </section>
+
+                <?php
+                // Questions for registrants: its own card, under the Location
+                // card that holds the other RSVP settings (3.106.3).
+                if ( in_array( 'questions', $this->rsvp_setting_fields( $rsvp_ctx ), true ) ) :
+                    ?>
+                    <section class="uc-bento-card uc-questions-card" data-uc-questions-card>
+                        <h2 class="uc-bento-title">Questions for registrants</h2>
+                        <?php
+                        $rsvp_placed = array_merge(
+                            $rsvp_placed,
+                            (array) $this->render_rsvp_settings( $rsvp_ctx, array( 'questions' ), $rsvp_placed )
+                        );
+                        ?>
+                    </section>
+                <?php endif; ?>
 
                 <?php
                 /*
@@ -15954,30 +15996,32 @@ class SFAF_Portal {
     }
 
     /**
-     * QUESTIONS FOR REGISTRANTS, IN THE EDITOR (3.106.2).
+     * QUESTIONS FOR REGISTRANTS, IN THE EDITOR (3.106.2, redrawn 3.106.3).
      *
-     * Every question and option is a real field named by position, so a save
-     * posts them in the order they are on the screen; portal.js renumbers the
-     * names after every add, remove and drag. Each carries its id in a hidden
-     * field so an answer keeps pointing at it through an edit. Add and remove
-     * clone the two templates at the end.
+     * Its own card, below the Location card; each question a sub-card on the
+     * surface tint with a lighter edge. Every question and option is a real
+     * field named by position, so a save posts them in screen order;
+     * portal.js renumbers the names after every add, remove and move. Each
+     * carries its id in a hidden field so an answer keeps pointing at it
+     * through an edit. Add and remove clone the two templates at the end. An
+     * event with no questions opens on one blank one, which a save drops.
      *
      * @param int $event_id 0 on Add event.
      */
     private function render_questions_editor( $event_id ) {
         $questions = $event_id ? SFAF_Questions::for_event( $event_id ) : array();
         $hybrid    = $event_id && SFAF_Online::is_hybrid( $event_id );
+        $blocks    = $questions ? $questions : array( null );
         ?>
-        <div class="uc-field uc-questions" data-uc-questions data-uc-questions-max="<?php echo (int) SFAF_Questions::MAX; ?>">
+        <div class="uc-questions" data-uc-questions data-uc-questions-max="<?php echo (int) SFAF_Questions::MAX; ?>">
             <input type="hidden" name="uc_questions_present" value="1" />
-            <span class="uc-field-label">Questions for registrants</span>
-            <span class="uc-hint">Ask registrants anything you need to know before the event.</span>
+            <p class="uc-hint uc-questions-hint">Ask registrants anything you need to know before the event.</p>
             <ol class="uc-q-list" data-uc-q-list>
-                <?php foreach ( $questions as $i => $q ) {
+                <?php foreach ( $blocks as $i => $q ) {
                     $this->render_question_block( $i, $q, $hybrid );
                 } ?>
             </ol>
-            <button type="button" class="uc-btn uc-btn-sm" data-uc-q-add<?php echo count( $questions ) >= SFAF_Questions::MAX ? ' hidden' : ''; ?>>Add question</button>
+            <button type="button" class="uc-q-add" data-uc-q-add<?php echo count( $blocks ) >= SFAF_Questions::MAX ? ' hidden' : ''; ?>>+ Add question</button>
             <template data-uc-q-template><?php $this->render_question_block( '__Q__', null, $hybrid ); ?></template>
             <template data-uc-o-template><?php $this->render_option_row( '__Q__', '__O__', null ); ?></template>
         </div>
@@ -15993,40 +16037,38 @@ class SFAF_Portal {
         ?>
         <li class="uc-q" data-uc-q>
             <input type="hidden" name="<?php echo esc_attr( $base ); ?>[id]" value="<?php echo esc_attr( $id ); ?>" data-uc-q-name="id" />
-            <label class="uc-field">
-                <span class="uc-field-label">Question</span>
-                <input type="text" name="<?php echo esc_attr( $base ); ?>[text]" data-uc-q-name="text"
-                       value="<?php echo esc_attr( $q ? $q['text'] : '' ); ?>" maxlength="<?php echo (int) SFAF_Questions::MAX_TEXT; ?>" />
-            </label>
-            <fieldset class="uc-q-style">
-                <legend class="uc-field-label">Answer style</legend>
-                <label class="uc-radio-row">
-                    <input type="radio" name="<?php echo esc_attr( $base ); ?>[style]" value="any" data-uc-q-name="style" <?php checked( 'any', $style ); ?> />
-                    <span>Checkboxes (pick any)</span>
+            <div class="uc-q-top">
+                <label class="uc-q-text">
+                    <span class="uc-visually-hidden">Question</span>
+                    <input type="text" name="<?php echo esc_attr( $base ); ?>[text]" data-uc-q-name="text" placeholder="Question"
+                           value="<?php echo esc_attr( $q ? $q['text'] : '' ); ?>" maxlength="<?php echo (int) SFAF_Questions::MAX_TEXT; ?>" />
                 </label>
-                <label class="uc-radio-row">
-                    <input type="radio" name="<?php echo esc_attr( $base ); ?>[style]" value="one" data-uc-q-name="style" <?php checked( 'one', $style ); ?> />
-                    <span>Radio (pick one)</span>
-                </label>
-            </fieldset>
-            <label class="uc-check">
-                <input type="checkbox" name="<?php echo esc_attr( $base ); ?>[required]" value="1" data-uc-q-name="required" <?php checked( $q && $q['required'] ); ?> />
-                Required
-            </label>
-            <label class="uc-check" data-uc-q-inperson<?php echo $hybrid ? '' : ' hidden'; ?>>
-                <input type="checkbox" name="<?php echo esc_attr( $base ); ?>[in_person]" value="1" data-uc-q-name="in_person" <?php checked( $q && $q['in_person'] ); ?> />
-                In person only
-            </label>
-            <div class="uc-field">
-                <span class="uc-field-label">Answer options</span>
-                <ul class="uc-q-options" data-uc-o-list>
-                    <?php foreach ( $opts as $j => $o ) {
-                        $this->render_option_row( $i, $j, $o );
-                    } ?>
-                </ul>
-                <button type="button" class="uc-btn uc-btn-sm" data-uc-o-add>Add option</button>
+                <div class="uc-q-ticks">
+                    <label class="uc-check">
+                        <input type="checkbox" name="<?php echo esc_attr( $base ); ?>[required]" value="1" data-uc-q-name="required" <?php checked( $q && $q['required'] ); ?> />
+                        Required
+                    </label>
+                    <label class="uc-check" data-uc-q-inperson<?php echo $hybrid ? '' : ' hidden'; ?>>
+                        <input type="checkbox" name="<?php echo esc_attr( $base ); ?>[in_person]" value="1" data-uc-q-name="in_person" <?php checked( $q && $q['in_person'] ); ?> />
+                        In person only
+                    </label>
+                    <button type="button" class="uc-icon-btn" data-uc-q-remove aria-label="Remove question"><?php echo sfaf_icon( 'x', array( 'size' => '16px' ) ); ?></button>
+                </div>
             </div>
-            <button type="button" class="uc-btn uc-btn-sm" data-uc-q-remove>Remove question</button>
+            <div class="uc-seg uc-q-style" role="radiogroup" aria-label="Answer style">
+                <?php foreach ( array( 'any' => 'Pick any', 'one' => 'Pick one' ) as $val => $label ) : ?>
+                    <label class="uc-seg-opt">
+                        <input type="radio" name="<?php echo esc_attr( $base ); ?>[style]" value="<?php echo esc_attr( $val ); ?>" data-uc-q-name="style" <?php checked( $val, $style ); ?> />
+                        <span><?php echo esc_html( $label ); ?></span>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+            <ul class="uc-q-options" data-uc-o-list aria-label="Answer options">
+                <?php foreach ( $opts as $j => $o ) {
+                    $this->render_option_row( $i, $j, $o );
+                } ?>
+            </ul>
+            <button type="button" class="uc-o-add" data-uc-o-add>+ Add option</button>
         </li>
         <?php
     }
@@ -16035,20 +16077,21 @@ class SFAF_Portal {
     private function render_option_row( $i, $j, $o ) {
         $base = 'uc_questions[' . $i . '][options][' . $j . ']';
         ?>
-        <li class="uc-q-option" data-uc-o draggable="true">
-            <span class="uc-q-grip" data-uc-o-grip aria-hidden="true"><?php echo sfaf_icon( 'menu', array( 'size' => '16px' ) ); ?></span>
+        <li class="uc-q-option" data-uc-o>
+            <button type="button" class="uc-icon-btn uc-q-grip" data-uc-o-grip aria-label="Move option up or down"><?php echo sfaf_icon( 'menu', array( 'size' => '16px' ) ); ?></button>
             <input type="hidden" name="<?php echo esc_attr( $base ); ?>[id]" value="<?php echo esc_attr( $o ? $o['id'] : '' ); ?>" data-uc-o-name="id" />
-            <input type="text" name="<?php echo esc_attr( $base ); ?>[text]" data-uc-o-name="text" aria-label="Option"
+            <input type="text" name="<?php echo esc_attr( $base ); ?>[text]" data-uc-o-name="text" aria-label="Option" placeholder="Option"
                    value="<?php echo esc_attr( $o ? $o['text'] : '' ); ?>" maxlength="<?php echo (int) SFAF_Questions::MAX_TEXT; ?>" />
-            <label class="uc-check">
-                <input type="checkbox" name="<?php echo esc_attr( $base ); ?>[more]" value="1" data-uc-o-name="more" <?php checked( $o && $o['more'] ); ?> />
-                Allow additional info
-            </label>
-            <button type="button" class="uc-btn uc-btn-sm" data-uc-o-remove>Remove</button>
+            <span class="uc-q-option-tail">
+                <label class="uc-check">
+                    <input type="checkbox" name="<?php echo esc_attr( $base ); ?>[more]" value="1" data-uc-o-name="more" <?php checked( $o && $o['more'] ); ?> />
+                    Allow additional info
+                </label>
+                <button type="button" class="uc-icon-btn" data-uc-o-remove aria-label="Remove option"><?php echo sfaf_icon( 'x', array( 'size' => '16px' ) ); ?></button>
+            </span>
         </li>
         <?php
     }
-
     private function render_notify_box( $user, $event_id ) {
         /*
          * ON ADD EVENT THERE IS NO POST YET (3.106.2). Whoever is adding it

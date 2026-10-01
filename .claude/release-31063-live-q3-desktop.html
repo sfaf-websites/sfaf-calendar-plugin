@@ -102,7 +102,7 @@
                            >
                             <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-clock" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>
                             <span class="uc-nav-label">Pending</span>
-                                                            <span class="uc-nav-badge">10<span class="uc-visually-hidden"> waiting for review</span></span>
+                                                            <span class="uc-nav-badge">4<span class="uc-visually-hidden"> waiting for review</span></span>
                                                     </a>
                                                                     <a href="https://resources.sfaf.org/caladmin/users"
                            class="uc-nav-item"
@@ -153,9 +153,9 @@
         
         
         
-                <form method="post" id="uc-event-form-501" action="https://resources.sfaf.org/caladmin/events/edit/501" class="uc-form">
+                <form method="post" id="uc-event-form-502" action="https://resources.sfaf.org/caladmin/events/edit/502" class="uc-form">
             <input type="hidden" name="uc_action" value="save_event" />
-            <input type="hidden" name="event_id" value="501" />
+            <input type="hidden" name="event_id" value="502" />
             <input type="hidden" name="uc_nonce" value="nonce" />
             <p class="uc-hint uc-required-note">Fields marked * are required to publish.</p>
 
@@ -205,7 +205,7 @@
                     </label>
                                     <div class="uc-field">
                     <span class="uc-field-label">Description<span class="uc-req" aria-hidden="true">*</span> </span>
-                    <textarea name="description" id="uc-description">&lt;p&gt;Words.&lt;/p&gt;</textarea>                <details class="uc-desc-images" data-uc-desc-images
+                    <textarea name="description" id="uc-description"></textarea>                <details class="uc-desc-images" data-uc-desc-images
                  data-uc-ajax="https://resources.sfaf.org/wp-admin/admin-ajax.php"
                  data-uc-action="sfaf_desc_image"
                  data-uc-field="uc_desc_image"
@@ -241,7 +241,7 @@
                                                 <span class="uc-img-source-tag" data-uc-img-source-tag
                               data-uc-img-source-own="Event-specific">Placeholder</span>
                                             </span>
-                                                        <div class="uc-image-preview" id="uc-image-preview-e501"
+                                                        <div class="uc-image-preview" id="uc-image-preview-e502"
              data-uc-image-preview style="display:none;">
             <img src="" alt="" data-uc-image-preview-img />
         </div>
@@ -253,7 +253,7 @@
                         <label class="uc-field uc-image-url-field">
             <span class="uc-field-label">Or an image URL                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="" aria-label="More about the image URL">?</button><span class="uc-help-body" id="" data-uc-help-body>A picture set here overrides the series image for this one date. The URL is the fallback: it is used only when no image has been chosen from the library, so pasting one never fights with a chosen file.</span>            </span>
             <input type="url" name="image_url"
-                   id="uc-image-url-e501"
+                   id="uc-image-url-e502"
                    data-uc-image-url value=""
                    placeholder="https://…/image.jpg" />
         </label>
@@ -756,7 +756,7 @@
                     </label>
                     <label class="uc-field uc-venue-street">
                         <span class="uc-field-label">Street</span>
-                        <input type="text" name="location_street" value="1035 Market St" placeholder="Dolores Park, near the tennis courts" />
+                        <input type="text" name="location_street" value="" placeholder="Dolores Park, near the tennis courts" />
                     </label>
                     <label class="uc-field uc-venue-city">
                         <span class="uc-field-label">City</span>
@@ -771,8 +771,7 @@
                         <input type="text" name="location_zip" value="" placeholder="94114" maxlength="10" />
                     </label>
                 </div>
-                                                    <p class="uc-hint">Shows as: <strong>1035 Market St</strong></p>
-                            </div>
+                                            </div>
             </div>                            <div class="uc-field uc-capacity-row" data-uc-capacity-row>
                     <span class="uc-field-label">
                         Capacity
@@ -836,7 +835,7 @@
             <ul class="uc-q-options" data-uc-o-list aria-label="Answer options">
                         <li class="uc-q-option" data-uc-o>
             <button type="button" class="uc-icon-btn uc-q-grip" data-uc-o-grip aria-label="Move option up or down"><svg class="sfaf-icon sfaf-icon-menu" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-            <input type="hidden" name="uc_questions[0][options][0][id]" value="oaaaaaaaaa1" data-uc-o-name="id" />
+            <input type="hidden" name="uc_questions[0][options][0][id]" value="o0000000001" data-uc-o-name="id" />
             <input type="text" name="uc_questions[0][options][0][text]" data-uc-o-name="text" aria-label="Option" placeholder="Option"
                    value="Vegetarian" maxlength="300" />
             <span class="uc-q-option-tail">
@@ -849,12 +848,38 @@
         </li>
                 <li class="uc-q-option" data-uc-o>
             <button type="button" class="uc-icon-btn uc-q-grip" data-uc-o-grip aria-label="Move option up or down"><svg class="sfaf-icon sfaf-icon-menu" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-            <input type="hidden" name="uc_questions[0][options][1][id]" value="oaaaaaaaaa2" data-uc-o-name="id" />
+            <input type="hidden" name="uc_questions[0][options][1][id]" value="o0000000002" data-uc-o-name="id" />
             <input type="text" name="uc_questions[0][options][1][text]" data-uc-o-name="text" aria-label="Option" placeholder="Option"
+                   value="Vegan" maxlength="300" />
+            <span class="uc-q-option-tail">
+                <label class="uc-check">
+                    <input type="checkbox" name="uc_questions[0][options][1][more]" value="1" data-uc-o-name="more"  />
+                    Allow additional info
+                </label>
+                <button type="button" class="uc-icon-btn" data-uc-o-remove aria-label="Remove option"><svg class="sfaf-icon sfaf-icon-x" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></svg></button>
+            </span>
+        </li>
+                <li class="uc-q-option" data-uc-o>
+            <button type="button" class="uc-icon-btn uc-q-grip" data-uc-o-grip aria-label="Move option up or down"><svg class="sfaf-icon sfaf-icon-menu" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+            <input type="hidden" name="uc_questions[0][options][2][id]" value="o0000000003" data-uc-o-name="id" />
+            <input type="text" name="uc_questions[0][options][2][text]" data-uc-o-name="text" aria-label="Option" placeholder="Option"
+                   value="Gluten free" maxlength="300" />
+            <span class="uc-q-option-tail">
+                <label class="uc-check">
+                    <input type="checkbox" name="uc_questions[0][options][2][more]" value="1" data-uc-o-name="more"  />
+                    Allow additional info
+                </label>
+                <button type="button" class="uc-icon-btn" data-uc-o-remove aria-label="Remove option"><svg class="sfaf-icon sfaf-icon-x" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></svg></button>
+            </span>
+        </li>
+                <li class="uc-q-option" data-uc-o>
+            <button type="button" class="uc-icon-btn uc-q-grip" data-uc-o-grip aria-label="Move option up or down"><svg class="sfaf-icon sfaf-icon-menu" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+            <input type="hidden" name="uc_questions[0][options][3][id]" value="o0000000004" data-uc-o-name="id" />
+            <input type="text" name="uc_questions[0][options][3][text]" data-uc-o-name="text" aria-label="Option" placeholder="Option"
                    value="Allergy" maxlength="300" />
             <span class="uc-q-option-tail">
                 <label class="uc-check">
-                    <input type="checkbox" name="uc_questions[0][options][1][more]" value="1" data-uc-o-name="more"  checked="checked" />
+                    <input type="checkbox" name="uc_questions[0][options][3][more]" value="1" data-uc-o-name="more"  checked="checked" />
                     Allow additional info
                 </label>
                 <button type="button" class="uc-icon-btn" data-uc-o-remove aria-label="Remove option"><svg class="sfaf-icon sfaf-icon-x" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></svg></button>
@@ -896,7 +921,7 @@
             <ul class="uc-q-options" data-uc-o-list aria-label="Answer options">
                         <li class="uc-q-option" data-uc-o>
             <button type="button" class="uc-icon-btn uc-q-grip" data-uc-o-grip aria-label="Move option up or down"><svg class="sfaf-icon sfaf-icon-menu" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-            <input type="hidden" name="uc_questions[1][options][0][id]" value="obbbbbbbbb1" data-uc-o-name="id" />
+            <input type="hidden" name="uc_questions[1][options][0][id]" value="o0000000005" data-uc-o-name="id" />
             <input type="text" name="uc_questions[1][options][0][text]" data-uc-o-name="text" aria-label="Option" placeholder="Option"
                    value="Yes" maxlength="300" />
             <span class="uc-q-option-tail">
@@ -909,12 +934,85 @@
         </li>
                 <li class="uc-q-option" data-uc-o>
             <button type="button" class="uc-icon-btn uc-q-grip" data-uc-o-grip aria-label="Move option up or down"><svg class="sfaf-icon sfaf-icon-menu" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-            <input type="hidden" name="uc_questions[1][options][1][id]" value="obbbbbbbbb2" data-uc-o-name="id" />
+            <input type="hidden" name="uc_questions[1][options][1][id]" value="o0000000006" data-uc-o-name="id" />
             <input type="text" name="uc_questions[1][options][1][text]" data-uc-o-name="text" aria-label="Option" placeholder="Option"
                    value="No" maxlength="300" />
             <span class="uc-q-option-tail">
                 <label class="uc-check">
                     <input type="checkbox" name="uc_questions[1][options][1][more]" value="1" data-uc-o-name="more"  />
+                    Allow additional info
+                </label>
+                <button type="button" class="uc-icon-btn" data-uc-o-remove aria-label="Remove option"><svg class="sfaf-icon sfaf-icon-x" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></svg></button>
+            </span>
+        </li>
+                    </ul>
+            <button type="button" class="uc-o-add" data-uc-o-add>+ Add option</button>
+        </li>
+                <li class="uc-q" data-uc-q>
+            <input type="hidden" name="uc_questions[2][id]" value="qcccccccccc" data-uc-q-name="id" />
+            <div class="uc-q-top">
+                <label class="uc-q-text">
+                    <span class="uc-visually-hidden">Question</span>
+                    <input type="text" name="uc_questions[2][text]" data-uc-q-name="text" placeholder="Question"
+                           value="How did you hear about this event?" maxlength="300" />
+                </label>
+                <div class="uc-q-ticks">
+                    <label class="uc-check">
+                        <input type="checkbox" name="uc_questions[2][required]" value="1" data-uc-q-name="required"  />
+                        Required
+                    </label>
+                    <label class="uc-check" data-uc-q-inperson>
+                        <input type="checkbox" name="uc_questions[2][in_person]" value="1" data-uc-q-name="in_person"  />
+                        In person only
+                    </label>
+                    <button type="button" class="uc-icon-btn" data-uc-q-remove aria-label="Remove question"><svg class="sfaf-icon sfaf-icon-x" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></svg></button>
+                </div>
+            </div>
+            <div class="uc-seg uc-q-style" role="radiogroup" aria-label="Answer style">
+                                    <label class="uc-seg-opt">
+                        <input type="radio" name="uc_questions[2][style]" value="any" data-uc-q-name="style"  checked="checked" />
+                        <span>Pick any</span>
+                    </label>
+                                    <label class="uc-seg-opt">
+                        <input type="radio" name="uc_questions[2][style]" value="one" data-uc-q-name="style"  />
+                        <span>Pick one</span>
+                    </label>
+                            </div>
+            <ul class="uc-q-options" data-uc-o-list aria-label="Answer options">
+                        <li class="uc-q-option" data-uc-o>
+            <button type="button" class="uc-icon-btn uc-q-grip" data-uc-o-grip aria-label="Move option up or down"><svg class="sfaf-icon sfaf-icon-menu" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+            <input type="hidden" name="uc_questions[2][options][0][id]" value="o0000000007" data-uc-o-name="id" />
+            <input type="text" name="uc_questions[2][options][0][text]" data-uc-o-name="text" aria-label="Option" placeholder="Option"
+                   value="A friend" maxlength="300" />
+            <span class="uc-q-option-tail">
+                <label class="uc-check">
+                    <input type="checkbox" name="uc_questions[2][options][0][more]" value="1" data-uc-o-name="more"  />
+                    Allow additional info
+                </label>
+                <button type="button" class="uc-icon-btn" data-uc-o-remove aria-label="Remove option"><svg class="sfaf-icon sfaf-icon-x" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></svg></button>
+            </span>
+        </li>
+                <li class="uc-q-option" data-uc-o>
+            <button type="button" class="uc-icon-btn uc-q-grip" data-uc-o-grip aria-label="Move option up or down"><svg class="sfaf-icon sfaf-icon-menu" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+            <input type="hidden" name="uc_questions[2][options][1][id]" value="o0000000008" data-uc-o-name="id" />
+            <input type="text" name="uc_questions[2][options][1][text]" data-uc-o-name="text" aria-label="Option" placeholder="Option"
+                   value="Instagram" maxlength="300" />
+            <span class="uc-q-option-tail">
+                <label class="uc-check">
+                    <input type="checkbox" name="uc_questions[2][options][1][more]" value="1" data-uc-o-name="more"  />
+                    Allow additional info
+                </label>
+                <button type="button" class="uc-icon-btn" data-uc-o-remove aria-label="Remove option"><svg class="sfaf-icon sfaf-icon-x" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></svg></button>
+            </span>
+        </li>
+                <li class="uc-q-option" data-uc-o>
+            <button type="button" class="uc-icon-btn uc-q-grip" data-uc-o-grip aria-label="Move option up or down"><svg class="sfaf-icon sfaf-icon-menu" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+            <input type="hidden" name="uc_questions[2][options][2][id]" value="o0000000009" data-uc-o-name="id" />
+            <input type="text" name="uc_questions[2][options][2][text]" data-uc-o-name="text" aria-label="Option" placeholder="Option"
+                   value="SFAF newsletter" maxlength="300" />
+            <span class="uc-q-option-tail">
+                <label class="uc-check">
+                    <input type="checkbox" name="uc_questions[2][options][2][more]" value="1" data-uc-o-name="more"  />
                     Allow additional info
                 </label>
                 <button type="button" class="uc-icon-btn" data-uc-o-remove aria-label="Remove option"><svg class="sfaf-icon sfaf-icon-x" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></svg></button>
@@ -1022,18 +1120,18 @@
                 <div class="uc-picker-panel">
                                         <div class="uc-picker-tabs" role="tablist" aria-label="Who to notify" data-uc-picker-tabs>
                         <button type="button" role="tab" class="uc-picker-tab"
-                                id="uc-notify-501-tab-people"
-                                aria-controls="uc-notify-501-panel-people"
+                                id="uc-notify-502-tab-people"
+                                aria-controls="uc-notify-502-panel-people"
                                 aria-selected="true" data-uc-picker-tab="people">Individuals</button>
                         <button type="button" role="tab" class="uc-picker-tab"
-                                id="uc-notify-501-tab-teams"
-                                aria-controls="uc-notify-501-panel-teams"
+                                id="uc-notify-502-tab-teams"
+                                aria-controls="uc-notify-502-panel-teams"
                                 aria-selected="false" tabindex="-1" data-uc-picker-tab="teams">Teams</button>
                     </div>
 
                     <div role="tabpanel" class="uc-picker-panel-body"
-                         id="uc-notify-501-panel-people"
-                         aria-labelledby="uc-notify-501-tab-people"
+                         id="uc-notify-502-panel-people"
+                         aria-labelledby="uc-notify-502-tab-people"
                          data-uc-picker-panel="people">
                         <h4 class="uc-picker-heading">Individuals</h4>
                                                                             <p class="uc-muted">
@@ -1041,8 +1139,8 @@
                                             </div>
 
                     <div role="tabpanel" class="uc-picker-panel-body"
-                         id="uc-notify-501-panel-teams"
-                         aria-labelledby="uc-notify-501-tab-teams"
+                         id="uc-notify-502-panel-teams"
+                         aria-labelledby="uc-notify-502-tab-teams"
                          data-uc-picker-panel="teams">
                         <h4 class="uc-picker-heading">Teams</h4>
                                                     <p class="uc-muted">No teams yet. An admin can make one under Users &amp; Teams.</p>
@@ -1240,7 +1338,7 @@
 
                     <div class="uc-form-actions uc-form-actions-primary">
                 <p class="uc-form-actions-note">Saving keeps this event exactly as public as it is now.</p>
-                                                                <button type="submit" form="uc-event-form-501" name="save_mode" value="keep" class="uc-btn uc-btn-go uc-editor-save-main uc-editor-save">Save changes</button>
+                                                                <button type="submit" form="uc-event-form-502" name="save_mode" value="keep" class="uc-btn uc-btn-go uc-editor-save-main uc-editor-save">Save changes</button>
                                                                                                         <details class="uc-cancel-inline" id="uc-cancel-this" data-uc-disclosure>
                                 <summary class="uc-btn uc-btn-stop uc-cancel-inline-toggle" aria-expanded="false">
                     <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="14px" height="14px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
@@ -1248,9 +1346,9 @@
                 </summary>
                 <div class="uc-cancel-inline-body">
 
-                <form method="post" action="https://resources.sfaf.org/caladmin/events/edit/501" class="uc-cancel-form" data-uc-confirm-cancel>
+                <form method="post" action="https://resources.sfaf.org/caladmin/events/edit/502" class="uc-cancel-form" data-uc-confirm-cancel>
                     <input type="hidden" name="uc_action" value="cancel_event" />
-                    <input type="hidden" name="event_id" value="501" />
+                    <input type="hidden" name="event_id" value="502" />
                     <input type="hidden" name="uc_nonce" value="nonce" />
                     <fieldset class="uc-cancel-visibility">
                         <legend>What should happen to it on the public calendar?</legend>
@@ -1287,7 +1385,7 @@
 
                 </div>
         </details>
-                <button type="submit" form="uc-delete-event-501"
+                <button type="submit" form="uc-delete-event-502"
                 class="uc-btn uc-btn-stop uc-editor-delete"
                 data-uc-confirm="Delete this event? Nothing puts it back.">Delete</button>
                     </div>
@@ -1298,9 +1396,9 @@
 
         
                         <div class="uc-delete-block">
-                                            <form method="post" id="uc-delete-event-501" action="https://resources.sfaf.org/caladmin/events">
+                                            <form method="post" id="uc-delete-event-502" action="https://resources.sfaf.org/caladmin/events">
                     <input type="hidden" name="uc_action" value="trash_event" />
-                    <input type="hidden" name="event_id" value="501" />
+                    <input type="hidden" name="event_id" value="502" />
                     <input type="hidden" name="uc_nonce" value="nonce" />                </form>
                     </div>
                         </main>
@@ -1308,134 +1406,83 @@
         </div>
         <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.106.2"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.106.2"></script>
 <script src="../public/js/portal.js?ver=3.106.2"></script>
-<script>window.RQ_PAGE="editor-edit-desktop";(function () {
-var P = window.RQ_PAGE, out = { page: P, errors: [] };
+<script>window.RT_PAGE="q3-desktop";(function () {
+var P = window.RT_PAGE, out = { page: P, errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
 function text(el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }
 function seen(el) { return !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden'; }
 function rgb(s) { var m = String(s).match(/\d+(\.\d+)?/g); return m ? m.slice(0, 4).map(Number) : null; }
 function lum(c) { return [0, 1, 2].map(function (i) { var v = c[i] / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }).reduce(function (a, v, i) { return a + v * [0.2126, 0.7152, 0.0722][i]; }, 0); }
 function behind(el) {
-  for (var n = el; n && n.nodeType === 1; n = n.parentNode) {
-    var cs = getComputedStyle(n), c = rgb(cs.backgroundColor);
-    if (c && (c.length < 4 || c[3] > 0)) { return c; }
-  }
+  for (var n = el; n && n.nodeType === 1; n = n.parentNode) { var c = rgb(getComputedStyle(n).backgroundColor); if (c && (c.length < 4 || c[3] > 0)) { return c; } }
   return [255, 255, 255];
 }
-function contrast(el) {
-  var a = lum(rgb(getComputedStyle(el).color)), b = lum(behind(el));
-  return Math.round(((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)) * 100) / 100;
-}
+function contrast(el) { var a = lum(rgb(getComputedStyle(el).color)), b = lum(behind(el)); return Math.round(((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)) * 100) / 100; }
 function box(el) {
   if (!el) { return null; }
   var r = el.getBoundingClientRect(), cs = getComputedStyle(el);
   return { text: text(el), seen: seen(el), top: Math.round(r.top), left: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom),
-    w: Math.round(r.width), h: Math.round(r.height), color: cs.color, bg: cs.backgroundColor,
-    size: cs.fontSize, weight: cs.fontWeight, contrast: seen(el) ? contrast(el) : null };
+    w: Math.round(r.width), h: Math.round(r.height), color: cs.color, bg: cs.backgroundColor, border: cs.borderTopColor + ' ' + cs.borderTopWidth,
+    radius: cs.borderTopLeftRadius, pad: cs.paddingTop + ' ' + cs.paddingLeft, size: cs.fontSize, weight: cs.fontWeight, contrast: seen(el) ? contrast(el) : null };
 }
 function finish() {
   out.pageWidth = document.documentElement.scrollWidth;
   if (window.parent !== window) { window.parent.postMessage(JSON.stringify(out), '*'); return; }
   var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
 }
-function names(q) { return Array.prototype.map.call(q.querySelectorAll('input[name]'), function (i) { return i.name; }); }
-
 window.addEventListener('load', function () { setTimeout(function () {
-  if (P.indexOf('editor-') === 0) {
-    var root = document.querySelector('[data-uc-questions]');
-    out.notifications = text(document.querySelector('[data-uc-notifications-card] h2'));
-    if (!root) { return finish(); }
-    /* Its own card under the Location card since 3.106.3; release-31063-live.php measures it. */
-    var qcard = root.closest('[data-uc-questions-card]');
-    out.ownCard = !!qcard && !!qcard.previousElementSibling && /Location/.test(text(qcard.previousElementSibling.querySelector('h2')));
-    out.hint = box(root.querySelector(':scope > .uc-hint'));
-    var list = root.querySelector('[data-uc-q-list]');
-    var qs = function () { return list.querySelectorAll(':scope > [data-uc-q]'); };
-    out.start = qs().length;
-    out.inPersonSeen = Array.prototype.map.call(root.querySelectorAll('[data-uc-q-inperson]'), seen);
-    var add = root.querySelector('[data-uc-q-add]');
-    add.click();
-    var last = qs()[qs().length - 1];
-    out.added = { count: qs().length, names: names(last) };
-    out.questionBox = box(last);
-    out.optionRow = box(last.querySelector('[data-uc-o]'));
-    last.querySelector('[data-uc-o-add]').click();
-    out.optionAdded = names(last.querySelectorAll('[data-uc-o]')[1]);
-    while (qs().length < 5 && seen(add)) { add.click(); }
-    out.atFive = { count: qs().length, addSeen: seen(add) };
-    qs()[0].querySelector('[data-uc-q-remove]').click();
-    out.afterRemove = { count: qs().length, firstNames: names(qs()[0]).slice(0, 2), addSeen: seen(add) };
-    var hy = document.querySelector('[data-uc-hybrid-toggle]');
-    if (hy) {
-      hy.checked = !hy.checked; hy.dispatchEvent(new Event('change', { bubbles: true }));
-      out.inPersonAfterToggle = Array.prototype.map.call(root.querySelectorAll('[data-uc-q-inperson]'), seen);
-    }
+  if (P.indexOf('series-') === 0) {
+    var c = document.querySelector('[data-uc-cancel-instead-counts]');
+    out.counts = text(c);
+    out.buttons = Array.prototype.map.call(document.querySelectorAll('[data-uc-cancel-instead] button'), text);
+    out.card = box(document.querySelector('[data-uc-cancel-instead]'));
     return finish();
   }
-  if (P.indexOf('form-') === 0) {
-    var posted = null;
-    jQuery.ajax = function (opts) { posted = opts.data; return { fail: function () {} }; };
-    document.querySelector('.uc-rsvp-btn').click();
-    return setTimeout(function () {
-      var box0 = document.querySelector('#uc-rsvp-questions');
-      out.shown = seen(box0);
-      if (!out.shown) { return finish(); }
-      out.heading = box(box0.querySelector('.uc-rsvp-q-heading'));
-      out.legends = Array.prototype.map.call(box0.querySelectorAll('.uc-rsvp-q'), function (f) { return { text: text(f.querySelector('legend')), seen: seen(f) }; });
-      var fmt = document.querySelector('#uc-rsvp-format'), email = document.querySelector('#uc-rsvp-email'), first = document.querySelector('#uc-rsvp-first-name');
-      out.order = { afterFormat: !!(fmt.compareDocumentPosition(box0) & Node.DOCUMENT_POSITION_FOLLOWING), beforeName: !!(box0.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING), beforeEmail: !!(box0.compareDocumentPosition(email) & Node.DOCUMENT_POSITION_FOLLOWING) };
-      out.more = box(box0.querySelector('.uc-rsvp-q-more-label'));
-      out.moreInput = box(box0.querySelector('.uc-rsvp-q-more input'));
-      out.choice = box(box0.querySelector('.uc-rsvp-q-choice'));
-      out.legendBox = box(box0.querySelector('.uc-rsvp-q > legend'));
-      out.modal = box(document.querySelector('.uc-rsvp-modal'));
-      var ip = document.querySelector('#uc-rsvp-format input[value="in_person"]');
-      if (ip) { ip.checked = true; ip.dispatchEvent(new Event('change', { bubbles: true })); out.afterInPerson = Array.prototype.map.call(box0.querySelectorAll('.uc-rsvp-q'), seen); }
-      document.querySelector('#uc-rsvp-first-name').value = 'Lee';
-      document.querySelector('#uc-rsvp-email').value = 'lee@example.org';
-      document.querySelector('#uc-rsvp-submit-btn').click();
-      out.requiredError = text(document.querySelector('#uc-rsvp-error'));
-      out.postedWithout = posted;
-      var allergy = box0.querySelector('input[value="oaaaaaaaaa2"]');
-      allergy.checked = true;
-      box0.querySelector('.uc-rsvp-q-more input[data-o="oaaaaaaaaa2"]').value = 'Peanuts';
-      document.querySelector('#uc-rsvp-submit-btn').click();
-      out.posted = posted ? { answers: posted.answers, more: posted.answers_more, format: posted.format } : null;
-      finish();
-    }, 400);
+  var card = document.querySelector('[data-uc-questions-card]');
+  out.card = box(card);
+  if (!card) { return finish(); }
+  var cs = getComputedStyle(card);
+  out.cardStyle = { border: cs.borderTopColor + ' ' + cs.borderTopWidth, pad: cs.paddingTop, radius: cs.borderTopLeftRadius, bg: cs.backgroundColor };
+  out.title = text(card.querySelector('h2'));
+  out.hint = box(card.querySelector('.uc-questions-hint'));
+  var prev = card.previousElementSibling, next = card.nextElementSibling;
+  out.gapAbove = prev ? Math.round(card.getBoundingClientRect().top - prev.getBoundingClientRect().bottom) : null;
+  out.gapBelow = next ? Math.round(next.getBoundingClientRect().top - card.getBoundingClientRect().bottom) : null;
+  out.prevTitle = prev ? text(prev.querySelector('h2')) : '';
+  var qs = card.querySelectorAll('[data-uc-q]');
+  out.questions = qs.length;
+  out.subcards = Array.prototype.map.call(qs, function (q) {
+    var s = getComputedStyle(q), r = q.getBoundingClientRect(), cr = card.getBoundingClientRect();
+    return { bg: s.backgroundColor, border: s.borderTopColor + ' ' + s.borderTopWidth, radius: s.borderTopLeftRadius, inside: r.left >= cr.left && r.right <= cr.right,
+      overflow: Array.prototype.some.call(q.querySelectorAll('*'), function (n) { var b = n.getBoundingClientRect(); return b.width > 0 && b.right > r.right + 0.5; }) };
+  });
+  var q = qs[0];
+  var tbox = q.querySelector('.uc-q-text input'), req = q.querySelector('[data-uc-q-name="required"]').closest('label'), ip = q.querySelector('[data-uc-q-inperson]'), rm = q.querySelector('[data-uc-q-remove]');
+  out.top = { text: box(tbox), req: box(req), ip: box(ip), rm: box(rm), rmLabel: rm.getAttribute('aria-label'), rmType: rm.getAttribute('type'), rmWords: rm.textContent.trim(), rowW: Math.round(q.querySelector('.uc-q-top').getBoundingClientRect().width) };
+  out.seg = Array.prototype.map.call(q.querySelectorAll('.uc-q-style .uc-seg-opt'), function (l) { return { text: text(l), checked: l.querySelector('input').checked }; });
+  out.segBox = box(q.querySelector('.uc-q-style'));
+  out.segOn = box(q.querySelector('.uc-q-style input:checked + span'));
+  var opts = q.querySelectorAll('[data-uc-o]');
+  out.options = opts.length;
+  out.optRows = Array.prototype.map.call(opts, function (o) {
+    var b = o.querySelector('[data-uc-o-remove]'), g = o.querySelector('[data-uc-o-grip]');
+    return { grip: box(g), gripTag: g.tagName, gripLabel: g.getAttribute('aria-label'), input: box(o.querySelector('input[type="text"]')), rm: box(b), rmLabel: b.getAttribute('aria-label'), rmWords: b.textContent.trim(), h: Math.round(o.getBoundingClientRect().height) };
+  });
+  out.addOpt = box(q.querySelector('[data-uc-o-add]'));
+  out.addQ = box(card.querySelector('[data-uc-q-add]'));
+  out.addQBorder = getComputedStyle(card.querySelector('[data-uc-q-add]')).borderTopColor;
+  /* The focus ring, from the keyboard. */
+  rm.focus();
+  var f = getComputedStyle(rm);
+  out.focusRing = { style: f.outlineStyle, color: f.outlineColor, width: f.outlineWidth, active: document.activeElement === rm };
+  /* Up and Down on a grip. */
+  if (opts.length > 1) {
+    var g2 = opts[1].querySelector('[data-uc-o-grip]');
+    g2.focus();
+    g2.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true }));
+    var now = q.querySelectorAll('[data-uc-o]');
+    out.afterUp = { first: now[0].querySelector('input[type="text"]').value, firstName: now[0].querySelector('input[type="text"]').name, focusKept: document.activeElement === g2 };
   }
-  if (P.indexOf('rsvps-') === 0) {
-    var strip = document.querySelector('[data-uc-q-totals]');
-    out.strip = strip ? Array.prototype.map.call(strip.querySelectorAll('li'), text) : null;
-    out.stripBox = box(strip);
-    var counts = document.querySelector('.uc-rsvp-counts'), card = document.querySelector('.uc-card .uc-table');
-    out.stripAbove = strip && card ? !!(strip.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(counts.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING) : null;
-    var btns = document.querySelectorAll('[data-uc-rsvp-details]');
-    out.detailButtons = btns.length;
-    if (btns.length) {
-      var b = btns[0], row = document.getElementById(b.getAttribute('aria-controls'));
-      out.detailsBtn = box(b);
-      out.closed = { rowSeen: seen(row), expanded: b.getAttribute('aria-expanded') };
-      b.click();
-      out.opened = { rowSeen: seen(row), expanded: b.getAttribute('aria-expanded'), text: text(row), dt: box(row.querySelector('dt')), more: box(row.querySelector('.uc-rsvp-answer-more')) };
-      b.click();
-      out.reclosed = { rowSeen: seen(row), expanded: b.getAttribute('aria-expanded') };
-    }
-    return finish();
-  }
-  if (P.indexOf('cancel-') === 0) {
-    var form = document.querySelector('form[data-uc-confirm-cancel]:not([data-uc-confirm-reinstate])');
-    var c = form ? form.querySelector('[data-uc-cancel-count]') : null;
-    out.countText = text(c);
-    out.attrs = c ? { people: c.getAttribute('data-uc-cancel-count'), waiting: c.getAttribute('data-uc-cancel-waiting') } : null;
-    var d = form.closest('details'); if (d) { d.open = true; }
-    form.querySelector('button[type="submit"]').click();
-    return setTimeout(function () {
-      var dlg = document.querySelector('dialog.uc-notify-modal[open]');
-      out.dialog = dlg ? { lead: text(dlg.querySelector('.uc-confirm-msg')), buttons: Array.prototype.map.call(dlg.querySelectorAll('button'), text) } : null;
-      finish();
-    }, 300);
-  }
-  finish();
+  return finish();
 }, 500); });
 })();</script></body></html>

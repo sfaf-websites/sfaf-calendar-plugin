@@ -528,9 +528,9 @@ window.addEventListener('load', function () { setTimeout(function () {
     var root = document.querySelector('[data-uc-questions]');
     out.notifications = text(document.querySelector('[data-uc-notifications-card] h2'));
     if (!root) { return finish(); }
-    out.inLocation = !!root.closest('.uc-bento-card') && /Location/.test(text(root.closest('.uc-bento-card').querySelector('h2')));
-    out.afterCapacity = (function () { var c = document.querySelector('[data-uc-capacity-row]'); return !!c && !!(c.compareDocumentPosition(root) & Node.DOCUMENT_POSITION_FOLLOWING); })();
-    out.label = box(root.querySelector(':scope > .uc-field-label'));
+    /* Its own card under the Location card since 3.106.3; release-31063-live.php measures it. */
+    var qcard = root.closest('[data-uc-questions-card]');
+    out.ownCard = !!qcard && !!qcard.previousElementSibling && /Location/.test(text(qcard.previousElementSibling.querySelector('h2')));
     out.hint = box(root.querySelector(':scope > .uc-hint'));
     var list = root.querySelector('[data-uc-q-list]');
     var qs = function () { return list.querySelectorAll(':scope > [data-uc-q]'); };

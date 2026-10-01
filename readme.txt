@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.106.2
+Stable tag: 3.106.3
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,18 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.106.3 =
+
+**The Questions for registrants section redrawn, a series with only a waitlist offered the chance to tell it, and every planted fault caught again.**
+
+**THE QUESTIONS SECTION, REDRAWN.** It is its own card now, under the Location card, with the standard card edge and padding, the title "Questions for registrants" and the helper inside, and the same 16px above and below as any other card. Each question is a sub-card on the page tint with a hairline edge. Its top row is the question box taking the width, then Required, In person only on a hybrid event, and a remove button; on a phone the box takes its own line and the rest sits under it. The answer style is the segmented control, **Pick any** or **Pick one**, Pick any by default. Options are a tight list: a handle, the option box, Allow additional info and a remove button, with no words on the buttons. **+ Add option** is a link under the last option, in line with the option boxes; **+ Add question** is an outlined button under the last question. Every icon is a real button, labelled "Remove question", "Remove option" or "Move option up or down", with the accent focus ring, and the handle moves its option with Up and Down as well as by dragging. An event with no questions opens on one empty one, which a save drops. Saving and the stored data are unchanged.
+
+**DELETING A SERIES WITH A WAITLIST.** Deleting a series offered to cancel instead only when somebody was registered, so people waiting on its events were never told. The offer now appears whenever any of its events has somebody registered or somebody waiting, says the two numbers apart, and Cancel and email sends the waitlist its cancellation, one email per person. Deleting is still refused only for registrations: with nobody registered the offer has **Delete them anyway**, and with somebody registered a posted delete is turned back.
+
+**EVERY PLANT CAUGHT.** Ten planted faults carried since 3.106.0 no longer applied or no longer caught, and every check they tested still exists, so all ten were repaired rather than removed. Six followed code that had moved: the request form's picture check, rate limit and badge words into the shared submissions class, the series picture field's extra argument, the month window's bound, and the time formatter's language. One followed a rewritten comment. **"A value context joins paragraphs" found a gap in its check**: the description is now resolved in one function, which the check did not count as prose, so a strip there would have passed; the check counts it now and the plant targets it. **"Display starts filtering on the folder" planted a fault that is not one**: since 3.83.0 the picture rule lives in the template functions on purpose, so the plant now puts the folder question in a display surface, which is what the check forbids.
+
+**CHECKED.** In Chrome at 1280px and 390px: the card, its edge, padding and spacing; every sub-card on the tint, inside the card, overflowing nothing; the top row in order on a desktop and wrapped on a phone with the remove on the ticks' line; the segmented control's chosen colour; each remove a wordless 32px button with its label and the focus ring; + Add option in the link colour in line with the option boxes; + Add question outlined at its own width; Up on a handle moving the option, renumbering the fields and keeping focus; Add event opening on one question with Pick any; and the series removal screen with only a waitlist. The real series removal route on generated rows. Planted and caught: a question row that overflows at 390px; a question that is not a sub-card; a series deletion that ignores its waitlist; and the ten repaired. Every plant in the run is caught.
 
 = 3.106.2 =
 

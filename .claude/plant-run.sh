@@ -163,6 +163,9 @@ try cancel-waiting-uncounted "the dialog skips the waitlist: browser" .claude/re
 try notifications-edit-only "the Notifications card is Edit only" .claude/notifications-card-test.php
 try q-required-ignored "a required question is not enforced" .claude/questions-test.php
 try q-totals-any-status "the totals count the waitlist" .claude/questions-test.php
+try series-waitlist-ignored "a series delete ignores the waitlist" .claude/series-waitlist-test.php
+try q-row-overflows "a question row overflows at 390px" .claude/release-31063-live.php --run
+try q-subcard-plain "a question is not a sub-card" .claude/release-31063-live.php --run
 
 restore
 echo "-------------------------------------------"

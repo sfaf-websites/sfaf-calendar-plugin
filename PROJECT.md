@@ -9,7 +9,7 @@ typography, layout, CSS failure modes) or `CLAUDE.md` (standing working rules,
 the build gate, shell rules). When something here contradicts one of those,
 those win in their own remit and this file is wrong and should be fixed.
 
-Current version at last update of this file: **3.106.2**.
+Current version at last update of this file: **3.106.3**.
 
 ---
 
@@ -5070,6 +5070,15 @@ Deleting a **series** with registered events offers to cancel them all instead,
 and asks whether to email. Once cancelled, deleting is allowed: cancel, notify,
 then delete.
 
+**A SERIES WITH A WAITLIST IS OFFERED THE SAME (3.106.3).** The offer appears
+whenever any of its events has somebody registered or somebody waiting with an
+address (`SFAF_Announce::count_waitlisted()`), and states the two numbers apart.
+Cancel and email sends the waitlist its own cancellation, one per person.
+**Deleting stays refused only for registrations**: with nobody registered the
+offer carries **Delete them anyway**, and with somebody registered a posted
+delete is turned back whatever the form said. `.claude/series-waitlist-test.php`
+runs the real route.
+
 ### Telling registrants, and the one-email guarantee
 
 `SFAF_Announce` sends the two messages. **One person gets one email, whatever
@@ -5614,12 +5623,13 @@ person is a row in `uc_rsvps` with a status of its own, ordered by
 ### Questions for registrants (3.106.2)
 
 **An event may ask up to five questions on its registration form.** The editor's
-section **Questions for registrants** sits with the RSVP settings in the
-Location card, under Capacity, on Add event and Edit event. Each question has
-its text, an answer style (checkboxes, pick any; radio, pick one), Required,
-and on a hybrid event **In person only**; each has options, added, removed and
-dragged into order, and an option may **Allow additional info**, a short line
-beside it on the form.
+section **Questions for registrants** is its own card under the Location card
+that holds the other RSVP settings (3.106.3), on Add event and Edit event. Each
+question has its text, an answer style (Pick any, Pick one), Required, and on a
+hybrid event **In person only**; each has options, added, removed and moved,
+by dragging the grip or with Up and Down on it, and an option may **Allow
+additional info**, a short line beside it on the form. An event with no
+questions opens on one blank one, which a save drops.
 
 | What | Where |
 |---|---|
@@ -5632,7 +5642,7 @@ beside it on the form.
   the form is sent, so the stored order is the order on the screen. Each field
   carries its id in a hidden input, so an edit keeps the answers pointing at it.
   A question with no text, or with no options, is dropped on save.
-- **On the shared RSVP list as `questions`**, drawn by name in the Location card
+- **On the shared RSVP list as `questions`**, drawn by name in its own card
   and skipped by name on the registrations screen, whose save leaves the key
   alone because the section's marker is absent. Not for a third-party event:
   the field is on the list only where registrations are taken here.

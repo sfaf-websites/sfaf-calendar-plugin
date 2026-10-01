@@ -594,6 +594,21 @@ $edits = array(
         "            return isset( \$confirmed[ (int) \$r->rsvp_id ] );",
         "            return true;" ),
 
+    /* 3.106.3, A.8. The question box will not shrink, so the row overflows at 390px. */
+    'q-row-overflows' => array( 'public/css/portal.css',
+        ".uc-questions .uc-q-text { flex: 1 1 260px; min-width: 0; margin: 0; }",
+        ".uc-questions .uc-q-text { flex: 0 0 600px; min-width: 600px; margin: 0; }" ),
+
+    /* A.8. A question stops being a sub-card on the surface tint. */
+    'q-subcard-plain' => array( 'public/css/portal.css',
+        "    background: var(--p-bg); border: 1px solid var(--p-border); border-radius: 8px; }",
+        "    border-top: 1px solid var(--p-border-strong); }" ),
+
+    /* 3.106.3, C. Deleting a series ignores its waitlist again. */
+    'series-waitlist-ignored' => array( 'includes/class-sfaf-portal.php',
+        "                    \$waiting   = SFAF_Announce::count_waitlisted( \$in_series );",
+        "                    \$waiting   = 0;" ),
+
     /* An event's oEmbed answer keeps its author. */
     'oembed-author-kept' => array( 'includes/class-sfaf-bylines.php',
         "            unset( \$data['author_name'], \$data['author_url'] );",

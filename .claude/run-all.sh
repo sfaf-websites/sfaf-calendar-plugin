@@ -57,6 +57,7 @@ for f in .claude/*.php; do
     release-3106-live.php) continue ;; # run below with --run
     plant-3106.php) continue ;;        # a fault planter for release-3106-live, not a check
     release-31062-live.php) continue ;; # run below with --run
+    release-31063-live.php) continue ;; # run below with --run
     login-check.php) continue ;;       # run last, after every capture is rewritten
     byline-live.php) continue ;;       # run below with --run; --live checks the site itself
   esac
@@ -285,6 +286,8 @@ run "byline-live --run" php .claude/byline-live.php --run
 # Questions for registrants, the Notifications card on Add event and the cancel
 # dialog counting the waitlist (3.106.2), at desktop and 390px.
 run "release-31062-live --run" php .claude/release-31062-live.php --run
+# The questions card redrawn, and the series removal screen with a waitlist (3.106.3).
+run "release-31063-live --run" php .claude/release-31063-live.php --run
 
 echo
 # No real name or login in a tracked file (3.106.2). Last, because the browser

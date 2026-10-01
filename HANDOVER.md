@@ -4,21 +4,20 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-01, at 3.106.2, released.
+**Last updated:** 2026-10-01, at 3.106.3, released.
 
 ---
 
 ## What shipped last
 
-**3.106.2**: **Questions for registrants** (schema 11): up to five per event,
-on the form, enforced by the server, totals and Details on the registrations
-list, answers in the alert; the **Notifications card on Add event**; an offer's
-link on a cancelled, deleted or private event **takes no action**; the cancel
-dialog **asks when only the waitlist is there**; and **a build check that
-refuses the real name or login in any tracked file**. `PROJECT.md` 3 and 4.
-**3.106.1**: the waitlist told of a cancellation; no Donate tick; **no author on
-any public event page**, by editing the HTML, a known weakness (`PROJECT.md` 3).
-**3.106.0**: a waitlist, Email Templates in English and Spanish, a Language.
+**3.106.3**: the **Questions for registrants card redrawn** (its own card,
+sub-cards, Pick any / Pick one, wordless icon buttons, Up and Down on the
+grip); **deleting a series with only a waitlist offers to cancel and email it**;
+**every plant caught again**, the ten stale ones repaired. `DESIGN.md` 4.
+**3.106.2**: **Questions for registrants** (schema 11); Notifications on Add
+event; offer links inert on an event that is off; a login check on the build.
+**3.106.1**: no author on any public event page, by editing the HTML, a known
+weakness (`PROJECT.md` 3). **3.106.0**: a waitlist, Email Templates, a Language.
 > **THE SPANISH HAS NOT BEEN READ BY A SPANISH SPEAKER.** `EMAILS.md` is for that
 > review (`TESTING.md` 3). Nothing is Spanish until an event or series is set to
 > it, so nothing reaches a registrant in it before then.
@@ -97,7 +96,7 @@ Earlier releases, and the reasoning for all of it: **`readme.txt` is the changel
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 235 items.** **1.197** first,
+**`TESTING.md` holds the manual testing backlog: 237 items.** **1.197** first,
 that schema 11 ran, then **1.192**, the byline check on the site, **1.176**, the
 donate line, and **1.189**, that schema 10 ran. Then two, in this order:
 **1.74**, naming and tagging the six pictures, which is what makes every

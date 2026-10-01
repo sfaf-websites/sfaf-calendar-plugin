@@ -190,9 +190,9 @@ window.addEventListener('load', function () { setTimeout(function () {
     var root = document.querySelector('[data-uc-questions]');
     out.notifications = text(document.querySelector('[data-uc-notifications-card] h2'));
     if (!root) { return finish(); }
-    out.inLocation = !!root.closest('.uc-bento-card') && /Location/.test(text(root.closest('.uc-bento-card').querySelector('h2')));
-    out.afterCapacity = (function () { var c = document.querySelector('[data-uc-capacity-row]'); return !!c && !!(c.compareDocumentPosition(root) & Node.DOCUMENT_POSITION_FOLLOWING); })();
-    out.label = box(root.querySelector(':scope > .uc-field-label'));
+    /* Its own card under the Location card since 3.106.3; release-31063-live.php measures it. */
+    var qcard = root.closest('[data-uc-questions-card]');
+    out.ownCard = !!qcard && !!qcard.previousElementSibling && /Location/.test(text(qcard.previousElementSibling.querySelector('h2')));
     out.hint = box(root.querySelector(':scope > .uc-hint'));
     var list = root.querySelector('[data-uc-q-list]');
     var qs = function () { return list.querySelectorAll(':scope > [data-uc-q]'); };
@@ -332,12 +332,12 @@ $P_BG    = 'rgb(245, 246, 247)';  // --p-bg #F5F6F7
 foreach ( array( 'editor-add-desktop', 'editor-add-phone', 'editor-edit-desktop', 'editor-edit-phone' ) as $t ) {
     $add = 0 === strpos( $t, 'editor-add' );
     rq_check( 'Notifications' === $v( $t, 'notifications' ), "PLANT D: $t: no Notifications card: " . json_encode( $v( $t, 'notifications' ) ) );
-    rq_check( true === $v( $t, 'inLocation' ) && true === $v( $t, 'afterCapacity' ), "$t: Questions for registrants is not with the RSVP settings, under Capacity" );
-    $l = (array) $v( $t, 'label' ); $h = (array) $v( $t, 'hint' );
-    rq_check( isset( $l['text'] ) && 'Questions for registrants' === $l['text'] && $P_TEXT === $l['color'] && '13px' === $l['size'] && '600' === $l['weight'], "$t: the section label is not the field label step in --p-text: " . json_encode( $l ) );
+    rq_check( true === $v( $t, 'ownCard' ), "$t: Questions for registrants is not its own card under the Location card" );
+    $h = (array) $v( $t, 'hint' );
     rq_check( isset( $h['text'] ) && 'Ask registrants anything you need to know before the event.' === $h['text'] && $P_MUTED === $h['color'] && '12px' === $h['size'], "$t: the helper is not the helper step in --p-muted: " . json_encode( $h ) );
-    rq_check( $add ? 0 === $v( $t, 'start' ) : 2 === $v( $t, 'start' ), "$t: starts with " . json_encode( $v( $t, 'start' ) ) . ' questions' );
-    $a = (array) $v( $t, 'added' ); $n = $add ? 0 : 2;
+    // Add event opens on one blank question (3.106.3).
+    rq_check( $add ? 1 === $v( $t, 'start' ) : 2 === $v( $t, 'start' ), "$t: starts with " . json_encode( $v( $t, 'start' ) ) . ' questions' );
+    $a = (array) $v( $t, 'added' ); $n = $add ? 1 : 2;
     rq_check( isset( $a['count'] ) && $n + 1 === $a['count'] && in_array( "uc_questions[$n][text]", $a['names'], true ) && in_array( "uc_questions[$n][options][0][text]", $a['names'], true ),
         "$t: Add question did not add one named in order: " . json_encode( $a ) );
     rq_check( in_array( "uc_questions[$n][options][1][more]", (array) $v( $t, 'optionAdded' ), true ), "$t: Add option is not numbered after the first: " . json_encode( $v( $t, 'optionAdded' ) ) );

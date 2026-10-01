@@ -4775,27 +4775,67 @@ body.uc-modal-open { overflow: hidden; }
 }
 
 /* ---------------------------------------------------------------------------
-   QUESTIONS FOR REGISTRANTS (3.106.2).
+   QUESTIONS FOR REGISTRANTS (3.106.2, redrawn 3.106.3).
 
-   THE EDITOR. Each question is a block separated from the next by space and a
-   hairline, never a box: it already sits inside the Location card. Options are
-   rows with a grip, their words, the additional-info tick and Remove. A row
-   being dragged is tinted, not lifted.
+   THE EDITOR IS ITS OWN CARD, a .uc-bento-card under the Location card, so
+   the column's 16px gap and the card's 18px padding are the standard ones.
+   Each question is a sub-card on the page tint --p-bg with the hairline
+   --p-border and the 8px radius: an item in the section, not another
+   section. Its top row is the question box taking the width, then Required,
+   In person only and the remove button; under about 540px of row the box takes the
+   whole line and the rest wraps under it. Answer style is the segmented
+   control. Options are a tight list of grip, box, tick and remove.
+
+   EVERY ICON IS A BUTTON with a 32px target, --p-muted on the tint (5.18:1,
+   over the 3:1 a glyph needs), --p-text on hover over --p-border, and the
+   accent ring on focus. "+ Add option" is a link-coloured text button lined
+   up with the option boxes (32px grip plus the 8px gap); "+ Add question" is
+   an outlined button in the accent, at its own width.
    ------------------------------------------------------------------------ */
-.uc-questions .uc-q-list { list-style: none; margin: 8px 0 12px; padding: 0; }
-.uc-questions .uc-q { padding: 14px 0; border-top: 1px solid var(--p-border); display: flex; flex-direction: column; gap: 10px; }
-.uc-questions .uc-q:first-child { border-top: 0; padding-top: 4px; }
-.uc-questions .uc-q-style { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px 20px; }
-.uc-questions .uc-q-style > legend { padding: 0; margin-bottom: 4px; width: 100%; }
-.uc-questions .uc-q-options { list-style: none; margin: 4px 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.uc-questions .uc-q-option { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 4px 0; }
-.uc-questions .uc-q-option > input[type="text"] { flex: 1 1 220px; min-width: 0; }
-.uc-questions .uc-q-option .uc-check { margin: 0; }
-.uc-questions .uc-q-option.is-dragging { background: var(--p-bg); }
-.uc-questions .uc-q-grip { display: inline-flex; color: var(--p-muted); cursor: grab; }
-.uc-questions [data-uc-q-inperson][hidden] { display: none; }
+.uc-questions-card .uc-questions-hint { margin: 0 0 12px; }
+.uc-questions .uc-q-list { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.uc-questions .uc-q { display: flex; flex-direction: column; gap: 10px; padding: 12px;
+    background: var(--p-bg); border: 1px solid var(--p-border); border-radius: 8px; }
+.uc-questions .uc-q-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.uc-questions .uc-q-text { flex: 1 1 260px; min-width: 0; margin: 0; }
+.uc-questions .uc-q-text input { width: 100%; }
+.uc-questions .uc-q-ticks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.uc-questions .uc-q-ticks .uc-check,
+.uc-questions .uc-q-option .uc-check { margin: 0; align-items: center; }
+.uc-questions .uc-q-style { align-self: flex-start; }
+.uc-questions .uc-q-options { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.uc-questions .uc-q-option { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.uc-questions .uc-q-option > input[type="text"] { flex: 1 1 180px; min-width: 0; }
+/* The tick and the remove travel together: beside the box on a wide row,
+   and on a narrow one wrapped under it at the right-hand end. */
+.uc-questions .uc-q-option-tail { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+.uc-questions .uc-q-option.is-dragging { background: var(--p-border); }
+.uc-questions .uc-icon-btn {
+    display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+    width: 32px; height: 32px; padding: 0; margin: 0;
+    border: 0; border-radius: 6px; background-color: transparent; color: var(--p-muted); cursor: pointer;
+}
+.uc-questions .uc-icon-btn:hover { background-color: var(--p-border); color: var(--p-text); }
+.uc-questions .uc-icon-btn:focus-visible,
+.uc-questions .uc-o-add:focus-visible,
+.uc-questions .uc-q-add:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; }
+.uc-questions .uc-q-grip { cursor: grab; }
+.uc-questions .uc-o-add {
+    align-self: flex-start; margin: 0 0 0 40px; padding: 2px 0;
+    border: 0; background-color: transparent; cursor: pointer;
+    font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--uc-accent-text);
+}
+.uc-questions .uc-o-add:hover { text-decoration: underline; }
+.uc-questions .uc-q-add {
+    align-self: flex-start; padding: 8px 16px;
+    border: 1px solid var(--uc-accent-text); border-radius: 8px; background-color: transparent; cursor: pointer;
+    font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--uc-accent-text);
+}
+.uc-questions .uc-q-add:hover { background-color: var(--uc-band); }
+.uc-questions { display: flex; flex-direction: column; }
+/* .uc-check and the buttons set display, which beats the user agent's [hidden]. */
+.uc-questions [data-uc-q-inperson][hidden],
 .uc-questions [data-uc-q-add][hidden] { display: none; }
-.uc-questions [data-uc-q-remove] { align-self: flex-start; }
 
 /* THE TOTALS STRIP, above the registrations list: one line per question, body
    type, the question in the same ink as the counts line above it. */

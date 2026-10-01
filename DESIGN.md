@@ -955,15 +955,30 @@ typed onto a label; `PROJECT.md` 1 has the lists.
 ### Questions for registrants: no new box, no new colour (3.106.2)
 
 Three surfaces, and each is made from what is already on it. Measured in Chrome
-by `.claude/release-31062-live.php` at 1280px and 390px.
+by `.claude/release-31062-live.php` and, for the editor from 3.106.3,
+`.claude/release-31063-live.php`, at 1280px and 390px.
 
-**The editor.** The section sits inside the Location card, so a question is a
-block separated from the next by **space and a hairline** (`--p-border`), never
-a box: the card is already the box. Field label and helper are the ladder's
-steps (13px/600 `--p-text`, 12px/400 `--p-muted`, 5.60:1). An option row is its
-grip, its words, the tick and Remove; the row being dragged takes the page tint
-`--p-bg` rather than a shadow. The grip is the `menu` glyph from `sfaf_icon()`
-in `--p-muted`.
+**The editor (redrawn 3.106.3).** Screenshots:
+`.claude/screens/questions-card-1280.png` (three questions) and
+`.claude/screens/questions-card-390.png` (one question, four options).
+
+| Part | What it is | Measured |
+|---|---|---|
+| The section | its own `.uc-bento-card` under the Location card, title "Questions for registrants" on the band, the helper inside | `--p-border` 1px, 18px padding, 12px radius; 16px to the cards above and below |
+| A question | a sub-card | `--p-bg` fill, `--p-border` 1px, 8px radius, 12px padding, 12px between sub-cards |
+| Its top row | the question box taking the width the ticks leave, then Required, In person only (hybrid only) and remove | under about 540px of row the box takes its own line, the ticks and remove the next |
+| Answer style | the segmented control, Pick any and Pick one | chosen white on `--uc-accent-text`, 5.35:1 |
+| An option | grip, box, Allow additional info, remove; 40px row | on a narrow row the tick and remove wrap together to the right |
+| Icon buttons | the remove `x` and the grip, wordless, labelled "Remove question", "Remove option", "Move option up or down" | 32px, `--p-muted` on the tint (5.18:1, over the 3:1 a glyph needs), 2px `--uc-accent-text` focus ring |
+| + Add option | a text button in the link colour, in line with the option boxes | 13px/600 `--uc-accent-text`, 40px in (grip plus gap) |
+| + Add question | an outlined button at its own width, on the left | 1px `--uc-accent-text` edge and text, `--uc-band` on hover |
+
+**The outlined button is not the secondary button**, and that is the brief's
+call rather than a drift: the standard's secondary face is Light Gray, and an
+outline in the accent is used here for the one control that adds a whole
+question. It shares no fill with a text field, so white with a grey boundary
+still means "you type in this". The grip moves an option with Up and Down as
+well as by dragging.
 
 **The public form.** "Additional information" is the form's subhead step,
 16px/600 `--uc-text` (16.91:1 on the white modal); each question's legend is
