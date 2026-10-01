@@ -119,6 +119,9 @@ class SFAF_Messages {
             'offer_page'     => array( 'label' => 'Confirm your place page', 'kind' => 'page',
                 'variants' => array( 'ask' => 'Asking', 'done' => 'Confirmed', 'gone' => 'Offer passed' ),
                 'tokens' => array( 'title', 'date', 'time', 'expiry' ) ),
+            'offer_off_page' => array( 'label' => 'Offer link, event off', 'kind' => 'page',
+                'variants' => array( 'cancelled' => 'Cancelled', 'unavailable' => 'Deleted, private or unpublished' ),
+                'tokens' => array( 'title', 'date', 'time' ) ),
         );
     }
 
@@ -335,6 +338,22 @@ class SFAF_Messages {
             ),
         );
 
+        /*
+         * AN OFFER'S LINK ON AN EVENT THAT IS OFF (3.106.2). The page takes no
+         * action. A deleted event may have no title left, so that variant names
+         * none.
+         */
+        $d['offer_off_page'] = array(
+            'cancelled' => array(
+                'en' => array( 'subject' => 'This event has been cancelled', 'intro' => '{title} has been cancelled, so the place we offered you is no longer available. You do not need to do anything.', 'closing' => '' ),
+                'es' => array( 'subject' => 'Este evento se canceló', 'intro' => '{title} se canceló, así que el lugar que le ofrecimos ya no está disponible. No necesita hacer nada.', 'closing' => '' ),
+            ),
+            'unavailable' => array(
+                'en' => array( 'subject' => 'This event is no longer available', 'intro' => 'This event is no longer available, so the place we offered you cannot be confirmed. You do not need to do anything.', 'closing' => '' ),
+                'es' => array( 'subject' => 'Este evento ya no está disponible', 'intro' => 'Este evento ya no está disponible, así que no se puede confirmar el lugar que le ofrecimos. No necesita hacer nada.', 'closing' => '' ),
+            ),
+        );
+
         return $d;
     }
 
@@ -381,6 +400,10 @@ class SFAF_Messages {
                 'now_is'           => array( 'The event is now:', 'El evento ahora es:' ),
                 'what_changed'     => array( 'What changed', 'Qué cambió' ),
                 'next_dates'       => array( 'Next dates', 'Próximas fechas' ),
+                // Questions for registrants, on the form (3.106.2).
+                'q_heading'        => array( 'Additional information', 'Información adicional' ),
+                'q_more'           => array( 'Additional info', 'Más información' ),
+                'q_required'       => array( 'Answer every required question to register.', 'Responda todas las preguntas obligatorias para inscribirse.' ),
                 'to'               => array( 'to', 'a' ),
                 'online_event'     => array( 'Online Event', 'Evento en línea' ),
                 'tbc'              => array( 'time to be confirmed', 'hora por confirmar' ),

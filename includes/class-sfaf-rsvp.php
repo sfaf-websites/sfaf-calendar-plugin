@@ -135,6 +135,11 @@ class SFAF_RSVP {
             'format'     => isset( $_POST['format'] ) ? sanitize_key( wp_unslash( $_POST['format'] ) ) : '',
             // The tick under the email field (3.102.0): registering with none.
             'no_email'   => ! empty( $_POST['no_email'] ),
+            // Answers to the event's questions (3.106.2), as JSON from the
+            // form: question id => option ids, and question id => option id =>
+            // additional info. submit() checks them against the event.
+            'answers'      => isset( $_POST['answers'] ) ? json_decode( wp_unslash( (string) $_POST['answers'] ), true ) : array(),
+            'answers_more' => isset( $_POST['answers_more'] ) ? json_decode( wp_unslash( (string) $_POST['answers_more'] ), true ) : array(),
         ) );
 
         wp_send_json( $result );
@@ -344,6 +349,18 @@ class SFAF_RSVP {
          * form can still take them, and turning them away would refuse a
          * registration the event wanted.
          */
+        /*
+         * THE QUESTIONS, CHECKED HERE WHATEVER THE FORM DID (3.106.2): a
+         * required question unanswered is refused, an option that is not the
+         * question's is ignored, and an in-person question is asked only of
+         * somebody attending in person. Before the full check, so somebody
+         * joining a waitlist answers too.
+         */
+        $checked = SFAF_Questions::clean( $data['event_id'], $attending, $data['answers'] ?? array(), $data['answers_more'] ?? array() );
+        if ( isset( $checked['error'] ) ) {
+            return array( 'success' => false, 'message' => $checked['error'] );
+        }
+
         $data['phone'] = self::format_phone( $data['phone'] ?? '' );
         $data['name']  = trim( $data['first_name'] . ' ' . $data['last_name'] );
 
@@ -353,7 +370,11 @@ class SFAF_RSVP {
              * picked. Everything a registration checks has been checked above.
              */
             if ( SFAF_Waitlist::applies( $data['event_id'], $hybrid ? $format : '' ) ) {
-                return SFAF_Waitlist::join( $data );
+                $joined = SFAF_Waitlist::join( $data );
+                if ( ! empty( $joined['success'] ) && ! empty( $joined['rsvp_id'] ) ) {
+                    SFAF_Questions::store( (int) $joined['rsvp_id'], $data['event_id'], $checked['rows'] );
+                }
+                return $joined;
             }
             if ( $hybrid && ! sfaf_event_full( $data['event_id'] ) ) {
                 $other = ( SFAF_Online::MODE_ONLINE === $format ) ? 'in person' : 'online';
@@ -421,6 +442,9 @@ class SFAF_RSVP {
             $data['token']   = $token;
             $data['rsvp_id'] = (int) $wpdb->insert_id;
 
+            // The answers, before the alert that names them goes out.
+            SFAF_Questions::store( $data['rsvp_id'], $data['event_id'], $checked['rows'] );
+
             // Fire action for integrations (email, Google Sheets, Pardot, etc.)
             //
             // $data CARRIES first_name AND last_name SEPARATELY, which is what
@@ -481,6 +505,8 @@ class SFAF_RSVP {
             'last_name'  => isset( $data['last_name'] ) ? (string) $data['last_name'] : '',
             'email'      => isset( $data['email'] ) ? (string) $data['email'] : '',
             'token'      => isset( $data['token'] ) ? (string) $data['token'] : '',
+            // The row, for the alert's answers (3.106.2).
+            'rsvp_id'    => isset( $data['rsvp_id'] ) ? (int) $data['rsvp_id'] : 0,
             /*
              * AND WHICH FORMAT THEY REGISTERED IN (3.97.3).
              *

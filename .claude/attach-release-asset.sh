@@ -25,7 +25,7 @@
 # 600 config file, so it never reaches a command line or the process table.
 set -eu
 
-ROOT="/c/Users/msapoznikov/Documents/Apps/Calendar"
+ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 SLUG="sfaf-websites/sfaf-calendar-plugin"
 VERSION="${1:?usage: attach-release-asset.sh X.Y.Z}"
 ZIP="$ROOT/sfaf-calendar-$VERSION.zip"

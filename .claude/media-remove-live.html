@@ -111,6 +111,8 @@ function ucDismissOnBackdrop(dialog) {
         run('donateChoice', initDonateChoice);
         run('eventLanguage', initEventLanguage);
         run('emailTemplates', initEmailTemplates);
+        run('questions', initQuestions);
+        run('rsvpDetails', initRsvpDetails);
         run('notifyPicker', initNotifyPicker);
         run('imagePicker', initImagePicker);
         // ORDER MATTERS between these three. Both the scope confirmation and
@@ -5844,6 +5846,135 @@ function ucDismissOnBackdrop(dialog) {
      * would be told and offers both answers. With nobody registered there is
      * nothing to ask about, so it stays a plain confirmation.
      */
+    /* "2 people are registered and 3 are on the waitlist." The two numbers the
+     * cancel dialog states, each only when it is above nought (3.106.2). */
+    function cancelCounts(people, waiting) {
+        var reg = people + (1 === people ? ' person is' : ' people are') + ' registered';
+        var wl = waiting + (1 === waiting ? ' person is' : ' people are') + ' on the waitlist';
+        if (people > 0 && waiting > 0) {
+            return reg + ' and ' + waiting + (1 === waiting ? ' is' : ' are') + ' on the waitlist.';
+        }
+        return (people > 0 ? reg : 'Nobody is registered. ' + wl) + '.';
+    }
+
+    /*
+     * QUESTIONS FOR REGISTRANTS, IN THE EDITOR (3.106.2).
+     *
+     * Every field is named by its position, uc_questions[i][options][j][...],
+     * so the order posted is the order on the screen. renumber() rewrites
+     * every name from the data-uc-q-name and data-uc-o-name each field
+     * carries, after every add, remove and drag, and once before the form is
+     * sent. Five questions at most: Add question hides at five.
+     */
+    function initQuestions() {
+        document.querySelectorAll('[data-uc-questions]').forEach(function (root) {
+            var list = root.querySelector('[data-uc-q-list]');
+            var addQ = root.querySelector('[data-uc-q-add]');
+            var qTpl = root.querySelector('[data-uc-q-template]');
+            var oTpl = root.querySelector('[data-uc-o-template]');
+            var max = parseInt(root.getAttribute('data-uc-questions-max'), 10) || 5;
+            if (!list || !qTpl || !oTpl) { return; }
+
+            function renumber() {
+                list.querySelectorAll(':scope > [data-uc-q]').forEach(function (q, i) {
+                    var base = 'uc_questions[' + i + ']';
+                    q.querySelectorAll('[data-uc-q-name]').forEach(function (f) {
+                        f.name = base + '[' + f.getAttribute('data-uc-q-name') + ']';
+                    });
+                    q.querySelectorAll('[data-uc-o]').forEach(function (o, k) {
+                        o.querySelectorAll('[data-uc-o-name]').forEach(function (f) {
+                            f.name = base + '[options][' + k + '][' + f.getAttribute('data-uc-o-name') + ']';
+                        });
+                    });
+                });
+                if (addQ) { addQ.hidden = list.querySelectorAll(':scope > [data-uc-q]').length >= max; }
+            }
+            function fromTemplate(tpl) {
+                var box = document.createElement('div');
+                box.innerHTML = tpl.innerHTML;
+                return box.firstElementChild;
+            }
+            /* The In person only tick means something on a hybrid event only. */
+            var form = root.closest('form') || document;
+            var hybrid = form.querySelector('[data-uc-hybrid-toggle]');
+            function syncHybrid() {
+                var on = !!(hybrid && hybrid.checked);
+                root.querySelectorAll('[data-uc-q-inperson]').forEach(function (el) { el.hidden = !on; });
+            }
+            if (hybrid) { hybrid.addEventListener('change', syncHybrid); }
+
+            if (addQ) {
+                addQ.addEventListener('click', function () {
+                    var q = fromTemplate(qTpl);
+                    list.appendChild(q);
+                    renumber();
+                    syncHybrid();
+                    var first = q.querySelector('input[type="text"]');
+                    if (first) { first.focus(); }
+                });
+            }
+            root.addEventListener('click', function (e) {
+                var t = e.target.closest('button');
+                if (!t || !root.contains(t)) { return; }
+                if (t.hasAttribute('data-uc-q-remove')) {
+                    t.closest('[data-uc-q]').remove();
+                    renumber();
+                } else if (t.hasAttribute('data-uc-o-add')) {
+                    var ul = t.closest('[data-uc-q]').querySelector('[data-uc-o-list]');
+                    var o = fromTemplate(oTpl);
+                    ul.appendChild(o);
+                    renumber();
+                    o.querySelector('input[type="text"]').focus();
+                } else if (t.hasAttribute('data-uc-o-remove')) {
+                    t.closest('[data-uc-o]').remove();
+                    renumber();
+                }
+            });
+
+            /* Drag an option by its row to reorder it within its question. */
+            var dragging = null;
+            root.addEventListener('dragstart', function (e) {
+                var o = e.target.closest && e.target.closest('[data-uc-o]');
+                if (!o) { return; }
+                dragging = o;
+                o.classList.add('is-dragging');
+                if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', ''); }
+            });
+            root.addEventListener('dragover', function (e) {
+                if (!dragging) { return; }
+                var over = e.target.closest && e.target.closest('[data-uc-o]');
+                if (!over || over === dragging || over.parentNode !== dragging.parentNode) { return; }
+                e.preventDefault();
+                var r = over.getBoundingClientRect();
+                over.parentNode.insertBefore(dragging, (e.clientY - r.top) > r.height / 2 ? over.nextSibling : over);
+            });
+            root.addEventListener('dragend', function () {
+                if (dragging) { dragging.classList.remove('is-dragging'); }
+                dragging = null;
+                renumber();
+            });
+
+            if (root.closest('form')) {
+                root.closest('form').addEventListener('submit', renumber);
+            }
+            renumber();
+            syncHybrid();
+        });
+    }
+
+    /* A registrant's answers, opened and closed under their row (3.106.2). */
+    function initRsvpDetails() {
+        document.addEventListener('click', function (e) {
+            var b = e.target.closest && e.target.closest('[data-uc-rsvp-details]');
+            if (!b) { return; }
+            var row = document.getElementById(b.getAttribute('aria-controls'));
+            if (!row) { return; }
+            var open = row.hidden;
+            row.hidden = !open;
+            b.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+    }
+
     function initCancelConsent() {
         document.querySelectorAll('form[data-uc-confirm-cancel]').forEach(function (form) {
             /* THE SAME DIALOG SERVES PUTTING IT BACK ON (3.73.0). Both are
@@ -5860,6 +5991,11 @@ function ucDismissOnBackdrop(dialog) {
              * go out. See render_cancel_card() and the handler. */
             var note = form.querySelector('[data-uc-cancel-message]');
             var people = counter ? (parseInt(counter.getAttribute('data-uc-cancel-count'), 10) || 0) : 0;
+            /* THE WAITLIST, COUNTED APART (3.106.2). A cancellation writes to it
+             * too, so cancelling asks when either number is above nought. Putting
+             * an event back on writes to registrants only and ignores it. */
+            var waiting = (!back && counter) ? (parseInt(counter.getAttribute('data-uc-cancel-waiting'), 10) || 0) : 0;
+            var told = people + waiting;
             var answered = false;
 
             form.addEventListener('submit', function (e) {
@@ -5870,7 +6006,7 @@ function ucDismissOnBackdrop(dialog) {
                 e.preventDefault();
                 var submitter = e.submitter || null;
 
-                if (people < 1 || !field) {
+                if (told < 1 || !field) {
                     if (back) {
                         /* Nobody was told it was off, so there is nobody to
                          * tell it is back, and nothing to confirm. */
@@ -5880,7 +6016,7 @@ function ucDismissOnBackdrop(dialog) {
                     }
                     ucAskNotify({
                         title: 'Cancel this event?',
-                        lead: 'It keeps its registrations and takes no new ones. Nobody is registered, so there is nobody to tell.',
+                        lead: 'It keeps its registrations and takes no new ones. Nobody is registered or on the waitlist, so there is nobody to tell.',
                         changes: [],
                         sendQuestion: '',
                         /* No send: there is nobody to email, so there is one
@@ -5902,16 +6038,16 @@ function ucDismissOnBackdrop(dialog) {
                         ? (people + (1 === people ? ' person was' : ' people were')
                             + ' told this was cancelled. Their registrations were kept and still hold. '
                             + 'Emailing them cannot be undone.')
-                        : (people + (1 === people ? ' person is' : ' people are') + ' registered. '
+                        : (cancelCounts(people, waiting) + ' '
                             + 'The event keeps its registrations and takes no new ones. '
                             + 'Emailing them cannot be undone.'),
                     changes: [],
                     sendQuestion: back
                         ? ('Tell the ' + people + (1 === people ? ' person' : ' people') + ' it is back on?')
-                        : ('Email the ' + people + (1 === people ? ' person' : ' people') + ' registered?'),
+                        : ('Email the ' + told + (1 === told ? ' person' : ' people') + '?'),
                     sendLabel: back
                         ? ('Put it back on and tell ' + (1 === people ? 'them' : 'them all'))
-                        : ('Cancel and email ' + (1 === people ? 'them' : 'them all')),
+                        : ('Cancel and email ' + (1 === told ? 'them' : 'them all')),
                     silentLabel: back ? 'Put it back on without telling them' : 'Cancel without telling them',
                     /* "Leave it alone" beside two buttons that both cancel the
                      * event read as a third thing to do to it. This button
@@ -5927,7 +6063,7 @@ function ucDismissOnBackdrop(dialog) {
                         label: 'Anything to add, just for the people registered (optional)',
                         hint: 'This goes in their email and nowhere else. It is not on the event page.',
                         placeholder: 'We are looking at a new date and will write again.',
-                        confirmLabel: 'Cancel and email ' + (1 === people ? 'them' : 'them all')
+                        confirmLabel: 'Cancel and email ' + (1 === told ? 'them' : 'them all')
                     }
                 }, function (answer, message) {
                     if (null === answer) { return; }

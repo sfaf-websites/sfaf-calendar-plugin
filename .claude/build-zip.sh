@@ -32,6 +32,11 @@ php "$ROOT/.claude/version-check.php" "$ROOT" "$VERSION" || exit 1
 # cut is let through by naming the file: --allow-shrink=includes/class-x.php.
 php "$ROOT/.claude/shrink-check.php" "$ROOT" "$@" || exit 1
 
+# NO REAL NAME OR LOGIN IN A TRACKED FILE (3.106.2). This repository is
+# mirrored to a public one, so anything tracked is published. The strings are
+# read from a file git ignores, and a missing file refuses the build.
+php "$ROOT/.claude/login-check.php" || exit 1
+
 # EMAILS.md IS REGENERATED, AND MAY NOT DRIFT (3.106.0). It is every registrant
 # message in English and Spanish for the Spanish reviewer, written from the
 # shipped text by the builders that send. If writing it changed the tracked

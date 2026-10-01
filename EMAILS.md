@@ -219,6 +219,22 @@ Words in a message that come from the event, such as its title, location and org
 | Title | This offer has passed | Esta oferta ha vencido |
 | Page | The place offered for Coffee and Conversation has gone to the next person on the waitlist. | El lugar que se ofreció en Coffee and Conversation pasó a la siguiente persona de la lista de espera. |
 
+## Offer link, event off
+
+### Cancelled
+
+| | English | Spanish |
+|---|---|---|
+| Title | This event has been cancelled | Este evento se canceló |
+| Page | Coffee and Conversation has been cancelled, so the place we offered you is no longer available. You do not need to do anything.<br><br>Thursday, November 12, 2026 6–7:30 pm PT | Coffee and Conversation se canceló, así que el lugar que le ofrecimos ya no está disponible. No necesita hacer nada.<br><br>jueves, 12 de noviembre de 2026 6–7:30 p. m., hora del Pacífico |
+
+### Deleted, private or unpublished
+
+| | English | Spanish |
+|---|---|---|
+| Title | This event is no longer available | Este evento ya no está disponible |
+| Page | This event is no longer available, so the place we offered you cannot be confirmed. You do not need to do anything. | Este evento ya no está disponible, así que no se puede confirmar el lugar que le ofrecimos. No necesita hacer nada. |
+
 ## The fixed words around the text
 
 Labels, buttons and the calendar file's words. These are not edited on the Templates screen.
@@ -243,6 +259,9 @@ Labels, buttons and the calendar file's words. These are not edited on the Templ
 | The event is now: | El evento ahora es: |
 | What changed | Qué cambió |
 | Next dates | Próximas fechas |
+| Additional information | Información adicional |
+| Additional info | Más información |
+| Answer every required question to register. | Responda todas las preguntas obligatorias para inscribirse. |
 | to | a |
 | Online Event | Evento en línea |
 | time to be confirmed | hora por confirmar |

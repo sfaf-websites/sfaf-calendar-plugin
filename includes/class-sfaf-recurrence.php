@@ -103,6 +103,8 @@ class SFAF_Recurrence {
         // of a hybrid series runs both formats and needs both limits.
         '_uc_capacity', '_uc_capacity_online',
         '_uc_rsvp_enabled', '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_donate_choice', '_uc_volunteer_url', '_uc_email_required', '_uc_language',
+        // Questions for registrants (3.106.2).
+        '_uc_questions',
         '_uc_pardot_campaigns', '_uc_organizer_email', '_uc_notify_organizer',
         '_uc_email_subject', '_uc_email_body', '_uc_email_replyto',
         '_uc_show_rsvp', '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',

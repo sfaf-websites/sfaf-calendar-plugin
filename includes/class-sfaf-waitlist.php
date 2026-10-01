@@ -251,6 +251,7 @@ class SFAF_Waitlist {
         return array(
             'success'    => true,
             'waitlisted' => true,
+            'rsvp_id'    => $id,
             'position'   => $position,
             'first_name' => $data['first_name'],
             'no_email'   => ( '' === (string) $data['email'] ),
@@ -416,6 +417,11 @@ class SFAF_Waitlist {
             if ( '' === (string) $r->offer_expires || (string) $r->offer_expires > $now ) {
                 continue;
             }
+            // An event that is off: the person was told, or the link says so.
+            // No "offer passed" after it, and the row is left as it is.
+            if ( '' !== self::offer_blocked( (int) $r->event_id ) ) {
+                continue;
+            }
             self::expire( $r );
             $n++;
         }
@@ -435,6 +441,20 @@ class SFAF_Waitlist {
      * Confirming
      * ------------------------------------------------------------------- */
 
+    /**
+     * Whether an offer on this event can no longer be taken (3.106.2):
+     * 'cancelled', 'unavailable' when the event is gone, in the bin, private or
+     * not published, else ''. The confirm link and the expiry both ask, and
+     * neither changes the row when the answer is not ''.
+     */
+    public static function offer_blocked( $event_id ) {
+        $post = get_post( (int) $event_id );
+        if ( ! $post || 'publish' !== $post->post_status || SFAF_Privacy::is_private( (int) $event_id ) ) {
+            return 'unavailable';
+        }
+        return SFAF_Cancellation::is_cancelled( (int) $event_id ) ? 'cancelled' : '';
+    }
+
     public static function confirm_url( $token ) {
         return add_query_arg( self::ARG, $token, home_url( '/' ) );
     }
@@ -442,12 +462,17 @@ class SFAF_Waitlist {
     /**
      * Accept an offer by its token.
      *
-     * @return string 'done', 'gone' or 'invalid'.
+     * @return string 'done', 'gone', 'invalid', or 'cancelled' or 'unavailable'
+     *                when the event is off, which changes nothing.
      */
     public static function accept( $token ) {
         $row = self::by_offer_token( $token );
         if ( ! $row ) {
             return 'invalid';
+        }
+        $off = self::offer_blocked( (int) $row->event_id );
+        if ( '' !== $off ) {
+            return $off;
         }
         if ( self::OFFERED !== (string) $row->status ) {
             return ( 'confirmed' === (string) $row->status ) ? 'done' : 'gone';
@@ -487,6 +512,8 @@ class SFAF_Waitlist {
         $person = (object) array(
             'name' => (string) $row->name, 'first_name' => (string) $row->first_name, 'last_name' => (string) $row->last_name,
             'email' => (string) $row->email, 'token' => (string) $row->token, 'format' => (string) $row->format,
+            // The same row they answered on when they joined (3.106.2).
+            'rsvp_id' => (int) $row->id,
         );
         if ( '' !== $person->email && SFAF_RSVP::confirmations_enabled() && SFAF_Notifications::on( (int) $row->event_id, 'confirmation' ) ) {
             SFAF_Notifications::send_confirmation( (int) $row->event_id, $person );
@@ -538,6 +565,14 @@ class SFAF_Waitlist {
         $lang     = sfaf_event_language( $event_id );
         $values   = SFAF_Reminders::page_values( $event_id, $lang );
         $values['expiry'] = sfaf_ap_datetime( (string) $row->offer_expires, 'full', $lang, true );
+
+        // AN EVENT THAT IS OFF (3.106.2): a page saying so, GET or POST, and
+        // nothing else. The row is not touched.
+        $off = self::offer_blocked( $event_id );
+        if ( '' !== $off ) {
+            $p = SFAF_Reminders::page_parts( 'offer_off_page', $off, $lang, $values );
+            sfaf_notice_page( $p['title'], $p['html'], $lang );
+        }
 
         $posted = isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD']
             && isset( $_POST['uc_offer_token'] ) && hash_equals( $token, sanitize_text_field( wp_unslash( $_POST['uc_offer_token'] ) ) );

@@ -1556,6 +1556,11 @@
                         // here works out for itself what a format is or whether
                         // one has room.
                         '<div class="uc-rsvp-format" id="uc-rsvp-format" hidden></div>' +
+                        // QUESTIONS FOR REGISTRANTS (3.106.2), after the format
+                        // because an in-person question follows it, and before
+                        // the name and email. Drawn from the button's
+                        // data-uc-questions; empty and hidden when it has none.
+                        '<div class="uc-rsvp-questions" id="uc-rsvp-questions" hidden></div>' +
                         // TWO FIELDS, AND THE SECOND IS GENUINELY OPTIONAL.
                         //
                         // Somebody registering for an HIV testing session or a
@@ -1669,6 +1674,7 @@
             // stamped. Drawn before the reset below, so the reset clears these
             // radios too and no previous event's choice survives into this one.
             renderFormatChoice(this);
+            renderQuestions(this);
             currentFormats = ($(this).attr('data-uc-formats') || '');
             currentEmailRequired = ($(this).attr('data-uc-email-required') === '1');
             currentFull = ($(this).attr('data-uc-full') || '').split(',').filter(Boolean);
@@ -1712,6 +1718,7 @@
         $(document).on('change', '#uc-rsvp-noemail, #uc-rsvp-format input[type="radio"]', function () {
             syncNoEmail();
             syncWaitlist();
+            syncQuestions();
         });
 
         // Submit RSVP
@@ -1816,6 +1823,93 @@
         $('#uc-rsvp-submit-btn').text(submitLabel());
     }
 
+    /**
+     * QUESTIONS FOR REGISTRANTS (3.106.2).
+     *
+     * One fieldset per question, in order, with the question and the option
+     * words as the organizer typed them. Checkboxes for pick any and radios for
+     * pick one, square and round as on the rest of the calendar. An option
+     * that allows it has an "Additional info" line beside it. The heading and
+     * that label come from the server in the event's language.
+     *
+     * IN PERSON ONLY questions show only when In person is the chosen format on
+     * a hybrid event, and a hidden question is never sent. The server asks the
+     * same of every answer it receives, required ones included.
+     */
+    var currentQuestions = null;
+    function esc(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+    function renderQuestions(btn) {
+        var box = $('#uc-rsvp-questions');
+        box.empty().attr('hidden', 'hidden');
+        currentQuestions = null;
+        var raw = $(btn).attr('data-uc-questions') || '';
+        if (!raw) { return; }
+        try { currentQuestions = JSON.parse(raw); } catch (err) { currentQuestions = null; }
+        if (!currentQuestions || !currentQuestions.items || !currentQuestions.items.length) {
+            currentQuestions = null;
+            return;
+        }
+        var html = '<h4 class="uc-rsvp-q-heading">' + esc(currentQuestions.heading) + '</h4>';
+        currentQuestions.items.forEach(function (q) {
+            var type = (q.style === 'one') ? 'radio' : 'checkbox';
+            html += '<fieldset class="uc-rsvp-q" data-q="' + esc(q.id) + '"' +
+                (q.in_person ? ' data-in-person="1"' : '') + (q.required ? ' data-required="1"' : '') + '>' +
+                '<legend>' + esc(q.text) + (q.required ? ' *' : '') + '</legend>';
+            q.options.forEach(function (o) {
+                var id = 'uc-q-' + q.id + '-' + o.id;
+                html += '<div class="uc-rsvp-q-option">' +
+                    '<label class="uc-rsvp-optin uc-rsvp-q-choice uc-rsvp-q-' + type + '" for="' + id + '">' +
+                        '<input type="' + type + '" id="' + id + '" name="uc_q_' + esc(q.id) + '" value="' + esc(o.id) + '" />' +
+                        '<span>' + esc(o.text) + '</span>' +
+                    '</label>';
+                if (o.more) {
+                    html += '<label class="uc-rsvp-q-more">' +
+                        '<span class="uc-rsvp-q-more-label">' + esc(currentQuestions.more) + '</span>' +
+                        '<input type="text" maxlength="200" data-q="' + esc(q.id) + '" data-o="' + esc(o.id) + '" />' +
+                    '</label>';
+                }
+                html += '</div>';
+            });
+            html += '</fieldset>';
+        });
+        box.html(html).removeAttr('hidden');
+        syncQuestions();
+    }
+    /* In person only: shown when In person is picked on a hybrid event. */
+    function syncQuestions() {
+        if (!currentQuestions) { return; }
+        var chosen = $('#uc-rsvp-format input[type="radio"]:checked').val() || '';
+        $('#uc-rsvp-questions .uc-rsvp-q').each(function () {
+            var show = !this.hasAttribute('data-in-person') || !currentQuestions.hybrid || chosen === 'in_person';
+            this.hidden = !show;
+        });
+    }
+    /* The answers to every question showing: [answers, more], or a fieldset
+       left unanswered that is required. */
+    function collectAnswers() {
+        var answers = {}, more = {}, missing = null;
+        $('#uc-rsvp-questions .uc-rsvp-q').each(function () {
+            if (this.hidden) { return; }
+            var q = this.getAttribute('data-q');
+            var picked = [];
+            $(this).find('input[type="checkbox"]:checked, input[type="radio"]:checked').each(function () { picked.push(this.value); });
+            if (picked.length) { answers[q] = picked; }
+            $(this).find('.uc-rsvp-q-more input').each(function () {
+                var v = this.value.trim();
+                if (v && picked.indexOf(this.getAttribute('data-o')) !== -1) {
+                    more[q] = more[q] || {};
+                    more[q][this.getAttribute('data-o')] = v;
+                }
+            });
+            if (!picked.length && this.hasAttribute('data-required') && !missing) { missing = this; }
+        });
+        return { answers: answers, more: more, missing: missing };
+    }
+
     function renderFormatChoice(btn) {
         var box = $('#uc-rsvp-format');
         var formats = ($(btn).attr('data-uc-formats') || '').split(',').filter(Boolean);
@@ -1910,6 +2004,14 @@
             }
         }
 
+        // Required questions, before the name, in the order they are asked.
+        var qa = collectAnswers();
+        if (qa.missing) {
+            $('#uc-rsvp-error').text(currentQuestions.required).show();
+            $(qa.missing).find('input').first().focus();
+            return;
+        }
+
         if (!first) {
             $('#uc-rsvp-error').text('Please fill in your first name.').show();
             $('#uc-rsvp-first-name').focus();
@@ -1944,7 +2046,11 @@
                 optin:      optin,
                 // '' on every event that did not ask. submit() validates it
                 // against the event's own formats rather than trusting it.
-                format:     format
+                format:     format,
+                // Answers to the event's questions (3.106.2). Checked again
+                // on the server, required ones included.
+                answers:      JSON.stringify(qa.answers),
+                answers_more: JSON.stringify(qa.more)
             },
             success: function(response) {
                 if (response.success) {

@@ -56,6 +56,8 @@ for f in .claude/*.php; do
     caps-sweep-live.php) continue ;;   # run below with --run
     release-3106-live.php) continue ;; # run below with --run
     plant-3106.php) continue ;;        # a fault planter for release-3106-live, not a check
+    release-31062-live.php) continue ;; # run below with --run
+    login-check.php) continue ;;       # run last, after every capture is rewritten
     byline-live.php) continue ;;       # run below with --run; --live checks the site itself
   esac
   run "$(basename "$f" .php)" php "$f"
@@ -64,6 +66,8 @@ done
 echo
 echo "=== callable audit ==="
 run "audit-callables --self-test" php .claude/audit-callables.php --self-test
+# The matcher under the build's login check (3.106.2); the glob ran the check.
+run "login-check --self-test" php .claude/login-check.php --self-test
 run "audit-callables ."          php .claude/audit-callables.php .
 
 echo
@@ -278,6 +282,15 @@ run "release-3106-live --run" php .claude/release-3106-live.php --run
 # No author name or login on an event page (3.106.1): the captured category
 # and event pages before and after the strip, in Chrome.
 run "byline-live --run" php .claude/byline-live.php --run
+# Questions for registrants, the Notifications card on Add event and the cancel
+# dialog counting the waitlist (3.106.2), at desktop and 390px.
+run "release-31062-live --run" php .claude/release-31062-live.php --run
+
+echo
+# No real name or login in a tracked file (3.106.2). Last, because the browser
+# checks above rewrite the captures it reads.
+echo "=== the login check ==="
+run "login-check" php .claude/login-check.php
 
 echo
 echo "=== shell guards ==="

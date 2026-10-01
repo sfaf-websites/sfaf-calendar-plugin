@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.106.1
+ * Version: 3.106.2
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.106.1' );
+define( 'SFAF_VERSION', '3.106.2' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -24,7 +24,7 @@ define( 'SFAF_VERSION', '3.106.1' );
  * hook — still gets its new tables, instead of throwing "table doesn't exist"
  * the first time the runner looks for one.
  */
-define( 'SFAF_DB_VERSION', '10' );
+define( 'SFAF_DB_VERSION', '11' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -159,6 +159,8 @@ $sfaf_includes = array(
     'includes/class-sfaf-seo.php',
     // No author on a public event surface (3.106.1).
     'includes/class-sfaf-bylines.php',
+    // Questions for registrants (3.106.2).
+    'includes/class-sfaf-questions.php',
     'includes/class-sfaf-portal.php',
     'includes/class-sfaf-orphans.php',
     'includes/sfaf-sample-data.php',
@@ -1100,6 +1102,27 @@ function sfaf_install_tables() {
         KEY token (token),
         KEY confirm_token (confirm_token),
         KEY term_status (term_id, status)
+    ) $charset;";
+
+    // ANSWERS TO AN EVENT'S QUESTIONS (schema 11, 3.106.2). One row per option
+    // chosen, keyed on the registration row, the question and the option, with
+    // the additional-info text. The question's and the option's words are kept
+    // as they were answered, so removing either from the event leaves every
+    // answer readable. See SFAF_Questions.
+    $answers = $wpdb->prefix . 'uc_rsvp_answers';
+    $sql[] = "CREATE TABLE $answers (
+        id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+        rsvp_id bigint(20) unsigned NOT NULL,
+        event_id bigint(20) unsigned NOT NULL,
+        question_id varchar(20) NOT NULL,
+        option_id varchar(20) NOT NULL,
+        question_text text NOT NULL,
+        option_text text NOT NULL,
+        more_text varchar(255) NOT NULL DEFAULT '',
+        created_at datetime NULL,
+        PRIMARY KEY (id),
+        KEY rsvp_id (rsvp_id),
+        KEY event_question (event_id, question_id)
     ) $charset;";
 
     require_once ABSPATH . 'wp-admin/includes/upgrade.php';

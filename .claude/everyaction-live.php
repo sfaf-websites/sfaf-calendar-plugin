@@ -160,11 +160,11 @@ JS;
 
 $root = $GLOBALS['kit_root'];
 $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>EveryAction panel</title>'
-    . '<link rel="stylesheet" href="file:///' . $root . '/admin/css/admin.css">'
+    . '<link rel="stylesheet" href="../admin/css/admin.css">'
     . '<script>window.EL_PAYLOADS = ' . json_encode( $payloads ) . '; window.EL_PRESSES = ' . json_encode( $presses ) . ';</script>'
     . '<script>' . $probe . '</script>'
     . '</head><body class="wp-admin"><div class="wrap uc-admin-wrap"><form>' . $panel . '</form></div>'
-    . '<script src="file:///' . $root . '/admin/js/everyaction.js"></script>'
+    . '<script src="../admin/js/everyaction.js"></script>'
     . '</body></html>';
 $file = __DIR__ . '/everyaction-live.html';
 file_put_contents( $file, $html );

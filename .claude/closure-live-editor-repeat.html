@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Events - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin.svg?ver=3.106.1" />
-<link rel="icon" type="image/png" sizes="32x32" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin.png?ver=3.106.1" />
-<link rel="apple-touch-icon" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/images/favicon-caladmin-180.png?ver=3.106.1" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.106.2" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.106.2" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.106.2" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/css/portal.css?ver=3.106.1" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.106.2" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -801,9 +801,232 @@
                                         <span class="uc-hint uc-hint-spec">0 means unlimited.</span>
                 </div>
                         </div>
+                <div class="uc-field uc-questions" data-uc-questions data-uc-questions-max="5">
+            <input type="hidden" name="uc_questions_present" value="1" />
+            <span class="uc-field-label">Questions for registrants</span>
+            <span class="uc-hint">Ask registrants anything you need to know before the event.</span>
+            <ol class="uc-q-list" data-uc-q-list>
+                            </ol>
+            <button type="button" class="uc-btn uc-btn-sm" data-uc-q-add>Add question</button>
+            <template data-uc-q-template>        <li class="uc-q" data-uc-q>
+            <input type="hidden" name="uc_questions[__Q__][id]" value="" data-uc-q-name="id" />
+            <label class="uc-field">
+                <span class="uc-field-label">Question</span>
+                <input type="text" name="uc_questions[__Q__][text]" data-uc-q-name="text"
+                       value="" maxlength="300" />
+            </label>
+            <fieldset class="uc-q-style">
+                <legend class="uc-field-label">Answer style</legend>
+                <label class="uc-radio-row">
+                    <input type="radio" name="uc_questions[__Q__][style]" value="any" data-uc-q-name="style"  checked="checked" />
+                    <span>Checkboxes (pick any)</span>
+                </label>
+                <label class="uc-radio-row">
+                    <input type="radio" name="uc_questions[__Q__][style]" value="one" data-uc-q-name="style"  />
+                    <span>Radio (pick one)</span>
+                </label>
+            </fieldset>
+            <label class="uc-check">
+                <input type="checkbox" name="uc_questions[__Q__][required]" value="1" data-uc-q-name="required"  />
+                Required
+            </label>
+            <label class="uc-check" data-uc-q-inperson hidden>
+                <input type="checkbox" name="uc_questions[__Q__][in_person]" value="1" data-uc-q-name="in_person"  />
+                In person only
+            </label>
+            <div class="uc-field">
+                <span class="uc-field-label">Answer options</span>
+                <ul class="uc-q-options" data-uc-o-list>
+                            <li class="uc-q-option" data-uc-o draggable="true">
+            <span class="uc-q-grip" data-uc-o-grip aria-hidden="true"><svg class="sfaf-icon sfaf-icon-menu" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>
+            <input type="hidden" name="uc_questions[__Q__][options][0][id]" value="" data-uc-o-name="id" />
+            <input type="text" name="uc_questions[__Q__][options][0][text]" data-uc-o-name="text" aria-label="Option"
+                   value="" maxlength="300" />
+            <label class="uc-check">
+                <input type="checkbox" name="uc_questions[__Q__][options][0][more]" value="1" data-uc-o-name="more"  />
+                Allow additional info
+            </label>
+            <button type="button" class="uc-btn uc-btn-sm" data-uc-o-remove>Remove</button>
+        </li>
+                        </ul>
+                <button type="button" class="uc-btn uc-btn-sm" data-uc-o-add>Add option</button>
+            </div>
+            <button type="button" class="uc-btn uc-btn-sm" data-uc-q-remove>Remove question</button>
+        </li>
+        </template>
+            <template data-uc-o-template>        <li class="uc-q-option" data-uc-o draggable="true">
+            <span class="uc-q-grip" data-uc-o-grip aria-hidden="true"><svg class="sfaf-icon sfaf-icon-menu" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>
+            <input type="hidden" name="uc_questions[__Q__][options][__O__][id]" value="" data-uc-o-name="id" />
+            <input type="text" name="uc_questions[__Q__][options][__O__][text]" data-uc-o-name="text" aria-label="Option"
+                   value="" maxlength="300" />
+            <label class="uc-check">
+                <input type="checkbox" name="uc_questions[__Q__][options][__O__][more]" value="1" data-uc-o-name="more"  />
+                Allow additional info
+            </label>
+            <button type="button" class="uc-btn uc-btn-sm" data-uc-o-remove>Remove</button>
+        </li>
+        </template>
+        </div>
                         </section>
 
                 
+                                    <section class="uc-bento-card" data-uc-notifications-card>
+                        <h2 class="uc-bento-title">Notifications</h2>
+                                        <div class="uc-notify-block">
+
+                        <div class="uc-notify-section">
+                <h4 class="uc-notify-subhead">Who hears about this event</h4>
+                <p class="uc-hint">
+                    Everybody here is told when somebody registers or cancels, gets the number registered at 6 am the day
+                    before, one copy of the morning-of reminder, and the list of who is coming two hours before. It changes
+                    nothing about who can edit this event.
+                </p>
+
+                
+                <input type="hidden" name="notify_list_present" value="1" />
+
+                                    <label class="uc-check">
+                        <input type="checkbox" name="notify_author" value="1"  checked="checked" />
+                        Send to <strong>Admin</strong> (created this event, admin@sfaf.org)
+                    </label>
+                
+                        <div class="uc-notify-picker" data-uc-notify-picker>
+            <details class="uc-picker" data-uc-picker>
+                <summary class="uc-picker-toggle" data-uc-picker-toggle>
+                    <span class="uc-picker-label">Choose who else gets it</span>
+                    <span class="uc-picker-count" data-uc-picker-count>1 individual. 1 person in total.</span>
+                                        <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                </summary>
+
+                <div class="uc-picker-panel">
+                                        <div class="uc-picker-tabs" role="tablist" aria-label="Who to notify" data-uc-picker-tabs>
+                        <button type="button" role="tab" class="uc-picker-tab"
+                                id="uc-notify-0-tab-people"
+                                aria-controls="uc-notify-0-panel-people"
+                                aria-selected="true" data-uc-picker-tab="people">Individuals</button>
+                        <button type="button" role="tab" class="uc-picker-tab"
+                                id="uc-notify-0-tab-teams"
+                                aria-controls="uc-notify-0-panel-teams"
+                                aria-selected="false" tabindex="-1" data-uc-picker-tab="teams">Teams</button>
+                    </div>
+
+                    <div role="tabpanel" class="uc-picker-panel-body"
+                         id="uc-notify-0-panel-people"
+                         aria-labelledby="uc-notify-0-tab-people"
+                         data-uc-picker-panel="people">
+                        <h4 class="uc-picker-heading">Individuals</h4>
+                                                                            <p class="uc-muted">
+                                No calendar users yet. An admin can add people under Users.                            </p>
+                                            </div>
+
+                    <div role="tabpanel" class="uc-picker-panel-body"
+                         id="uc-notify-0-panel-teams"
+                         aria-labelledby="uc-notify-0-tab-teams"
+                         data-uc-picker-panel="teams">
+                        <h4 class="uc-picker-heading">Teams</h4>
+                                                    <p class="uc-muted">No teams yet. An admin can make one under Users &amp; Teams.</p>
+                                            </div>
+                </div>
+            </details>
+
+                        <div class="uc-rchips" data-uc-notify-chips hidden>
+                <span class="uc-rchips-label">On the list</span>
+                <div class="uc-rchips-list" data-uc-notify-chips-list></div>
+                <p class="uc-muted uc-rchips-empty" data-uc-notify-chips-empty hidden>
+                    Nobody else yet. Open the picker above to add somebody.
+                </p>
+            </div>
+
+                        <input type="hidden" name="notify_teams_present" value="1" />
+
+            <script type="application/json" data-uc-notify-data>{"users":[],"teams":[],"author":"admin@sfaf.org"}</script>
+        </div>
+        
+                                <div class="uc-field uc-emails-field" data-uc-emails>
+                    <span class="uc-field-label">Anyone else</span>
+                    <div class="uc-email-pills" data-uc-email-pills>
+                                            </div>
+                    <p class="uc-muted uc-emails-empty" data-uc-emails-empty hidden>
+                        Nobody outside the calendar yet.
+                    </p>
+
+                    <div class="uc-email-add">
+                        <input type="email" name="notify_email_new" id="uc-notify-email-new"
+                               data-uc-email-input
+                               placeholder="supervisor@example.org" autocomplete="off"
+                                />
+                        <button type="button" class="uc-btn uc-btn-sm uc-btn-primary" data-uc-email-add>Add</button>
+                    </div>
+                    <p class="uc-field-error" data-uc-email-error role="alert" hidden></p>
+                                        <span class="uc-hint">
+                        For people outside the calendar system: a supervisor, a co-host. Untick an address to take it
+                        off the list.
+                    </span>
+                </div>
+            </div>
+
+                        <div class="uc-notify-section">
+                                <details class="uc-notify-kinds" data-uc-disclosure >
+                    <summary class="uc-team-add-toggle" aria-expanded="false">
+                        <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                        <span>
+                                                                                        Emails for this event: all 6 are on
+                                                    </span>
+                    </summary>
+                    <div class="uc-team-add-body">
+                        <p class="uc-hint">Untick one to stop it for this event only.</p>
+                        <input type="hidden" name="uc_notify_kinds_present" value="1" />
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="notify_kinds[]" value="confirmation"
+                                        checked="checked" />
+                                Confirmation to the person who registers                            </label>
+                            <p class="uc-hint uc-notify-kind-note">Sent the moment somebody registers. Carries the date, the time, the place, add-to-calendar links, and a link to cancel.</p>
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="notify_kinds[]" value="alert"
+                                        checked="checked" />
+                                Alert to your notification list when somebody registers                            </label>
+                            <p class="uc-hint uc-notify-kind-note">One email per registration, as it happens.</p>
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="notify_kinds[]" value="day_before"
+                                        checked="checked" />
+                                Count of who is coming, to your notification list, the day before                            </label>
+                            <p class="uc-hint uc-notify-kind-note">Sent at 6 am the day before. Gives the number registered, not the names. Nothing is sent when nobody has registered.</p>
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="notify_kinds[]" value="reminder"
+                                        checked="checked" />
+                                Morning-of reminder to everybody registered                            </label>
+                            <p class="uc-hint uc-notify-kind-note">Sent at 6 am on the day, or at midnight when the event starts earlier. Your notification list is copied in.</p>
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="notify_kinds[]" value="summary"
+                                        checked="checked" />
+                                Who is coming, to your notification list, two hours before                            </label>
+                            <p class="uc-hint uc-notify-kind-note">Lists everybody registered. Nothing is sent when nobody has registered.</p>
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="notify_kinds[]" value="cancel_alert"
+                                        checked="checked" />
+                                Alert to your notification list when somebody cancels                            </label>
+                            <p class="uc-hint uc-notify-kind-note">One email per cancellation, as it happens. Names who cancelled and what the count is now.</p>
+                                            </div>
+                </details>
+            </div>
+
+            
+                    </div>
+                        <div class="uc-notify-section">
+                <h4 class="uc-notify-subhead">Replies</h4>
+                <label class="uc-field">
+                    <span class="uc-field-label">Replies go to</span>
+                                        <input type="email" name="event_replyto" id="uc-event-replyto"
+                           value="admin@sfaf.org"
+                                                      placeholder="events@sfaf.org" />
+                                        <span class="uc-hint">
+                        One address, for replies to this event's reminder. A shared mailbox is more reliable
+                        than a person, and it does not have to be an sfaf.org address.
+                                                    Pre-filled with whoever created this event.
+                                            </span>
+                </label>
+                </div>
+                                    </section>
                 
                 
             </div>
@@ -879,8 +1102,8 @@
                         </main>
             </div>
         </div>
-        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"file:\/\/\/C:\/Users\/msapoznikov\/Documents\/Apps\/Calendar\/public\/css\/editor-content.css?ver=3.106.1"},"quicktags":false,"mediaButtons":false}</script><script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/sfaf-email.js?ver=3.106.1"></script>
-<script src="file:///C:/Users/msapoznikov/Documents/Apps/Calendar/public/js/portal.js?ver=3.106.1"></script>
+        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.106.2"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.106.2"></script>
+<script src="../public/js/portal.js?ver=3.106.2"></script>
 <script>window.CL_PAGE="editor-repeat";window.CL_CASE={"set":{"date":"2026-11-19","repeat_mode":"weekly","repeat_days[]":"4","repeat_ends":"on","repeat_until":"2026-12-31"},"press":"","answer":""};window.CL_SERIES="11";(function () {
 var P = window.CL_PAGE, C = window.CL_CASE || {}, out = { page: P, errors: [], posted: null, dialogs: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });

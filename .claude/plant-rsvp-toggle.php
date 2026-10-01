@@ -2,8 +2,7 @@
 /**
  * PLANT A FAULT IN THE MOVED RSVP CONTROLS, RUN THE TEST, PUT IT BACK.
  */
-$root = dirname( dirname( dirname( dirname( dirname( dirname( __DIR__ ) ) ) ) ) );
-$root = 'C:/Users/msapoznikov/Documents/Apps/Calendar';
+$root = dirname( __DIR__ );
 
 $plants = array(
     'the calendar file goes missing from the confirmation after the toggle moved' => array(

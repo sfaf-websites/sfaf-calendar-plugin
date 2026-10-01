@@ -9,7 +9,7 @@ typography, layout, CSS failure modes) or `CLAUDE.md` (standing working rules,
 the build gate, shell rules). When something here contradicts one of those,
 those win in their own remit and this file is wrong and should be fixed.
 
-Current version at last update of this file: **3.106.1**.
+Current version at last update of this file: **3.106.2**.
 
 ---
 
@@ -4841,6 +4841,17 @@ author off every public surface an event reaches:
 `people.local.json`, which the live check reads, is ignored by git. The public
 mirror of this repository is where that would otherwise go.
 
+**AND THE BUILD REFUSES THEM (3.106.2).** `.claude/login-check.php` reads every
+tracked file for each string under `names`, `logins` and `accounts` in
+`people.local.json`, and `build-zip.sh` runs it before anything is built. The
+strings live only in that ignored file, because a check that carried them would
+publish them; **without the file the check refuses rather than passes**, so a
+build on another machine fails until somebody creates it. `accounts` is the
+Windows account folder, which every absolute `file:///` path spells out: the
+browser captures took it from `wp-kit.php`'s `plugin_dir_url()`, which now
+returns `../`, relative to the pages it writes, and the EveryAction harness and
+two scripts that wrote it by hand compute their root instead.
+
 ---
 
 ## 4. Email
@@ -5096,8 +5107,17 @@ delete guard, the prompt's count and every other message stay confirmed only.
 - **The next dates** are `SFAF_Notifications::next_in_series()`: published,
   public, not cancelled, not already begun, and none of the dates being
   cancelled, soonest first, from the first cancelled date's series.
+- **The dialog asks whenever anybody would be written to (3.106.2)**: somebody
+  registered, or somebody waiting with an address. The card stamps both numbers,
+  `data-uc-cancel-count` (registrations, as before) and `data-uc-cancel-waiting`
+  (`SFAF_Announce::count_waitlisted()`: distinct addresses on the waitlist, less
+  anybody also registered, who is counted there), and the dialog says them
+  apart: "Nobody is registered. 2 people are on the waitlist." Until 3.106.2 an
+  event with people waiting and nobody confirmed never asked, so the waitlist
+  was not told. **The delete guard and the three reads are untouched**: deleting
+  an event with only a waitlist is still allowed.
 - **The screen states the waitlist apart**: "N people were told. M people on the
-  waitlist were told too." The first number is the one the dialog asked about.
+  waitlist were told too." The first number is the registrations.
 - **A waiting row is not changed by the cancellation**, as no registration is.
   Reinstating sends the waitlist nothing.
 
@@ -5296,6 +5316,18 @@ about registrations" checkbox into `alert` being off. It does **not** also switc
 off `cancel_alert`, because that checkbox was ticked when this message did not
 exist and inferring an intention about it would be inventing one.
 
+### The Notifications card is on Add event too (3.106.2)
+
+The card holding who hears about an event (the creator, the recipient picker,
+anyone else), the message ticks and the reply-to was drawn only on Edit event,
+because `render_notify_box()` read the event's author and stored lists. On Add
+event the person adding it is the creator, the lists start empty and the
+reply-to starts on their address. **The save needed nothing new**: every field
+carries its own marker and `save_event_from_post()` inserts the post before it
+saves them. `.claude/notifications-card-test.php` renders both screens and
+compares the card's fields, and saves a new event with chosen recipients and
+ticks.
+
 ### The notification list, and why two messages ask different questions
 
 The list is gated on **nothing**. It holds calendar contributors, people reached
@@ -5461,6 +5493,7 @@ for an unresolved token or an em dash.
 | Donate line | one | the one line in the confirmation and the reminder (§2) |
 | Cancel your place page | asking; released; leaving the waitlist; left; nothing to cancel | the cancel link's page |
 | Confirm your place page | asking; confirmed; offer passed | the offer's confirm link's page |
+| Offer link, event off page | cancelled; deleted, private or unpublished | the offer's confirm link on an event that is off (3.106.2) |
 
 - **Three editable pieces per message**: the subject (a page's title), the words
   above the event details, and a closing line under them. The details table,
@@ -5564,10 +5597,70 @@ person is a row in `uc_rsvps` with a status of its own, ordered by
 - **A third-party event and one with RSVPs off never have a waitlist**:
   `sfaf_rsvp_block()` returns before the button for both, and `applies()` says
   no.
+- **An offer's confirm link on an event that is off takes no action (3.106.2).**
+  `SFAF_Waitlist::offer_blocked()` answers `cancelled` for a cancelled event and
+  `unavailable` for one deleted, in the bin, made private or no longer
+  published. The link then opens **Offer link, event off**, in the event's
+  language, with no button, on a GET and a POST alike; `accept()` refuses the
+  same way; **the row is not changed**. The expiry cron skips such an offer too,
+  so nobody told an event is off is then told their offer passed. Before
+  3.106.2 the link confirmed them into a cancelled event and sent a normal
+  confirmation.
 - **Schema 10** added `offer_token`, `offered_at`, `offer_expires` and a key on
   `offer_token`. dbDelta adds them; existing rows are untouched and need no
   backfill: no existing status is one of the four new ones, and the new
   columns are read only for rows that are.
+
+### Questions for registrants (3.106.2)
+
+**An event may ask up to five questions on its registration form.** The editor's
+section **Questions for registrants** sits with the RSVP settings in the
+Location card, under Capacity, on Add event and Edit event. Each question has
+its text, an answer style (checkboxes, pick any; radio, pick one), Required,
+and on a hybrid event **In person only**; each has options, added, removed and
+dragged into order, and an option may **Allow additional info**, a short line
+beside it on the form.
+
+| What | Where |
+|---|---|
+| The questions | `_uc_questions` on the event, every question and option with a stable id (`q…`, `o…`) |
+| The answers | `uc_rsvp_answers` (schema 11), one row per option chosen: `rsvp_id`, `question_id`, `option_id`, the question's and option's words as answered, `more_text` |
+| The code | `SFAF_Questions`: normalize, save, the form's data, the server check, store, answers, totals |
+
+- **The editor posts real fields named by position**, `uc_questions[i][options][j][…]`,
+  and `portal.js` renumbers every name after an add, remove or drag and before
+  the form is sent, so the stored order is the order on the screen. Each field
+  carries its id in a hidden input, so an edit keeps the answers pointing at it.
+  A question with no text, or with no options, is dropped on save.
+- **On the shared RSVP list as `questions`**, drawn by name in the Location card
+  and skipped by name on the registrations screen, whose save leaves the key
+  alone because the section's marker is absent. Not for a third-party event:
+  the field is on the list only where registrations are taken here.
+- **It travels with a repeating event, the group copy and the duplicate**, and
+  is not a series default.
+- **The form** draws "Additional information" after the format choice and
+  before the name, from the button's `data-uc-questions`: the questions as
+  typed and the heading, the "Additional info" label and the required message
+  in the event's language. In person only questions show when In person is
+  picked. The answers post as JSON beside the rest.
+- **THE SERVER DECIDES, WHATEVER THE FORM DID.** `SFAF_RSVP::submit()` runs
+  `SFAF_Questions::clean()` once the format is known and before the capacity
+  check: a required question unanswered is refused, an option that is not the
+  question's is ignored, a radio keeps one, and an in-person question is asked
+  only of somebody attending in person on a hybrid event. So joining a waitlist
+  answers too, and the answers are on that row; confirming the row later keeps
+  them.
+- **The registrations list**, only when the event has questions, has a strip
+  above the list, one line per current question: "Dietary needs: 3 of 12
+  answered. Vegetarian 2, Allergy 1". **Confirmed registrants only**, and an
+  in-person question on a hybrid event counts against the in-person ones. Each
+  person who answered has **Details** in their row, closed by default, opening
+  their answers and additional info underneath.
+- **Removing a question or option keeps its answers in the table.** The strip
+  reads the event's current questions, so it no longer counts them; Details
+  reads the table, so it still shows them, in the words they were answered in.
+- **The registration alert** carries the answers under the person's name. The
+  two-hour summary, the day-before count and the digest do not.
 
 ### Cancellation tokens
 

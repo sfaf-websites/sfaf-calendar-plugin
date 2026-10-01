@@ -155,6 +155,14 @@ try byline-rule-taken "the dividing rule goes: browser" $L --run
 try byline-fallback-gone "renamed classes keep the author" $B
 try author-archive-open "an author archive stays open" $B
 try oembed-author-kept "oEmbed keeps the author" $B
+# 3.106.2, A. The real login in a tracked file.
+try login-in-tree "a tracked file carries the login" .claude/login-check.php
+try offer-off-ignored "an offer link works on a cancelled event" .claude/waitlist-cancel-test.php
+try cancel-waiting-uncounted "the cancel dialog does not count the waitlist" .claude/waitlist-cancel-test.php
+try cancel-waiting-uncounted "the dialog skips the waitlist: browser" .claude/release-31062-live.php --run
+try notifications-edit-only "the Notifications card is Edit only" .claude/notifications-card-test.php
+try q-required-ignored "a required question is not enforced" .claude/questions-test.php
+try q-totals-any-status "the totals count the waitlist" .claude/questions-test.php
 
 restore
 echo "-------------------------------------------"

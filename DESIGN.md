@@ -952,6 +952,36 @@ It is `aria-hidden`. A screen reader hears `required` from the control, or
 "star" adds nothing. The mark is drawn from the form's required list, never
 typed onto a label; `PROJECT.md` 1 has the lists.
 
+### Questions for registrants: no new box, no new colour (3.106.2)
+
+Three surfaces, and each is made from what is already on it. Measured in Chrome
+by `.claude/release-31062-live.php` at 1280px and 390px.
+
+**The editor.** The section sits inside the Location card, so a question is a
+block separated from the next by **space and a hairline** (`--p-border`), never
+a box: the card is already the box. Field label and helper are the ladder's
+steps (13px/600 `--p-text`, 12px/400 `--p-muted`, 5.60:1). An option row is its
+grip, its words, the tick and Remove; the row being dragged takes the page tint
+`--p-bg` rather than a shadow. The grip is the `menu` glyph from `sfaf_icon()`
+in `--p-muted`.
+
+**The public form.** "Additional information" is the form's subhead step,
+16px/600 `--uc-text` (16.91:1 on the white modal); each question's legend is
+13px/600, the same as every other label on the form; an option's words are a
+choice and so **body weight, 13px/400**. Pick any is the square box and pick one
+the round one, as on the rest of the calendar, both with the opt-in row's
+`--uc-teal-text` accent. "Additional info" is 12px/400 `--uc-secondary`
+(4.83:1), above its line, and the line sits beside the option until the row is
+too narrow, then drops under it.
+
+**The registrations list.** The totals strip is body, 14px/400 `--sfaf-darkgray`,
+between the counts line and the list, with nothing around it. **Details** is a
+quiet action, 13px/600 `--uc-accent-text` (5.35:1), and the row it opens takes
+the page tint `--p-bg`, with each question 13px/600 and any additional info
+12px/400 `--p-muted` (5.18:1 on the tint).
+
+---
+
 ## 5. CSS discipline
 
 Six separate defects where a rule was correct and never reached the screen.

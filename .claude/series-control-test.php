@@ -300,6 +300,7 @@ class SFAF_Announce {
     public static function registrants( $event_id ) { return array(); }
     public static function has_registrations( $event_id ) { return false; }
     public static function count_affected( $event_ids ) { return 0; }
+    public static function count_waitlisted( $event_ids ) { return 0; }   // 3.106.2
     public static function cancelled( $event_ids ) { return 0; }
     public static function changed( $event_ids, $changes ) { return 0; }
 }
@@ -617,6 +618,7 @@ require_once $root . '/includes/class-sfaf-online.php';
 require_once $root . '/includes/class-sfaf-cancellation.php';
 require_once $root . '/includes/class-sfaf-notifications.php';
 require_once $root . '/includes/class-sfaf-messages.php';
+require_once $root . '/includes/class-sfaf-questions.php'; // 3.106.2
 require_once $root . '/includes/class-sfaf-request.php';
 require_once $root . '/includes/class-sfaf-uploads.php';
 /* Pictures inside a description (3.96.0): the editor draws the chooser, so

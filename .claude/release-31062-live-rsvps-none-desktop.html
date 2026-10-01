@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html >
+<head>
+    <meta charset="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Events - SFAF Calendar</title>
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.106.2" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.106.2" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.106.2" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.106.2" />
+    <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
+        <script>
+    (function (d) {
+        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        d.setAttribute('data-uc-motion', reduced ? 'reduced' : 'on');
+        if (reduced) { return; }
+        d.className += ' uc-anim';
+        // The nav stagger is once per session, not once per navigation: every
+        // screen here is a full page load. A storage failure means it simply
+        // runs again, which is the harmless outcome.
+        try {
+            if (window.sessionStorage.getItem('ucNavIntro') !== '1') {
+                window.sessionStorage.setItem('ucNavIntro', '1');
+                d.className += ' uc-anim-nav';
+            }
+        } catch (e) {
+            d.className += ' uc-anim-nav';
+        }
+    })(document.documentElement);
+    </script>
+    </head>
+<body class="uc-portal">        <div class="uc-portal-layout">
+            <aside class="uc-portal-sidebar" id="uc-sidebar">
+                <div class="uc-portal-brand">
+                                            <span class="uc-portal-brandmark">SFAF</span>
+                                        <span class="uc-portal-brandtext">Calendar Admin</span>
+                </div>
+                <nav class="uc-portal-nav" aria-label="Calendar admin">
+                                                                    <a href="https://resources.sfaf.org/caladmin"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 1"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-home" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 11 12 4l8 7"/><path d="M6.5 9.5V20h11V9.5"/></svg></span>
+                            <span class="uc-nav-label">Dashboard</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/events"
+                           class="uc-nav-item active"
+                           style="--uc-nav-i: 2"
+                            aria-current="page">
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-calendar" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span>
+                            <span class="uc-nav-label">Events</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/series"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 3"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-repeat" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17 2.5 21 6.5l-4 4"/><path d="M3 12.5v-2a4 4 0 0 1 4-4h14"/><path d="M7 21.5 3 17.5l4-4"/><path d="M21 11.5v2a4 4 0 0 1-4 4H3"/></svg></span>
+                            <span class="uc-nav-label">Series &amp; Categories</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/faq-sets"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 4"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-help" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.6"/><path d="M12 17h.01"/></svg></span>
+                            <span class="uc-nav-label">FAQ Sets</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/media"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 5"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-image" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.5"/><path d="m3.5 16.5 4.5-4 3.5 3 3-2.5 6 5"/></svg></span>
+                            <span class="uc-nav-label">Images</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/venues"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 6"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-venue" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 21h18"/><path d="M12 3.5 4 8.5h16z"/><path d="M6.5 21v-9M10.2 21v-9M13.8 21v-9M17.5 21v-9"/></svg></span>
+                            <span class="uc-nav-label">Venues</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/organizers"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 7"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-users" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5"/><path d="M17 13.2a5.5 5.5 0 0 1 3.5 5.8"/></svg></span>
+                            <span class="uc-nav-label">Organizers</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/optins"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 8"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-mail" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/></svg></span>
+                            <span class="uc-nav-label">Email Opt-ins</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/pending"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 9"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-clock" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>
+                            <span class="uc-nav-label">Pending</span>
+                                                            <span class="uc-nav-badge">10<span class="uc-visually-hidden"> waiting for review</span></span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/users"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 10"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-users" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5"/><path d="M17 13.2a5.5 5.5 0 0 1 3.5 5.8"/></svg></span>
+                            <span class="uc-nav-label">Users &amp; Teams</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/email-templates"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 11"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-mail" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/></svg></span>
+                            <span class="uc-nav-label">Email Templates</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/preferences"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 12"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-bell" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 10.5a6 6 0 0 0-12 0c0 4.5-2 6-2 6h16s-2-1.5-2-6z"/><path d="M13.7 19.5a2 2 0 0 1-3.4 0"/></svg></span>
+                            <span class="uc-nav-label">Preferences</span>
+                                                    </a>
+                                    </nav>
+
+                                <div class="uc-portal-foot">
+                    <div class="uc-portal-me">
+                        <span class="uc-portal-me-name">Admin</span>
+                        <span class="uc-portal-me-role">Admin</span>
+                        <a class="uc-portal-signout" href="">Sign out</a>
+                    </div>
+                </div>
+            </aside>
+
+            <div class="uc-portal-main">
+                <header class="uc-portal-topbar">
+                                        <button type="button" class="uc-portal-menu-btn" id="uc-menu-btn" aria-label="Menu"><svg class="sfaf-icon sfaf-icon-menu" width="22px" height="22px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+                                        <div class="uc-portal-user">
+                        <a class="uc-portal-logout" href="">Log out</a>
+                    </div>
+                </header>
+                <main class="uc-portal-content">
+                <div class="uc-page-head">
+            <h1>Book club</h1>
+            <div class="uc-page-head-actions">
+                                    <a href="https://resources.sfaf.org/caladmin/events/edit/504" class="uc-btn">Edit event</a>
+                                <a href="https://resources.sfaf.org/caladmin/events" class="uc-btn">&larr; Events</a>
+                <a href="https://resources.sfaf.org/caladmin/rsvps/export?event_id=504&amp;_wpnonce=nonce" class="uc-btn uc-btn-primary">Export CSV</a>
+            </div>
+        </div>
+
+                            <p class="uc-hint">
+                Registrations for this event only.
+                <a href="https://resources.sfaf.org/caladmin/rsvps">All registrations across every event</a>.
+            </p>
+
+                                    <details class="uc-card uc-rsvp-settings" data-uc-disclosure>
+                <summary class="uc-rsvp-settings-toggle" aria-expanded="false">
+                    <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                    <span class="uc-rsvp-settings-id">
+                        <span class="uc-rsvp-settings-name"><strong>Registration settings</strong> for this event</span>
+                        <span class="uc-muted">
+                            Accepting registrations, capacity 20                        </span>
+                    </span>
+                </summary>
+                <form method="post" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-rsvp-settings-form">
+                    <input type="hidden" name="uc_action" value="save_rsvp_settings" />
+                    <input type="hidden" name="event_id" value="504" />
+                    <input type="hidden" name="uc_nonce" value="nonce" />                                        <div class="uc-notify-section">
+                        <h4 class="uc-notify-subhead">Registrations</h4>
+                        <p class="uc-hint">Whether the form is on the event page, and how many places there are.</p>
+                                                        <input type="hidden" name="uc_rsvp_toggle_present" value="1" />
+                <label class="uc-check"
+                       data-uc-rsvp-accept-check>
+                    <input type="checkbox" name="rsvp_enabled" value="1"
+                            checked="checked"                            />
+                    Accept RSVPs
+                </label>
+                                                <span class="uc-hint uc-hint-spec" data-uc-rsvp-hybrid-note hidden>
+                    A hybrid event has to take RSVPs: choosing in person or online is part of registering.
+                </span>
+                                <input type="hidden" name="uc_email_required_present" value="1" />
+                <label class="uc-check" data-uc-email-required-check>
+                    <input type="checkbox" name="email_required" value="1"
+                                                       />
+                    Email required to register
+                </label>
+                <span class="uc-hint">Turn this on to remove the option to register without an email address.</span>
+                                <div class="uc-field uc-capacity-row" data-uc-capacity-row>
+                    <span class="uc-field-label">
+                        Capacity
+                                            </span>
+                    <div class="uc-capacity-boxes">
+                        <label class="uc-capacity-box">
+                                                        <span class="uc-capacity-box-label" data-uc-capacity-label hidden>In person</span>
+                            <input type="number" name="capacity" min="0"
+                                   aria-label="Capacity"
+                                   data-uc-capacity-in-person
+                                   value="20" />
+                        </label>
+                                                    <label class="uc-capacity-box" data-uc-online-capacity hidden>
+                                <span class="uc-capacity-box-label">Online</span>
+                                <input type="number" name="capacity_online" min="0"
+                                       aria-label="Capacity, online"
+                                       value="" />
+                            </label>
+                                            </div>
+                                        <span class="uc-hint uc-hint-spec">0 means unlimited.</span>
+                </div>
+                                    </div>
+                                    <div class="uc-notify-block">
+
+                        <div class="uc-notify-section">
+                <h4 class="uc-notify-subhead">Who hears about this event</h4>
+                <p class="uc-hint">
+                    Everybody here is told when somebody registers or cancels, gets the number registered at 6 am the day
+                    before, one copy of the morning-of reminder, and the list of who is coming two hours before. It changes
+                    nothing about who can edit this event.
+                </p>
+
+                
+                <input type="hidden" name="notify_list_present" value="1" />
+
+                                    <label class="uc-check">
+                        <input type="checkbox" name="notify_author" value="1"  checked="checked" />
+                        Send to <strong>Admin</strong> (created this event, admin@sfaf.org)
+                    </label>
+                
+                        <div class="uc-notify-picker" data-uc-notify-picker>
+            <details class="uc-picker" data-uc-picker>
+                <summary class="uc-picker-toggle" data-uc-picker-toggle>
+                    <span class="uc-picker-label">Choose who else gets it</span>
+                    <span class="uc-picker-count" data-uc-picker-count>1 individual. 1 person in total.</span>
+                                        <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                </summary>
+
+                <div class="uc-picker-panel">
+                                        <div class="uc-picker-tabs" role="tablist" aria-label="Who to notify" data-uc-picker-tabs>
+                        <button type="button" role="tab" class="uc-picker-tab"
+                                id="uc-notify-504-tab-people"
+                                aria-controls="uc-notify-504-panel-people"
+                                aria-selected="true" data-uc-picker-tab="people">Individuals</button>
+                        <button type="button" role="tab" class="uc-picker-tab"
+                                id="uc-notify-504-tab-teams"
+                                aria-controls="uc-notify-504-panel-teams"
+                                aria-selected="false" tabindex="-1" data-uc-picker-tab="teams">Teams</button>
+                    </div>
+
+                    <div role="tabpanel" class="uc-picker-panel-body"
+                         id="uc-notify-504-panel-people"
+                         aria-labelledby="uc-notify-504-tab-people"
+                         data-uc-picker-panel="people">
+                        <h4 class="uc-picker-heading">Individuals</h4>
+                                                                            <p class="uc-muted">
+                                No calendar users yet. An admin can add people under Users.                            </p>
+                                            </div>
+
+                    <div role="tabpanel" class="uc-picker-panel-body"
+                         id="uc-notify-504-panel-teams"
+                         aria-labelledby="uc-notify-504-tab-teams"
+                         data-uc-picker-panel="teams">
+                        <h4 class="uc-picker-heading">Teams</h4>
+                                                    <p class="uc-muted">No teams yet. An admin can make one under Users &amp; Teams.</p>
+                                            </div>
+                </div>
+            </details>
+
+                        <div class="uc-rchips" data-uc-notify-chips hidden>
+                <span class="uc-rchips-label">On the list</span>
+                <div class="uc-rchips-list" data-uc-notify-chips-list></div>
+                <p class="uc-muted uc-rchips-empty" data-uc-notify-chips-empty hidden>
+                    Nobody else yet. Open the picker above to add somebody.
+                </p>
+            </div>
+
+                        <input type="hidden" name="notify_teams_present" value="1" />
+
+            <script type="application/json" data-uc-notify-data>{"users":[],"teams":[],"author":"admin@sfaf.org"}</script>
+        </div>
+        
+                                <div class="uc-field uc-emails-field" data-uc-emails>
+                    <span class="uc-field-label">Anyone else</span>
+                    <div class="uc-email-pills" data-uc-email-pills>
+                                            </div>
+                    <p class="uc-muted uc-emails-empty" data-uc-emails-empty hidden>
+                        Nobody outside the calendar yet.
+                    </p>
+
+                    <div class="uc-email-add">
+                        <input type="email" name="notify_email_new" id="uc-notify-email-new"
+                               data-uc-email-input
+                               placeholder="supervisor@example.org" autocomplete="off"
+                                />
+                        <button type="button" class="uc-btn uc-btn-sm uc-btn-primary" data-uc-email-add>Add</button>
+                    </div>
+                    <p class="uc-field-error" data-uc-email-error role="alert" hidden></p>
+                                        <span class="uc-hint">
+                        For people outside the calendar system: a supervisor, a co-host. Untick an address to take it
+                        off the list.
+                    </span>
+                </div>
+            </div>
+
+                        <div class="uc-notify-section">
+                                <details class="uc-notify-kinds" data-uc-disclosure >
+                    <summary class="uc-team-add-toggle" aria-expanded="false">
+                        <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                        <span>
+                                                                                        Emails for this event: all 6 are on
+                                                    </span>
+                    </summary>
+                    <div class="uc-team-add-body">
+                        <p class="uc-hint">Untick one to stop it for this event only.</p>
+                        <input type="hidden" name="uc_notify_kinds_present" value="1" />
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="notify_kinds[]" value="confirmation"
+                                        checked="checked" />
+                                Confirmation to the person who registers                            </label>
+                            <p class="uc-hint uc-notify-kind-note">Sent the moment somebody registers. Carries the date, the time, the place, add-to-calendar links, and a link to cancel.</p>
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="notify_kinds[]" value="alert"
+                                        checked="checked" />
+                                Alert to your notification list when somebody registers                            </label>
+                            <p class="uc-hint uc-notify-kind-note">One email per registration, as it happens.</p>
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="notify_kinds[]" value="day_before"
+                                        checked="checked" />
+                                Count of who is coming, to your notification list, the day before                            </label>
+                            <p class="uc-hint uc-notify-kind-note">Sent at 6 am the day before. Gives the number registered, not the names. Nothing is sent when nobody has registered.</p>
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="notify_kinds[]" value="reminder"
+                                        checked="checked" />
+                                Morning-of reminder to everybody registered                            </label>
+                            <p class="uc-hint uc-notify-kind-note">Sent at 6 am on the day, or at midnight when the event starts earlier. Your notification list is copied in.</p>
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="notify_kinds[]" value="summary"
+                                        checked="checked" />
+                                Who is coming, to your notification list, two hours before                            </label>
+                            <p class="uc-hint uc-notify-kind-note">Lists everybody registered. Nothing is sent when nobody has registered.</p>
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="notify_kinds[]" value="cancel_alert"
+                                        checked="checked" />
+                                Alert to your notification list when somebody cancels                            </label>
+                            <p class="uc-hint uc-notify-kind-note">One email per cancellation, as it happens. Names who cancelled and what the count is now.</p>
+                                            </div>
+                </details>
+            </div>
+
+            
+                    </div>
+                        <div class="uc-notify-section">
+                <h4 class="uc-notify-subhead">Replies</h4>
+                <label class="uc-field">
+                    <span class="uc-field-label">Replies go to</span>
+                                        <input type="email" name="event_replyto" id="uc-event-replyto"
+                           value="admin@sfaf.org"
+                                                      placeholder="events@sfaf.org" />
+                                        <span class="uc-hint">
+                        One address, for replies to this event's reminder. A shared mailbox is more reliable
+                        than a person, and it does not have to be an sfaf.org address.
+                                                    Pre-filled with whoever created this event.
+                                            </span>
+                </label>
+                </div>
+                                    <div class="uc-form-actions">
+                        <a class="uc-btn" href="https://resources.sfaf.org/caladmin/events/edit/504">Edit the whole event</a>
+                        <button type="submit" class="uc-btn uc-btn-primary">Save settings</button>
+                    </div>
+                </form>
+            </details>
+        
+        <form method="get" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-filters-bar">
+            <input type="search" name="s" value="" placeholder="Search name or email…" />
+            <input type="hidden" name="event_id" value="504" />                        <button class="uc-btn" type="submit">Search</button>
+        </form>
+
+                    <p class="uc-rsvp-counts" data-uc-rsvp-counts>
+                <strong>1</strong> registered
+                <span aria-hidden="true">&middot;</span>
+                <strong>0</strong> waitlisted
+            </p>
+            
+        <div class="uc-card">
+            <div class="uc-card-head"><h2>1 registrations</h2></div>
+                                                            <table class="uc-table">
+                    <thead><tr><th>First name</th><th>Last name</th><th>Email</th><th>Phone</th><th>Updates</th><th>Status</th><th>Registered</th><th><span class="uc-visually-hidden">Actions</span></th></tr></thead>
+                    <tbody>
+                                            <tr>
+                                                        <td><strong>Dee</strong></td>
+                                                        <td>Diaz</td>
+                            <td>dee@example.org</td>
+                            <td></td>
+                            <td><span class="uc-muted">&ndash;</span></td>
+                            <td>
+                                <span class="uc-pill uc-pill-confirmed">Registered</span>
+                                                            </td>
+                            <td>Sep 24, 2026 at 10 am</td>
+                            <td class="uc-rsvp-actions">
+                                                                    <form method="post" action="https://resources.sfaf.org/caladmin/rsvps">
+                                        <input type="hidden" name="uc_action" value="remove_rsvp" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <input type="hidden" name="rsvp_id" value="4" />
+                                        <input type="hidden" name="back_event" value="1" />                                        <button type="submit" class="uc-link-danger uc-btn-sm" data-uc-rsvp-remove
+                                                aria-label="Remove Dee Diaz"
+                                                data-uc-confirm="Remove Dee Diaz&#039;s registration? Their place is released, and nothing puts it back.">Remove</button>
+                                    </form>
+                                                                                            </td>
+                        </tr>
+                                                                </tbody>
+                </table>
+                    </div>
+                        </main>
+            </div>
+        </div>
+        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.106.2"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.106.2"></script>
+<script src="../public/js/portal.js?ver=3.106.2"></script>
+<script>window.RQ_PAGE="rsvps-none-desktop";(function () {
+var P = window.RQ_PAGE, out = { page: P, errors: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function text(el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }
+function seen(el) { return !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden'; }
+function rgb(s) { var m = String(s).match(/\d+(\.\d+)?/g); return m ? m.slice(0, 4).map(Number) : null; }
+function lum(c) { return [0, 1, 2].map(function (i) { var v = c[i] / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }).reduce(function (a, v, i) { return a + v * [0.2126, 0.7152, 0.0722][i]; }, 0); }
+function behind(el) {
+  for (var n = el; n && n.nodeType === 1; n = n.parentNode) {
+    var cs = getComputedStyle(n), c = rgb(cs.backgroundColor);
+    if (c && (c.length < 4 || c[3] > 0)) { return c; }
+  }
+  return [255, 255, 255];
+}
+function contrast(el) {
+  var a = lum(rgb(getComputedStyle(el).color)), b = lum(behind(el));
+  return Math.round(((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)) * 100) / 100;
+}
+function box(el) {
+  if (!el) { return null; }
+  var r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+  return { text: text(el), seen: seen(el), top: Math.round(r.top), left: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom),
+    w: Math.round(r.width), h: Math.round(r.height), color: cs.color, bg: cs.backgroundColor,
+    size: cs.fontSize, weight: cs.fontWeight, contrast: seen(el) ? contrast(el) : null };
+}
+function finish() {
+  out.pageWidth = document.documentElement.scrollWidth;
+  if (window.parent !== window) { window.parent.postMessage(JSON.stringify(out), '*'); return; }
+  var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+}
+function names(q) { return Array.prototype.map.call(q.querySelectorAll('input[name]'), function (i) { return i.name; }); }
+
+window.addEventListener('load', function () { setTimeout(function () {
+  if (P.indexOf('editor-') === 0) {
+    var root = document.querySelector('[data-uc-questions]');
+    out.notifications = text(document.querySelector('[data-uc-notifications-card] h2'));
+    if (!root) { return finish(); }
+    out.inLocation = !!root.closest('.uc-bento-card') && /Location/.test(text(root.closest('.uc-bento-card').querySelector('h2')));
+    out.afterCapacity = (function () { var c = document.querySelector('[data-uc-capacity-row]'); return !!c && !!(c.compareDocumentPosition(root) & Node.DOCUMENT_POSITION_FOLLOWING); })();
+    out.label = box(root.querySelector(':scope > .uc-field-label'));
+    out.hint = box(root.querySelector(':scope > .uc-hint'));
+    var list = root.querySelector('[data-uc-q-list]');
+    var qs = function () { return list.querySelectorAll(':scope > [data-uc-q]'); };
+    out.start = qs().length;
+    out.inPersonSeen = Array.prototype.map.call(root.querySelectorAll('[data-uc-q-inperson]'), seen);
+    var add = root.querySelector('[data-uc-q-add]');
+    add.click();
+    var last = qs()[qs().length - 1];
+    out.added = { count: qs().length, names: names(last) };
+    out.questionBox = box(last);
+    out.optionRow = box(last.querySelector('[data-uc-o]'));
+    last.querySelector('[data-uc-o-add]').click();
+    out.optionAdded = names(last.querySelectorAll('[data-uc-o]')[1]);
+    while (qs().length < 5 && seen(add)) { add.click(); }
+    out.atFive = { count: qs().length, addSeen: seen(add) };
+    qs()[0].querySelector('[data-uc-q-remove]').click();
+    out.afterRemove = { count: qs().length, firstNames: names(qs()[0]).slice(0, 2), addSeen: seen(add) };
+    var hy = document.querySelector('[data-uc-hybrid-toggle]');
+    if (hy) {
+      hy.checked = !hy.checked; hy.dispatchEvent(new Event('change', { bubbles: true }));
+      out.inPersonAfterToggle = Array.prototype.map.call(root.querySelectorAll('[data-uc-q-inperson]'), seen);
+    }
+    return finish();
+  }
+  if (P.indexOf('form-') === 0) {
+    var posted = null;
+    jQuery.ajax = function (opts) { posted = opts.data; return { fail: function () {} }; };
+    document.querySelector('.uc-rsvp-btn').click();
+    return setTimeout(function () {
+      var box0 = document.querySelector('#uc-rsvp-questions');
+      out.shown = seen(box0);
+      if (!out.shown) { return finish(); }
+      out.heading = box(box0.querySelector('.uc-rsvp-q-heading'));
+      out.legends = Array.prototype.map.call(box0.querySelectorAll('.uc-rsvp-q'), function (f) { return { text: text(f.querySelector('legend')), seen: seen(f) }; });
+      var fmt = document.querySelector('#uc-rsvp-format'), email = document.querySelector('#uc-rsvp-email'), first = document.querySelector('#uc-rsvp-first-name');
+      out.order = { afterFormat: !!(fmt.compareDocumentPosition(box0) & Node.DOCUMENT_POSITION_FOLLOWING), beforeName: !!(box0.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING), beforeEmail: !!(box0.compareDocumentPosition(email) & Node.DOCUMENT_POSITION_FOLLOWING) };
+      out.more = box(box0.querySelector('.uc-rsvp-q-more-label'));
+      out.moreInput = box(box0.querySelector('.uc-rsvp-q-more input'));
+      out.choice = box(box0.querySelector('.uc-rsvp-q-choice'));
+      out.legendBox = box(box0.querySelector('.uc-rsvp-q > legend'));
+      out.modal = box(document.querySelector('.uc-rsvp-modal'));
+      var ip = document.querySelector('#uc-rsvp-format input[value="in_person"]');
+      if (ip) { ip.checked = true; ip.dispatchEvent(new Event('change', { bubbles: true })); out.afterInPerson = Array.prototype.map.call(box0.querySelectorAll('.uc-rsvp-q'), seen); }
+      document.querySelector('#uc-rsvp-first-name').value = 'Lee';
+      document.querySelector('#uc-rsvp-email').value = 'lee@example.org';
+      document.querySelector('#uc-rsvp-submit-btn').click();
+      out.requiredError = text(document.querySelector('#uc-rsvp-error'));
+      out.postedWithout = posted;
+      var allergy = box0.querySelector('input[value="oaaaaaaaaa2"]');
+      allergy.checked = true;
+      box0.querySelector('.uc-rsvp-q-more input[data-o="oaaaaaaaaa2"]').value = 'Peanuts';
+      document.querySelector('#uc-rsvp-submit-btn').click();
+      out.posted = posted ? { answers: posted.answers, more: posted.answers_more, format: posted.format } : null;
+      finish();
+    }, 400);
+  }
+  if (P.indexOf('rsvps-') === 0) {
+    var strip = document.querySelector('[data-uc-q-totals]');
+    out.strip = strip ? Array.prototype.map.call(strip.querySelectorAll('li'), text) : null;
+    out.stripBox = box(strip);
+    var counts = document.querySelector('.uc-rsvp-counts'), card = document.querySelector('.uc-card .uc-table');
+    out.stripAbove = strip && card ? !!(strip.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(counts.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING) : null;
+    var btns = document.querySelectorAll('[data-uc-rsvp-details]');
+    out.detailButtons = btns.length;
+    if (btns.length) {
+      var b = btns[0], row = document.getElementById(b.getAttribute('aria-controls'));
+      out.detailsBtn = box(b);
+      out.closed = { rowSeen: seen(row), expanded: b.getAttribute('aria-expanded') };
+      b.click();
+      out.opened = { rowSeen: seen(row), expanded: b.getAttribute('aria-expanded'), text: text(row), dt: box(row.querySelector('dt')), more: box(row.querySelector('.uc-rsvp-answer-more')) };
+      b.click();
+      out.reclosed = { rowSeen: seen(row), expanded: b.getAttribute('aria-expanded') };
+    }
+    return finish();
+  }
+  if (P.indexOf('cancel-') === 0) {
+    var form = document.querySelector('form[data-uc-confirm-cancel]:not([data-uc-confirm-reinstate])');
+    var c = form ? form.querySelector('[data-uc-cancel-count]') : null;
+    out.countText = text(c);
+    out.attrs = c ? { people: c.getAttribute('data-uc-cancel-count'), waiting: c.getAttribute('data-uc-cancel-waiting') } : null;
+    var d = form.closest('details'); if (d) { d.open = true; }
+    form.querySelector('button[type="submit"]').click();
+    return setTimeout(function () {
+      var dlg = document.querySelector('dialog.uc-notify-modal[open]');
+      out.dialog = dlg ? { lead: text(dlg.querySelector('.uc-confirm-msg')), buttons: Array.prototype.map.call(dlg.querySelectorAll('button'), text) } : null;
+      finish();
+    }, 300);
+  }
+  finish();
+}, 500); });
+})();</script></body></html>

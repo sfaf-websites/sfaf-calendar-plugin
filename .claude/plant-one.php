@@ -569,6 +569,31 @@ $edits = array(
         "        if ( ! self::has_calendar_role( \$id ) ) {",
         "        if ( true ) {" ),
 
+    /* 3.106.2, B. An offer's link works on an event that is off. */
+    'offer-off-ignored' => array( 'includes/class-sfaf-waitlist.php',
+        "    public static function offer_blocked( \$event_id ) {\n",
+        "    public static function offer_blocked( \$event_id ) {\n        return '';\n" ),
+
+    /* C. The waitlist is not counted, so the dialog does not ask. */
+    'cancel-waiting-uncounted' => array( 'includes/class-sfaf-announce.php',
+        "    public static function count_waitlisted( \$event_ids ) {\n",
+        "    public static function count_waitlisted( \$event_ids ) {\n        return 0;\n" ),
+
+    /* D. The Notifications card is Edit event's only again. */
+    'notifications-edit-only' => array( 'includes/class-sfaf-portal.php',
+        "                if ( '' === \$prov['source'] ) :\n                    ?>\n                    <section class=\"uc-bento-card\" data-uc-notifications-card>",
+        "                if ( \$event_id && '' === \$prov['source'] ) :\n                    ?>\n                    <section class=\"uc-bento-card\" data-uc-notifications-card>" ),
+
+    /* E.3. A required question unanswered is let through by the server. */
+    'q-required-ignored' => array( 'includes/class-sfaf-questions.php',
+        "            if ( \$q['required'] && ! \$picked ) {",
+        "            if ( false ) {" ),
+
+    /* E.5. The totals count every row's answers, waitlisted included. */
+    'q-totals-any-status' => array( 'includes/class-sfaf-questions.php',
+        "            return isset( \$confirmed[ (int) \$r->rsvp_id ] );",
+        "            return true;" ),
+
     /* An event's oEmbed answer keeps its author. */
     'oembed-author-kept' => array( 'includes/class-sfaf-bylines.php',
         "            unset( \$data['author_name'], \$data['author_url'] );",
@@ -579,6 +604,19 @@ $edits = array(
 if ( 'off-ladder' === $which ) {
     file_put_contents( $C, "\n.uc-planted-fault { font-size: 13.5px; font-weight: 550; }\n", FILE_APPEND );
     echo "planted: off-ladder\n";
+    exit( 0 );
+}
+
+/* 3.106.2, A. A tracked file carries the real login, read from the ignored
+   file so that the planter does not carry it either. */
+if ( 'login-in-tree' === $which ) {
+    $real = json_decode( (string) @file_get_contents( '.claude/fixtures/bylines/people.local.json' ), true );
+    if ( empty( $real['logins'][0] ) ) {
+        fwrite( STDERR, "PLANT DID NOT APPLY: no people.local.json\n" );
+        exit( 1 );
+    }
+    file_put_contents( 'includes/class-sfaf-bylines.php', "\n// " . $real['logins'][0] . "\n", FILE_APPEND );
+    echo "planted: login-in-tree\n";
     exit( 0 );
 }
 

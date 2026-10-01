@@ -1277,6 +1277,9 @@ function sfaf_rsvp_block( $post_id ) {
                 'data-uc-formats' => implode( ',', sfaf_event_formats( $post_id ) ),
                 // The form hides "register without an email" when this is 1 (3.106.0).
                 'data-uc-email-required' => '1' === (string) get_post_meta( $post_id, '_uc_email_required', true ) ? '1' : '0',
+                // Questions for registrants and their two labels in the
+                // event's language, '' when it asks none (3.106.2).
+                'data-uc-questions' => ( $qd = SFAF_Questions::form_data( $post_id ) ) ? wp_json_encode( $qd ) : '',
                 'data-uc-full'    => implode( ',', array_values( array_filter(
                     sfaf_event_formats( $post_id ),
                     function ( $f ) use ( $post_id ) {

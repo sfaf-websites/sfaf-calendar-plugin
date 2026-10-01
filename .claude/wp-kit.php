@@ -123,7 +123,9 @@ function map_deep( $v, $cb ) { return is_array( $v ) ? array_map( function ( $x 
 
 /* ---- Plugin loading, URLs, hooks. ---- */
 function plugin_dir_path( $f ) { return rtrim( str_replace( '\\', '/', dirname( $f ) ), '/' ) . '/'; }
-function plugin_dir_url( $f ) { return 'file:///' . $GLOBALS['kit_root'] . '/'; }
+// Relative to the pages, which are all written beside this file, so no
+// capture carries the machine's own path (3.106.2).
+function plugin_dir_url( $f ) { return '../'; }
 function plugin_basename( $f ) { return 'sfaf-calendar/sfaf-calendar.php'; }
 /* HOOKS ARE RECORDED, NOT RUN (3.104.0). do_action() still does nothing, so
  * loading the plugin fires no listener. kit_run_hook() runs ONE recorded

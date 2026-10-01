@@ -5194,3 +5194,39 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
 /* .uc-rsvp-optin sets display:flex, which beats the user agent's [hidden] rule,
    so the box would stay on screen for somebody joining online. (0,3,0). */
 .uc-rsvp-form .uc-rsvp-noemail[hidden] { display: none; }
+
+/* ---------------------------------------------------------------------------
+   QUESTIONS FOR REGISTRANTS, ON THE FORM (3.106.2).
+
+   The heading is the form's subhead step; each question is a fieldset whose
+   legend takes the same type as every other label on this form. An option is a
+   choice, so its words are body weight, and the box beside it is the opt-in
+   row's, square for pick any and round for pick one. "Additional info" sits
+   beside its option and drops under it when the row is too narrow.
+   ------------------------------------------------------------------------ */
+.uc-rsvp-form .uc-rsvp-questions { display: flex; flex-direction: column; gap: 14px; }
+.uc-rsvp-form .uc-rsvp-questions[hidden],
+.uc-rsvp-form .uc-rsvp-q[hidden] { display: none; }
+.uc-rsvp-modal .uc-rsvp-q-heading {
+    margin: 0; font-family: var(--uc-font-heading);
+    font-size: 16px; font-weight: 600; line-height: 1.3; color: var(--uc-text);
+}
+.uc-rsvp-form .uc-rsvp-q { border: 0; padding: 0; margin: 0; min-width: 0; }
+.uc-rsvp-form .uc-rsvp-q > legend {
+    padding: 0; margin-bottom: 4px;
+    font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--uc-text);
+}
+.uc-rsvp-form .uc-rsvp-q-option {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px;
+}
+.uc-rsvp-form .uc-rsvp-q-option .uc-rsvp-q-choice {
+    flex: 1 1 160px; margin: 4px 0; font-weight: 400;
+}
+.uc-rsvp-form .uc-rsvp-q-more {
+    flex: 1 1 200px; display: flex; flex-direction: column; gap: 2px; margin: 0 0 4px;
+}
+.uc-rsvp-form .uc-rsvp-q-more-label {
+    font-size: 12px; font-weight: 400; line-height: 1.4; color: var(--uc-secondary);
+}
+/* (0,4,1), equal to the text-field rule above and later, so it wins on order. */
+.uc-rsvp-modal-overlay .uc-rsvp-form .uc-rsvp-q-more input[type="text"] { padding: 6px 10px; font-size: 13px; }

@@ -4773,3 +4773,45 @@ body.uc-modal-open { overflow: hidden; }
     .uc-tpl-cols { grid-template-columns: minmax(0, 1fr); }
     .uc-tpl-preview { height: 520px; }
 }
+
+/* ---------------------------------------------------------------------------
+   QUESTIONS FOR REGISTRANTS (3.106.2).
+
+   THE EDITOR. Each question is a block separated from the next by space and a
+   hairline, never a box: it already sits inside the Location card. Options are
+   rows with a grip, their words, the additional-info tick and Remove. A row
+   being dragged is tinted, not lifted.
+   ------------------------------------------------------------------------ */
+.uc-questions .uc-q-list { list-style: none; margin: 8px 0 12px; padding: 0; }
+.uc-questions .uc-q { padding: 14px 0; border-top: 1px solid var(--p-border); display: flex; flex-direction: column; gap: 10px; }
+.uc-questions .uc-q:first-child { border-top: 0; padding-top: 4px; }
+.uc-questions .uc-q-style { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px 20px; }
+.uc-questions .uc-q-style > legend { padding: 0; margin-bottom: 4px; width: 100%; }
+.uc-questions .uc-q-options { list-style: none; margin: 4px 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.uc-questions .uc-q-option { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 4px 0; }
+.uc-questions .uc-q-option > input[type="text"] { flex: 1 1 220px; min-width: 0; }
+.uc-questions .uc-q-option .uc-check { margin: 0; }
+.uc-questions .uc-q-option.is-dragging { background: var(--p-bg); }
+.uc-questions .uc-q-grip { display: inline-flex; color: var(--p-muted); cursor: grab; }
+.uc-questions [data-uc-q-inperson][hidden] { display: none; }
+.uc-questions [data-uc-q-add][hidden] { display: none; }
+.uc-questions [data-uc-q-remove] { align-self: flex-start; }
+
+/* THE TOTALS STRIP, above the registrations list: one line per question, body
+   type, the question in the same ink as the counts line above it. */
+.uc-q-totals { list-style: none; margin: -8px 0 16px; padding: 0; font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--sfaf-darkgray); }
+.uc-q-totals li + li { margin-top: 2px; }
+
+/* DETAILS: a quiet action in the row's last cell, and the answers under it. */
+.uc-table [data-uc-rsvp-details] {
+    background: none; border: 0; padding: 0; margin-left: 12px;
+    font-size: 13px; font-weight: 600; color: var(--uc-accent-text); cursor: pointer;
+}
+.uc-table [data-uc-rsvp-details]:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; }
+.uc-table .uc-rsvp-details[hidden] { display: none; }
+.uc-table .uc-rsvp-details td { background: var(--p-bg); }
+.uc-rsvp-answers { margin: 0; font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--sfaf-darkgray); }
+.uc-rsvp-answers dt { font-size: 13px; font-weight: 600; margin-top: 8px; }
+.uc-rsvp-answers dt:first-child { margin-top: 0; }
+.uc-rsvp-answers dd { margin: 0; }
+.uc-rsvp-answer-more { display: block; font-size: 12px; color: var(--p-muted); }

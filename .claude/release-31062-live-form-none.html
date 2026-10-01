@@ -1,0 +1,137 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="../public/css/calendar.css"></head><body style="margin:0;background:#fff"><div class="uc-single"><div class="uc-single-inner"><div class="uc-single-grid"><div class="uc-single-main"></div><aside class="uc-single-sidebar"><div class="uc-single-card">    <div class="uc-card-rsvp">
+                    <div class="uc-capacity-bar">
+                <div class="uc-capacity-fill" style="width: 5%"></div>
+            </div>
+            <span class="uc-capacity-text">1/20 spots filled</span>
+                <button class="uc-actionbtn uc-actionbtn-primary uc-rsvp-btn" type="button" data-event-id="504" data-event-title="Book club" data-uc-formats="in_person" data-uc-email-required="0" data-uc-questions="" data-uc-full=""><span class="uc-actionbtn-label">RSVP</span><span class="uc-actionbtn-arrow" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-arrow" width="15px" height="15px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4.5 12h14"/><path d="m12.5 6 6 6-6 6"/></svg></span></button>    </div>
+    </div></aside></div></div></div><script src="vendor/jquery-3.7.1.min.js"></script><script>window.ucData={ajaxUrl:''};</script><script src="../public/js/calendar.js"></script><script>window.RQ_PAGE="form-none";(function () {
+var P = window.RQ_PAGE, out = { page: P, errors: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function text(el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }
+function seen(el) { return !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden'; }
+function rgb(s) { var m = String(s).match(/\d+(\.\d+)?/g); return m ? m.slice(0, 4).map(Number) : null; }
+function lum(c) { return [0, 1, 2].map(function (i) { var v = c[i] / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }).reduce(function (a, v, i) { return a + v * [0.2126, 0.7152, 0.0722][i]; }, 0); }
+function behind(el) {
+  for (var n = el; n && n.nodeType === 1; n = n.parentNode) {
+    var cs = getComputedStyle(n), c = rgb(cs.backgroundColor);
+    if (c && (c.length < 4 || c[3] > 0)) { return c; }
+  }
+  return [255, 255, 255];
+}
+function contrast(el) {
+  var a = lum(rgb(getComputedStyle(el).color)), b = lum(behind(el));
+  return Math.round(((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)) * 100) / 100;
+}
+function box(el) {
+  if (!el) { return null; }
+  var r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+  return { text: text(el), seen: seen(el), top: Math.round(r.top), left: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom),
+    w: Math.round(r.width), h: Math.round(r.height), color: cs.color, bg: cs.backgroundColor,
+    size: cs.fontSize, weight: cs.fontWeight, contrast: seen(el) ? contrast(el) : null };
+}
+function finish() {
+  out.pageWidth = document.documentElement.scrollWidth;
+  if (window.parent !== window) { window.parent.postMessage(JSON.stringify(out), '*'); return; }
+  var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+}
+function names(q) { return Array.prototype.map.call(q.querySelectorAll('input[name]'), function (i) { return i.name; }); }
+
+window.addEventListener('load', function () { setTimeout(function () {
+  if (P.indexOf('editor-') === 0) {
+    var root = document.querySelector('[data-uc-questions]');
+    out.notifications = text(document.querySelector('[data-uc-notifications-card] h2'));
+    if (!root) { return finish(); }
+    out.inLocation = !!root.closest('.uc-bento-card') && /Location/.test(text(root.closest('.uc-bento-card').querySelector('h2')));
+    out.afterCapacity = (function () { var c = document.querySelector('[data-uc-capacity-row]'); return !!c && !!(c.compareDocumentPosition(root) & Node.DOCUMENT_POSITION_FOLLOWING); })();
+    out.label = box(root.querySelector(':scope > .uc-field-label'));
+    out.hint = box(root.querySelector(':scope > .uc-hint'));
+    var list = root.querySelector('[data-uc-q-list]');
+    var qs = function () { return list.querySelectorAll(':scope > [data-uc-q]'); };
+    out.start = qs().length;
+    out.inPersonSeen = Array.prototype.map.call(root.querySelectorAll('[data-uc-q-inperson]'), seen);
+    var add = root.querySelector('[data-uc-q-add]');
+    add.click();
+    var last = qs()[qs().length - 1];
+    out.added = { count: qs().length, names: names(last) };
+    out.questionBox = box(last);
+    out.optionRow = box(last.querySelector('[data-uc-o]'));
+    last.querySelector('[data-uc-o-add]').click();
+    out.optionAdded = names(last.querySelectorAll('[data-uc-o]')[1]);
+    while (qs().length < 5 && seen(add)) { add.click(); }
+    out.atFive = { count: qs().length, addSeen: seen(add) };
+    qs()[0].querySelector('[data-uc-q-remove]').click();
+    out.afterRemove = { count: qs().length, firstNames: names(qs()[0]).slice(0, 2), addSeen: seen(add) };
+    var hy = document.querySelector('[data-uc-hybrid-toggle]');
+    if (hy) {
+      hy.checked = !hy.checked; hy.dispatchEvent(new Event('change', { bubbles: true }));
+      out.inPersonAfterToggle = Array.prototype.map.call(root.querySelectorAll('[data-uc-q-inperson]'), seen);
+    }
+    return finish();
+  }
+  if (P.indexOf('form-') === 0) {
+    var posted = null;
+    jQuery.ajax = function (opts) { posted = opts.data; return { fail: function () {} }; };
+    document.querySelector('.uc-rsvp-btn').click();
+    return setTimeout(function () {
+      var box0 = document.querySelector('#uc-rsvp-questions');
+      out.shown = seen(box0);
+      if (!out.shown) { return finish(); }
+      out.heading = box(box0.querySelector('.uc-rsvp-q-heading'));
+      out.legends = Array.prototype.map.call(box0.querySelectorAll('.uc-rsvp-q'), function (f) { return { text: text(f.querySelector('legend')), seen: seen(f) }; });
+      var fmt = document.querySelector('#uc-rsvp-format'), email = document.querySelector('#uc-rsvp-email'), first = document.querySelector('#uc-rsvp-first-name');
+      out.order = { afterFormat: !!(fmt.compareDocumentPosition(box0) & Node.DOCUMENT_POSITION_FOLLOWING), beforeName: !!(box0.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING), beforeEmail: !!(box0.compareDocumentPosition(email) & Node.DOCUMENT_POSITION_FOLLOWING) };
+      out.more = box(box0.querySelector('.uc-rsvp-q-more-label'));
+      out.moreInput = box(box0.querySelector('.uc-rsvp-q-more input'));
+      out.choice = box(box0.querySelector('.uc-rsvp-q-choice'));
+      out.legendBox = box(box0.querySelector('.uc-rsvp-q > legend'));
+      out.modal = box(document.querySelector('.uc-rsvp-modal'));
+      var ip = document.querySelector('#uc-rsvp-format input[value="in_person"]');
+      if (ip) { ip.checked = true; ip.dispatchEvent(new Event('change', { bubbles: true })); out.afterInPerson = Array.prototype.map.call(box0.querySelectorAll('.uc-rsvp-q'), seen); }
+      document.querySelector('#uc-rsvp-first-name').value = 'Lee';
+      document.querySelector('#uc-rsvp-email').value = 'lee@example.org';
+      document.querySelector('#uc-rsvp-submit-btn').click();
+      out.requiredError = text(document.querySelector('#uc-rsvp-error'));
+      out.postedWithout = posted;
+      var allergy = box0.querySelector('input[value="oaaaaaaaaa2"]');
+      allergy.checked = true;
+      box0.querySelector('.uc-rsvp-q-more input[data-o="oaaaaaaaaa2"]').value = 'Peanuts';
+      document.querySelector('#uc-rsvp-submit-btn').click();
+      out.posted = posted ? { answers: posted.answers, more: posted.answers_more, format: posted.format } : null;
+      finish();
+    }, 400);
+  }
+  if (P.indexOf('rsvps-') === 0) {
+    var strip = document.querySelector('[data-uc-q-totals]');
+    out.strip = strip ? Array.prototype.map.call(strip.querySelectorAll('li'), text) : null;
+    out.stripBox = box(strip);
+    var counts = document.querySelector('.uc-rsvp-counts'), card = document.querySelector('.uc-card .uc-table');
+    out.stripAbove = strip && card ? !!(strip.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(counts.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING) : null;
+    var btns = document.querySelectorAll('[data-uc-rsvp-details]');
+    out.detailButtons = btns.length;
+    if (btns.length) {
+      var b = btns[0], row = document.getElementById(b.getAttribute('aria-controls'));
+      out.detailsBtn = box(b);
+      out.closed = { rowSeen: seen(row), expanded: b.getAttribute('aria-expanded') };
+      b.click();
+      out.opened = { rowSeen: seen(row), expanded: b.getAttribute('aria-expanded'), text: text(row), dt: box(row.querySelector('dt')), more: box(row.querySelector('.uc-rsvp-answer-more')) };
+      b.click();
+      out.reclosed = { rowSeen: seen(row), expanded: b.getAttribute('aria-expanded') };
+    }
+    return finish();
+  }
+  if (P.indexOf('cancel-') === 0) {
+    var form = document.querySelector('form[data-uc-confirm-cancel]:not([data-uc-confirm-reinstate])');
+    var c = form ? form.querySelector('[data-uc-cancel-count]') : null;
+    out.countText = text(c);
+    out.attrs = c ? { people: c.getAttribute('data-uc-cancel-count'), waiting: c.getAttribute('data-uc-cancel-waiting') } : null;
+    var d = form.closest('details'); if (d) { d.open = true; }
+    form.querySelector('button[type="submit"]').click();
+    return setTimeout(function () {
+      var dlg = document.querySelector('dialog.uc-notify-modal[open]');
+      out.dialog = dlg ? { lead: text(dlg.querySelector('.uc-confirm-msg')), buttons: Array.prototype.map.call(dlg.querySelectorAll('button'), text) } : null;
+      finish();
+    }, 300);
+  }
+  finish();
+}, 500); });
+})();</script></body></html>

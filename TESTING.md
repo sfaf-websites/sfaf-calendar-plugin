@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 228 items.** Quick 190, needs real conditions 34, blocked on other
+**Outstanding: 235 items.** Quick 195, needs real conditions 36, blocked on other
 people 4.
 
 ---
@@ -2802,8 +2802,62 @@ only.
 **Why it needs a person:** the theme's other templates and the signed-in REST
 calls the block editor makes.
 
-## 2. Needs real conditions
+### 1.194 The Notifications card on Add event (3.106.2)
 
+Open **Add event** in caladmin. Under the RSVP settings there is a card headed
+**Notifications**, the same as on Edit event: your own name ticked as the
+creator, the recipient picker, Anyone else, the email ticks and Replies go to,
+starting on your address. Pick one colleague, add one outside address, untick
+one email, fill in the rest of the event and save. Reopen it: all of that is as
+you left it.
+
+**Why it needs a person:** the real editor and a real save.
+
+### 1.195 Questions for registrants in the editor (3.106.2)
+
+On a test event, in the Location card under Capacity: **Questions for
+registrants**. Add a question, write it, choose Radio, tick Required, add three
+options, tick **Allow additional info** on one, drag the last option to the
+top, and save. Reopen: the order is as you dragged it. Add questions until
+there are five: **Add question** goes. Tick **This is a hybrid event**: each
+question offers **In person only**. Remove an option and save. Open the event's
+registrations page: its settings panel shows no questions section.
+
+**Why it needs a person:** dragging with a real mouse and a real save.
+
+### 1.196 The questions on the event page and the registrations list (3.106.2)
+
+On the test event from 1.195, press RSVP on its page. Under the format choice:
+**Additional information** and the questions as typed. On a hybrid event the
+In person only question appears only after picking In person. Submit with the
+required question empty: the form says "Answer every required question to
+register." Answer it, with additional info, and register. The staff alert shows
+your answers under your name. On the registrations page: a line above the list
+reading "[Question]: 1 of 1 answered. [Option] 1, ..." and **Details** on your
+row, which opens your answers and closes again. Repeat on a phone. Set the event
+to Spanish: the heading reads **Información adicional**.
+
+**Why it needs a person:** the live theme, a real registration and real mail.
+
+### 1.197 The answers table was created, schema 11 (3.106.2)
+
+After updating, register for a test event that has a question. **If the form
+says something went wrong, or the registrations page shows a database error,
+the schema update to version 11 did not run.** It adds one table,
+`uc_rsvp_answers`; nothing existing is changed.
+
+**Why it needs a person:** a real database, updated on the first load after
+updating.
+
+### 1.198 The offer page in Email Templates (3.106.2)
+
+In **Email Templates**, the list has **Offer link, event off** with two
+variants, Cancelled and Deleted, private or unpublished, in English and
+Spanish.
+
+**Why it needs a person:** the real caladmin.
+
+## 2. Needs real conditions
 Waiting for an unattended job to fire, a real removal at source, or a real event
 with real registrations and real mail.
 
@@ -3361,15 +3415,40 @@ in Next dates that is cancelled, private, a draft or already past.
 **Why it needs real conditions:** real registrations, a real cancellation and
 real mail, which cannot be recalled. Use addresses you own.
 
-## 3. Blocked on other people
+### 2.37 An offer's link after the event is cancelled (3.106.2)
 
+A test event with capacity 1: register **A**, join the waitlist as **B** (an
+address you read), and cancel A's place so B is offered it. **Do not answer
+B's offer.** Cancel the event. Open B's confirm link: a page says **This event
+has been cancelled** and has no button. B's row on the registrations list still
+reads Offered. Put the event back on, make it Private, and open the link again:
+**This event is no longer available**. Wait past the offer's expiry: B is not
+emailed that the offer passed.
+
+**Why it needs real conditions:** a real offer, a real cancellation and a day of
+waiting.
+
+### 2.38 Cancelling an event that has only a waitlist (3.106.2)
+
+A test event with capacity 1: register **A**, put **B** and **C** (addresses
+you read) on the waitlist, then remove A on the registrations list so nobody is
+registered and B is offered the place. Press **Cancel event**: the card says
+"Nobody is registered. 2 people are on the waitlist." and the dialog asks
+whether to email them. Choose **Cancel and email them all**. B and C each get
+the waitlist's cancellation, and the screen says "2 people on the waitlist
+were told."
+
+**Why it needs real conditions:** real mail, which cannot be recalled. Use
+addresses you own.
+
+## 3. Blocked on other people
 Nothing here can move until somebody outside the build answers.
 
 | Who | What is needed | Status |
 |---|---|---|
 | **Aaron** | DNS records for `calendar.sfaf.org` so `events@calendar.sfaf.org` can send | Asked. From stays `websites@sfaf.org` meanwhile. It is a setting, so nothing needs deploying when the mailbox exists. |
 | **Val** | Remove the tracker's duplicates: **the 2027 Saturdays under two runs of UUIDs**, and **the coffee social under two names** ("50-Plus Saturday AM Coffee Social" and "Saturday AM Coffee Social") | Before Auto-Import goes on. The import copies what the tracker holds and de-duplicates nothing. `PROJECT.md` 3. |
-| **A Spanish-speaking reviewer**, chosen by Mark | Read `EMAILS.md`: every registrant message in English and Spanish side by side, in formal usted, including **Event cancelled, waitlist** (3.106.1). Corrections go into the Email Templates screen or `class-sfaf-messages.php`, never into `EMAILS.md` | Not asked. The Spanish was written without a native reader. |
+| **A Spanish-speaking reviewer**, chosen by Mark | Read `EMAILS.md`: every registrant message in English and Spanish side by side, in formal usted, including **Event cancelled, waitlist** (3.106.1), **Offer link, event off** and the three form labels under Additional information (3.106.2). Corrections go into the Email Templates screen or `class-sfaf-messages.php`, never into `EMAILS.md` | Not asked. The Spanish was written without a native reader. |
 | **Salesforce admin** | Pardot connected app: client ID and secret, Business Unit ID, service user, OAuth flow | Asked. Campaign IDs store; nothing talks to Pardot. |
 
 ---

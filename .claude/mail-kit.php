@@ -36,7 +36,7 @@ function mk_reset() {
     $GLOBALS['mk_posts'] = array(); $GLOBALS['mk_meta'] = array(); $GLOBALS['mk_next'] = 100;
     $GLOBALS['mk_terms'] = array(); $GLOBALS['mk_obj_terms'] = array(); $GLOBALS['mk_next_term'] = 900; $GLOBALS['mk_tmeta'] = array();
     $GLOBALS['mk_users'] = array(); $GLOBALS['mk_umeta'] = array(); $GLOBALS['mk_opts'] = array();
-    $GLOBALS['mk_mail'] = array(); $GLOBALS['mk_db'] = array( 'wp_uc_rsvps' => array(), 'wp_uc_reminder_log' => array() );
+    $GLOBALS['mk_mail'] = array(); $GLOBALS['mk_db'] = array( 'wp_uc_rsvps' => array(), 'wp_uc_reminder_log' => array(), 'wp_uc_rsvp_answers' => array() );
     $GLOBALS['mk_db_next'] = 1;
     // The count caches are request-local statics in the plugin; a new world is a new request.
     if ( function_exists( 'sfaf_rsvp_count_store' ) ) { $s =& sfaf_rsvp_count_store(); $s = array(); $t =& sfaf_rsvp_format_count_store(); $t = array(); }
@@ -421,7 +421,7 @@ class SFAF_Optins { public static $recorded = array(); public static function re
 
 foreach ( array( 'class-sfaf-email', 'class-sfaf-online', 'class-sfaf-cancellation', 'class-sfaf-privacy', 'class-sfaf-teams', 'class-sfaf-venues', 'class-sfaf-series',
                  'class-sfaf-sources', 'class-sfaf-reminders', 'class-sfaf-notifications', 'class-sfaf-digest', 'class-sfaf-rsvp',
-                 'class-sfaf-organizers', 'class-sfaf-messages', 'class-sfaf-waitlist', 'class-sfaf-announce' ) as $mk_f ) {
+                 'class-sfaf-organizers', 'class-sfaf-messages', 'class-sfaf-waitlist', 'class-sfaf-announce', 'class-sfaf-questions' ) as $mk_f ) {
     require_once $mk_root . '/includes/' . $mk_f . '.php';
 }
 

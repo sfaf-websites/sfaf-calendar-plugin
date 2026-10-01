@@ -565,7 +565,13 @@ class SFAF_Notifications {
         if ( $hybrid && '' !== $format ) {
             $rows['Attending'] = ( SFAF_Online::MODE_ONLINE === $format ) ? 'Online' : 'In person';
         }
-        $rows = $rows + self::detail_rows( $f );
+        /*
+         * THEIR ANSWERS, UNDER THEIR NAME (3.106.2), one row per question with
+         * any additional info in brackets. The summary, the day-before count
+         * and the digest do not carry them.
+         */
+        $answers = ( $person && ! empty( $person->rsvp_id ) ) ? self::answer_rows( (int) $person->rsvp_id ) : array();
+        $rows = $rows + $answers + self::detail_rows( $f );
 
         $html  = SFAF_Email::heading( sprintf( 'New registration for %s', $f['title'] ) );
         $html .= SFAF_Email::para( $places . '.' );
@@ -582,6 +588,9 @@ class SFAF_Notifications {
         // not in the text part is not a rule.
         if ( $hybrid && '' !== $format ) {
             $text .= 'Attending: ' . ( ( SFAF_Online::MODE_ONLINE === $format ) ? 'Online' : 'In person' ) . "\n";
+        }
+        foreach ( $answers as $q => $a ) {
+            $text .= $q . ': ' . $a . "\n";
         }
         $text .= self::detail_text( $f ) . "\n\n";
         if ( $link ) {
@@ -633,6 +642,23 @@ class SFAF_Notifications {
      *
      * @param array $context 'count' => the count AFTER the cancellation.
      */
+    /**
+     * One registration's answers as detail rows: question => "Option (info), Option".
+     *
+     * @return array<string,string>
+     */
+    public static function answer_rows( $rsvp_id ) {
+        $rows = array();
+        foreach ( SFAF_Questions::answers_for( (int) $rsvp_id ) as $q => $picked ) {
+            $bits = array();
+            foreach ( $picked as $a ) {
+                $bits[] = '' !== $a[1] ? $a[0] . ' (' . $a[1] . ')' : $a[0];
+            }
+            $rows[ $q ] = implode( ', ', $bits );
+        }
+        return $rows;
+    }
+
     private static function build_cancel_alert( $event_id, $person, $context = array() ) {
         $f     = self::facts( $event_id );
         $who   = ( $person && ! empty( $person->name ) ) ? (string) $person->name : 'Somebody';

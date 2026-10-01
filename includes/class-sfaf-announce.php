@@ -376,6 +376,36 @@ class SFAF_Announce {
     }
 
     /**
+     * How many people on these events' waitlists a cancellation would write
+     * to (3.106.2): distinct addresses, leaving out anybody who also holds a
+     * place, since they are counted as registered and get that message. Read
+     * by the cancel dialog only; the delete guard and every other count stay
+     * confirmed.
+     *
+     * @param int[] $event_ids
+     * @return int
+     */
+    public static function count_waitlisted( $event_ids ) {
+        $event_ids = array_values( array_unique( array_map( 'absint', (array) $event_ids ) ) );
+        $held = array();
+        foreach ( $event_ids as $id ) {
+            foreach ( self::registrants( $id ) as $row ) {
+                $held[ strtolower( trim( (string) $row->email ) ) ] = true;
+            }
+        }
+        $waiting = array();
+        foreach ( $event_ids as $id ) {
+            foreach ( self::waitlisted( $id ) as $row ) {
+                $email = strtolower( trim( (string) $row->email ) );
+                if ( is_email( $email ) && ! isset( $held[ $email ] ) ) {
+                    $waiting[ $email ] = true;
+                }
+            }
+        }
+        return count( $waiting );
+    }
+
+    /**
      * How many confirmed registrations these events carry between them, and how
      * many DISTINCT people that is.
      *

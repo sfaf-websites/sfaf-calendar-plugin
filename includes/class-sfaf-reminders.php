@@ -884,7 +884,7 @@ class SFAF_Reminders {
     public static function page_parts( $key, $variant, $lang, $values, $ctx = array() ) {
         $when  = trim( ( isset( $values['date'] ) ? $values['date'] : '' ) . ' ' . ( isset( $values['time'] ) ? $values['time'] : '' ) );
         $token = isset( $ctx['token'] ) ? (string) $ctx['token'] : 'SAMPLE';
-        $parts = array( 'when' => 'nothing' === $variant || 'gone' === $variant ? '' : $when );
+        $parts = array( 'when' => in_array( $variant, array( 'nothing', 'gone', 'unavailable' ), true ) ? '' : $when );
         if ( 'cancel_page' === $key ) {
             // The places-go-back line: the handler says whether the event is
             // capped; a preview, which says nothing, shows it.
