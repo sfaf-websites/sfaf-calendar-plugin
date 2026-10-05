@@ -87,6 +87,17 @@ class SFAF_Waitlist {
         return sfaf_capacity_limited( $event_id, $format );
     }
 
+    /**
+     * Whether offers can go out at all: it takes RSVPs here. NOT whether it has
+     * a limit (3.107.0): an event whose limit was taken off still has people
+     * waiting, and they are offered places like any other opening.
+     */
+    private static function serves( $event_id ) {
+        $event_id = (int) $event_id;
+        return '1' === (string) get_post_meta( $event_id, '_uc_rsvp_enabled', true )
+            && '' === SFAF_Sources::registration_url( $event_id );
+    }
+
     /** Places held by offers not yet answered or run out. */
     public static function held( $event_id, $format = '' ) {
         global $wpdb;
@@ -115,6 +126,10 @@ class SFAF_Waitlist {
 
     /** Places nobody has and nobody is being offered. */
     private static function free_places( $event_id, $format ) {
+        // No limit: a place for everybody waiting (3.107.0).
+        if ( ! sfaf_capacity_limited( (int) $event_id, $format ) ) {
+            return PHP_INT_MAX;
+        }
         $cap = sfaf_event_capacity( (int) $event_id, $format );
         if ( $cap <= 0 ) {
             return 0;
@@ -281,7 +296,7 @@ class SFAF_Waitlist {
         self::advance( (int) $event_id, self::format_for( $event_id, $format ) );
     }
 
-    /** Capacity raised in the editor: every format may have places now. */
+    /** Capacity raised, or taken off (3.107.0): every format may have places now. */
     public static function advance_all( $event_id ) {
         foreach ( sfaf_event_formats( (int) $event_id ) as $format ) {
             self::advance( (int) $event_id, self::format_for( $event_id, $format ) );
@@ -291,15 +306,21 @@ class SFAF_Waitlist {
     /**
      * Offer free places to the waitlist, first come first served.
      *
+     * WITH NO LIMIT (3.107.0), every place is free, so everybody still waiting
+     * is offered one, one offer each, in waitlist order, through the same
+     * offer() and the same manual alert as a raised limit. The guard is the
+     * queue's length, so a long waitlist is not cut off at a hundred.
+     *
      * @return int How many offers went out by email.
      */
     public static function advance( $event_id, $format = '' ) {
         $event_id = (int) $event_id;
-        if ( ! self::applies( $event_id, $format ) || SFAF_Cancellation::is_cancelled( $event_id ) ) {
+        if ( ! self::serves( $event_id ) || SFAF_Cancellation::is_cancelled( $event_id ) ) {
             return 0;
         }
-        $sent = 0;
-        for ( $guard = 0; $guard < 100; $guard++ ) {
+        $sent  = 0;
+        $limit = max( 100, count( self::queue( $event_id, $format ) ) + 1 );
+        for ( $guard = 0; $guard < $limit; $guard++ ) {
             if ( self::free_places( $event_id, $format ) <= 0 ) {
                 break;
             }

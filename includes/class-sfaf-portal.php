@@ -14983,10 +14983,8 @@ class SFAF_Portal {
         }
         /*
          * CAPACITY RAISED IS A PLACE OPENED (3.106.0): the waitlist is offered
-         * the new places. Either number, any raise. A limit taken off (the box
-         * emptied) is asked too, and advance() does nothing there: it serves
-         * only an event with a limit, so anybody still waiting stays waiting.
-         * That gap predates 3.107.0 (it was 0 then) and is in PROJECT.md 2.
+         * the new places. Either number, any raise, and a limit taken off (the
+         * box emptied), which offers a place to everybody waiting (3.107.0).
          */
         $caps_after = array( $limit_of( '_uc_capacity' ), $limit_of( '_uc_capacity_online' ) );
         $opened     = false;

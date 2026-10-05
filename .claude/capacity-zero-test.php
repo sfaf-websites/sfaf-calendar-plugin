@@ -60,6 +60,48 @@ foreach ( array( '' => '', '0' => '0', ' 12 ' => '12', '-3' => '0', 'lots' => ''
 }
 $_POST = array();
 
+/* Emptying the box asks the waitlist for offers, as a raise does, and saving the
+ * same number does not. Seen through the query advance() makes for the queue. */
+$asked = function ( $from, $to ) use ( $portal, $unlocked ) {
+    $id = cz_event( array( '_uc_capacity' => $from ) );
+    $GLOBALS['cz_sql'] = array();
+    $GLOBALS['kit_db'] = function ( $method, $sql ) { $GLOBALS['cz_sql'][] = $sql; return 'get_results' === $method ? array() : null; };
+    $_POST = array( 'capacity' => $to );
+    kit_call( 'SFAF_Portal', 'save_rsvp_settings_from_post', $portal, array( new WP_User(), $id, $unlocked ) );
+    $_POST = array();
+    $GLOBALS['kit_db'] = null;
+    foreach ( $GLOBALS['cz_sql'] as $q ) { if ( false !== strpos( $q, 'SELECT * FROM wp_uc_rsvps WHERE event_id = ' . $id ) ) { return true; } }
+    return false;
+};
+cz( $asked( '5', '' ), 'PLANT LIMIT OFF: emptying the capacity box does not offer places to the waitlist' );
+cz( $asked( '5', '8' ), 'PLANT LIMIT OFF: raising the capacity does not offer places to the waitlist' );
+cz( ! $asked( '5', '5' ), 'saving the same capacity asks the waitlist for offers' );
+
+/* ---- The two public request forms follow the same rule (3.107.0). ---- */
+foreach ( array( 'SFAF_Request' => array( 'rsvp' => '1' ), 'SFAF_Submit' => array() ) as $form => $base ) {
+    foreach ( array( '' => '', '0' => 0, '25' => 25 ) as $typed => $want ) {
+        $r = call_user_func( array( $form, 'validate' ), array_merge( $base, array( 'capacity' => $typed ) ) );
+        cz( ! isset( $r['errors']['capacity'] ) && $want === $r['clean']['capacity'],
+            "PLANT FORMS: $form reads " . json_encode( $typed ) . ' as ' . json_encode( $r['clean']['capacity'] ?? null ) . ', wanted ' . json_encode( $want ) );
+    }
+}
+/* And what each writes. create_event() is long, so its capacity lines are run
+ * on their own, sliced from the source as written. */
+foreach ( array( 'includes/class-sfaf-request.php', 'includes/class-sfaf-submit.php' ) as $rel ) {
+    $src = file_get_contents( dirname( __DIR__ ) . '/' . $rel );
+    $ok  = preg_match( "/\n(\s*)if \( '' !== \(string\) \\\$c\['capacity'\] \) \{\n\s*update_post_meta\( \\\$event_id, '_uc_capacity', \(string\) \(int\) \\\$c\['capacity'\] \);\n\s*\}/", $src, $m );
+    cz( 1 === $ok, "PLANT FORMS: $rel does not write the capacity as typed, 0 included" );
+    if ( $ok ) {
+        foreach ( array( '' => null, 0 => '0', 25 => '25' ) as $given => $want ) {
+            $event_id = kit_write_post( array( 'post_type' => 'uc_event' ) );
+            $c = array( 'capacity' => $given );
+            eval( $m[0] . ';' );
+            $got = array_key_exists( '_uc_capacity', get_post_meta( $event_id ) ) ? get_post_meta( $event_id, '_uc_capacity', true ) : null;
+            cz( $want === $got, "PLANT FORMS: $rel stored " . json_encode( $got ) . ' for ' . json_encode( $given ) );
+        }
+    }
+}
+
 /* ---- The migration. ---- */
 kit_reset();
 $GLOBALS['kit_query'] = function ( $a ) {

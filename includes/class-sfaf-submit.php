@@ -731,10 +731,9 @@ class SFAF_Submit {
         }
 
         /*
-         * HOW MANY PLACES. THE SAME RULE THE EVENT EDITOR USES, and it is worth
-         * naming: BLANK MEANS UNLIMITED, and 0 also means unlimited, so neither
-         * is an error. A capacity is a number of places, and refusing 0 would
-         * make somebody guess which of blank and 0 the software wanted.
+         * HOW MANY PLACES. THE SAME RULE THE EVENT EDITOR USES (3.107.0): BLANK
+         * MEANS UNLIMITED AND STAYS BLANK, and 0 is no places, so every
+         * registration goes to the waitlist. Neither is an error.
          *
          * IT DOES NOT SWITCH REGISTRATION ON. Whether this calendar takes the
          * registrations, or the submitter's own link does, is a decision taken
@@ -749,7 +748,7 @@ class SFAF_Submit {
          * and a different folder; see create_event(). */
         $clean['image'] = SFAF_Submissions::clean_image_choice( $post );
 
-        $clean['capacity'] = 0;
+        $clean['capacity'] = '';
         if ( isset( $post['capacity'] ) && '' !== trim( (string) $post['capacity'] ) ) {
             $cap = (int) $post['capacity'];
             if ( $cap < 0 || $cap > 100000 ) {
@@ -1029,8 +1028,9 @@ class SFAF_Submit {
             }
         }
 
-        if ( $c['capacity'] > 0 ) {
-            update_post_meta( $event_id, '_uc_capacity', $c['capacity'] );
+        // Any number, 0 included (3.107.0); blank stores nothing, which is no limit.
+        if ( '' !== (string) $c['capacity'] ) {
+            update_post_meta( $event_id, '_uc_capacity', (string) (int) $c['capacity'] );
         }
 
         /*
@@ -1705,8 +1705,8 @@ class SFAF_Submit {
 
                 <label class="uc-field">
                     <span class="uc-field-label">Capacity</span>
-                    <input type="number" name="capacity" min="0" max="100000" value="<?php echo esc_attr( $v( 'capacity' ) ? $v( 'capacity' ) : '' ); ?>" />
-                    <span class="uc-hint">Leave it blank if there is no limit.</span>
+                    <input type="number" name="capacity" min="0" max="100000" placeholder="No limit" value="<?php echo esc_attr( (string) $v( 'capacity' ) ); ?>" />
+                    <span class="uc-hint">Leave it blank for no limit; 0 sends everybody to the waitlist.</span>
                     <?php SFAF_Submissions::field_error( $err( 'capacity' ) ); ?>
                 </label>
 

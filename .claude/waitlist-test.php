@@ -159,6 +159,27 @@ SFAF_Reminders::cancel_rsvp( $soon, 'hal@example.org' );
 $ivy = wl_row( 'Ivy' );
 wl( 'an event starting within 24 hours offers for 2', (int) round( ( strtotime( $ivy['offer_expires'] ) - strtotime( $ivy['offered_at'] ) ) / 3600 ), 2 );
 
+/* ---- 0 places, then the limit taken off (3.107.0). ----------------------- */
+mk_reset();
+$open = wl_event( 10, array( '_uc_capacity' => '0' ) );
+wl( 'PLANT B.3: 0 places waitlists the first person', ! empty( wl_reg( $open, 'Nia', 'nia@example.org' )['waitlisted'] ), true );
+wl_reg( $open, 'Oz', '', '', '(415) 555-0101' );
+wl_reg( $open, 'Pia', 'pia@example.org' );
+wl_reg( $open, 'Quin', 'quin@example.org' );
+$GLOBALS['mk_mail'] = array();
+update_post_meta( $open, '_uc_capacity', '' );
+SFAF_Waitlist::advance_all( $open );
+wl( 'PLANT LIMIT OFF: emptying the box offers everybody waiting, in order',
+    array( wl_row( 'Nia' )['status'], wl_row( 'Oz' )['status'], wl_row( 'Pia' )['status'], wl_row( 'Quin' )['status'] ),
+    array( 'offered', 'offered_manual', 'offered', 'offered' ) );
+$each = function () {
+    return array( count( wl_mail( 'nia@example.org', 'A place is open' ) ), count( wl_mail( 'pia@example.org', 'A place is open' ) ), count( wl_mail( 'quin@example.org', 'A place is open' ) ), count( wl_mail( 'staff@sfaf.org', 'needs a phone call' ) ) );
+};
+wl( 'PLANT LIMIT OFF: one offer each, through the offer email, and one call for Oz', $each(), array( 1, 1, 1, 1 ) );
+SFAF_Waitlist::advance_all( $open );
+wl( 'PLANT LIMIT OFF: a second save offers nobody twice', $each(), array( 1, 1, 1, 1 ) );
+wl( 'and Nia can accept it', SFAF_Waitlist::accept( wl_row( 'Nia' )['offer_token'] ), 'done' );
+
 /* ---- Hybrid: a queue per format. --------------------------------------- */
 mk_reset();
 $hy = wl_event( 10, array( SFAF_Online::META_HYBRID => '1', '_uc_capacity' => '1', '_uc_capacity_online' => '1' ) );

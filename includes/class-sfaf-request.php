@@ -827,8 +827,10 @@ class SFAF_Request {
 
         /* ---- RSVP. ---- */
         $clean['rsvp']     = ! empty( $post['rsvp'] );
-        $clean['capacity'] = 0;
-        if ( $clean['rsvp'] && isset( $post['capacity'] ) && '' !== $post['capacity'] ) {
+        /* THE EDITORS' RULE (3.107.0): blank is no limit and stays blank; 0 is
+         * no places, so every registration goes to the waitlist. */
+        $clean['capacity'] = '';
+        if ( $clean['rsvp'] && isset( $post['capacity'] ) && '' !== trim( (string) $post['capacity'] ) ) {
             $cap = (int) $post['capacity'];
             if ( $cap < 0 || $cap > 100000 ) {
                 $errors['capacity'] = 'Give a number of places between 0 and 100000, or leave it blank for no limit.';
@@ -1171,8 +1173,9 @@ class SFAF_Request {
 
         if ( $c['rsvp'] ) {
             update_post_meta( $event_id, '_uc_rsvp_enabled', '1' );
-            if ( $c['capacity'] > 0 ) {
-                update_post_meta( $event_id, '_uc_capacity', $c['capacity'] );
+            // Any number, 0 included (3.107.0); blank stores nothing, which is no limit.
+            if ( '' !== (string) $c['capacity'] ) {
+                update_post_meta( $event_id, '_uc_capacity', (string) (int) $c['capacity'] );
             }
         }
 
@@ -1452,7 +1455,7 @@ class SFAF_Request {
             'Time'     => sfaf_ap_time_range( $c['start'], $c['end'], 'zone' ),
             'Repeats'  => self::repeat_phrase( $c ),
             'Where'    => $c['venue'] ? SFAF_Venues::display( $c['venue'] ) : $c['venue_other'],
-            'RSVP'     => $c['rsvp'] ? ( $c['capacity'] > 0 ? 'Yes, ' . $c['capacity'] . ' places' : 'Yes, no limit on places' ) : 'No',
+            'RSVP'     => $c['rsvp'] ? ( '' === (string) $c['capacity'] ? 'Yes, no limit on places' : ( 0 === (int) $c['capacity'] ? 'Yes, waitlist only' : 'Yes, ' . $c['capacity'] . ' places' ) ) : 'No',
         );
 
         $html = SFAF_Email::heading( 'Thanks, that is with the team' )
@@ -2043,7 +2046,8 @@ class SFAF_Request {
                 </label>
                 <label class="uc-field">
                     <span class="uc-field-label">How many places, if there is a limit</span>
-                    <input type="number" name="capacity" min="0" max="100000" value="<?php echo esc_attr( $v( 'capacity' ) ? $v( 'capacity' ) : '' ); ?>" />
+                    <input type="number" name="capacity" min="0" max="100000" placeholder="No limit" value="<?php echo esc_attr( (string) $v( 'capacity' ) ); ?>" />
+                    <span class="uc-hint">0 sends everybody to the waitlist.</span>
                     <?php self::field_error( $err( 'capacity' ) ); ?>
                 </label>
                 </fieldset>
