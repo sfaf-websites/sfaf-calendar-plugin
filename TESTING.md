@@ -2890,8 +2890,12 @@ updating; the migration's record is the option `sfaf_capacity_zero_migration`.
 On a test event, set Capacity to **0** and save. The event page's button says
 **Join the waitlist**, and registering puts you on the waitlist with the
 waitlist confirmation. Empty the box and save: the button says **RSVP** again.
+Then send one request through each public form with **0** in the capacity box
+and one with it blank: approved, the first is waitlist only and the second has
+no limit. The staff form's confirmation email says "Yes, waitlist only" for 0.
 
-**Why it needs a person:** a real registration through the real form and mail.
+**Why it needs a person:** a real registration through the real form and mail,
+and the two real public forms.
 
 ### 1.202 The editor's card order, Add event and Edit event (3.107.0)
 
@@ -3549,14 +3553,14 @@ addresses you own.
 
 ### 2.40 A waitlist when a limit is taken off (3.107.0)
 
-On an event with a capacity and somebody on the waitlist, empty the Capacity
-box and save. **Expected, and a known gap rather than a fault of this
-release:** nobody on the waitlist is offered a place, because offers serve only
-an event with a limit. Newcomers register straight in. Say whether the waitlist
-should be offered places when a limit is removed; until then, confirm them by
-hand on the registrations screen.
+On a test event with a capacity of 0 and three people on the waitlist (one
+registered without an email), empty the Capacity box and save. The two with an
+address each get one **A place is open** email, in the order they joined, and
+the notification list gets one phone-call alert for the third. Save again
+without changing anything: nobody gets a second email. Accept one offer from
+the email: it confirms as usual.
 
-**Why it needs a person:** a real event with real people waiting, and a decision.
+**Why it needs a person:** real mail to real inboxes, in the order it arrives.
 
 ## 3. Blocked on other peopleNothing here can move until somebody outside the build answers.
 

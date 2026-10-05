@@ -610,9 +610,13 @@ foreach ( array( '-1', '999999' ) as $bad ) {
 }
 $out = SFAF_Request::validate( good_post( array( 'rsvp' => '1', 'capacity' => '' ) ) );
 expect_no_error( 'a blank capacity means no limit', $out['errors'], 'capacity' );
-expect( 'and stores zero', $out['clean']['capacity'], 0 );
+// 3.107.0: blank stays blank, which is no limit; 0 is no places (waitlist only).
+expect( 'and stays blank', $out['clean']['capacity'], '' );
+$out = SFAF_Request::validate( good_post( array( 'rsvp' => '1', 'capacity' => '0' ) ) );
+expect_no_error( 'a capacity of 0 is allowed', $out['errors'], 'capacity' );
+expect( 'and is kept as 0, waitlist only', $out['clean']['capacity'], 0 );
 $out = SFAF_Request::validate( good_post( array( 'capacity' => '40' ) ) );
-expect( 'a capacity with no registration is ignored', $out['clean']['capacity'], 0 );
+expect( 'a capacity with no registration is ignored', $out['clean']['capacity'], '' );
 
 /* Markup and length.
  *

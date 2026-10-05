@@ -5626,7 +5626,8 @@ person is a row in `uc_rsvps` with a status of its own, ordered by
   newcomer joins the queue rather than taking a place on offer.
 - **A place opens three ways, and each calls `SFAF_Waitlist::advance()`**: the
   cancel link, Remove on the list (both fire `uc_rsvp_cancelled`), and capacity
-  raised in the editor. The first person for that format is offered it for 24
+  raised or taken off in the editor (taken off from 3.107.0: everybody waiting
+  is offered a place). The first person for that format is offered it for 24
   hours, or 2 when the event starts within 24, and it keeps going while places
   are free.
 - **The confirm link is a token** (`?uc_rsvp_offer=`, `offer_token`). A GET shows
@@ -5682,11 +5683,15 @@ fault this replaced; do not write one.
 
 **THE SAVE STORES WHAT WAS TYPED.** Empty stays empty, a number is stored as a
 whole number of 0 or more, anything else is stored empty. The box shows **No
-limit** as its placeholder and carries no hint. Raising a limit offers the new
-places to the waitlist; **taking a limit off does not**, because
-`SFAF_Waitlist::advance()` serves only an event with a limit, so anybody
-already waiting stays waiting. That gap predates 3.107.0 (it was "set it to 0"
-then) and is not fixed here.
+limit** as its placeholder and carries no hint.
+
+**RAISING A LIMIT OR TAKING IT OFF OFFERS PLACES TO THE WAITLIST.** Emptying the
+box is the same opening as a raise: `advance_all()` runs, and with no limit
+`free_places()` answers "a place for everybody", so everybody still waiting is
+offered one, one offer each, in waitlist order, through the same `offer()` and
+the same phone-call alert. Offers are made wherever the event takes RSVPs here
+(`serves()`); whether a NEWCOMER joins the waitlist is still `applies()`, which
+needs a limit. Before 3.107.0 a limit taken off left everybody waiting.
 
 **THE MIGRATION, SCHEMA 12, RUNS ONCE.** `sfaf_migrate_capacity_zero()` empties
 every stored `_uc_capacity` and `_uc_capacity_online` of 0 on the first load
@@ -5697,9 +5702,11 @@ again after somebody types 0, it would quietly turn their waitlist-only event
 back into an unlimited one. `.claude/capacity-zero-test.php` checks the rule,
 the save and both runs.
 
-**Not changed:** the two public request forms still store a capacity only above
-0, so a 0 typed there is still no limit; and the WordPress admin meta box
-stores what it is given, its label now saying empty is no limit.
+**THE TWO PUBLIC REQUEST FORMS FOLLOW THE SAME RULE.** Blank is no limit and
+stores nothing; 0 is stored, waitlist only; the staff form's summary email says
+"Yes, waitlist only" for it. Both boxes say No limit when empty and carry one
+line saying what 0 does. The WordPress admin meta box stores what it is given,
+its label saying empty is no limit.
 
 ### Questions for registrants (3.106.2)
 

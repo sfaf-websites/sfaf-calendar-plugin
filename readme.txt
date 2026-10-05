@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.106.3
+Stable tag: 3.107.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,30 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.107.0 =
+
+**The event editor rearranged, with Registration as its own card and the actions in a bar at the foot of the window; capacity 0 now means no places; and the editors' helper text cut to one sentence.**
+
+**THE CARD ORDER.** Add event and Edit event: on the left Title, Schedule, Location, Registration, Event details (description, Insert image, the featured picture, the image URL, the video), FAQs, Classification and Notifications; on the right Series and language, Links and Display, then Who can edit this on an existing event. The page title and Back stay where they are.
+
+**REGISTRATION.** Accept RSVPs, Email required, Capacity (one box per format on a hybrid event) and Questions for registrants moved out of Location into a Registration card; the questions are a section of it. With Accept RSVPs unticked the card is the tick and nothing else; ticking it shows the rest. A third-party event keeps its locked tick and one line. Location keeps the venue or a different location, the address, and the online and hybrid ticks with the meeting link.
+
+**CAPACITY: AN EMPTY BOX IS NO LIMIT, AND 0 IS NO PLACES.** A capacity of 0 now sends every registration to the waitlist from the first person, and the event page and form say Join the waitlist. Until now 0 meant no limit, so **schema 12 empties every stored 0 once, on the first load after the update**, and no live event becomes waitlist-only. The box says No limit when empty and the "0 means unlimited" line is gone. Every message and screen that says "x of y places taken" asks the same question. **The two public request forms follow the same rule**: blank is no limit, 0 is waitlist only, and the staff form's confirmation says "Yes, waitlist only" for 0. **Emptying the box offers places to everybody waiting**, as raising it does: one offer each, in waitlist order, through the usual offer email, and the phone-call alert for anybody with no email. Until now a limit taken off left the waitlist waiting.
+
+**THE ACTION BAR.** Save draft and Publish, or Delete, Cancel event and Save changes, sit in a bar stuck to the bottom of the window, the editor's full width, white with a rule along the top, visible while scrolling, with "Saving keeps this a draft" in small type in it. On a phone every button fits. While Cancel event is open the bar stops following. **The buttons now appear in the order 3.97.0 set out, Delete first and the main action largest, for the first time**: the rule that arranged them selected a class that was on no element. The Cancel and Delete line under the bar shows on Edit event only.
+
+**HELPER TEXT.** Every helper line on both editors is one sentence that says what to do, or gone where the control explains itself: the series card, the picture folder, the 1200 x 675 line (the size stays), the FAQ paragraph, the online and hybrid notes, the Notifications opening, Replies, and the rest. The one "why" left is the Display card's line on why RSVP is greyed.
+
+**SMALL FIXES.** The Donate card is **Links**, with the donation dropdown and the Volunteer link. **Organizer** is chips and "+ Add organizer", like Categories; several are still allowed. The one-off address boxes are labelled by their placeholders, Place name, Street, City, State and ZIP, with no example values. **Insert image** is an outlined button. **Apply a saved FAQ set** starts empty, and picks the one set whose name starts with the series' name when exactly one does. **One sign-out**: Log out at the top right is gone, Sign out stays in the sidebar. **Notifications** shows one empty line, "Nobody else yet.", until somebody beyond the creator is added.
+
+**THE PICTURE LIST FOLLOWS THE SERIES.** Changing the series dropdown narrows Choose a picture to that series at once, with no save, and shows the whole folder with no series. A chosen picture outside the series stays chosen, with a line under it. Add event and Edit event alike.
+
+**THE WEEKDAY FOLLOWS THE DATE.** On a new repeating event the ticked weekday moves to the date's weekday as the date changes, until a weekday tick is touched by hand. Edit event is unchanged.
+
+**GROUNDWORK FOR A TOUR.** Every card carries a `data-uc-card` name, listed in `DESIGN.md`. No tour is built.
+
+**CHECKED.** In Chrome, Add event and Edit event at 1280px and 390px in a scrolling window: the card order and names, every card's edge and padding, Registration closed and open, Links, the Organizer picker, the address labels and their colour, Insert image, one sign-out, one empty line, the FAQ set and the pictures following the series, the weekday following the date and not on Edit, and the bar stuck to the window's foot with every button inside it; screenshots in `.claude/screens/`. The capacity rule, the save and the migration (both runs) on generated events. Planted and caught: Registration never closing or never reopening; 0 read as no limit again; the save storing 0 for an empty box; the migration running twice; either request form reading blank as 0 or storing nothing for 0; a limit taken off offering nobody, offers still needing a limit, and the editor not asking when the box is emptied; the series not re-filtering; a chosen picture hidden; the weekday not following, following after a touch, or following on Edit; the bar not sticky; a second empty line in Notifications; a card with no name.
 
 = 3.106.3 =
 
