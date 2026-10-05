@@ -155,7 +155,7 @@ function sfaf_install_sample_data() {
             'recurrence' => 'weekly',
             'end_date'   => $plus( $tue, '+5 weeks' ),
             'rsvp'       => false,
-            'capacity'   => 0,
+            'capacity'   => '',
             'excerpt'    => 'Free, confidential HIV/STI testing and sexual-health services at Magnet. Drop in, no appointment needed.',
             'content'    => "Magnet at Strut offers free and confidential HIV and STI testing, PrEP/PEP services, and sexual-health care in a welcoming, sex-positive environment. Drop-in services are available Tuesday through Saturday, 10:00 AM to 7:00 PM. No appointment necessary.",
         ),

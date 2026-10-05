@@ -264,7 +264,7 @@ class SFAF_Digest {
         $n   = (int) sfaf_get_rsvp_count( $event_id );
         $cap = (int) sfaf_event_capacity( $event_id );
         return array(
-            'line'   => $cap > 0 ? sprintf( '%d of %d places taken', $n, $cap ) : sprintf( '%d registered', $n ),
+            'line'   => sfaf_capacity_limited( $event_id ) ? sprintf( '%d of %d places taken', $n, $cap ) : sprintf( '%d registered', $n ),
             'listed' => true,
         );
     }

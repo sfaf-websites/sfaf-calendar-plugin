@@ -331,7 +331,7 @@ class SFAF_Post_Types {
                 <strong>Enable RSVP</strong>
             </label>
             <div class="uc-meta-field">
-                <label for="uc_capacity">Capacity (0 = unlimited)</label>
+                <label for="uc_capacity">Capacity (empty for no limit)</label>
                 <input type="number" id="uc_capacity" name="uc_capacity" value="<?php echo esc_attr( $capacity ); ?>" min="0" />
             </div>
             <?php if ( $post->ID && $rsvp_count > 0 ) : ?>

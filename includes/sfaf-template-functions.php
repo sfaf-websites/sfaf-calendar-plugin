@@ -1221,7 +1221,8 @@ function sfaf_rsvp_block( $post_id ) {
         return '';
     }
 
-    $capacity   = (int) get_post_meta( $post_id, '_uc_capacity', true );
+    $capacity   = (int) sfaf_event_capacity( $post_id );
+    $limited    = sfaf_capacity_limited( $post_id );
     $rsvp_count = sfaf_get_rsvp_count( $post_id );
 
     // In an embed the modal cannot post cross-origin, so the control becomes a
@@ -1292,9 +1293,9 @@ function sfaf_rsvp_block( $post_id ) {
     ob_start();
     ?>
     <div class="uc-card-rsvp">
-        <?php if ( $capacity > 0 ) : ?>
+        <?php if ( $limited ) : ?>
             <div class="uc-capacity-bar">
-                <div class="uc-capacity-fill" style="width: <?php echo esc_attr( min( ( $rsvp_count / $capacity ) * 100, 100 ) ); ?>%"></div>
+                <div class="uc-capacity-fill" style="width: <?php echo esc_attr( $capacity > 0 ? min( ( $rsvp_count / $capacity ) * 100, 100 ) : 100 ); ?>%"></div>
             </div>
             <span class="uc-capacity-text"><?php echo (int) $rsvp_count; ?>/<?php echo (int) $capacity; ?> spots filled</span>
         <?php else : ?>
@@ -3908,10 +3909,11 @@ function sfaf_rsvp_spots_text( $post_id ) {
     if ( ! sfaf_event_takes_rsvps( $post_id ) ) {
         return '';
     }
-    $capacity = (int) get_post_meta( $post_id, '_uc_capacity', true );
-    if ( $capacity <= 0 ) {
+    // No limit, no sentence. A limit of 0 is "Fully booked" from the start (3.107.0).
+    if ( ! sfaf_capacity_limited( $post_id ) ) {
         return '';
     }
+    $capacity = (int) sfaf_event_capacity( $post_id );
     $left = max( 0, $capacity - sfaf_get_rsvp_count( $post_id ) );
     if ( $left < 1 ) {
         return 'Fully booked';

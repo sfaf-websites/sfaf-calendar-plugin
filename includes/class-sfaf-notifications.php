@@ -538,13 +538,13 @@ class SFAF_Notifications {
             $count  = (int) sfaf_get_rsvp_count_by_format( $event_id, $format );
             $cap    = (int) sfaf_event_capacity( $event_id, $format );
             $word   = ( SFAF_Online::MODE_ONLINE === $format ) ? 'online' : 'in person';
-            $places = $cap > 0
+            $places = sfaf_capacity_limited( $event_id, $format )
                 ? sprintf( '%d of %d places taken %s', $count, $cap, $word )
                 : sprintf( '%d registered %s so far', $count, $word );
         } else {
             $count  = (int) sfaf_get_rsvp_count( $event_id );
             $cap    = (int) sfaf_event_capacity( $event_id );
-            $places = $cap > 0
+            $places = sfaf_capacity_limited( $event_id )
                 ? sprintf( '%d of %d places taken', $count, $cap )
                 : sprintf( '%d registered so far', $count );
         }
@@ -673,9 +673,9 @@ class SFAF_Notifications {
          * memoized read before the insert once served "0 of 12" to the alert.
          */
         $count = isset( $context['count'] ) ? (int) $context['count'] : (int) sfaf_get_rsvp_count( $event_id );
-        $cap   = (int) get_post_meta( $event_id, '_uc_capacity', true );
+        $cap   = (int) sfaf_event_capacity( $event_id );
 
-        $places = $cap > 0
+        $places = sfaf_capacity_limited( $event_id )
             ? sprintf( '%d of %d places taken', $count, $cap )
             : sprintf( '%d still registered', $count );
 
@@ -1042,16 +1042,18 @@ class SFAF_Notifications {
             $places = implode( ', ', $counted );
             $cap_in = (int) sfaf_event_capacity( $event_id, SFAF_Online::MODE_IN_PERSON );
             $cap_on = (int) sfaf_event_capacity( $event_id, SFAF_Online::MODE_ONLINE );
-            if ( $cap_in > 0 || $cap_on > 0 ) {
+            $lim_in = sfaf_capacity_limited( $event_id, SFAF_Online::MODE_IN_PERSON );
+            $lim_on = sfaf_capacity_limited( $event_id, SFAF_Online::MODE_ONLINE );
+            if ( $lim_in || $lim_on ) {
                 $places .= sprintf(
                     ' (%s in person, %s online)',
-                    $cap_in > 0 ? 'of ' . $cap_in : 'no limit',
-                    $cap_on > 0 ? 'of ' . $cap_on : 'no limit'
+                    $lim_in ? 'of ' . $cap_in : 'no limit',
+                    $lim_on ? 'of ' . $cap_on : 'no limit'
                 );
             }
         } else {
             $cap    = (int) sfaf_event_capacity( $event_id );
-            $places = $cap > 0 ? sprintf( '%d of %d places taken', $n, $cap ) : sprintf( '%d registered', $n );
+            $places = sfaf_capacity_limited( $event_id ) ? sprintf( '%d of %d places taken', $n, $cap ) : sprintf( '%d registered', $n );
         }
 
         if ( ! empty( $context['can_edit_event'] ) ) {
@@ -1140,7 +1142,7 @@ class SFAF_Notifications {
         }
 
         $cap    = (int) sfaf_event_capacity( $event_id );
-        $places = $cap > 0 ? sprintf( '%d of %d places taken', $n, $cap ) : sprintf( '%d registered', $n );
+        $places = sfaf_capacity_limited( $event_id ) ? sprintf( '%d of %d places taken', $n, $cap ) : sprintf( '%d registered', $n );
 
         if ( ! empty( $context['can_edit_event'] ) ) {
             $link  = add_query_arg( 'event_id', (int) $event_id, SFAF_Portal::link( 'rsvps' ) );

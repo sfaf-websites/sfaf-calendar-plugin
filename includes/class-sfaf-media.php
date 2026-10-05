@@ -770,6 +770,13 @@ class SFAF_Media {
             /* Renders the way past the filter. Only meaningful with
              * series_fixed, since without it nothing is filtered. */
             'show_all' => false,
+            /*
+             * THE EVENT EDITOR'S SERIES DROPDOWN DRIVES THE FILTER (3.107.0).
+             * The attribute is emitted even for 0, so portal.js has a picker
+             * to bind on Add event and narrows the moment a series is chosen,
+             * with no save. See initFixedSeriesImageFilter().
+             */
+            'series_follow' => false,
         ), $args );
 
         $chosen = (int) $args['chosen'];
@@ -853,7 +860,7 @@ class SFAF_Media {
             /* THE FIXED SERIES TRAVELS AS AN ATTRIBUTE, so the narrowing has
              * one implementation whether the id comes from a select or from
              * here. See initFixedSeriesImageFilter() in portal.js. */
-            if ( ! $locked && (int) $args['series_fixed'] ) {
+            if ( ! $locked && ( (int) $args['series_fixed'] || ! empty( $args['series_follow'] ) ) ) {
                 echo ' data-uc-image-series-fixed="' . (int) $args['series_fixed'] . '"';
             }
         ?>>

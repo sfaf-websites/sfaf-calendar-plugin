@@ -46,6 +46,7 @@ function kit_reset() {
     $GLOBALS['kit_user_id'] = 1;          // who is signed in (3.105.0)
     $GLOBALS['kit_refused'] = array();    // user ids that hold no capability at all (3.105.0)
     $GLOBALS['kit_db'] = null;            // callable( method, sql ) standing in for a table, or null (3.105.0)
+    $GLOBALS['kit_images'] = array();     // attachment id => image URL; empty means no picture has one (3.107.0)
 }
 kit_reset();
 
@@ -229,7 +230,7 @@ function has_post_thumbnail( $id = 0 ) { return false; }
 function get_post_thumbnail_id( $id = 0 ) { return 0; }
 function set_post_thumbnail( $id, $t ) { return true; }
 function delete_post_thumbnail( $id ) { return true; }
-function wp_get_attachment_image_url( $i, $s = '' ) { return ''; }
+function wp_get_attachment_image_url( $i, $s = '' ) { return isset( $GLOBALS['kit_images'][ (int) $i ] ) ? $GLOBALS['kit_images'][ (int) $i ] : ''; }
 function wp_get_attachment_url( $i ) { return ''; }
 function get_attached_file( $i ) { return ''; }
 function get_transient( $k ) { return isset( $GLOBALS['kit_trans'][ $k ] ) ? $GLOBALS['kit_trans'][ $k ] : false; }
@@ -275,12 +276,19 @@ function wp_get_object_terms( $id, $tax, $a = array() ) { return wp_get_post_ter
 function get_the_terms( $id, $tax ) { $t = wp_get_post_terms( $id, $tax ); return $t ? $t : false; }
 function wp_set_object_terms( $id, $terms, $tax, $append = false ) { $GLOBALS['kit_terms'][ (int) $id ][ $tax ] = array_values( array_map( 'intval', (array) $terms ) ); return $GLOBALS['kit_terms'][ (int) $id ][ $tax ]; }
 function wp_set_post_terms( $id, $terms, $tax, $append = false ) { return wp_set_object_terms( $id, $terms, $tax, $append ); }
+/* Real behaviour, not null (3.107.0): sfaf_help() builds its panel id with it,
+   and an empty id left every help panel open on the captured pages. */
+function sanitize_html_class( $c, $f = '' ) { $s = preg_replace( '/[^A-Za-z0-9_-]/', '', (string) $c ); return '' === $s ? (string) $f : $s; }
+function has_term( $term, $tax = '', $post = null ) {
+    $id = is_object( $post ) ? $post->ID : (int) $post;
+    return in_array( (int) $term, isset( $GLOBALS['kit_terms'][ $id ][ $tax ] ) ? $GLOBALS['kit_terms'][ $id ][ $tax ] : array(), true );
+}
 function get_term_link( $t, $tax = '' ) { return 'https://resources.sfaf.org/term/' . ( is_object( $t ) ? $t->slug : $t ) . '/'; }
 
 /* ---- Everything else the renderers and the save call, answering null. ---- */
 foreach ( array(
     'status_header', 'language_attributes', 'bloginfo', 'wp_print_styles', 'wp_print_head_scripts',
-    'wp_print_footer_scripts', 'sanitize_html_class', 'wp_enqueue_media', 'wp_enqueue_editor',
+    'wp_print_footer_scripts', 'wp_enqueue_media', 'wp_enqueue_editor',
     'sanitize_hex_color', 'wp_logout_url', 'wp_print_media_templates', 'submit_button', 'rest_url', 'settings_fields',
     'get_the_date',
     '_prime_post_caches', 'wp_nonce_url',

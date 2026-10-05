@@ -433,8 +433,11 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 .uc-portal-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .uc-portal-topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 28px; background: var(--p-panel); border-bottom: 1px solid var(--p-border); position: sticky; top: 0; z-index: 20; }
 .uc-portal-menu-btn { display: none; background: none; border: none; font-size: 22px; cursor: pointer; }
-.uc-portal-user { display: flex; align-items: center; gap: 16px; margin-left: auto; }
-.uc-portal-logout { font-size: 13px; color: var(--p-muted); }
+/* ONE SIGN-OUT (3.107.0). Log out left this bar, which then held only the menu
+   button, and that shows only below 720px; so the bar does too. */
+@media (min-width: 721px) {
+    .uc-portal-topbar { display: none; }
+}
 .uc-portal-content { padding: 28px; max-width: 1100px; width: 100%; }
 
 .uc-page-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; gap: 16px; flex-wrap: wrap; }
@@ -2213,6 +2216,12 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
     grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.6fr) minmax(0, 1.1fr) 90px 110px; }
 .uc-venue-grid .uc-field input { width: 100%; }
 .uc-venue-composed { margin-top: 10px; }
+/* THE EDITOR'S ADDRESS (3.107.0): the place name takes its own row, so its
+   placeholder label is never cut, and the four address boxes share the next. */
+@media (min-width: 901px) {
+    .uc-location-grid { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.1fr) 90px 110px; }
+    .uc-location-grid > .uc-field:first-child { grid-column: 1 / -1; }
+}
 @media (max-width: 900px) {
     .uc-venue-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
     .uc-venue-name, .uc-venue-street { grid-column: 1 / -1; }
@@ -3700,6 +3709,73 @@ body.uc-modal-open { overflow: hidden; }
 /* What is left of the delete card: the form it posts, which draws nothing, and
    the sentence for when it is refused. */
 .uc-delete-block { margin-top: 10px; }
+
+/* ---------------------------------------------------------------------------
+   THE EDITOR'S ACTION BAR IS STICKY TO THE FOOT OF THE WINDOW (3.107.0).
+
+   Full editor width, on the surface token --p-panel with one --p-border rule
+   along the top, and nothing else: no box, no radius, no shadow, so it reads as
+   the edge of the screen rather than another card. It stays visible while the
+   form scrolls under it and sits in the flow at the very end.
+
+   (0,3,0) on purpose: .uc-form-actions-primary draws the band it used to be at
+   (0,1,0), and .uc-portal .uc-form-actions-primary sets its flex at (0,2,0).
+
+   WHILE CANCEL EVENT IS OPEN THE BAR GOES BACK INTO THE FLOW. The open panel is
+   radios and a paragraph, and pinned to the foot of a phone it would be taller
+   than the window.
+
+   AT 390px every button stays reachable: the note takes its own line and the
+   buttons share the next one, wrapping rather than scrolling sideways.
+   ------------------------------------------------------------------------ */
+.uc-portal .uc-form-actions-primary.uc-editor-bar {
+    position: sticky; bottom: 0; z-index: 15;
+    margin: 24px 0 0; padding: 12px 20px;
+    border: 0; border-top: 1px solid var(--p-border); border-radius: 0;
+    background: var(--p-panel); box-shadow: none;
+}
+.uc-portal .uc-form-actions-primary.uc-editor-bar:has(.uc-cancel-inline[open]) { position: static; }
+.uc-portal .uc-editor-bar .uc-form-actions-note { font-size: 12px; }
+@media (max-width: 600px) {
+    .uc-portal .uc-form-actions-primary.uc-editor-bar { padding: 10px 0; gap: 8px; }
+    .uc-portal .uc-editor-bar .uc-btn { padding: 10px 12px; font-size: 14px; }
+}
+
+/* ---------------------------------------------------------------------------
+   THE REGISTRATION CARD (3.107.0). Its body is hidden by portal.js while Accept
+   RSVPs is off; [hidden] is restated because nothing else may out-rank it. The
+   questions are a section of the card, set off by space and one hairline, not a
+   card inside it.
+   ------------------------------------------------------------------------ */
+.uc-registration-body { margin-top: 14px; }
+.uc-registration-body[hidden] { display: none; }
+.uc-registration-questions { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--p-border); }
+.uc-portal .uc-registration-questions > .uc-subhead { margin: 0 0 8px; }
+
+/* AN OUTLINED BUTTON, THE "+ Add question" STYLE (3.107.0), for Insert image:
+   1px --uc-accent-text edge and text, --uc-band on hover, the accent ring on
+   focus. On a <summary>, so the marker goes too. */
+.uc-portal .uc-outline-btn {
+    display: inline-flex; align-items: center; align-self: flex-start; padding: 8px 16px;
+    border: 1px solid var(--uc-accent-text); border-radius: 8px; background-color: transparent; cursor: pointer;
+    font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--uc-accent-text);
+    list-style: none;
+}
+.uc-portal .uc-outline-btn:hover { background-color: var(--uc-band); }
+.uc-portal .uc-outline-btn:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; }
+.uc-portal summary.uc-outline-btn::-webkit-details-marker { display: none; }
+.uc-portal summary.uc-outline-btn::marker { content: ""; }
+
+/* PLACEHOLDERS IN THE EDITOR ARE --p-muted (3.107.0), 5.60:1 on white. The
+   address boxes are labelled by them, so they have to be read, not guessed. */
+.uc-bento input::placeholder, .uc-bento textarea::placeholder { color: var(--p-muted); opacity: 1; }
+
+/* A chosen picture outside the series, said under the picker (3.107.0). */
+.uc-bento .uc-image-outside { margin: 6px 0 0; }
+
+/* ORGANIZER CHIPS ARE NEUTRAL (3.107.0). A category's colour means that
+   category; an organizer has none, so its chips take the text colour's tint. */
+.uc-org-field .uc-chip { --chip-color: var(--p-text); }
 
 .uc-btn-danger { background: #c0392b; border-color: #c0392b; color: #fff; }
 .uc-btn-danger:hover { background: #a33025; border-color: #a33025; color: #fff; }

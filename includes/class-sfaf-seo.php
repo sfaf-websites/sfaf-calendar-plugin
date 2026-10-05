@@ -215,9 +215,8 @@ class SFAF_SEO {
 
         // Offers when RSVP is enabled.
         if ( get_post_meta( $id, '_uc_rsvp_enabled', true ) === '1' ) {
-            $capacity = (int) get_post_meta( $id, '_uc_capacity', true );
-            $count    = sfaf_get_rsvp_count( $id );
-            $sold_out = $capacity > 0 && $count >= $capacity;
+            // The question the RSVP button asks (3.107.0): 0 places is sold out.
+            $sold_out = sfaf_event_full( $id );
             $schema['offers'] = array(
                 '@type'         => 'Offer',
                 'price'         => '0',

@@ -4006,15 +4006,10 @@ class SFAF_Portal {
                     ?>
                     <button type="button" class="uc-portal-menu-btn" id="uc-menu-btn" aria-label="Menu"><?php echo sfaf_icon( 'menu', array( 'size' => '22px' ) ); ?></button>
                     <?php
-                    // The name and the access level moved to the sidebar foot,
-                    // where they are one block instead of two halves of an
-                    // answer. Log out stays here as well as there, because
-                    // below 720px the sidebar is an off-canvas drawer and the
-                    // one in it would be behind a menu button.
+                    // ONE SIGN-OUT (3.107.0): Sign out in the sidebar foot. The
+                    // Log out that sat here as well is gone; below 720px the
+                    // sidebar is a drawer behind the menu button beside this.
                     ?>
-                    <div class="uc-portal-user">
-                        <a class="uc-portal-logout" href="<?php echo esc_url( wp_logout_url( $this->url() ) ); ?>">Log out</a>
-                    </div>
                 </header>
                 <main class="uc-portal-content">
         <?php
@@ -7058,15 +7053,13 @@ class SFAF_Portal {
             }
         }
         ?>
-        <section class="uc-bento-card uc-series-first"<?php echo $offer ? ' data-uc-series-prefill' : ''; ?>>
-            <h2 class="uc-bento-title">Is this part of a series?
+        <?php // "Series and language" from 3.107.0, at the top of the side column. ?>
+        <section class="uc-bento-card uc-series-first" data-uc-card="series"<?php echo $offer ? ' data-uc-series-prefill' : ''; ?>>
+            <h2 class="uc-bento-title">Series and language
                 <?php
-                /* WHAT BEING IN ONE DOES, rather than what a series is. Both
-                 * are things that will happen to this event and neither is
-                 * visible from this card. */
                 echo sfaf_help(
                     'uc-help-series-' . (int) $event_id,
-                    'An event with no picture of its own shows its series picture. Repeating dates are added and removed on the series schedule screen, not here.',
+                    'Add and remove repeating dates on the series schedule screen.',
                     'series'
                 );
                 ?>
@@ -7118,10 +7111,7 @@ class SFAF_Portal {
                  * and it is the consequence the picture rule turns on.
                  */
                 ?>
-                <p class="uc-hint">
-                    Moving it changes which series it is listed under. Nothing else about the event changes.
-                    An event with no picture of its own shows its series' picture.
-                </p>
+                <p class="uc-hint">Moving it changes only which series it is listed under.</p>
             <?php else : ?>
             <?php
             /*
@@ -7247,10 +7237,15 @@ class SFAF_Portal {
              * somebody meeting it.
              */
             ?>
-            <summary class="uc-btn uc-btn-quiet uc-desc-images-open">
-                <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '15px' ) ); ?></span>
-                Insert image
-            </summary>
+            <?php
+            /*
+             * AN OUTLINED BUTTON, THE "+ Add question" STYLE (3.107.0), with no
+             * disclosure chevron: it reads as a thing to press, and what it
+             * opens is the place to do it. control-standard-audit.php exempts
+             * this one summary by its class.
+             */
+            ?>
+            <summary class="uc-outline-btn uc-desc-images-open">Insert image</summary>
             <div class="uc-desc-images-panel">
                 <?php
                 /*
@@ -7263,10 +7258,7 @@ class SFAF_Portal {
                     <span class="uc-field-label">Upload a picture</span>
                     <input type="file" data-uc-desc-upload
                            accept="image/jpeg,image/png,image/gif,image/webp" />
-                    <span class="uc-hint">
-                        JPEG, PNG, GIF or WebP, up to <?php echo (int) round( SFAF_Uploads::MAX_BYTES / 1048576 ); ?>MB.
-                        It goes full width of the description, so a wide picture reads best.
-                    </span>
+                    <span class="uc-hint">JPEG, PNG, GIF or WebP, up to <?php echo (int) round( SFAF_Uploads::MAX_BYTES / 1048576 ); ?>MB.</span>
                 </label>
                 <p class="uc-desc-images-status" data-uc-desc-status role="status" hidden></p>
 
@@ -7329,9 +7321,18 @@ class SFAF_Portal {
             <div class="uc-faq-picker-row">
                 <label class="uc-faq-picker-label">
                     <span class="uc-field-label">Apply a saved FAQ set</span>
+                    <?php
+                    /*
+                     * STARTS EMPTY (3.107.0). portal.js preselects the one set
+                     * whose name starts with the event's series name, when
+                     * exactly one does; otherwise it stays empty, and Add these
+                     * questions with nothing chosen adds nothing.
+                     */
+                    ?>
                     <select data-uc-faq-set>
+                        <option value="">Choose a set</option>
                         <?php foreach ( $sets as $set ) : ?>
-                            <option value="<?php echo esc_attr( $set['id'] ); ?>"><?php
+                            <option value="<?php echo esc_attr( $set['id'] ); ?>" data-uc-faq-set-name="<?php echo esc_attr( $set['name'] ); ?>"><?php
                                 echo esc_html( $set['name'] . ' (' . count( $set['rows'] ) . ')' );
                             ?></option>
                         <?php endforeach; ?>
@@ -7357,11 +7358,7 @@ class SFAF_Portal {
                 <a class="uc-action-link uc-faq-manage" href="<?php echo esc_url( $this->url( 'faq-sets' ) ); ?>">Manage sets</a>
             </div>
             <p class="uc-flash uc-faq-picker-said" data-uc-faq-said role="status" hidden></p>
-            <p class="uc-hint">
-                The questions are copied in and added underneath the ones already here. Nothing already written is
-                changed or removed, and questions that are already on this event are skipped rather than duplicated.
-                Edit or remove any of them before you save. Editing the set afterwards does not change this event.
-            </p>
+            <p class="uc-hint">Editing the set later does not change this event.</p>
             <script type="application/json" data-uc-faq-sets><?php
                 echo wp_json_encode( $payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT );
             ?></script>
@@ -8047,10 +8044,20 @@ class SFAF_Portal {
                 'chosen'       => (int) $a['id_value'],
                 'series'       => (int) $a['inline_series'],
                 'series_fixed' => (int) $a['inline_series'],
+                'series_follow' => true,
                 'show_all'     => true,
                 'label'        => 'Choose a picture',
             ) );
+            /*
+             * A CHOSEN PICTURE OUTSIDE THE SERIES STAYS CHOSEN (3.107.0), and
+             * says so in one line. Drawn by the server for the first paint and
+             * kept in step by initFixedSeriesImageFilter() as the series or the
+             * picture changes.
+             */
+            $outside = (int) $a['id_value'] && (int) $a['inline_series']
+                && ! has_term( (int) $a['inline_series'], SFAF_Media::TAXONOMY, (int) $a['id_value'] );
             ?>
+            <p class="uc-hint uc-image-outside" data-uc-image-outside<?php echo $outside ? '' : ' hidden'; ?>>Not in this series. It stays chosen until you pick another.</p>
             <div class="uc-image-buttons">
                 <button type="button" class="uc-btn uc-btn-sm uc-link-danger uc-remove-image"<?php echo $a['show_remove'] ? '' : ' style="display:none;"'; ?>>Remove</button>
             </div>
@@ -8115,7 +8122,7 @@ class SFAF_Portal {
          * a picture rather than once. Behind a "?" it would be read never.
          */
         ?>
-        <p class="uc-hint uc-hint-spec"><strong>1200 x 675 pixels, 16:9 landscape.</strong> Cards crop to this shape and fill it.</p>
+        <p class="uc-hint uc-hint-spec"><strong>1200 x 675 pixels, 16:9 landscape.</strong></p>
         <?php
         /*
          * WHAT THE PICKER WILL SHOW, SAID BEFORE IT IS OPENED.
@@ -8130,7 +8137,7 @@ class SFAF_Portal {
         ?>
         <?php if ( $a['folder_has_any'] ) : ?>
             <?php if ( $inline ) : ?>
-                <p class="uc-hint">This list is the calendar folder, narrowed to this event's series. All calendar images shows the rest of the folder. To add a new picture, upload it on the Images screen first.</p>
+                <p class="uc-hint">Upload a new picture on the Images screen first.</p>
             <?php else : ?>
                 <p class="uc-hint">Choose Image shows the calendar folder only, so everything in it is already the right shape. Anything you upload here goes into that folder.</p>
             <?php endif; ?>
@@ -8286,7 +8293,7 @@ class SFAF_Portal {
                         'after_buttons' => $reset_box,
                         'url_help'    => sfaf_help(
                             'uc-help-imgurl-' . $uid,
-                            'A picture set here overrides the series image for this one date. The URL is the fallback: it is used only when no image has been chosen from the library, so pasting one never fights with a chosen file.',
+                            'Used only when no picture is chosen above.',
                             'the image URL'
                         ),
                         'folder_has_any' => $folder_has_any,
@@ -8346,7 +8353,7 @@ class SFAF_Portal {
                     <span class="uc-field-label">Categories<?php echo $this->publish_mark( 'category', $ctx['screen'] ); ?> <?php echo $this->field_badge( $state, $label ); ?>
                         <?php echo sfaf_help(
                             'uc-help-cats-' . $uid,
-                            'An event can be in several, and it appears under each of them in the filter bar. The first one alphabetically supplies the card color and the placeholder picture, so the order you see the chips in is the order that decides it.',
+                            'The first chip supplies the card color and the placeholder picture.',
                             'categories'
                         ); ?>
                     </span>
@@ -8401,7 +8408,17 @@ class SFAF_Portal {
                     : array();
                 $current = array_map( 'intval', $current );
                 ?>
-                <div class="uc-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'organizer', $state ); ?>>
+                <?php
+                /*
+                 * THE CATEGORIES' PICKER PATTERN (3.107.0): chips for what is
+                 * chosen and "+ Add organizer" for the rest, replacing a grid of
+                 * every organizer. The checkboxes are still the form and still
+                 * what a browser with no script shows; initCategoryChips() draws
+                 * the chips over any [data-uc-chips] field. Several still allowed.
+                 */
+                ?>
+                <div class="uc-field uc-cat-field uc-org-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'organizer', $state ); ?>
+                     data-uc-chips>
                     <span class="uc-field-label">Organizer<?php echo $this->publish_mark( 'organizer', $ctx['screen'] ); ?> <?php echo $this->field_badge( $state, $label ); ?></span>
 
                     <?php // The marker, for the reason every other multi-value
@@ -8410,9 +8427,17 @@ class SFAF_Portal {
                           // than "this form did not ask". ?>
                     <input type="hidden" name="uc_organizer_present" value="1" />
 
-                    <div class="uc-check-grid">
+                    <div class="uc-chips" data-uc-chips-list hidden></div>
+                    <p class="uc-chips-empty" data-uc-chips-empty hidden>No organizers chosen yet.</p>
+
+                    <div class="uc-chips-add" data-uc-chips-add hidden>
+                        <button type="button" class="uc-btn uc-btn-sm" data-uc-chips-toggle
+                                aria-expanded="false">+ Add organizer</button>
+                    </div>
+
+                    <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
                         <?php if ( ! is_wp_error( $ctx['orgs'] ) ) : foreach ( $ctx['orgs'] as $o ) : ?>
-                            <label class="uc-check">
+                            <label class="uc-check" data-uc-chip-label="<?php echo esc_attr( $o->name ); ?>">
                                 <input type="checkbox" name="organizer[]" value="<?php echo (int) $o->term_id; ?>"
                                        <?php checked( in_array( (int) $o->term_id, $current, true ) ); ?><?php echo $this->field_disabled( $state ); ?> />
                                 <?php echo esc_html( $o->name ); ?>
@@ -8421,7 +8446,7 @@ class SFAF_Portal {
                     </div>
 
                     <?php if ( count( $current ) > 1 ) : ?>
-                        <span class="uc-hint uc-hint-spec">Co-hosted. The event page names them in this order.</span>
+                        <span class="uc-hint uc-hint-spec">The event page names them in this order.</span>
                     <?php endif; ?>
                     <?php $this->series_filled_note( $event_id, 'organizer' ); ?>
                 </div>
@@ -12799,7 +12824,6 @@ class SFAF_Portal {
         <?php if ( $series_term ) : ?>
             <div class="uc-flash uc-flash-info">
                 Part of the series <strong><?php echo esc_html( $series_term->name ); ?></strong>.
-                A series groups events for browsing and filtering; it does not change what saving this event does.
                 <a href="<?php echo esc_url( $this->url( 'series/edit/' . $series_term->term_id ) ); ?>">Manage the series &rarr;</a>
             </div>
         <?php endif; ?>
@@ -12982,34 +13006,54 @@ class SFAF_Portal {
             $mgr_ctx = $this->manager_panel_context( $user, $event_id, 'editor' );
             $placed  = array();
 
+            /*
+             * THE CARD ORDER (3.107.0).
+             *
+             *   main   Title, Schedule, Location, Registration, Event details,
+             *          FAQs, Classification, Notifications, then the catch-all
+             *   side   Series and language, Links, Display, then Who can edit
+             *
+             * EVERY CARD CARRIES data-uc-card, a stable name a later guided tour
+             * targets without further markup changes. DESIGN.md lists the
+             * names; change one there and here together.
+             *
+             * THE SIDE COLUMN IS STILL RENDERED FIRST AND HELD IN A BUFFER, for
+             * the reason it always was: it comes second in the document, and
+             * the "Other details" catch-all has to be the LAST
+             * render_manager_fields() call of the form. See
+             * render_manager_fields().
+             */
+            $rsvp_ctx    = $this->rsvp_settings_context( $user, $event_id );
+            $rsvp_placed = array();
+
+            /*
+             * WHICH SERIES THIS EVENT IS IN, worked out once and above both
+             * columns, because the series card is in the side column now and
+             * the Schedule card in the main one reads the same answer. See
+             * .claude/series-control-test.php for the 3.64.1 ordering fault
+             * these two lines once caused, and why nothing may render
+             * name="series" anywhere else.
+             *
+             * A NEW EVENT MAY ARRIVE WITH ITS SERIES ALREADY CHOSEN from the
+             * schedule screen's "create a new event in this series". Checked,
+             * not trusted: an integer naming a series that exists, or nothing.
+             */
+            $all_series = SFAF_Series::all();
+            $cur_series = $event_id ? SFAF_Series::id_for_event( $event_id ) : 0;
+            if ( ! $event_id && isset( $_GET['series'] ) ) {
+                $pre = intval( $_GET['series'] );
+                if ( $pre > 0 && SFAF_Series::exists( $pre ) ) {
+                    $cur_series = $pre;
+                }
+            }
+
             // ---- THE SIDE COLUMN, built now and printed further down. ------
             ob_start();
             ?>
-                <?php
-                /*
-                 * THE CAPACITY CARD IS GONE (3.96.0), AND ITS CONTROLS MOVED
-                 * RATHER THAN CHANGED.
-                 *
-                 * It held "Accept RSVPs" and one capacity box, in the side
-                 * column, three cards away from the address that capacity was
-                 * a limit on. A hybrid event has TWO limits on two different
-                 * things, and a card headed "Capacity" could not say which
-                 * number belonged to which. They are drawn inside the Location
-                 * card now, each beside the thing it limits, from the same
-                 * shared list by the same renderer down the same save path.
-                 *
-                 * THE CONTEXT IS STILL BUILT HERE, because the side column is
-                 * assembled before the main one and the Location card needs it.
-                 * $rsvp_placed comes back from that card and reaches the
-                 * catch-all under Notifications, so a setting neither claimed
-                 * still appears exactly once.
-                 */
-                $rsvp_ctx    = $this->rsvp_settings_context( $user, $event_id );
-                $rsvp_placed = array();
-                ?>
+                <?php $this->render_series_prefill( $all_series, $cur_series, (int) $event_id ); ?>
 
                 <?php
-                // ---- Donate ------------------------------------------------
+                // ---- Links -------------------------------------------------
                 // The Donate URL is the campaign link on an imported campaign
                 // and a fetch writes it, so it locks with source_url rather than
                 // looking editable and being replaced on the next run.
@@ -13026,10 +13070,7 @@ class SFAF_Portal {
                  * sfaf_donate_resolve() answers the same question for the page,
                  * the list and the progress bar; this only chooses its input.
                  */
-                $don_series = $event_id ? (int) SFAF_Series::id_for_event( $event_id ) : 0;
-                if ( ! $event_id && isset( $_GET['series'] ) && SFAF_Series::exists( (int) $_GET['series'] ) ) {
-                    $don_series = (int) $_GET['series'];
-                }
+                $don_series = $event_id ? (int) SFAF_Series::id_for_event( $event_id ) : (int) $cur_series;
                 $don_links  = SFAF_Series::with_donate_links();
                 $don_choice = $event_id ? (string) get_post_meta( $event_id, sfaf_donate_choice_key(), true ) : '';
                 if ( '' === $don_choice ) {
@@ -13038,8 +13079,10 @@ class SFAF_Portal {
                 }
                 $don_inherit = isset( $don_links[ $don_series ] ) ? 'Series link' : 'SFAF default';
                 ?>
-                <section class="uc-bento-card" data-uc-donate>
-                    <h2 class="uc-bento-title">Donate</h2>
+                <?php // LINKS, NOT DONATE (3.107.0): the donation link and the
+                      // volunteer page are the two outbound links an event has. ?>
+                <section class="uc-bento-card" data-uc-card="links" data-uc-donate>
+                    <h2 class="uc-bento-title">Links</h2>
                     <label class="uc-field">
                         <span class="uc-field-label">Donation link in emails</span>
                         <select name="donate_choice" data-uc-donate-choice
@@ -13051,7 +13094,6 @@ class SFAF_Portal {
                             <?php endforeach; ?>
                             <option value="custom" <?php selected( 'custom', $don_choice ); ?>>Custom</option>
                         </select>
-                        <span class="uc-hint">The link goes in the confirmation and reminder emails. None leaves it out.</span>
                     </label>
                     <label class="uc-field<?php echo esc_attr( $this->field_class( $s_url ) ); ?>" data-uc-donate-custom<?php echo 'custom' === $don_choice ? '' : ' hidden'; ?>>
                         <span class="uc-field-label">Donation link <?php echo $this->field_badge( $s_url, $prov['label'] ); ?></span>
@@ -13067,22 +13109,9 @@ class SFAF_Portal {
                     <label class="uc-field">
                         <span class="uc-field-label">Volunteer link</span>
                         <input type="url" name="volunteer_url" value="<?php echo esc_attr( $g( '_uc_volunteer_url' ) ); ?>" placeholder="https://" />
-                        <span class="uc-hint">Paste the volunteer page for this event.</span>
                     </label>
                 </section>
 
-                <?php
-                /*
-                 * ORGANIZER CONTACT IS GONE, AND NOTHING WAS LOST WITH IT.
-                 *
-                 * It held two controls, an address and "Email on new RSVP",
-                 * which together are one setting: who gets told when somebody
-                 * registers. Split across a card of their own, three cards away
-                 * from Notifications, they read as a card with no purpose. Both
-                 * are now the first thing in the Notifications card, which is
-                 * where that question is asked. See render_notify_box().
-                 */
-                ?>
                 <?php
                 /*
                  * THE CANCEL CARD IS NOT HERE ANY MORE, AND MUST NEVER COME BACK.
@@ -13099,9 +13128,7 @@ class SFAF_Portal {
                  * safe here because it emits fields and no form of its own.
                  */
                 ?>
-                <?php $this->render_access_card( $user, $event_id ); ?>
-
-                <section class="uc-bento-card">
+                <section class="uc-bento-card" data-uc-card="display">
                     <h2 class="uc-bento-title">Display</h2>
                     <?php
                     /*
@@ -13110,96 +13137,37 @@ class SFAF_Portal {
                      * does changed; renaming the key would have read every
                      * event's absent new value as "on" and switched the control
                      * back on wherever somebody had turned it off.
-                     */
-                    /*
-                     * ADD TO CALENDAR SITS UNDER RSVP (3.64.2), because
-                     * ticking RSVP is what greys it. A control whose
-                     * availability is decided by another one belongs beside
-                     * that one, and the two are now a pair a manager can watch
-                     * work.
                      *
-                     * WHAT THAT COST: the order used to follow the order these
-                     * appear on the public event page. That match is gone, and
-                     * it was traded on purpose. Nobody reads this card with the
-                     * event page open beside it; plenty of people tick Accept
-                     * RSVPs and then wonder why a tick four rows down went
-                     * grey.
+                     * ADD TO CALENDAR SITS UNDER RSVP (3.64.2), because ticking
+                     * RSVP is what greys it.
                      */
                     $feat = array( 'show_rsvp' => 'RSVP', 'show_calendar' => 'Add to calendar', 'show_social' => 'Social share', 'show_reminders' => 'Follow the series' );
 
                     /*
                      * ADD TO CALENDAR IS NOT A CHOICE WHILE REGISTRATIONS ARE
-                     * ON (3.64.0). The button is off the event page in that
-                     * case, because it sat under the RSVP button and could be
-                     * pressed by somebody who thought it was how you sign up.
-                     * The calendar file goes out with the confirmation instead,
-                     * which it already did.
-                     *
-                     * SO THE CONTROL SAYS WHAT WILL HAPPEN rather than looking
-                     * settable and doing nothing. It keeps the manager's own
-                     * stored value, because switching registration off later
-                     * should give them back the setting they chose, and the
-                     * sentence under it is what carries the fact. That sentence
-                     * NAMES THE CAUSE FIRST (3.64.2): it used to open on the
-                     * confirmation email, leaving somebody who is not in this
-                     * calendar every day to connect a greyed tick to a sentence
-                     * about mail on their own.
-                     *
-                     * THE SAVE DOES NOT READ IT EITHER, and that is the half
-                     * that matters. A disabled input is a control that posts
-                     * nothing today and posts something the day somebody takes
-                     * the attribute off, so save_event_from_post() skips
-                     * show_calendar on its own test rather than trusting the
-                     * browser to withhold it. The standing rule this brushes
-                     * against is about permission-sensitive fields and this is
-                     * not one; nothing is protected by the greying.
-                     *
-                     * portal.js keeps it in step live, so ticking Accept RSVPs
-                     * in the card below greys this one without a save.
+                     * ON (3.64.0). The calendar file goes out with the
+                     * confirmation instead. The control keeps the manager's own
+                     * stored value, and THE SAVE DOES NOT READ IT EITHER:
+                     * save_event_from_post() skips show_calendar on its own
+                     * test rather than trusting the browser to withhold a
+                     * disabled input. portal.js keeps it in step live.
                      */
                     $takes_rsvps = $event_id ? sfaf_event_takes_rsvps( $event_id ) : false;
 
                     /*
                      * AND THE RSVP TICK FOLLOWS "Accept RSVPs" THE SAME WAY
-                     * (3.73.0).
-                     *
-                     * TWO CONTROLS, TWO QUESTIONS, AND THEY ARE ANDed.
+                     * (3.73.0). Two controls, two questions, ANDed:
                      * `_uc_rsvp_enabled` decides whether the event takes
-                     * registrations at all and SFAF_RSVP refuses a write
-                     * without it; `_uc_show_rsvp` decides whether the page
-                     * draws the button. sfaf_event_takes_rsvps() is both.
-                     *
-                     * THE STATE THIS CLOSES is an event that ACCEPTS
-                     * registrations and SHOWS NO BUTTON. Nothing was broken
-                     * about it and nothing said anything: the REST route
-                     * would still take a registration, so the event was
-                     * open and invisible at the same time.
-                     *
-                     * THEY STAY TWO QUESTIONS. Collapsing them into one
-                     * tick was considered and rejected: an event that takes
-                     * registrations through a link somewhere else is a real
-                     * case, and that is exactly "accepts them, shows no
-                     * button of ours".
-                     *
-                     * SO THE SECOND IS DEPENDENT RATHER THAN GONE, which is
-                     * the treatment show_calendar has had since 3.64.2 and
-                     * for the same reason: it keeps the manager's own
-                     * stored value, so switching Accept RSVPs back on gives
-                     * them the setting they chose rather than a default.
-                     *
-                     * THE SAVE SKIPS IT ON ITS OWN TEST, not on the browser
-                     * withholding a disabled input. See save_event_from_post().
+                     * registrations and `_uc_show_rsvp` whether the page draws
+                     * the button. The second is dependent rather than gone,
+                     * and the save skips it on its own test.
                      */
                     $accepts = $event_id
                         ? ( '1' === (string) get_post_meta( $event_id, '_uc_rsvp_enabled', true ) )
                         : false;
                     /*
                      * A HYBRID EVENT LOCKS THIS TICK ON (3.97.2), one step
-                     * after Accept RSVPs locks on for the same reason. The
-                     * format question is asked on the registration form, so an
-                     * event with no RSVP button has nowhere to ask it. Locked
-                     * ON here, where the third-party rule locks the one above
-                     * OFF, and both come back when the cause is removed.
+                     * after Accept RSVPs locks on for the same reason.
                      */
                     $hybrid_show = ( $event_id && SFAF_Online::is_hybrid( $event_id ) );
                     if ( $hybrid_show ) { $accepts = true; }
@@ -13220,201 +13188,51 @@ class SFAF_Portal {
                         <?php if ( 'show_rsvp' === $f ) : ?>
                             <?php
                             /*
-                             * NAMES THE CAUSE FIRST, and names the control
-                             * that fixes it by the words on it. Somebody
-                             * who is not in this calendar every day should
-                             * not have to connect a greyed tick to another
-                             * card on their own.
-                             */
-                            ?>
-                            <?php
-                            /*
-                             * TWO CAUSES, TWO SENTENCES. A greyed tick that
-                             * says the wrong reason is worse than one that says
-                             * none: somebody would go looking for a control to
-                             * turn on that is already on.
-                             *
-                             * AND IT NAMES THE LOCATION CARD, NOT CAPACITY.
-                             * The Capacity card was removed in 3.96.0 and these
-                             * controls moved beside the thing they limit, so
-                             * this had been pointing at a card that no longer
-                             * exists.
+                             * THE ONE "WHY" ON EITHER EDITOR (3.107.0), and it
+                             * is one line: a greyed tick with no reason sends
+                             * somebody looking for the control that turns it on.
+                             * Two causes, two lines, only one ever shown.
                              */
                             ?>
                             <p class="uc-hint uc-rsvp-show-note" data-uc-rsvp-show-note<?php echo ( $lock && ! $hybrid_show ) ? '' : ' hidden'; ?>>
-                                This event is not accepting RSVPs, so there is no button to show. Turn on <strong>Accept RSVPs</strong> in the Location card.
+                                Greyed because <strong>Accept RSVPs</strong> is off in Registration.
                             </p>
                             <p class="uc-hint uc-rsvp-show-note" data-uc-rsvp-hybrid-show-note<?php echo $hybrid_show ? '' : ' hidden'; ?>>
-                                A hybrid event needs its registration button: choosing in person or online is part of registering.
+                                Always on for a hybrid event.
                             </p>
                         <?php endif; ?>
                         <?php if ( 'show_calendar' === $f ) : ?>
                             <p class="uc-hint uc-calendar-note" data-uc-calendar-note<?php echo $lock ? '' : ' hidden'; ?>>
-                                Because this event takes RSVPs, the calendar link goes out with the registration confirmation instead.
+                                The calendar link goes out with the RSVP confirmation instead.
                             </p>
                         <?php endif; ?>
                     <?php endforeach; ?>
                 </section>
+
+                <?php $this->render_access_card( $user, $event_id ); ?>
             <?php
             $side_html = ob_get_clean();
             ?>
             <div class="uc-bento">
             <div class="uc-bento-main">
 
+                <?php // ---- Title: its own card, first (3.107.0). ---------- ?>
                 <?php
-                /*
-                 * SERIES: the umbrella this event belongs to, and where its
-                 * other dates are edited. A plain term assignment; nothing is
-                 * inherited from it and changing it never touches another event.
-                 *
-                 * ---------------------------------------------------------------
-                 * THESE TWO LINES LIVED 102 LINES BELOW THIS POINT UNTIL 3.64.1,
-                 * AND THAT IS THE WHOLE OF THE DEFECT.
-                 *
-                 * They sat with the edit-only <select> further down, which is
-                 * where they were written and where they still made sense. Then
-                 * 3.38.0 added the prefill card ABOVE them and passed them to it.
-                 * Straight-line code in one function: at the call both variables
-                 * were undefined, PHP passed null, and render_series_prefill()
-                 * took its `empty()` early return. THE CARD HAS NEVER RENDERED.
-                 *
-                 * It failed in the quietest way available. Two `Undefined
-                 * variable` warnings, suppressed wherever display_errors is off,
-                 * and a function that returns nothing when it has nothing to
-                 * offer, which is correct behaviour for the case it thought it
-                 * was in. Twenty-six releases, and the only symptom was a control
-                 * nobody could find.
-                 *
-                 * EVERY STATIC CHECK PASSED, AND WOULD PASS AGAIN. The call
-                 * exists, the method exists, the arity matches, the file parses.
-                 * Nothing but ORDER was wrong, and order is not a property any of
-                 * those questions can see. .claude/series-control-test.php
-                 * renders the form and reads what came back, which is the only
-                 * shape of check that could have caught it. See PROJECT.md §7.
-                 * ---------------------------------------------------------------
-                 */
-                $all_series = SFAF_Series::all();
-                $cur_series = $event_id ? SFAF_Series::id_for_event( $event_id ) : 0;
-
-                /*
-                 * A NEW EVENT MAY ARRIVE WITH ITS SERIES ALREADY CHOSEN.
-                 *
-                 * The schedule screen's second route, "create a new event in this
-                 * series", is for the date whose details genuinely differ:
-                 * another location, another description. It sends somebody here
-                 * because this is where those are asked for properly, and the one
-                 * thing that screen knew and this one does not is which series
-                 * they came from. Carrying it in the URL is the whole of that.
-                 *
-                 * IT ARRIVED NOWHERE UNTIL 3.64.1. This was read AFTER the dead
-                 * call above, so on a new event it was validated into a variable
-                 * and then consumed by nothing: the only other reader is the
-                 * <select> below, which is gated on $event_id. The button on the
-                 * schedule screen carried the term correctly and this screen
-                 * dropped it. Same one ordering fault, second casualty.
-                 *
-                 * CHECKED, NOT TRUSTED. It is a query string, so it is an integer
-                 * that must name a series that exists; anything else leaves the
-                 * field on "Not part of a series" rather than preselecting
-                 * something that is not there. It only preselects a control the
-                 * manager can still change, so the worst a valid-but-unintended
-                 * id can do is need one click.
-                 */
-                if ( ! $event_id && isset( $_GET['series'] ) ) {
-                    $pre = intval( $_GET['series'] );
-                    if ( $pre > 0 && SFAF_Series::exists( $pre ) ) {
-                        $cur_series = $pre;
-                    }
-                }
-
-                /*
-                 * ---- WHICH SERIES, FIRST, ON A NEW EVENT ONLY ----------------
-                 *
-                 * The first decision somebody makes creating an event is what it
-                 * is one of, because the answer fills in most of the rest. It
-                 * was two thirds of the way down the form, so the useful order
-                 * was the reverse of the order the form asked in.
-                 *
-                 * CREATION ONLY. On an existing event, changing the series
-                 * changes the series and nothing else: that event has real
-                 * content, and prefill is a convenience for a blank form rather
-                 * than a thing that should ever arrive and overwrite work. The
-                 * picker stays where it was on an edit.
-                 */
-                $this->render_series_prefill( $all_series, $cur_series, (int) $event_id );
+                $s_title     = $st( 'title' );
+                $title_badge = $this->field_badge( $s_title, $prov['label'] );
                 ?>
-
-                <?php
-                /*
-                 * ---- EVENT DETAILS: what this event IS. Full width, first. ----
-                 *
-                 * Title, description and picture are the three things a person
-                 * writes about the event itself, so they are one card and it is
-                 * the first one. "Basics" said nothing; this names its contents.
-                 *
-                 * THE IMAGE LIVES HERE NOW rather than in a card of its own two
-                 * thirds of the way down the page, where it was found last and
-                 * chosen last. Two calls, because the canonical field order is
-                 * image before description and the writing order is the other
-                 * way round; $placed carries across them exactly as before, so
-                 * neither field can be claimed twice.
-                 */
-                ?>
-                <section class="uc-bento-card">
-                    <h2 class="uc-bento-title">Event details</h2>
-                    <?php $s_title = $st( 'title' ); ?>
+                <section class="uc-bento-card" data-uc-card="title">
+                    <h2 class="uc-bento-title" id="uc-title-heading">Title<?php echo $this->publish_mark( 'title' ); ?></h2>
                     <label class="uc-field<?php echo esc_attr( $this->field_class( $s_title ) ); ?>"<?php echo $this->field_watch_attr( 'title', $s_title ); ?>>
-                        <span class="uc-field-label">Title<?php echo $this->publish_mark( 'title' ); ?> <?php echo $this->field_badge( $s_title, $prov['label'] ); ?></span>
-                        <input type="text" name="title" value="<?php echo esc_attr( $post ? $post->post_title : '' ); ?>"<?php echo $this->field_disabled( $s_title ); ?> <?php echo ( 'locked' === $s_title ) ? '' : 'required'; ?> />
+                        <?php if ( '' !== trim( $title_badge ) ) : ?>
+                            <span class="uc-field-label"><span class="uc-visually-hidden">Title</span> <?php echo $title_badge; ?></span>
+                        <?php endif; ?>
+                        <input type="text" name="title" aria-labelledby="uc-title-heading" value="<?php echo esc_attr( $post ? $post->post_title : '' ); ?>"<?php echo $this->field_disabled( $s_title ); ?> <?php echo ( 'locked' === $s_title ) ? '' : 'required'; ?> />
                     </label>
-                    <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'description' ), $placed ) ); ?>
-                    <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'image' ), $placed ) ); ?>
-                    <?php $this->render_video_field( $user, $event_id ); ?>
-                </section>
-
-                <?php
-                // ---- FAQs, full width: the rows and BOTH set controls. ----
-                //
-                // The platform that owns this event's FAQ rows, if any. Read
-                // from the adapter, exactly like every other locked field.
-                $faq_source = array(
-                    'locked' => in_array( 'faqs', $owned, true ),
-                    'label'  => $prov['label'],
-                    'url'    => $prov['source_url'],
-                );
-                ?>
-                <section class="uc-bento-card uc-faq-card">
-                    <?php
-                    /*
-                     * ONE SET CONTROL HERE, AND IT IS THE ONE THAT APPLIES.
-                     *
-                     * "Save these as a set" used to sit in this head. An event
-                     * is where a set is applied and where this event's own
-                     * questions are written; making, editing, duplicating and
-                     * deleting sets is the FAQ Sets screen's job, and a shared
-                     * list is not something to add to from inside one event.
-                     * See the note beside 'faq_set_save' in handle().
-                     */
-                    ?>
-                    <div class="uc-bento-head">
-                        <h2 class="uc-bento-title">FAQs</h2>
-                    </div>
-                    <p class="uc-hint">
-                        Frequently asked questions for this event. These are its own: there is no series block above
-                        them and nothing overrides them.
-                    </p>
-                    <?php $this->faq_set_picker(); ?>
-                    <?php $this->faq_repeater( 'uc_faqs', $event_id ? sfaf_get_faqs( $event_id ) : array(), $faq_source ); ?>
-                </section>
-
-                <?php // ---- Classification: how it is found. --------------- ?>
-                <section class="uc-bento-card">
-                    <h2 class="uc-bento-title">Classification</h2>
-                    <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'category', 'organizer' ), $placed ) ); ?>
                 </section>
 
                 <?php // ---- Schedule: when, and where its other dates live. - ?>
-                <section class="uc-bento-card">
+                <section class="uc-bento-card" data-uc-card="schedule">
                     <h2 class="uc-bento-title">Schedule</h2>
                     <?php
                     $s_date  = $st( 'date' );
@@ -13440,39 +13258,13 @@ class SFAF_Portal {
 
                     <?php
                     /*
-                     * $all_series AND $cur_series ARE RESOLVED AT THE TOP OF THE
-                     * BENTO, above the prefill card that also needs them. They
-                     * were assigned here, 102 lines below their first use, which
-                     * is the 3.64.1 defect; see the note at that call.
-                     *
-                     * Nothing is recomputed here. Reading them twice from two
-                     * places is how the two copies come to disagree, and the
-                     * question "which series is this event in" has one answer per
-                     * render.
-                     */
-                    /*
-                     * THE SELECT IS NOT HERE ANY MORE (3.72.0).
-                     *
-                     * It was rendered here on an edit and at the top of the form
-                     * on a new event, so the one question that decides what an
-                     * event looks like was in two different places depending on
-                     * which screen somebody was on. It is at the top on both
-                     * now. See render_series_prefill(), which also explains why
-                     * an edit gets the select and not the prefill offer.
-                     *
-                     * NOTHING MAY RENDER name="series" HERE AGAIN. Two selects
-                     * with one name post two values and the second wins, which
-                     * is not the one somebody chose. .claude/series-control-test.php
-                     * renders this form and counts them.
+                     * THE SERIES SELECT IS NOT HERE (3.72.0), it is the series
+                     * card's. NOTHING MAY RENDER name="series" HERE AGAIN: two
+                     * selects with one name post two values and the second
+                     * wins. .claude/series-control-test.php counts them.
                      */
                     ?>
-
                     <?php if ( $cur_series && $event_id ) : ?>
-                        <?php // ONE SHORT LINK, not a sentence with a link inside
-                              // it. The old wording wrapped mid-phrase and left
-                              // the link broken across two lines. Not shown on a
-                              // new event: there is no event yet to be one date
-                              // of, and the schedule is where they just came from. ?>
                         <p class="uc-bento-link">
                             <a href="<?php echo esc_url( $this->url( 'series/edit/' . $cur_series ) ); ?>">
                                 <?php echo sfaf_icon( 'repeat', array( 'size' => '15px' ) ); ?>
@@ -13486,23 +13278,11 @@ class SFAF_Portal {
                      * REPEAT IS A GENERATOR, AND IT RUNS ONCE. On save it
                      * creates one separate event per date, all stamped with a
                      * shared recurrence group, and then forgets the pattern.
-                     *
                      * SHOWN ONLY WHERE IT CAN DO SOMETHING: on an event not
                      * already in a group, and with no source.
                      */
                     $rec_locked = ( $event_id && '' !== $prov['source'] );
                     $has_group  = $event_id && '' !== SFAF_Recurrence::group_of( $event_id );
-                    ?>
-                    <?php
-                    /*
-                     * ONE LINE EACH, AND NO CARD INSIDE THE CARD.
-                     *
-                     * This was a bordered fieldset carrying its own paragraph,
-                     * inside a card that already had a heading. The paragraph is
-                     * the same three sentences every time and is read once ever,
-                     * so it is behind the "?" and what is left is the control
-                     * and its state.
-                     */
                     ?>
                     <?php if ( $rec_locked ) : ?>
                         <p class="uc-hint uc-repeat-line">
@@ -13517,7 +13297,7 @@ class SFAF_Portal {
                             <?php echo esc_html( _n( 'occurrence', 'occurrences', $group_count ) ); ?>
                             <?php echo sfaf_help(
                                 'uc-help-group-' . (int) $event_id,
-                                'These dates were generated together from one pattern, which is what "edit all upcoming occurrences" targets. Each one is a separate, complete event: nothing regenerates it, and deleting it removes that single date and nothing else.',
+                                'Deleting one of these dates removes that date and nothing else.',
                                 'the recurrence group'
                             ); ?>
                         </p>
@@ -13526,48 +13306,103 @@ class SFAF_Portal {
                     <?php endif; ?>
                 </section>
 
-                <?php // ---- Location: a venue, or somewhere one-off. -------
-                      // There is no Image card any more: the picture moved up
-                      // into Event details, with the title it belongs to. ?>
+                <?php // ---- Location: a venue, or somewhere one-off. ------- ?>
                 <?php $s_loc = $st( 'location' ); ?>
-                <section class="uc-bento-card">
+                <section class="uc-bento-card" data-uc-card="location">
                     <h2 class="uc-bento-title">Location<?php echo $this->publish_mark( 'location' ); ?></h2>
-                    <?php
-                    // The RSVP controls are drawn inside this field now, each
-                    // beside the thing it limits. What it placed comes back so
-                    // the catch-all below can draw whatever it did not.
-                    $rsvp_placed = array_merge(
-                        $rsvp_placed,
-                        (array) $this->render_location_field( $event_id, $s_loc, $prov, $rsvp_ctx )
-                    );
-                    ?>
+                    <?php $this->render_location_field( $event_id, $s_loc, $prov ); ?>
                 </section>
 
                 <?php
-                // Questions for registrants: its own card, under the Location
-                // card that holds the other RSVP settings (3.106.3).
-                if ( in_array( 'questions', $this->rsvp_setting_fields( $rsvp_ctx ), true ) ) :
+                /*
+                 * ---- REGISTRATION (3.107.0) ---------------------------------
+                 *
+                 * ITS OWN CARD, OUT OF LOCATION. Accept RSVPs, Email required,
+                 * Capacity and the questions, drawn from the shared RSVP list by
+                 * name exactly as before, so the registrations screen offers the
+                 * same controls and the save path is unchanged.
+                 *
+                 * WITH ACCEPT RSVPs UNTICKED THE CARD IS THE TICK AND NOTHING
+                 * ELSE. The rest is in the markup and visible, and portal.js
+                 * hides it (initRegistration), so with no script every control
+                 * still shows and still posts. A third-party event keeps its
+                 * locked tick and its one line.
+                 */
+                ?>
+                <section class="uc-bento-card uc-registration-card" data-uc-card="registration" data-uc-registration>
+                    <h2 class="uc-bento-title">Registration</h2>
+                    <?php
+                    $rsvp_placed = array_merge(
+                        $rsvp_placed,
+                        (array) $this->render_rsvp_settings( $rsvp_ctx, array( 'rsvp_enabled' ), $rsvp_placed )
+                    );
                     ?>
-                    <section class="uc-bento-card uc-questions-card" data-uc-questions-card>
-                        <h2 class="uc-bento-title">Questions for registrants</h2>
+                    <div class="uc-registration-body" data-uc-registration-body>
                         <?php
                         $rsvp_placed = array_merge(
                             $rsvp_placed,
-                            (array) $this->render_rsvp_settings( $rsvp_ctx, array( 'questions' ), $rsvp_placed )
+                            (array) $this->render_rsvp_settings( $rsvp_ctx, array( 'email_required', 'capacity' ), $rsvp_placed )
                         );
                         ?>
-                    </section>
-                <?php endif; ?>
+                        <?php if ( in_array( 'questions', $this->rsvp_setting_fields( $rsvp_ctx ), true ) ) : ?>
+                            <div class="uc-registration-questions uc-questions-card" data-uc-questions-card>
+                                <h3 class="uc-subhead">Questions for registrants</h3>
+                                <?php
+                                $rsvp_placed = array_merge(
+                                    $rsvp_placed,
+                                    (array) $this->render_rsvp_settings( $rsvp_ctx, array( 'questions' ), $rsvp_placed )
+                                );
+                                ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </section>
 
                 <?php
                 /*
-                 * ANYTHING THE CARDS DID NOT CLAIM.
+                 * ---- EVENT DETAILS: what this event IS. ----------------------
                  *
-                 * This is what keeps the 3.2.0 guarantee true under a layout
-                 * that places controls by name. Add a field to the shared list
-                 * and forget to give it a card, and it appears here rather than
-                 * vanishing from the editor while still showing in the queue.
-                 * Silence is the failure mode this exists to prevent.
+                 * Description, Insert image, the featured picture and its URL,
+                 * and the video. Two calls, because the canonical field order is
+                 * image before description and the writing order is the other
+                 * way round; $placed carries across them exactly as before.
+                 */
+                ?>
+                <section class="uc-bento-card" data-uc-card="details">
+                    <h2 class="uc-bento-title">Event details</h2>
+                    <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'description' ), $placed ) ); ?>
+                    <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'image' ), $placed ) ); ?>
+                    <?php $this->render_video_field( $user, $event_id ); ?>
+                </section>
+
+                <?php
+                // ---- FAQs, full width: the rows and the set control. ----
+                $faq_source = array(
+                    'locked' => in_array( 'faqs', $owned, true ),
+                    'label'  => $prov['label'],
+                    'url'    => $prov['source_url'],
+                );
+                ?>
+                <section class="uc-bento-card uc-faq-card" data-uc-card="faqs">
+                    <div class="uc-bento-head">
+                        <h2 class="uc-bento-title">FAQs</h2>
+                    </div>
+                    <?php $this->faq_set_picker(); ?>
+                    <?php $this->faq_repeater( 'uc_faqs', $event_id ? sfaf_get_faqs( $event_id ) : array(), $faq_source ); ?>
+                </section>
+
+                <?php // ---- Classification: how it is found. --------------- ?>
+                <section class="uc-bento-card" data-uc-card="classification">
+                    <h2 class="uc-bento-title">Classification</h2>
+                    <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'category', 'organizer' ), $placed ) ); ?>
+                </section>
+
+                <?php
+                /*
+                 * ANYTHING THE CARDS DID NOT CLAIM. This is what keeps the 3.2.0
+                 * guarantee true under a layout that places controls by name: a
+                 * field added to the shared list and given no card appears here
+                 * rather than vanishing from the editor.
                  */
                 ob_start();
                 $rest = $this->render_manager_fields( $mgr_ctx, null, $placed );
@@ -13576,32 +13411,22 @@ class SFAF_Portal {
 
                 <?php
                 /*
-                 * NOTIFICATIONS: who else gets the reminder, and where replies
-                 * land. Two questions about the same email, so one card.
-                 *
-                 * AND THE CATCH-ALL FOR RSVP SETTINGS. The Capacity card in the
-                 * side column took two of them by name; this call takes
-                 * everything left, so a setting added to
-                 * rsvp_setting_fields() appears here rather than showing on
-                 * the registrations screen and nowhere else. Same guarantee as
-                 * "Other details" below, for the other shared list.
-                 *
-                 * Native events only. An imported event's reminders are the
-                 * platform's job, so a list here would offer a setting that
-                 * does nothing. Same rule as SFAF_Reminders, read from the same
-                 * provenance, so the two cannot disagree.
+                 * NOTIFICATIONS, AND THE CATCH-ALL FOR RSVP SETTINGS. The
+                 * Registration card took four by name; this call takes
+                 * everything left, so a setting added to rsvp_setting_fields()
+                 * appears here rather than nowhere. Native events only; on Add
+                 * event as well as Edit event (3.106.2).
                  */
-                // On Add event as well as Edit event (3.106.2).
                 if ( '' === $prov['source'] ) :
                     ?>
-                    <section class="uc-bento-card" data-uc-notifications-card>
+                    <section class="uc-bento-card" data-uc-card="notifications" data-uc-notifications-card>
                         <h2 class="uc-bento-title">Notifications</h2>
                         <?php $this->render_rsvp_settings( $rsvp_ctx, null, $rsvp_placed ); ?>
                     </section>
                 <?php endif; ?>
 
                 <?php if ( ! empty( $rest ) ) : ?>
-                    <section class="uc-bento-card">
+                    <section class="uc-bento-card" data-uc-card="other-details">
                         <h2 class="uc-bento-title">Other details</h2>
                         <?php echo $rest_html; ?>
                     </section>
@@ -13765,7 +13590,20 @@ class SFAF_Portal {
          * by , exactly as Approve and Reject have since 3.74.0.
          */
         ?>
-            <div class="uc-form-actions uc-form-actions-primary">
+            <?php
+            /*
+             * THE BAR IS STICKY TO THE FOOT OF THE WINDOW (3.107.0), full editor
+             * width, on the surface token with a top border, so the actions are
+             * reachable from anywhere on a long form. portal.css lets it go back
+             * into the flow while Cancel event is open.
+             *
+             * uc-editor-actions IS WHAT THE BUTTON ORDER AND THE MAIN ACTION'S
+             * SIZE IN portal.css SELECT ON, and until 3.107.0 no markup carried
+             * it: Delete, Save draft, Publish and the larger green button were
+             * written in the stylesheet and never reached a screen.
+             */
+            ?>
+            <div class="uc-form-actions uc-form-actions-primary uc-editor-actions uc-editor-bar" data-uc-card="actions" data-uc-editor-bar>
                 <p class="uc-form-actions-note"><?php
                     if ( $can_decide ) {
                         echo 'Approving puts this on the public calendar. Rejecting removes it, and can tell whoever sent it.';
@@ -13934,10 +13772,13 @@ class SFAF_Portal {
              * pixels. One line each, in the order the buttons are in.
              */
             ?>
-            <p class="uc-editor-actions-note">
-                <strong>Cancel</strong> keeps the registrations, closes new ones and offers to tell everybody who signed up.
-                <strong>Delete</strong> takes the event, its questions and its settings. Nothing puts them back.
-            </p>
+            <?php // Edit only (3.107.0): Add event has nothing to cancel or delete. ?>
+            <?php if ( $event_id ) : ?>
+                <p class="uc-editor-actions-note">
+                    <strong>Cancel</strong> keeps the registrations, closes new ones and offers to tell everybody who signed up.
+                    <strong>Delete</strong> takes the event, its questions and its settings. Nothing puts them back.
+                </p>
+            <?php endif; ?>
 
         <?php
         /*
@@ -14106,7 +13947,9 @@ class SFAF_Portal {
         SFAF_Recurrence::render_control(
             $event_id,
             $date,
-            $this->recurrence_prefill( $event_id )
+            $this->recurrence_prefill( $event_id ),
+            // Add event only (3.107.0): the ticked weekday follows the date.
+            array( 'follow_date' => ! (int) $event_id )
         );
     }
 
@@ -14270,9 +14113,7 @@ class SFAF_Portal {
                     <?php echo esc_html( $rejected['why'] ); ?>
                 </p>
             <?php endif; ?>
-            <span class="uc-hint">
-                A YouTube or Vimeo link. Paste the address from the browser bar, not embed code.
-            </span>
+            <span class="uc-hint">Paste a YouTube or Vimeo address from the browser bar, not embed code.</span>
         </label>
         <?php
         /*
@@ -14339,40 +14180,14 @@ class SFAF_Portal {
      * @param string $state Field state from field_state().
      * @param array  $prov
      */
-    private function render_location_field( $event_id, $state, $prov, $rsvp_ctx = null ) {
+    private function render_location_field( $event_id, $state, $prov ) {
         $imported = ( '' !== $prov['source'] );
         /*
-         * THE RSVP CONTROLS LIVE HERE NOW (3.96.0), AND THEY ARE STILL THE
-         * SHARED ONES.
-         *
-         * "Accept RSVPs" and the capacities were a Capacity card in the side
-         * column. They are drawn from render_rsvp_settings() exactly as they
-         * were, by name, so the registrations screen offers the identical
-         * controls, the save path is unchanged and neither screen holds a list
-         * of what they are. What moved is WHERE they are drawn, not what draws
-         * them.
-         *
-         * WHY HERE: a capacity is a limit on a PLACE. The in-person number
-         * belongs under the address it limits and the online number under the
-         * meeting link it limits, and on a hybrid event those are two different
-         * limits on two different things. Read in a card of its own, "Capacity:
-         * 12" could not say which.
-         *
-         * $rsvp_placed IS RETURNED so the caller can pass it to the catch-all,
-         * which is what keeps the 3.2.0 guarantee true: every shared setting is
-         * rendered exactly once, and one this card did not claim appears under
-         * Notifications rather than vanishing.
+         * THE RSVP CONTROLS ARE NOT HERE ANY MORE (3.107.0). 3.96.0 drew Accept
+         * RSVPs, Email required and Capacity inside this card, beside the place
+         * a capacity limits; they are the Registration card's now, drawn from
+         * the same shared list by name. This card is the place and nothing else.
          */
-        $rsvp_placed = array();
-        $draw_rsvp   = function ( $only ) use ( $rsvp_ctx, &$rsvp_placed ) {
-            if ( null === $rsvp_ctx ) {
-                return;
-            }
-            $rsvp_placed = array_merge(
-                $rsvp_placed,
-                $this->render_rsvp_settings( $rsvp_ctx, $only, $rsvp_placed )
-            );
-        };
         $text     = $event_id ? (string) get_post_meta( $event_id, '_uc_location', true ) : '';
 
         if ( $imported ) {
@@ -14388,10 +14203,7 @@ class SFAF_Portal {
             ?>
             <label class="uc-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'location', $state ); ?>>
                 <span class="uc-field-label">Location <?php echo $this->field_badge( $state, $prov['label'] ); ?></span>
-                <input type="text" name="location" value="<?php echo esc_attr( $text ); ?>" placeholder="e.g. Strut, 470 Castro St"<?php echo $this->field_disabled( $state ); ?> />
-                <span class="uc-hint">
-                    Imported events keep the location the platform sends. Venues are for events set up here.
-                </span>
+                <input type="text" name="location" value="<?php echo esc_attr( $text ); ?>"<?php echo $this->field_disabled( $state ); ?> />
             </label>
             <?php
             /*
@@ -14408,8 +14220,7 @@ class SFAF_Portal {
              * No online capacity: an imported event cannot be hybrid, because
              * SFAF_Sources::import_event() refuses all four of the keys.
              */
-            $draw_rsvp( array( 'rsvp_enabled', 'email_required', 'capacity' ) );
-            return $rsvp_placed;
+            return;
         }
 
         $venues   = SFAF_Venues::all();
@@ -14441,7 +14252,7 @@ class SFAF_Portal {
             <span class="uc-field-label">Location
                 <?php echo sfaf_help(
                     'uc-help-venue-' . (int) $event_id,
-                    'An event points at its venue rather than keeping a copy of the address, so correcting an address on the Venues screen corrects every event held there at once, including ones already published. Use a different location for a one-off place that is not worth adding as a venue.',
+                    'Correcting a venue on the Venues screen corrects every event held there.',
                     'venues'
                 ); ?>
             </span>
@@ -14471,7 +14282,6 @@ class SFAF_Portal {
              * First in the card for the same reason the online tick is first,
              * which is that it decides whether the controls below it apply.
              */
-            $draw_rsvp( array( 'rsvp_enabled', 'email_required' ) );
             ?>
             <input type="hidden" name="uc_online_present" value="1" />
             <input type="hidden" name="uc_online" value="0" />
@@ -14479,9 +14289,7 @@ class SFAF_Portal {
                 <input type="checkbox" name="uc_online" value="1" data-uc-online-toggle <?php checked( $online ); ?> />
                 This is an online event
             </label>
-            <p class="uc-hint">
-                The venue and address will be cleared. You'll need to re-enter them if you switch back.
-            </p>
+            <p class="uc-hint">Ticking this clears the venue and address.</p>
             <?php
             /*
              * AND THE THIRD FORMAT, BESIDE THE SECOND (3.96.0).
@@ -14502,10 +14310,7 @@ class SFAF_Portal {
                 <input type="checkbox" name="uc_hybrid" value="1" data-uc-hybrid-toggle <?php checked( $hybrid ); ?> />
                 This is a hybrid event
             </label>
-            <p class="uc-hint">
-                The venue and address are kept, and a meeting link is asked for below. People choose
-                in person or online when they register, and each choice has its own number of places.
-            </p>
+            <p class="uc-hint">People choose in person or online when they register.</p>
 
             <div class="uc-online-panel" data-uc-online-panel>
                 <label class="uc-field">
@@ -14525,14 +14330,8 @@ class SFAF_Portal {
                      * Four cases, one place, next to the field they are about.
                      */
                     ?>
-                    <span class="uc-hint">
-                        Only people who register will get this link. It never appears on the event page.
-                    </span>
-                    <span class="uc-hint">
-                        If no link is entered, RSVP emails will say a link will be provided before the event.
-                        If you enter one, choose below where it goes out, or leave both unticked to keep it
-                        here for your own reference.
-                    </span>
+                    <span class="uc-hint">Only people who register get this link; it is never on the event page.</span>
+                    <span class="uc-hint">With no link, RSVP emails say one will be sent before the event.</span>
                 </label>
 
                 <div class="uc-field">
@@ -14588,7 +14387,7 @@ class SFAF_Portal {
 
             <?php if ( empty( $venues ) ) : ?>
                 <p class="uc-hint">
-                    No venues yet. <a href="<?php echo esc_url( $this->url( 'venues' ) ); ?>">Add one</a> to keep its address in one place.
+                    No venues yet. <a href="<?php echo esc_url( $this->url( 'venues' ) ); ?>">Add one</a>.
                 </p>
             <?php else : ?>
                 <?php // Ordinary radio rows: control first, label beside it, both
@@ -14656,26 +14455,33 @@ class SFAF_Portal {
                      * held there. This is one event's own text.
                      */
                     ?>
+                    <?php
+                    /*
+                     * THE LABELS ARE THE PLACEHOLDERS (3.107.0), in the
+                     * placeholder colour, with no example values. Each box keeps
+                     * its name for a screen reader in a visually hidden label.
+                     */
+                    ?>
                     <label class="uc-field uc-venue-street">
-                        <span class="uc-field-label">Place name</span>
-                        <input type="text" name="location_name" value="<?php echo esc_attr( sfaf_event_location_name( $event_id ) ); ?>" placeholder="Strut" maxlength="120" />
-                        <span class="uc-hint">Shown above the address. This event only; it does not become a venue.</span>
+                        <span class="uc-visually-hidden">Place name</span>
+                        <input type="text" name="location_name" value="<?php echo esc_attr( sfaf_event_location_name( $event_id ) ); ?>" placeholder="Place name" maxlength="120" />
+                        <span class="uc-hint">This event only; it does not become a venue.</span>
                     </label>
                     <label class="uc-field uc-venue-street">
-                        <span class="uc-field-label">Street</span>
-                        <input type="text" name="location_street" value="<?php echo esc_attr( $loc_parts['street'] ); ?>" placeholder="Dolores Park, near the tennis courts" />
+                        <span class="uc-visually-hidden">Street</span>
+                        <input type="text" name="location_street" value="<?php echo esc_attr( $loc_parts['street'] ); ?>" placeholder="Street" />
                     </label>
                     <label class="uc-field uc-venue-city">
-                        <span class="uc-field-label">City</span>
-                        <input type="text" name="location_city" value="<?php echo esc_attr( $loc_parts['city'] ); ?>" placeholder="San Francisco" />
+                        <span class="uc-visually-hidden">City</span>
+                        <input type="text" name="location_city" value="<?php echo esc_attr( $loc_parts['city'] ); ?>" placeholder="City" />
                     </label>
                     <label class="uc-field uc-venue-state">
-                        <span class="uc-field-label">State</span>
-                        <input type="text" name="location_state" value="<?php echo esc_attr( $loc_parts['state'] ); ?>" placeholder="CA" maxlength="20" />
+                        <span class="uc-visually-hidden">State</span>
+                        <input type="text" name="location_state" value="<?php echo esc_attr( $loc_parts['state'] ); ?>" placeholder="State" maxlength="20" />
                     </label>
                     <label class="uc-field uc-venue-zip">
-                        <span class="uc-field-label">ZIP</span>
-                        <input type="text" name="location_zip" value="<?php echo esc_attr( $loc_parts['zip'] ); ?>" placeholder="94114" maxlength="10" />
+                        <span class="uc-visually-hidden">ZIP</span>
+                        <input type="text" name="location_zip" value="<?php echo esc_attr( $loc_parts['zip'] ); ?>" placeholder="ZIP" maxlength="10" />
                     </label>
                 </div>
                 <?php // The line every reader still sees, so what is stored and
@@ -14700,11 +14506,9 @@ class SFAF_Portal {
              * LAST IN THE CARD, because it is the question that only makes
              * sense once the format and the place are settled.
              */
-            $draw_rsvp( array( 'capacity' ) );
             ?>
         </div>
         <?php
-        return $rsvp_placed;
     }
 
     /* =====================================================================
@@ -14901,7 +14705,7 @@ class SFAF_Portal {
                 <?php // Shown by the script the moment hybrid is ticked, so the
                       // reason arrives with the lock rather than after a save. ?>
                 <span class="uc-hint uc-hint-spec" data-uc-rsvp-hybrid-note<?php echo $rsvp_forced ? '' : ' hidden'; ?>>
-                    A hybrid event has to take RSVPs: choosing in person or online is part of registering.
+                    Always on for a hybrid event.
                 </span>
                 <?php
                 break;
@@ -14991,7 +14795,7 @@ class SFAF_Portal {
                             <?php /* Hidden until there are two of them: with one box
                                      the row's own label is the whole name. */ ?>
                             <span class="uc-capacity-box-label" data-uc-capacity-label<?php echo $hybrid ? '' : ' hidden'; ?>>In person</span>
-                            <input type="number" name="capacity" min="0"
+                            <input type="number" name="capacity" min="0" placeholder="No limit"
                                    aria-label="<?php echo esc_attr( $hybrid ? 'Capacity, in person' : 'Capacity' ); ?>"
                                    data-uc-capacity-in-person
                                    value="<?php echo esc_attr( $g( '_uc_capacity' ) ); ?>"<?php echo $this->field_disabled( $s_cap ); ?> />
@@ -15005,15 +14809,19 @@ class SFAF_Portal {
                         if ( ! $at_src ) : ?>
                             <label class="uc-capacity-box" data-uc-online-capacity<?php echo $hybrid ? '' : ' hidden'; ?>>
                                 <span class="uc-capacity-box-label">Online</span>
-                                <input type="number" name="capacity_online" min="0"
+                                <input type="number" name="capacity_online" min="0" placeholder="No limit"
                                        aria-label="Capacity, online"
                                        value="<?php echo esc_attr( $g( '_uc_capacity_online' ) ); ?>"<?php echo $this->field_disabled( $s_cap_on ); ?> />
                             </label>
                         <?php endif; ?>
                     </div>
-                    <?php // Stays inline: it is four words, and it stops
-                          // somebody typing 0 meaning "nobody". ?>
-                    <span class="uc-hint uc-hint-spec">0 means unlimited.</span>
+                    <?php
+                    /*
+                     * NO HINT FROM 3.107.0. An empty box is unlimited, which the
+                     * placeholder says, and 0 is no places: every registration
+                     * goes to the waitlist. See sfaf_capacity_limited().
+                     */
+                    ?>
                 </div>
                 <?php
                 break;
@@ -15112,18 +14920,11 @@ class SFAF_Portal {
                             <?php echo esc_html( 'Not an email address, so it was not saved: ' . $reply_rejected ); ?>
                         </p>
                     <?php endif; ?>
-                    <span class="uc-hint">
-                        One address, for replies to this event's reminder. A shared mailbox is more reliable
-                        than a person, and it does not have to be an sfaf.org address.
-                        <?php if ( '' === $reply_current && 'author' === $reply_source ) : ?>
-                            Pre-filled with whoever created this event.
-                        <?php elseif ( '' === $reply_current && 'setting' === $reply_source ) : ?>
-                            Nothing is set here, so replies go to the site-wide default in Settings.
-                        <?php elseif ( '' === $reply_current ) : ?>
-                            Nothing is set here and there is no site-wide default, so a reply goes to whatever
-                            address the mail is sent from.
-                        <?php endif; ?>
-                    </span>
+                    <?php if ( '' === $reply_current && 'setting' === $reply_source ) : ?>
+                        <span class="uc-hint">Empty sends replies to the site-wide default in Settings.</span>
+                    <?php elseif ( '' === $reply_current && 'author' !== $reply_source ) : ?>
+                        <span class="uc-hint">Empty sends replies to the address the mail comes from.</span>
+                    <?php endif; ?>
                 </label>
                 </div>
                 <?php
@@ -15148,10 +14949,22 @@ class SFAF_Portal {
         $event_id = (int) $event_id;
         $imported = ( '' !== (string) get_post_meta( $event_id, SFAF_Sources::META_SOURCE, true ) );
         // The limits before this save, so a raise can be told apart (3.106.0).
-        $caps_before = array( (int) get_post_meta( $event_id, '_uc_capacity', true ), (int) get_post_meta( $event_id, '_uc_capacity_online', true ) );
+        /*
+         * EMPTY IS UNLIMITED AND 0 IS NO PLACES (3.107.0). A limit is read as
+         * null for unlimited so a raise can be told from a limit taken off.
+         */
+        $limit_of = function ( $key ) use ( $event_id ) {
+            $raw = trim( (string) get_post_meta( $event_id, $key, true ) );
+            return ( '' !== $raw && is_numeric( $raw ) ) ? max( 0, (int) $raw ) : null;
+        };
+        $clean_cap = function ( $raw ) {
+            $raw = trim( sanitize_text_field( wp_unslash( $raw ) ) );
+            return ( '' !== $raw && is_numeric( $raw ) ) ? (string) max( 0, (int) $raw ) : '';
+        };
+        $caps_before = array( $limit_of( '_uc_capacity' ), $limit_of( '_uc_capacity_online' ) );
 
         if ( ! $is_locked( 'capacity' ) && isset( $_POST['capacity'] ) ) {
-            update_post_meta( $event_id, '_uc_capacity', sanitize_text_field( wp_unslash( $_POST['capacity'] ) ) );
+            update_post_meta( $event_id, '_uc_capacity', $clean_cap( $_POST['capacity'] ) );
         }
         /*
          * THE ONLINE LIMIT, GUARDED BY ITS OWN PRESENCE (3.96.0).
@@ -15166,15 +14979,23 @@ class SFAF_Portal {
          * importer is concerned.
          */
         if ( ! $is_locked( 'capacity' ) && isset( $_POST['capacity_online'] ) ) {
-            update_post_meta( $event_id, '_uc_capacity_online', sanitize_text_field( wp_unslash( $_POST['capacity_online'] ) ) );
+            update_post_meta( $event_id, '_uc_capacity_online', $clean_cap( $_POST['capacity_online'] ) );
         }
         /*
          * CAPACITY RAISED IS A PLACE OPENED (3.106.0): the waitlist is offered
-         * the new places. Either number, any raise; a limit taken off (0) is
-         * not a raise, and an unlimited event never had anybody waiting.
+         * the new places. Either number, any raise. A limit taken off (the box
+         * emptied) is asked too, and advance() does nothing there: it serves
+         * only an event with a limit, so anybody still waiting stays waiting.
+         * That gap predates 3.107.0 (it was 0 then) and is in PROJECT.md 2.
          */
-        $caps_after = array( (int) get_post_meta( $event_id, '_uc_capacity', true ), (int) get_post_meta( $event_id, '_uc_capacity_online', true ) );
-        if ( $caps_after[0] > $caps_before[0] || $caps_after[1] > $caps_before[1] ) {
+        $caps_after = array( $limit_of( '_uc_capacity' ), $limit_of( '_uc_capacity_online' ) );
+        $opened     = false;
+        foreach ( array( 0, 1 ) as $i ) {
+            if ( null !== $caps_before[ $i ] && ( null === $caps_after[ $i ] || $caps_after[ $i ] > $caps_before[ $i ] ) ) {
+                $opened = true;
+            }
+        }
+        if ( $opened ) {
             SFAF_Waitlist::advance_all( $event_id );
         }
 
@@ -15901,7 +15722,7 @@ class SFAF_Portal {
         $chosen    = SFAF_Teams::access_for_event( $event_id );
         $notified  = SFAF_Teams::for_event( $event_id );
         ?>
-        <section class="uc-bento-card">
+        <section class="uc-bento-card" data-uc-card="access">
             <h2 class="uc-bento-title">Who can edit this
                 <?php
                 /* THE LIVE RESOLUTION IS THE SURPRISE. Naming a team here is
@@ -15909,7 +15730,7 @@ class SFAF_Portal {
                  * edit this event without anybody touching it. */
                 echo sfaf_help(
                     'uc-help-teams-' . (int) $event_id,
-                    'A team is resolved every time somebody opens the event, so adding a person to the team gives them this event too, and removing them takes it away. Nothing here has to be changed for that to happen.',
+                    'Adding somebody to a team gives them this event too, and taking them out takes it away.',
                     'teams'
                 );
                 ?>
@@ -15961,10 +15782,7 @@ class SFAF_Portal {
                       // ask". Same guarantee as notify_teams_present. ?>
                 <input type="hidden" name="access_teams_present" value="1" />
 
-                <p class="uc-hint">
-                    Everybody on a team you pick can edit this event and see who has registered.
-                    Pick up to <?php echo (int) SFAF_Teams::MAX_PER_EVENT; ?>.
-                </p>
+                <p class="uc-hint">Pick up to <?php echo (int) SFAF_Teams::MAX_PER_EVENT; ?>; each can edit this event and see who registered.</p>
 
                 <div class="uc-access-teams" data-uc-access-teams data-uc-access-max="<?php echo (int) SFAF_Teams::MAX_PER_EVENT; ?>">
                     <?php foreach ( $teams as $team ) :
@@ -15986,10 +15804,7 @@ class SFAF_Portal {
                         <?php checked( ! empty( $chosen ) && count( array_intersect( $chosen, $notified ) ) === count( $chosen ) ); ?> />
                     Also email these teams about registrations and reminders
                 </label>
-                <p class="uc-hint">
-                    Leave this off if the team will log in to see registrations. Everybody on the
-                    notification list gets one email per registration.
-                </p>
+                <p class="uc-hint">Everybody on the list gets one email per registration.</p>
             <?php endif; ?>
         </section>
         <?php
@@ -16126,11 +15941,7 @@ class SFAF_Portal {
             <?php // ---- 1. THE ONE LIST. --------------------------------- ?>
             <div class="uc-notify-section">
                 <h4 class="uc-notify-subhead">Who hears about this event</h4>
-                <p class="uc-hint">
-                    Everybody here is told when somebody registers or cancels, gets the number registered at 6 am the day
-                    before, one copy of the morning-of reminder, and the list of who is coming two hours before. It changes
-                    nothing about who can edit this event.
-                </p>
+                <p class="uc-hint">Everybody here is emailed about this event's registrations and reminders.</p>
 
                 <?php if ( ! $reminders_on ) : ?>
                     <p class="uc-field-note uc-field-note-attention"><?php echo $this->icon_needs(); ?><span>Reminder emails are currently switched off in Settings, so nothing on this list will be sent until they are switched back on.</span></p>
@@ -16187,9 +15998,7 @@ class SFAF_Portal {
                             </label>
                         <?php endforeach; ?>
                     </div>
-                    <p class="uc-muted uc-emails-empty" data-uc-emails-empty<?php echo empty( $extra_emails ) ? '' : ' hidden'; ?>>
-                        Nobody outside the calendar yet.
-                    </p>
+                    <?php // No empty line of its own (3.107.0): "Nobody else yet." under the picker covers it. ?>
 
                     <div class="uc-email-add">
                         <input type="email" name="notify_email_new" id="uc-notify-email-new"
@@ -16205,10 +16014,7 @@ class SFAF_Portal {
                             <?php echo esc_html( implode( ', ', $rejected ) ); ?>
                         </p>
                     <?php endif; ?>
-                    <span class="uc-hint">
-                        For people outside the calendar system: a supervisor, a co-host. Untick an address to take it
-                        off the list.
-                    </span>
+                    <span class="uc-hint">For anybody without calendar access.</span>
                 </div>
             </div>
 
@@ -16552,7 +16358,7 @@ class SFAF_Portal {
                                     </label>
                                 <?php endforeach; ?>
                             </div>
-                            <p class="uc-hint">Picking a team here emails whoever is in it when the message goes out, not whoever is in it today. It does not change who can edit this event: that is the team on the access card.</p>
+                            <p class="uc-hint">A team is emailed as it is when each message goes out.</p>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -16577,12 +16383,19 @@ class SFAF_Portal {
              * Nothing here is the only way to do anything.
              */
             ?>
+            <?php
+            /*
+             * ONE EMPTY STATE FOR THE WHOLE CARD (3.107.0). "Nobody else yet."
+             * shows when nobody beyond the creator is chosen, picker or typed
+             * address, and the "On the list" label shows only with chips under
+             * it. The typed-address box keeps no empty line of its own and the
+             * picker's summary says nothing until somebody is chosen.
+             */
+            ?>
             <div class="uc-rchips" data-uc-notify-chips hidden>
-                <span class="uc-rchips-label">On the list</span>
+                <span class="uc-rchips-label" data-uc-notify-chips-label>On the list</span>
                 <div class="uc-rchips-list" data-uc-notify-chips-list></div>
-                <p class="uc-muted uc-rchips-empty" data-uc-notify-chips-empty hidden>
-                    Nobody else yet. Open the picker above to add somebody.
-                </p>
+                <p class="uc-muted uc-rchips-empty" data-uc-notify-chips-empty hidden>Nobody else yet.</p>
             </div>
 
             <?php // The marker that tells the save "this form carried the teams
@@ -16626,7 +16439,8 @@ class SFAF_Portal {
         }
 
         if ( empty( $parts ) ) {
-            return 'Nobody chosen yet';
+            // Said once, under the picker, by "Nobody else yet." (3.107.0).
+            return '';
         }
 
         // The total is the resolved list, which already deduplicates and
@@ -17054,7 +16868,7 @@ class SFAF_Portal {
                         <span class="uc-muted">
                             <?php
                             echo esc_html( $on_now ? 'Accepting registrations' : 'Not accepting registrations' );
-                            echo esc_html( $cap_now > 0 ? ', capacity ' . $cap_now : ', no capacity limit' );
+                            echo esc_html( sfaf_capacity_limited( $event_id ) ? ', capacity ' . $cap_now : ', no capacity limit' );
                             ?>
                         </span>
                     </span>

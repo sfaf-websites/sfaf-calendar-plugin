@@ -1964,7 +1964,7 @@ class SFAF_Recurrence {
      *                         for an event that does not exist yet.
      * @param string $date The event's own date, which anchors every pattern.
      */
-    public static function render_control( $uid_seed, $date, $prefill = array() ) {
+    public static function render_control( $uid_seed, $date, $prefill = array(), $opts = array() ) {
         $uid  = 'uc-rep-' . (int) $uid_seed;
         $dow  = $date ? (int) SFAF_Recurrence::dow_of( $date ) : (int) current_time( 'w' );
         $days = SFAF_Recurrence::weekday_names();
@@ -2050,12 +2050,21 @@ class SFAF_Recurrence {
         $day_num = $date ? sfaf_ap_date( $date, 'daynum' ) : '';
         $nth     = $date ? SFAF_Recurrence::nth_weekday_of_month( $date ) : null;
         ?>
-        <div class="uc-repeat" data-uc-repeat data-uc-repeat-date="<?php echo esc_attr( $date ); ?>">
+        <?php
+        /*
+         * data-uc-repeat-follow (3.107.0): on a NEW event the pre-ticked weekday
+         * moves to the date's weekday as the date changes, until somebody
+         * touches a weekday tick by hand. Never on Edit event, and never where a
+         * prefill named its own days. See initRecurrence().
+         */
+        $follow = ! empty( $opts['follow_date'] ) && empty( $pre['days'] );
+        ?>
+        <div class="uc-repeat" data-uc-repeat data-uc-repeat-date="<?php echo esc_attr( $date ); ?>"<?php echo $follow ? ' data-uc-repeat-follow' : ''; ?>>
 
             <span class="uc-field-label">Repeats
                 <?php echo sfaf_help(
                     'uc-help-repeat-' . (int) $uid_seed,
-                    'On save this creates one separate event per date, all grouped so they can be edited together afterwards. It happens once: nothing regenerates, and the schedule is edited on the series from then on.',
+                    'Saving creates one event per date; edit the schedule on the series after that.',
                     'repeating'
                 ); ?>
             </span>
@@ -2106,7 +2115,7 @@ class SFAF_Recurrence {
                         </label>
                     <?php endforeach; ?>
                 </div>
-                <p class="uc-hint">The event's own day is ticked to start with. Tick more than one for a group that meets twice a week.</p>
+                <p class="uc-hint">Tick more than one for a group that meets twice a week.</p>
             </div>
 
             <?php // ---- Monthly ------------------------------------------ ?>

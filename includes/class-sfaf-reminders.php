@@ -821,7 +821,7 @@ class SFAF_Reminders {
          * is limited and nothing goes back, so it is left out rather than
          * reworded.
          */
-        $capped = (int) get_post_meta( $event_id, '_uc_capacity', true ) > 0;
+        $capped = sfaf_capacity_limited( $event_id );
 
         /*
          * SOMEBODY STILL WAITING leaves the waitlist rather than cancelling a

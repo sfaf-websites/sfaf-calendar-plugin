@@ -24,7 +24,7 @@ define( 'SFAF_VERSION', '3.106.3' );
  * hook — still gets its new tables, instead of throwing "table doesn't exist"
  * the first time the runner looks for one.
  */
-define( 'SFAF_DB_VERSION', '11' );
+define( 'SFAF_DB_VERSION', '12' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -1132,6 +1132,8 @@ function sfaf_install_tables() {
 
     sfaf_migrate_notification_lists();
     sfaf_migrate_source_rsvps();
+    // Schema 12 (3.107.0): a stored 0 was "unlimited" and is now "no places".
+    sfaf_migrate_capacity_zero();
 
     update_option( 'sfaf_db_version', SFAF_DB_VERSION );
 }
@@ -1331,6 +1333,58 @@ function sfaf_migrate_source_rsvps() {
     }
 
     update_option( 'sfaf_source_rsvp_migration', array(
+        'touched' => $touched,
+        'at'      => current_time( 'mysql' ),
+    ), false );
+
+    return $touched;
+}
+
+/**
+ * A stored capacity of 0 becomes empty, once (schema 12, 3.107.0).
+ *
+ * BEFORE 3.107.0, 0 MEANT UNLIMITED. From 3.107.0 an empty box is unlimited and
+ * 0 is no places, so every registration goes to the waitlist. Every 0 stored
+ * before the update was written meaning "no limit", so each one is emptied;
+ * without this pass every such live event would turn waitlist-only the moment
+ * the plugin updated.
+ *
+ * ONCE, AND GUARDED BY ITS OWN OPTION, NOT ONLY BY THE SCHEMA NUMBER. Unlike the
+ * passes above this one is NOT idempotent in meaning: a second run after
+ * somebody has deliberately typed 0 would quietly turn that event back into an
+ * unlimited one. The option is written whatever the count, so "nothing needed
+ * doing" and "it never ran" are different answers, and its presence is what
+ * stops it ever running again, including on a later schema bump.
+ *
+ * Both keys: `_uc_capacity` and, on a hybrid event, `_uc_capacity_online`.
+ */
+function sfaf_migrate_capacity_zero() {
+    if ( false !== get_option( 'sfaf_capacity_zero_migration', false ) ) {
+        return 0;
+    }
+
+    $touched = 0;
+    foreach ( array( '_uc_capacity', '_uc_capacity_online' ) as $key ) {
+        $q = new WP_Query( array(
+            'post_type'      => 'uc_event',
+            'post_status'    => 'any',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
+            'meta_query'     => array(
+                array( 'key' => $key, 'compare' => 'EXISTS' ),
+            ),
+        ) );
+        foreach ( $q->posts as $event_id ) {
+            $raw = trim( (string) get_post_meta( (int) $event_id, $key, true ) );
+            if ( '' !== $raw && is_numeric( $raw ) && 0 === (int) $raw ) {
+                update_post_meta( (int) $event_id, $key, '' );
+                $touched++;
+            }
+        }
+    }
+
+    update_option( 'sfaf_capacity_zero_migration', array(
         'touched' => $touched,
         'at'      => current_time( 'mysql' ),
     ), false );
@@ -1594,7 +1648,32 @@ function sfaf_capacity_meta_key( $format ) {
 }
 
 /**
- * How many places one format of an event has. 0 means unlimited.
+ * Does this format of an event have a limit at all? (3.107.0)
+ *
+ * AN EMPTY BOX IS UNLIMITED AND 0 IS NO PLACES. Until 3.107.0 a stored 0 meant
+ * unlimited, so the two could not be told apart by the number; they are told
+ * apart by whether anything is stored. sfaf_migrate_capacity_zero() emptied
+ * every 0 once, on the update, so no live event became waitlist-only.
+ *
+ * Reads the same key sfaf_event_capacity() reads, for the same reasons.
+ *
+ * @param int    $event_id
+ * @param string $format '' means "this event's only format".
+ * @return bool
+ */
+function sfaf_capacity_limited( $event_id, $format = '' ) {
+    $event_id = (int) $event_id;
+    if ( ! $event_id ) {
+        return false;
+    }
+    $key = SFAF_Online::is_hybrid( $event_id ) ? sfaf_capacity_meta_key( $format ) : '_uc_capacity';
+    $raw = trim( (string) get_post_meta( $event_id, $key, true ) );
+    return '' !== $raw && is_numeric( $raw );
+}
+
+/**
+ * How many places one format of an event has. 0 is no places when
+ * sfaf_capacity_limited() says there is a limit, and unlimited when it does not.
  *
  * WHICH FORMATS AN EVENT HAS IS THE EVENT'S QUESTION, not this one's. Asked for
  * the online capacity of an in-person event, this answers with whatever is
@@ -1651,10 +1730,9 @@ function sfaf_event_formats( $event_id ) {
 /**
  * Is this one format full?
  *
- * "WHATEVER FULL MEANS TODAY, PER FORMAT" is the brief, and today it means a
- * capacity above zero with at least that many confirmed rows. Zero is
- * unlimited and can never be full, which is the rule the editor's hint states
- * and the one a capacity of 0 has always meant here.
+ * FULL MEANS A LIMIT WITH AT LEAST THAT MANY PLACES TAKEN. No limit (an empty
+ * box) can never be full. A limit of 0 is full from the first person, so every
+ * registration goes to the waitlist (3.107.0; until then 0 meant unlimited).
  *
  * ON A HYBRID EVENT THE COUNT IS PER FORMAT; anywhere else it is the event's
  * whole count, because those rows carry no format and counting by one would
@@ -1666,10 +1744,10 @@ function sfaf_event_formats( $event_id ) {
  */
 function sfaf_format_full( $event_id, $format ) {
     $event_id = (int) $event_id;
-    $capacity = sfaf_event_capacity( $event_id, $format );
-    if ( $capacity <= 0 ) {
+    if ( ! sfaf_capacity_limited( $event_id, $format ) ) {
         return false;
     }
+    $capacity = sfaf_event_capacity( $event_id, $format );
     $taken = SFAF_Online::is_hybrid( $event_id )
         ? sfaf_get_rsvp_count_by_format( $event_id, $format )
         : sfaf_get_rsvp_count( $event_id );

@@ -83,7 +83,8 @@ class SFAF_Waitlist {
         if ( '' !== SFAF_Sources::registration_url( $event_id ) ) {
             return false;
         }
-        return sfaf_event_capacity( $event_id, $format ) > 0;
+        // Any limit, including 0 places (3.107.0); an empty box has none.
+        return sfaf_capacity_limited( $event_id, $format );
     }
 
     /** Places held by offers not yet answered or run out. */
