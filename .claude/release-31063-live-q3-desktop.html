@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Events - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.106.3" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.106.3" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.106.3" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.107.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.107.0" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.107.0" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.106.3" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.107.0" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -1370,8 +1370,8 @@
                         </main>
             </div>
         </div>
-        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.106.3"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.106.3"></script>
-<script src="../public/js/portal.js?ver=3.106.3"></script>
+        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.107.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.107.0"></script>
+<script src="../public/js/portal.js?ver=3.107.0"></script>
 <script>window.RT_PAGE="q3-desktop";(function () {
 var P = window.RT_PAGE, out = { page: P, errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
@@ -1404,12 +1404,17 @@ window.addEventListener('load', function () { setTimeout(function () {
     out.card = box(document.querySelector('[data-uc-cancel-instead]'));
     return finish();
   }
-  var card = document.querySelector('[data-uc-questions-card]');
+  /* 3.107.0: the questions are in the Registration card, which shows only
+   * the Accept RSVPs tick until it is ticked. Tick it, as a person would. */
+  var acc = document.querySelector('[data-uc-rsvp-accept-check] input');
+  if (acc && !acc.checked && !acc.disabled) { acc.click(); }
+  /* The card is Registration from 3.107.0; the questions are its section. */
+  var card = document.querySelector('[data-uc-card="registration"]');
   out.card = box(card);
   if (!card) { return finish(); }
   var cs = getComputedStyle(card);
   out.cardStyle = { border: cs.borderTopColor + ' ' + cs.borderTopWidth, pad: cs.paddingTop, radius: cs.borderTopLeftRadius, bg: cs.backgroundColor };
-  out.title = text(card.querySelector('h2'));
+  out.title = text(card.querySelector('[data-uc-questions-card] > h3'));
   out.hint = box(card.querySelector('.uc-questions-hint'));
   var prev = card.previousElementSibling, next = card.nextElementSibling;
   out.gapAbove = prev ? Math.round(card.getBoundingClientRect().top - prev.getBoundingClientRect().bottom) : null;

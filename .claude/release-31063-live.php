@@ -119,12 +119,17 @@ window.addEventListener('load', function () { setTimeout(function () {
     out.card = box(document.querySelector('[data-uc-cancel-instead]'));
     return finish();
   }
-  var card = document.querySelector('[data-uc-questions-card]');
+  /* 3.107.0: the questions are in the Registration card, which shows only
+   * the Accept RSVPs tick until it is ticked. Tick it, as a person would. */
+  var acc = document.querySelector('[data-uc-rsvp-accept-check] input');
+  if (acc && !acc.checked && !acc.disabled) { acc.click(); }
+  /* The card is Registration from 3.107.0; the questions are its section. */
+  var card = document.querySelector('[data-uc-card="registration"]');
   out.card = box(card);
   if (!card) { return finish(); }
   var cs = getComputedStyle(card);
   out.cardStyle = { border: cs.borderTopColor + ' ' + cs.borderTopWidth, pad: cs.paddingTop, radius: cs.borderTopLeftRadius, bg: cs.backgroundColor };
-  out.title = text(card.querySelector('h2'));
+  out.title = text(card.querySelector('[data-uc-questions-card] > h3'));
   out.hint = box(card.querySelector('.uc-questions-hint'));
   var prev = card.previousElementSibling, next = card.nextElementSibling;
   out.gapAbove = prev ? Math.round(card.getBoundingClientRect().top - prev.getBoundingClientRect().bottom) : null;
@@ -215,7 +220,7 @@ foreach ( array( 'q1-desktop', 'q1-phone', 'q3-desktop', 'q3-phone', 'add-deskto
     rt_check( 'Questions for registrants' === $v( $t, 'title' ), "$t: the card is not titled Questions for registrants: " . json_encode( $v( $t, 'title' ) ) );
     $cs = (array) $v( $t, 'cardStyle' );
     rt_check( isset( $cs['border'] ) && "$P_BORDER 1px" === $cs['border'] && '18px' === $cs['pad'] && '12px' === $cs['radius'], "$t: the card is not the standard card: " . json_encode( $cs ) );
-    rt_check( 'Location' === preg_replace( '/\W+$/', '', (string) $v( $t, 'prevTitle' ) ) && 16 === $v( $t, 'gapAbove' ) && 16 === $v( $t, 'gapBelow' ), "$t: not its own card under Location with 16px either side: " . json_encode( array( $v( $t, 'prevTitle' ), $v( $t, 'gapAbove' ), $v( $t, 'gapBelow' ) ) ) );
+    rt_check( 'Location' === preg_replace( '/\W+$/', '', (string) $v( $t, 'prevTitle' ) ) && 16 === $v( $t, 'gapAbove' ) && 16 === $v( $t, 'gapBelow' ), "$t: the Registration card holding it is not under Location with 16px either side: " . json_encode( array( $v( $t, 'prevTitle' ), $v( $t, 'gapAbove' ), $v( $t, 'gapBelow' ) ) ) );
     $h = (array) $v( $t, 'hint' );
     rt_check( isset( $h['text'] ) && 'Ask registrants anything you need to know before the event.' === $h['text'] && $P_MUTED === $h['color'] && '12px' === $h['size'], "$t: the helper is not inside, at the helper step: " . json_encode( $h ) );
     rt_check( $want === $v( $t, 'questions' ), "$t: " . json_encode( $v( $t, 'questions' ) ) . " questions, wanted $want" );

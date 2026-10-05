@@ -187,12 +187,17 @@ function names(q) { return Array.prototype.map.call(q.querySelectorAll('input[na
 
 window.addEventListener('load', function () { setTimeout(function () {
   if (P.indexOf('editor-') === 0) {
+  /* 3.107.0: the questions are in the Registration card, which shows only
+   * the Accept RSVPs tick until it is ticked. Tick it, as a person would. */
+  var acc = document.querySelector('[data-uc-rsvp-accept-check] input');
+  if (acc && !acc.checked && !acc.disabled) { acc.click(); }
     var root = document.querySelector('[data-uc-questions]');
     out.notifications = text(document.querySelector('[data-uc-notifications-card] h2'));
     if (!root) { return finish(); }
-    /* Its own card under the Location card since 3.106.3; release-31063-live.php measures it. */
+    /* A section of the Registration card since 3.107.0 (its own card under
+     * Location in 3.106.3); release-31063-live.php measures it. */
     var qcard = root.closest('[data-uc-questions-card]');
-    out.ownCard = !!qcard && !!qcard.previousElementSibling && /Location/.test(text(qcard.previousElementSibling.querySelector('h2')));
+    out.ownCard = !!qcard && !!qcard.closest('[data-uc-card="registration"]');
     out.hint = box(root.querySelector(':scope > .uc-hint'));
     var list = root.querySelector('[data-uc-q-list]');
     var qs = function () { return list.querySelectorAll(':scope > [data-uc-q]'); };
@@ -332,7 +337,7 @@ $P_BG    = 'rgb(245, 246, 247)';  // --p-bg #F5F6F7
 foreach ( array( 'editor-add-desktop', 'editor-add-phone', 'editor-edit-desktop', 'editor-edit-phone' ) as $t ) {
     $add = 0 === strpos( $t, 'editor-add' );
     rq_check( 'Notifications' === $v( $t, 'notifications' ), "PLANT D: $t: no Notifications card: " . json_encode( $v( $t, 'notifications' ) ) );
-    rq_check( true === $v( $t, 'ownCard' ), "$t: Questions for registrants is not its own card under the Location card" );
+    rq_check( true === $v( $t, 'ownCard' ), "$t: Questions for registrants is not a section of the Registration card" );
     $h = (array) $v( $t, 'hint' );
     rq_check( isset( $h['text'] ) && 'Ask registrants anything you need to know before the event.' === $h['text'] && $P_MUTED === $h['color'] && '12px' === $h['size'], "$t: the helper is not the helper step in --p-muted: " . json_encode( $h ) );
     // Add event opens on one blank question (3.106.3).

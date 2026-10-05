@@ -328,7 +328,7 @@ if ( ! $call ) {
 $out = SFAF_Submit::validate( good( array( 'capacity' => '40' ) ) );
 expect( 'a capacity is kept', $out['clean']['capacity'], 40 );
 $out = SFAF_Submit::validate( good( array( 'capacity' => '' ) ) );
-expect( 'a blank capacity means unlimited', $out['clean']['capacity'], 0 );
+expect( 'a blank capacity means unlimited, and stays blank (3.107.0)', $out['clean']['capacity'], '' );
 $out = SFAF_Submit::validate( good( array( 'capacity' => '-3' ) ) );
 if ( ! isset( $out['errors']['capacity'] ) ) {
     fail( 'a negative capacity is accepted' );

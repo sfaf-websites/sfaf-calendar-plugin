@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Events - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.106.3" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.106.3" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.106.3" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.107.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.107.0" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.107.0" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.106.3" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.107.0" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -468,8 +468,8 @@
                             </main>
             </div>
         </div>
-        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.106.3"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.106.3"></script>
-<script src="../public/js/portal.js?ver=3.106.3"></script>
+        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.107.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.107.0"></script>
+<script src="../public/js/portal.js?ver=3.107.0"></script>
 <script>window.RQ_PAGE="rsvps-q-desktop";(function () {
 var P = window.RQ_PAGE, out = { page: P, errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
@@ -504,12 +504,17 @@ function names(q) { return Array.prototype.map.call(q.querySelectorAll('input[na
 
 window.addEventListener('load', function () { setTimeout(function () {
   if (P.indexOf('editor-') === 0) {
+  /* 3.107.0: the questions are in the Registration card, which shows only
+   * the Accept RSVPs tick until it is ticked. Tick it, as a person would. */
+  var acc = document.querySelector('[data-uc-rsvp-accept-check] input');
+  if (acc && !acc.checked && !acc.disabled) { acc.click(); }
     var root = document.querySelector('[data-uc-questions]');
     out.notifications = text(document.querySelector('[data-uc-notifications-card] h2'));
     if (!root) { return finish(); }
-    /* Its own card under the Location card since 3.106.3; release-31063-live.php measures it. */
+    /* A section of the Registration card since 3.107.0 (its own card under
+     * Location in 3.106.3); release-31063-live.php measures it. */
     var qcard = root.closest('[data-uc-questions-card]');
-    out.ownCard = !!qcard && !!qcard.previousElementSibling && /Location/.test(text(qcard.previousElementSibling.querySelector('h2')));
+    out.ownCard = !!qcard && !!qcard.closest('[data-uc-card="registration"]');
     out.hint = box(root.querySelector(':scope > .uc-hint'));
     var list = root.querySelector('[data-uc-q-list]');
     var qs = function () { return list.querySelectorAll(':scope > [data-uc-q]'); };
