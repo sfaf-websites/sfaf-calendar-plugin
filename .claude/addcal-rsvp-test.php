@@ -225,16 +225,17 @@ check( 'the Display card asks the same question the save asks',
 check( 'the tick is disabled, not hidden',
     (bool) strpos( $portal, "echo \$lock ? ' disabled' : '';" ), true );
 check( 'and a line says where the calendar link goes instead',
-    (bool) strpos( $portal, 'the calendar link goes out with the registration confirmation instead.' ), true );
+    (bool) strpos( $portal, 'The calendar link goes out with the RSVP confirmation instead.' ), true );
 
 /*
- * THE SENTENCE NAMES THE CAUSE BEFORE THE CONSEQUENCE (3.64.2). It read
- * "The calendar link goes out with the registration confirmation instead",
- * which is only half of what the reader needs: a greyed tick and a sentence
- * about email, and the connection between them left to them.
+ * 3.64.2 PUT THE CAUSE FIRST ("Because this event takes RSVPs, ..."). THE
+ * 3.107.0 BRIEF REVERSED IT: the one "why" left on either editor is the RSVP
+ * tick's note, one line. This line says what will happen, and the RSVP tick
+ * directly above it is the cause, in view. So the check is now that no cause
+ * clause came back.
  */
-check( 'and it says WHY before it says what happens instead',
-    (bool) strpos( $portal, 'Because this event takes RSVPs, the calendar link goes out' ), true );
+check( 'and it carries no cause clause (3.107.0)',
+    false === strpos( $portal, 'Because this event takes RSVPs, the calendar link goes out' ), true );
 
 /*
  * AND THE TICK SITS UNDER THE ONE THAT GREYS IT (3.64.2). Order in $feat is

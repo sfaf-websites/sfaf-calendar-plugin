@@ -174,7 +174,7 @@ wl( 'PLANT A.7: with only an offer out, every read is empty', wl_reads( $hy ), a
 /* ---- Never a waitlist. -------------------------------------------------- */
 mk_reset();
 wl( 'RSVPs off: no waitlist', SFAF_Waitlist::applies( wl_event( 10, array( '_uc_rsvp_enabled' => '0' ) ) ), false );
-wl( 'no limit: no waitlist', SFAF_Waitlist::applies( wl_event( 10, array( '_uc_capacity' => '0' ) ) ), false );
+wl( 'no limit: no waitlist', SFAF_Waitlist::applies( wl_event( 10, array( '_uc_capacity' => '' ) ) ), false );
 $third = wl_event( 10 );
 update_post_meta( $third, SFAF_Sources::META_SOURCE, 'eventbrite' );
 update_post_meta( $third, '_uc_source_url', 'https://www.eventbrite.com/e/1' );

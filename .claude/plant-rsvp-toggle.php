@@ -26,15 +26,26 @@ $plants = array(
         'from' => "                <input type=\"hidden\" name=\"uc_rsvp_toggle_present\" value=\"1\" />",
         'to'   => "",
     ),
+    /* THE REGISTRATION CARD FROM 3.107.0, which took these from Location. */
     'an imported event loses its RSVP controls' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => "            \$draw_rsvp( array( 'rsvp_enabled', 'email_required', 'capacity' ) );\n            return \$rsvp_placed;",
-        'to'   => "            return \$rsvp_placed;",
+        'from' => "<section class=\"uc-bento-card uc-registration-card\" data-uc-card=\"registration\" data-uc-registration>",
+        'to'   => "<?php if ( '' !== \$prov['source'] ) { echo ''; } ?><section class=\"uc-bento-card uc-registration-card\" data-uc-card=\"registration\" data-uc-registration>",
     ),
-    'the Location card stops drawing Accept RSVPs' => array(
+    'the Registration card stops drawing Accept RSVPs' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => "            \$draw_rsvp( array( 'rsvp_enabled', 'email_required' ) );",
-        'to'   => "",
+        'from' => "(array) \$this->render_rsvp_settings( \$rsvp_ctx, array( 'rsvp_enabled' ), \$rsvp_placed )",
+        'to'   => "(array) \$this->render_rsvp_settings( \$rsvp_ctx, array(), \$rsvp_placed )",
+    ),
+    'the Registration card stops drawing the capacity' => array(
+        'file' => 'includes/class-sfaf-portal.php',
+        'from' => "array( 'email_required', 'capacity' ), \$rsvp_placed )",
+        'to'   => "array( 'email_required' ), \$rsvp_placed )",
+    ),
+    'the Location card draws Accept RSVPs again' => array(
+        'file' => 'includes/class-sfaf-portal.php',
+        'from' => "            <input type=\"hidden\" name=\"uc_online_present\" value=\"1\" />",
+        'to'   => "            <?php \$draw_rsvp( array( 'rsvp_enabled' ) ); ?>\n            <input type=\"hidden\" name=\"uc_online_present\" value=\"1\" />",
     ),
     /* CAPACITY IS ONE ROW NOW (3.98.0), drawn once below the address and the
      * meeting link rather than once inside each panel, so what proves the
@@ -44,10 +55,10 @@ $plants = array(
         'from' => "<input type=\"number\" name=\"capacity_online\" min=\"0\"",
         'to'   => "<input type=\"hidden\" name=\"ignored_capacity_online\" min=\"0\"",
     ),
-    'what the Location card placed is thrown away, so the catch-all draws it twice' => array(
+    'what the Registration card placed is thrown away, so the catch-all draws it twice' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => "                    \$rsvp_placed = array_merge(\n                        \$rsvp_placed,\n                        (array) \$this->render_location_field( \$event_id, \$s_loc, \$prov, \$rsvp_ctx )\n                    );",
-        'to'   => "                    \$this->render_location_field( \$event_id, \$s_loc, \$prov, \$rsvp_ctx );",
+        'from' => "                    \$rsvp_placed = array_merge(\n                        \$rsvp_placed,\n                        (array) \$this->render_rsvp_settings( \$rsvp_ctx, array( 'rsvp_enabled' ), \$rsvp_placed )\n                    );",
+        'to'   => "                    \$this->render_rsvp_settings( \$rsvp_ctx, array( 'rsvp_enabled' ), \$rsvp_placed );",
     ),
     'the page button no longer stands down when registrations are on' => array(
         'file' => 'includes/sfaf-template-functions.php',

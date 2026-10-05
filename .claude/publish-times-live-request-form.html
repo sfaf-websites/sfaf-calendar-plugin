@@ -270,10 +270,10 @@
                                                 </label>
                 </div>
 
-                        <div class="uc-repeat" data-uc-repeat data-uc-repeat-date="">
+                                <div class="uc-repeat" data-uc-repeat data-uc-repeat-date="">
 
             <span class="uc-field-label">Repeats
-                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="" aria-label="More about repeating">?</button><span class="uc-help-body" id="" data-uc-help-body>On save this creates one separate event per date, all grouped so they can be edited together afterwards. It happens once: nothing regenerates, and the schedule is edited on the series from then on.</span>            </span>
+                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-repeat-0" aria-label="More about repeating">?</button><span class="uc-help-body" id="uc-help-repeat-0" data-uc-help-body>Saving creates one event per date; edit the schedule on the series after that.</span>            </span>
 
                         <div class="uc-seg" role="radiogroup" aria-label="How often this repeats">
                                     <label class="uc-seg-opt">
@@ -319,7 +319,7 @@
                         </label>
                                             <label class="uc-day">
                             <input type="checkbox" name="repeat_days[]" value="1"
-                                    data-uc-repeat-day />
+                                    checked="checked" data-uc-repeat-day />
                             <span aria-hidden="true">M</span>
                             <span class="uc-visually-hidden">Monday</span>
                         </label>
@@ -343,7 +343,7 @@
                         </label>
                                             <label class="uc-day">
                             <input type="checkbox" name="repeat_days[]" value="5"
-                                    checked="checked" data-uc-repeat-day />
+                                    data-uc-repeat-day />
                             <span aria-hidden="true">F</span>
                             <span class="uc-visually-hidden">Friday</span>
                         </label>
@@ -354,7 +354,7 @@
                             <span class="uc-visually-hidden">Saturday</span>
                         </label>
                                     </div>
-                <p class="uc-hint">The event's own day is ticked to start with. Tick more than one for a group that meets twice a week.</p>
+                <p class="uc-hint">Tick more than one for a group that meets twice a week.</p>
             </div>
 
                         <div class="uc-repeat-panel" data-uc-repeat-panel="monthly">
@@ -376,11 +376,11 @@
                                             </select>
                     <select name="repeat_nth_dow" aria-label="Which weekday">
                                                     <option value="0" >Sunday</option>
-                                                    <option value="1" >Monday</option>
+                                                    <option value="1"  selected="selected">Monday</option>
                                                     <option value="2" >Tuesday</option>
                                                     <option value="3" >Wednesday</option>
                                                     <option value="4" >Thursday</option>
-                                                    <option value="5"  selected="selected">Friday</option>
+                                                    <option value="5" >Friday</option>
                                                     <option value="6" >Saturday</option>
                                             </select>
                     <span>of each month</span>

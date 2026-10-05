@@ -494,7 +494,10 @@ foreach ( $php_files as $file ) {
         $summaries[] = array(
             'file'   => basename( $file ),
             'line'   => $n + 1,
-            'marked' => (bool) preg_match( '/uc-disclosure-chevron/', $window ),
+            /* AN OUTLINED BUTTON IS ITS OWN MARK (3.107.0). Insert image is a
+             * <summary> drawn as the "+ Add question" button, and the brief
+             * took its chevron off: the outline already says "press this". */
+            'marked' => (bool) preg_match( '/uc-disclosure-chevron|class="uc-outline-btn/', $window ),
             'text'   => trim( preg_replace( '/\s+/', ' ', substr( $window, 0, 110 ) ) ),
         );
     }

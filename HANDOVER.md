@@ -4,20 +4,27 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-01, at 3.106.3, released.
+**Last updated:** 2026-10-05, at 3.107.0, released.
 
 ---
 
 ## What shipped last
 
-**3.106.3**: the **Questions for registrants card redrawn** (its own card,
-sub-cards, Pick any / Pick one, wordless icon buttons, Up and Down on the
-grip); **deleting a series with only a waitlist offers to cancel and email it**;
-**every plant caught again**, the ten stale ones repaired. `DESIGN.md` 4.
-**3.106.2**: **Questions for registrants** (schema 11); Notifications on Add
-event; offer links inert on an event that is off; a login check on the build.
-**3.106.1**: no author on any public event page, by editing the HTML, a known
-weakness (`PROJECT.md` 3). **3.106.0**: a waitlist, Email Templates, a Language.
+**3.107.0**: **the event editor rearranged** (Title, Schedule, Location,
+**Registration**, Event details, FAQs, Classification, Notifications; Series and
+language, **Links**, Display), the actions in a **bar stuck to the window's
+foot**, helper text cut to one sentence, Organizer as chips, the pictures and
+the FAQ set following the series, the weekday following the date on a new
+event, one sign-out, `data-uc-card` on every card for a later tour.
+> **CAPACITY CHANGED MEANING.** An empty box is no limit; **0 is no places, so
+> everybody goes to the waitlist.** Until now 0 meant no limit. **Schema 12**
+> empties every stored 0 once so no live event turns waitlist-only: check that
+> first, `TESTING.md` **1.200**. `PROJECT.md` 2.
+> **The editor's button order is new on screen** (Delete, Save draft, Publish):
+> written in CSS in 3.97.0, it never rendered, because no element carried the
+> class it selects on. `TESTING.md` 1.203.
+**3.106.x**: Questions for registrants (schema 11), a waitlist, Email
+Templates, a Language, no author on public pages (`PROJECT.md` 3).
 > **THE SPANISH HAS NOT BEEN READ BY A SPANISH SPEAKER.** `EMAILS.md` is for that
 > review (`TESTING.md` 3). Nothing is Spanish until an event or series is set to
 > it, so nothing reaches a registrant in it before then.
@@ -32,18 +39,10 @@ Earlier releases, and the reasoning for all of it: **`readme.txt` is the changel
 > hand-made event is untouched whatever links it carries. `PROJECT.md` 3.
 
 > **THE EDITOR'S BUTTON ROW IS OUTSIDE THE EVENT FORM**, so every button in it
-> lives or dies by its `form=` attribute; **never add one without it**.
-> `.claude/form-owner-audit.php` sweeps all 78. **TWO ROWS (3.98.0)**: a draft
-> is Delete, Save draft, Publish; an existing event is Delete, Cancel event,
-> Save changes. Green and largest marks the main action on both, yellow the
-> in-between save, so yellow is on the draft row only. That inverts DESIGN.md
-> and is **Mark's decision**, recorded there by name.
-> **Delete must never be first in the MARKUP**: Enter in a text field presses
-> the form's first submit, and the left-to-right order is CSS `order`, which
-> moves neither the document nor the keyboard.
-> **AND EVERY BUTTON SAYS ITS TYPE (3.98.1)**: one with none is a submit, which
-> is how the category pills reloaded the page for thirteen releases.
-> `form-owner-audit.php` asks that too now.
+> lives or dies by its `form=` attribute and says its `type`; `form-owner-audit.php`
+> sweeps both. Green and largest is the main action, yellow the in-between save
+> (**Mark's decision**, in `DESIGN.md`). **Delete must never be first in the
+> MARKUP**: Enter presses the first submit, and the order on screen is CSS `order`.
 
 **THREE FOLDERS OF PICTURES, NONE INSIDE ANOTHER**: `calendar/` for featured,
 `calendar-submissions/` for strangers, `calendar-descriptions/` for prose.
@@ -55,7 +54,7 @@ Earlier releases, and the reasoning for all of it: **`readme.txt` is the changel
 > **EVERY PERSON OBJECT REACHING A MAIL BUILDER CARRIES `format` (3.97.3)**, or
 > the gates refuse the link to the one person it is for. `PROJECT.md` 2 and 7.
 
-**Three things a new session needs, each retiring or reversing something:**
+**Two things a new session needs, each retiring or reversing something:**
 
 > **UPLOADING A PICTURE FROM THE EVENT EDITOR IS GONE**, with the media modal,
 > and so is the 3.87.0 tagging on it. Both public forms keep their own upload.
@@ -96,8 +95,9 @@ Earlier releases, and the reasoning for all of it: **`readme.txt` is the changel
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 237 items.** **1.197** first,
-that schema 11 ran, then **1.192**, the byline check on the site, **1.176**, the
+**`TESTING.md` holds the manual testing backlog: 245 items.** **1.200** first,
+that schema 12 ran and no event became waitlist-only, then **1.197**, that
+schema 11 ran, then **1.192**, the byline check on the site, **1.176**, the
 donate line, and **1.189**, that schema 10 ran. Then two, in this order:
 **1.74**, naming and tagging the six pictures, which is what makes every
 picker's work visible at all, and **1.80**, the preview's two targets. Then

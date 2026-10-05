@@ -396,7 +396,7 @@ foreach ( array( 'function sfaf_local_timestamp(', 'function sfaf_ap_date(', 'fu
 // The default donation link, a constant the template functions define (3.106.0).
 if ( preg_match( "/define\( 'SFAF_DONATE_DEFAULT'[^;]*;/", $mk_tpl, $mk_m ) ) { eval( $mk_m[0] ); }
 foreach ( array( 'function &sfaf_rsvp_count_store(', 'function &sfaf_rsvp_format_count_store(', 'function sfaf_clear_rsvp_count_cache(',
-                 'function sfaf_get_rsvp_count_by_format(', 'function sfaf_get_rsvp_count(', 'function sfaf_capacity_meta_key(', 'function sfaf_event_capacity(',
+                 'function sfaf_get_rsvp_count_by_format(', 'function sfaf_get_rsvp_count(', 'function sfaf_capacity_meta_key(', 'function sfaf_capacity_limited(', 'function sfaf_event_capacity(',
                  'function sfaf_event_formats(', 'function sfaf_format_full(', 'function sfaf_event_full(' ) as $mk_n ) {
     eval( mk_lift( $mk_main, $mk_n ) );
 }

@@ -160,6 +160,11 @@ function sfaf_event_capacity( $event_id, $format = '' ) {
 function sfaf_get_rsvp_count_by_format( $event_id, $format ) {
     return 0;
 }
+/* Is there a limit at all (3.107.0): an empty box is none, 0 is no places. */
+function sfaf_capacity_limited( $event_id, $format = '' ) {
+    $raw = trim( (string) get_post_meta( (int) $event_id, '_uc_capacity', true ) );
+    return '' !== $raw && is_numeric( $raw );
+}
 
 require $root . '/includes/class-sfaf-email.php';
 require_once __DIR__ . '/lang-shim.php'; // 3.106.0

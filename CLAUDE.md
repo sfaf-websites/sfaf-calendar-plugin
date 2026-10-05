@@ -61,6 +61,10 @@ Archive older zips to `Old Calendar Files`, keep only the current zip in the
 main folder, build with `bsdtar` (PowerShell writes backslash entries and breaks
 the zip), push after the build.
 
+A release is not finished until publish.sh --release has run and the report
+carries the GitHub release link. A report without the link is a report of an
+unreleased build.
+
 ---
 
 ## 3. Verify against rendered output

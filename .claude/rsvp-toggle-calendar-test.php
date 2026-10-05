@@ -175,12 +175,20 @@ if ( preg_match( '/if \( isset\( \$_POST\[\'uc_rsvp_toggle_present\'\] \) \) \{(
  * event leaves the location field early and the catch-all that would otherwise
  * have caught it is inside the Notifications card, which native events only, so
  * an imported event that stopped drawing them here would simply lose them. */
-check( (bool) preg_match( "/\\\$draw_rsvp\( array\( 'rsvp_enabled', 'email_required' \) \);/", $portal ),
-    'the Location card no longer draws Accept RSVPs' );
-check( (bool) preg_match( "/\\\$draw_rsvp\( array\( 'rsvp_enabled', 'email_required', 'capacity' \) \);\s*\n\s*return \\\$rsvp_placed;/", $portal ),
+/* THE REGISTRATION CARD DRAWS THEM FROM 3.107.0, and the Location card does
+ * not: Accept RSVPs alone at the top, then Email required and Capacity, from
+ * the same shared list by name. */
+check( (bool) preg_match( "/render_rsvp_settings\( \\\$rsvp_ctx, array\( 'rsvp_enabled' \), \\\$rsvp_placed \)/", $portal ),
+    'the Registration card no longer draws Accept RSVPs' );
+check( (bool) preg_match( "/render_rsvp_settings\( \\\$rsvp_ctx, array\( 'email_required', 'capacity' \), \\\$rsvp_placed \)/", $portal ),
+    'the Registration card no longer draws Email required and the in-person capacity' );
+check( false === strpos( $portal, '$draw_rsvp(' ),
+    'the Location card draws RSVP controls again, so they are drawn in two places' );
+/* AN IMPORTED EVENT STILL HAS THEM: the card is drawn whatever the source, and
+ * the Notifications catch-all that would otherwise catch them is native-only. */
+$reg_at = strpos( $portal, 'data-uc-card="registration" data-uc-registration>' );
+check( false !== $reg_at && false === strpos( substr( $portal, max( 0, $reg_at - 900 ), 900 ), "\$prov['source']" ),
     'an imported event leaves the location field without its RSVP controls, and nothing downstream draws them for it' );
-check( (bool) preg_match( "/\\\$draw_rsvp\( array\( 'capacity' \) \);/", $portal ),
-    'the Location card no longer draws the in-person capacity' );
 /* ONE ROW DRAWS BOTH BOXES (3.98.0). `capacity_online` is still in the shared
  * field list, because that list is what the SAVE reads to decide which fields
  * the form spoke for, but its case renders nothing and the `capacity` case
@@ -194,8 +202,8 @@ check( (bool) preg_match( '/name="capacity_online"/', $portal ),
  * what keeps "exactly once" true rather than "at least once". */
 check( (bool) preg_match( '/render_rsvp_settings\( \$rsvp_ctx, null, \$rsvp_placed \)/', $portal ),
     'the catch-all no longer receives what the Location card already drew, so a setting appears twice or not at all' );
-check( (bool) preg_match( '/\$rsvp_placed = array_merge\(\s*\n\s*\$rsvp_placed,\s*\n\s*\(array\) \$this->render_location_field\(/', $portal ),
-    'what the Location card placed is thrown away, so the catch-all draws those controls a second time' );
+check( (bool) preg_match( '/\$rsvp_placed = array_merge\(\s*\n\s*\$rsvp_placed,\s*\n\s*\(array\) \$this->render_rsvp_settings\( \$rsvp_ctx, array\( \'rsvp_enabled\' \)/', $portal ),
+    'what the Registration card placed is thrown away, so the catch-all draws those controls a second time' );
 
 /* AND THE CAPACITY CARD IS GONE. */
 check( false === strpos( $portal, '<h2 class="uc-bento-title">Capacity</h2>' ),

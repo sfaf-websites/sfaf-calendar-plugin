@@ -142,6 +142,7 @@ function ucDismissOnBackdrop(dialog) {
         run('closedDays', initClosedDays);
         run('emailPills', initEmailPills);
         run('locationPicker', initLocationPicker);
+        run('registration', initRegistration);
         run('liveSearch', initLiveSearch);
         run('editScope', initEditScope);
         run('confirmButtons', initConfirmButtons);
@@ -1036,29 +1037,46 @@ function ucDismissOnBackdrop(dialog) {
         var picker = document.querySelector('[data-uc-image-picker][data-uc-image-series-fixed]');
         if (!picker) { return; }
 
-        var id = String(picker.getAttribute('data-uc-image-series-fixed') || '').trim();
         var scope = picker.querySelector('[data-uc-filter-scope]') || picker;
         var list = picker.querySelector('[data-uc-filter-list]');
         var all = picker.querySelector('[data-uc-image-show-all]');
         var note = picker.querySelector('[data-uc-image-none]');
+        var outside = document.querySelector('[data-uc-image-outside]');
         if (!list) { return; }
 
         var rows = list.querySelectorAll('[data-uc-image-series]');
-        if (!rows.length) { return; }
 
-        /* WITH NO SERIES THERE IS NOTHING TO NARROW TO, so nothing is hidden
-         * and the escape is pointless. Same branch the select version has. */
-        if (!id || '0' === id) {
-            if (all) { all.hidden = true; }
-            return;
+        /* THE SERIES DROPDOWN, WHERE THE EDITOR HAS ONE (3.107.0). Changing it
+         * re-filters at once, with no save, on Add event and on Edit event
+         * alike. Without it the id is the attribute, as on every other page. */
+        var select = document.querySelector('[data-uc-series-select]');
+        function currentId() {
+            var raw = select ? select.value : picker.getAttribute('data-uc-image-series-fixed');
+            var id = String(raw || '').trim();
+            return '0' === id ? '' : id;
         }
 
         var narrowed = false;
 
+        /* A CHOSEN PICTURE OUTSIDE THE SERIES STAYS CHOSEN, and the one line
+         * under the picker says so. The default row is not a picture. */
+        function sayOutside() {
+            if (!outside) { return; }
+            var id = currentId();
+            var picked = list.querySelector('input[type="radio"]:checked');
+            var row = picked ? picked.closest('[data-uc-image-series]') : null;
+            var mine = row ? (row.getAttribute('data-uc-image-series') || '') : '';
+            outside.hidden = !(id && row && mine.indexOf(' ' + id + ' ') === -1);
+        }
+
         function apply(on) {
+            var id = currentId();
+            /* WITH NO SERIES THERE IS NOTHING TO NARROW TO: the whole folder,
+             * and the escape is pointless. */
+            var narrow = !!(on && id);
             var shown = 0;
             Array.prototype.forEach.call(rows, function (opt) {
-                var keep = !on;
+                var keep = !narrow;
                 if (!keep) {
                     var mine = opt.getAttribute('data-uc-image-series') || '';
                     keep = mine.indexOf(' ' + id + ' ') !== -1;
@@ -1070,7 +1088,7 @@ function ucDismissOnBackdrop(dialog) {
                     opt.setAttribute('data-uc-off-series', '');
                 }
             });
-            narrowed = on;
+            narrowed = narrow;
             /* THE CHOSEN PICTURE IS NEVER HIDDEN. It is what the event is
              * already using, so hiding it would make the panel disagree with
              * the summary row above it, and unticking is the only way back. */
@@ -1082,8 +1100,9 @@ function ucDismissOnBackdrop(dialog) {
                     shown++;
                 }
             }
-            if (note) { note.hidden = !(on && 0 === shown); }
-            if (all) { all.hidden = !on; }
+            if (note) { note.hidden = !(narrow && 0 === shown); }
+            if (all) { all.hidden = !narrow; }
+            sayOutside();
             scope.dispatchEvent(new CustomEvent('uc:refilter'));
         }
 
@@ -1093,6 +1112,10 @@ function ucDismissOnBackdrop(dialog) {
                 if (narrowed) { apply(false); }
             });
         }
+        if (select) {
+            select.addEventListener('change', function () { apply(true); });
+        }
+        list.addEventListener('change', sayOutside);
 
         apply(true);
     }
@@ -1847,6 +1870,37 @@ function ucDismissOnBackdrop(dialog) {
 
         /* Two causes, two sentences, and only one of them may be on screen. */
         if (plain && isHybrid) { plain.hidden = true; }
+
+        /* The tick may just have been set without a change event. */
+        applyRegistrationBody();
+    }
+
+    /* ---------------------------------------------------------------------
+     * THE REGISTRATION CARD IS THE TICK AND NOTHING ELSE UNTIL IT IS TICKED
+     * (3.107.0).
+     *
+     * Everything under Accept RSVPs, Email required, Capacity and the
+     * questions, is in the markup and visible, and only this hides it, so with
+     * no script every control still shows and still posts. A hidden control
+     * still posts too, so unticking never clears a capacity or a question.
+     *
+     * ASKED FROM TWO PLACES: the tick's own change, and applyHybridRsvpLock(),
+     * which sets the tick on a hybrid event without firing change.
+     * ------------------------------------------------------------------ */
+    function applyRegistrationBody() {
+        var root = document.querySelector('[data-uc-registration]');
+        if (!root) { return; }
+        var body = root.querySelector('[data-uc-registration-body]');
+        var box = root.querySelector('[data-uc-rsvp-accept-check] input[type="checkbox"]');
+        if (!body || !box) { return; }
+        body.hidden = !box.checked;
+    }
+    function initRegistration() {
+        var root = document.querySelector('[data-uc-registration]');
+        if (!root) { return; }
+        var box = root.querySelector('[data-uc-rsvp-accept-check] input[type="checkbox"]');
+        if (box) { box.addEventListener('change', applyRegistrationBody); }
+        applyRegistrationBody();
     }
     /* EMAIL REQUIRED IS ON AND LOCKED FOR AN ONLINE EVENT (3.106.0), the
      * arrangement applyHybridRsvpLock() uses: the value it arrived with is kept
@@ -2717,7 +2771,35 @@ function ucDismissOnBackdrop(dialog) {
                 said.removeAttribute('hidden');
             }
 
+            /* THE SET THAT MATCHES THE SERIES, PRESELECTED (3.107.0). The one
+             * set whose name starts with the series name, when exactly one
+             * does; otherwise the dropdown stays on its empty first row. Asked
+             * on load and whenever the series dropdown changes, until somebody
+             * picks a set by hand. */
+            var seriesSelect = document.querySelector('[data-uc-series-select]');
+            var pickedByHand = false;
+            function preselect() {
+                if (pickedByHand) { return; }
+                var opt = seriesSelect && seriesSelect.selectedIndex >= 0 ? seriesSelect.options[seriesSelect.selectedIndex] : null;
+                var name = (opt && opt.value && '0' !== opt.value) ? opt.textContent.replace(/\s+/g, ' ').trim().toLowerCase() : '';
+                var hits = [];
+                if (name) {
+                    Array.prototype.forEach.call(select.options, function (o) {
+                        var setName = String(o.getAttribute('data-uc-faq-set-name') || '').replace(/\s+/g, ' ').trim().toLowerCase();
+                        if (setName && setName.indexOf(name) === 0) { hits.push(o.value); }
+                    });
+                }
+                select.value = (1 === hits.length) ? hits[0] : '';
+            }
+            select.addEventListener('change', function () { pickedByHand = true; });
+            if (seriesSelect) { seriesSelect.addEventListener('change', preselect); }
+            preselect();
+
             button.addEventListener('click', function () {
+                if (!select.value) {
+                    report('Choose a set first.');
+                    return;
+                }
                 var set = sets[select.value];
                 if (!set || !set.rows || !set.rows.length) {
                     report('That set has no questions in it.');
@@ -2930,6 +3012,7 @@ function ucDismissOnBackdrop(dialog) {
             var chipWrap = root.querySelector('[data-uc-notify-chips]');
             var chipList = root.querySelector('[data-uc-notify-chips-list]');
             var chipEmpty = root.querySelector('[data-uc-notify-chips-empty]');
+            var chipLabel = root.querySelector('[data-uc-notify-chips-label]');
 
             function pickerBoxes() {
                 return Array.prototype.slice.call(
@@ -2987,7 +3070,16 @@ function ucDismissOnBackdrop(dialog) {
                     chipList.appendChild(chip);
                 });
 
-                if (chipEmpty) { chipEmpty.hidden = (n !== 0); }
+                /* ONE EMPTY STATE FOR THE CARD (3.107.0): "Nobody else yet."
+                 * only when nobody beyond the creator is on the list, and a
+                 * typed address counts. The label is there only over chips. */
+                var typed = 0;
+                Array.prototype.forEach.call(document.querySelectorAll('[data-uc-email-pill]'), function (box) {
+                    if (box.checked) { typed++; }
+                });
+                if (chipEmpty) { chipEmpty.hidden = (n + typed !== 0); }
+                if (chipLabel) { chipLabel.hidden = (n === 0); }
+                chipList.hidden = (n === 0);
             }
 
             /* ---- The live count ------------------------------------------ */
@@ -3045,7 +3137,7 @@ function ucDismissOnBackdrop(dialog) {
                 );
 
                 if (!picked.length) {
-                    countEl.textContent = 'Nobody chosen yet';
+                    countEl.textContent = '';
                     return;
                 }
                 var total = Object.keys(addresses).length;
@@ -3063,12 +3155,16 @@ function ucDismissOnBackdrop(dialog) {
             // same total, so a pill added or removed has to recount.
             var pillField = document.querySelector('[data-uc-emails]');
             if (pillField) {
-                pillField.addEventListener('change', summarise);
+                pillField.addEventListener('change', refreshBoth);
                 pillField.addEventListener('click', function () {
                     // The Add button builds a pill without firing `change`, so
                     // the recount is deferred to after the click handler that
                     // creates it has run.
-                    window.setTimeout( summarise, 0 );
+                    window.setTimeout( refreshBoth, 0 );
+                });
+                // Enter in the box adds a pill too, again without `change`.
+                pillField.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') { window.setTimeout( refreshBoth, 0 ); }
                 });
             }
 
@@ -4448,8 +4544,29 @@ function ucDismissOnBackdrop(dialog) {
 
             root.addEventListener('change', refresh);
             root.addEventListener('input', refresh);
+            /* THE TICKED WEEKDAY FOLLOWS THE DATE ON A NEW EVENT (3.107.0),
+             * until somebody touches a weekday tick by hand; after that the
+             * ticks are theirs. The server marks the control only on Add event,
+             * so Edit event is never moved. */
+            var followDate = root.hasAttribute('data-uc-repeat-follow');
+            if (followDate) {
+                Array.prototype.forEach.call(root.querySelectorAll('[data-uc-repeat-day]'), function (b) {
+                    b.addEventListener('change', function () { followDate = false; });
+                });
+            }
+            function followWeekday() {
+                if (!followDate) { return; }
+                var d = ucParseYmd(startDate());
+                if (!d) { return; }
+                var dow = d.getUTCDay();
+                Array.prototype.forEach.call(root.querySelectorAll('[data-uc-repeat-day]'), function (b) {
+                    b.checked = (parseInt(b.value, 10) === dow);
+                });
+            }
+
             if (dateInput) {
                 dateInput.addEventListener('change', function () {
+                    followWeekday();
                     // The event's own date anchors everything, and moving it
                     // can make a chosen date invalid (on or before it). Re-clean
                     // rather than leaving a row that will be dropped on save.

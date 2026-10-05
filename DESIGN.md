@@ -964,7 +964,7 @@ by `.claude/release-31062-live.php` and, for the editor from 3.106.3,
 
 | Part | What it is | Measured |
 |---|---|---|
-| The section | its own `.uc-bento-card` under the Location card, title "Questions for registrants" on the band, the helper inside | `--p-border` 1px, 18px padding, 12px radius; 16px to the cards above and below |
+| The section | from 3.107.0 a section of the Registration card under a 16px subhead "Questions for registrants", a hairline above it, the helper inside | the card is `--p-border` 1px, 18px padding, 12px radius |
 | A question | a sub-card | `--p-bg` fill, `--p-border` 1px, 8px radius, 12px padding, 12px between sub-cards |
 | Its top row | the question box taking the width the ticks leave, then Required, In person only (hybrid only) and remove | under about 540px of row the box takes its own line, the ticks and remove the next |
 | Answer style | the segmented control, Pick any and Pick one | chosen white on `--uc-accent-text`, 5.35:1 |
@@ -994,6 +994,71 @@ between the counts line and the list, with nothing around it. **Details** is a
 quiet action, 13px/600 `--uc-accent-text` (5.35:1), and the row it opens takes
 the page tint `--p-bg`, with each question 13px/600 and any additional info
 12px/400 `--p-muted` (5.18:1 on the tint).
+
+### The event editor's layout (3.107.0)
+
+Measured in Chrome by `.claude/release-3107-live.php` on Add event and Edit
+event at 1280px and 390px, each page in a 900px-tall frame so the window
+scrolls. Screenshots: `.claude/screens/editor-3107-add-desktop.png`,
+`editor-3107-add-phone.png` (Registration closed),
+`editor-3107-edit-desktop.png` and `editor-3107-edit-phone.png` (Registration
+open, a picture outside the series chosen, the weekday ticks after the probe).
+
+**The card order, and the names a guided tour targets.** Every card carries
+`data-uc-card`. The names are stable: change one here and in
+`render_event_form()` together.
+
+| Column | Order | `data-uc-card` |
+|---|---|---|
+| Main | Title | `title` |
+| | Schedule | `schedule` |
+| | Location | `location` |
+| | Registration | `registration` |
+| | Event details | `details` |
+| | FAQs | `faqs` |
+| | Classification | `classification` |
+| | Notifications (native events) | `notifications` |
+| | Other details (the catch-all, when anything is left) | `other-details` |
+| Side | Series and language | `series` |
+| | Links | `links` |
+| | Display | `display` |
+| | Who can edit this (Edit event only) | `access` |
+| Foot | The action bar, not a card | `actions` |
+
+**Every card is the standard card**: `--p-border` 1px, 18px padding, 12px
+radius, 16px between cards. The brief placed eleven cards; **Who can edit this
+was not named and stays last in the side column**, and the catch-all stays last
+in the main one, because it must be the last call that places a field.
+
+**Registration is the tick alone until it is ticked.** The body (Email
+required, Capacity, Questions for registrants) is visible in the markup and
+hidden by `portal.js`, so with no script everything still shows and posts. The
+questions are a section of the card: a 16px subhead, space, and one
+`--p-border` hairline above, not a card inside a card.
+
+**The action bar** is `position: sticky; bottom: 0` inside the content column,
+so it is the editor's full width and never covers the sidebar: `--p-panel`
+(white) with one `--p-border` 1px rule on top, no side borders, no radius, no
+shadow. The note in it is 12px `--p-muted`. At 390px the note takes its own
+line and every button sits inside the window. While Cancel event is open the
+bar returns to the flow, since the open panel would be taller than a phone.
+Buttons keep the colours in "The one exception" above. **Their left-to-right
+order rendered for the first time in 3.107.0**: the `order` rules and the main
+action's larger size select on `.uc-editor-actions`, which no markup carried
+until the bar did, so until then the row drew in document order (Save, Publish,
+Cancel, Delete).
+
+**Labels as placeholders.** The one-off address boxes are labelled by their
+placeholders, Place name, Street, City, State, ZIP, in `--p-muted` (5.60:1 on
+white, measured as the `::placeholder` colour), with a visually hidden label
+each. Place name takes its own row above 900px so its label is never cut.
+
+**Insert image** is the outlined button "+ Add question" uses: 1px
+`--uc-accent-text` edge and text, `--uc-band` on hover, no chevron.
+**Organizer** uses the category chips and "+ Add organizer"; its chips are
+neutral, tinted from `--p-text`, because an organizer has no colour to mean.
+**One sign-out**: Sign out in the sidebar foot; the top bar now shows only
+below 720px, where it holds the menu button.
 
 ---
 

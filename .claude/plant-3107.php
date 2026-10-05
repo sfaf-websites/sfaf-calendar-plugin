@@ -38,8 +38,13 @@ $plants = array(
         "array( 'follow_date' => ! (int) \$event_id )", "array( 'follow_date' => true )", $live, 'PLANT G' ),
     'E: the bar is not sticky' => array( 'public/css/portal.css',
         "    position: sticky; bottom: 0; z-index: 15;\n", "    z-index: 15;\n", $live, 'PLANT E' ),
-    'D.7: two empty lines in Notifications' => array( 'includes/class-sfaf-portal.php',
-        "            // Said once, under the picker, by \"Nobody else yet.\" (3.107.0).\n            return '';", "            return 'Nobody chosen yet';", $live, 'PLANT D.7' ),
+    /* In the script, not the server's first paint: the script rewrites the
+       summary on load, so a fault planted in PHP never reaches the screen. */
+    'D.7: two empty lines in Notifications' => array( 'public/js/portal.js',
+        "                if (!picked.length) {\n                    countEl.textContent = '';", "                if (!picked.length) {\n                    countEl.textContent = 'Nobody chosen yet';", $live, 'PLANT D.7' ),
+    'D.7: the address box keeps its own empty line' => array( 'includes/class-sfaf-portal.php',
+        "                    <?php // No empty line of its own (3.107.0): \"Nobody else yet.\" under the picker covers it. ?>\n",
+        "                    <p class=\"uc-muted uc-emails-empty\" data-uc-emails-empty>Nobody outside the calendar yet.</p>\n", $live, 'PLANT D.7' ),
     'A: Registration back inside Location' => array( 'includes/class-sfaf-portal.php',
         "<section class=\"uc-bento-card uc-registration-card\" data-uc-card=\"registration\" data-uc-registration>", "<section class=\"uc-bento-card uc-registration-card\" data-uc-registration>", $live, 'PLANT H' ),
 );

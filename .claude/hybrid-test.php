@@ -285,7 +285,10 @@ check( 2 === preg_match_all( "/self::joining\\( \\\$event_id, '(?:confirmation|r
  * every format it offers is. */
 $main = file_get_contents( $root . '/sfaf-calendar.php' );
 
-check( false !== strpos( $main, "'_uc_capacity_online'" ),
+/* IN THE KEY FUNCTION ITSELF (3.107.0): the capacity migration names the key
+ * too, so a test for the string anywhere in the file passed with it gone from
+ * the one place that decides. */
+check( (bool) preg_match( "/function sfaf_capacity_meta_key\\([^)]*\\)\\s*\\{[^}]*'_uc_capacity_online'/", $main ),
     'the online capacity key is gone, so both formats share one limit' );
 check( (bool) preg_match( '/function sfaf_format_full\(/', $main ), 'sfaf_format_full() is gone' );
 check( (bool) preg_match( '/function sfaf_event_full\(/', $main ), 'sfaf_event_full() is gone' );

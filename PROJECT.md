@@ -2405,6 +2405,42 @@ deleting keeps nothing and tells nobody. It posts the same route the events list
 posts, so it inherits the same refusal on an event with registrations that has
 not been cancelled, and says why rather than offering a button that bounces.
 
+### The editor's cards, and the bar (3.107.0)
+
+**Main column**: Title, Schedule, Location, Registration, Event details (the
+description, Insert image, the featured picture and its URL, the video), FAQs,
+Classification, Notifications, then the catch-all. **Side column**: Series and
+language, Links (the donation dropdown and the Volunteer link), Display, then
+Who can edit this on an existing event. Every card carries `data-uc-card`, a
+stable name for a later guided tour; `DESIGN.md` 4 lists them.
+
+- **Registration** holds Accept RSVPs, Email required, Capacity and the
+  questions, drawn from the shared RSVP list by name, so the registrations
+  screen draws the same controls and the save is unchanged. Location holds the
+  place only. With Accept RSVPs off the card is the tick alone; the rest is in
+  the markup and `initRegistration()` hides it, so a hidden control still
+  posts and unticking clears nothing.
+- **The action bar is sticky to the window's foot** and outside the form as
+  before (`form=` on every button). It carries `uc-editor-actions`, which is
+  what the `order` rules and the main action's size in `portal.css` select on:
+  **no markup carried that class before 3.107.0**, so the documented order
+  Delete, Save draft, Publish (and Delete, Cancel event, Save changes) had never
+  rendered. The Cancel and Delete line under it is on Edit event only.
+- **The picture list follows the series dropdown** on Add and Edit, with no
+  save: `SFAF_Media::picker()` takes `series_follow` and emits the series
+  attribute even for 0, and `initFixedSeriesImageFilter()` reads the dropdown
+  when there is one. A chosen picture outside the series stays chosen and
+  visible, with one line under the picker.
+- **The FAQ set dropdown starts empty**, and preselects the one set whose name
+  starts with the series' name when exactly one does, on load and as the series
+  changes, until somebody picks a set.
+- **The weekday follows the date on a new event**: the recurrence control takes
+  `follow_date`, emitted only on Add event and only when no prefill named its
+  own days, and stops following the moment a weekday tick is touched.
+- **Organizer** uses the category chips' pattern; the checkboxes are still the
+  form.
+- **One sign-out**, in the sidebar foot; the top bar shows only below 720px.
+
 ### Descriptions are rich text, with a deliberately short toolbar
 
 Event descriptions are `post_content` and have been plain text until 3.38.0.
@@ -3230,7 +3266,7 @@ In practice there is **one series per repeating event**. The series screen is
 where the schedule is edited, and schedule writes are **upcoming-only**.
 
 **What a series lends a new event is COPIED, never linked.** `SFAF_Series::prefill_data()`
-gathers the offer for the "Is this part of a series?" card on New Event: the
+gathers the offer for the series card (titled "Series and language" from 3.107.0) on New Event: the
 description, image and default FAQ set from the term, and the location, times,
 category and organizers from the series' most recent event, because those are
 properties of the events and not of the umbrella. Pressing **Fill these in**
@@ -5620,11 +5656,56 @@ person is a row in `uc_rsvps` with a status of its own, ordered by
   backfill: no existing status is one of the four new ones, and the new
   columns are read only for rows that are.
 
+### Capacity: an empty box is unlimited, and 0 is no places (3.107.0)
+
+**THE RULE.** A capacity box left empty means no limit. A capacity of **0 means
+no places**: the event is full from the first person, the button and the form
+say **Join the waitlist**, and every registration goes to the waitlist. Any
+other number is that many places. It holds per format on a hybrid event.
+
+**UNTIL 3.107.0, 0 MEANT UNLIMITED**, and the editor said so under the box. So
+the two are told apart by whether anything is stored, not by the number:
+
+| Function | Answers |
+|---|---|
+| `sfaf_capacity_limited( $id, $format )` | is there a limit at all: something numeric is stored under the format's key |
+| `sfaf_event_capacity( $id, $format )` | the number, 0 when there is none; never read on its own as "has a limit" |
+| `sfaf_format_full()` | false with no limit; otherwise places taken, held by offers or anybody waiting, against the limit, so 0 is always full |
+
+**Every reader asks `sfaf_capacity_limited()`**: the RSVP button and its
+capacity bar, the "spots left" line, the waitlist (`applies()`), the
+registration alert, cancellation alert, two-hour summary, day-before count and
+digest ("x of y places taken" against "x registered"), the reminders' cancel
+page, the registrations screen's summary and the JSON-LD `SoldOut`, which now
+asks `sfaf_event_full()` like the button. A `> 0` test on the number is the
+fault this replaced; do not write one.
+
+**THE SAVE STORES WHAT WAS TYPED.** Empty stays empty, a number is stored as a
+whole number of 0 or more, anything else is stored empty. The box shows **No
+limit** as its placeholder and carries no hint. Raising a limit offers the new
+places to the waitlist; **taking a limit off does not**, because
+`SFAF_Waitlist::advance()` serves only an event with a limit, so anybody
+already waiting stays waiting. That gap predates 3.107.0 (it was "set it to 0"
+then) and is not fixed here.
+
+**THE MIGRATION, SCHEMA 12, RUNS ONCE.** `sfaf_migrate_capacity_zero()` empties
+every stored `_uc_capacity` and `_uc_capacity_online` of 0 on the first load
+after the update, so no live event became waitlist-only, and records
+`sfaf_capacity_zero_migration` with the count. **It is guarded by that option,
+not only by the schema number**, because it is not idempotent in meaning: run
+again after somebody types 0, it would quietly turn their waitlist-only event
+back into an unlimited one. `.claude/capacity-zero-test.php` checks the rule,
+the save and both runs.
+
+**Not changed:** the two public request forms still store a capacity only above
+0, so a 0 typed there is still no limit; and the WordPress admin meta box
+stores what it is given, its label now saying empty is no limit.
+
 ### Questions for registrants (3.106.2)
 
 **An event may ask up to five questions on its registration form.** The editor's
-section **Questions for registrants** is its own card under the Location card
-that holds the other RSVP settings (3.106.3), on Add event and Edit event. Each
+section **Questions for registrants** is a section of the Registration card
+(3.107.0; its own card under Location in 3.106.3), on Add event and Edit event. Each
 question has its text, an answer style (Pick any, Pick one), Required, and on a
 hybrid event **In person only**; each has options, added, removed and moved,
 by dragging the grip or with Up and Down on it, and an option may **Allow

@@ -570,6 +570,12 @@ $WHITELIST = array(
      * seeing a private event here discloses nothing.
      */
     'sfaf-calendar.php::sfaf_migrate_source_rsvps' => 'the 3.97.0 third-party RSVP pass, which must reach every imported event including private ones',
+    /*
+     * THE 3.107.0 CAPACITY PASS, for the same reason: a private event with a
+     * stored 0 left behind would turn waitlist-only on the update, and nobody
+     * browsing would ever see it happen. Ids and one meta key; renders nothing.
+     */
+    'sfaf-calendar.php::sfaf_migrate_capacity_zero' => 'the 3.107.0 capacity pass, which must reach every event including private ones',
 );
 
 $files = array_merge(

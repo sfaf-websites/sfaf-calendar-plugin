@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 237 items.** Quick 196, needs real conditions 37, blocked on other
+**Outstanding: 245 items.** Quick 203, needs real conditions 38, blocked on other
 people 4.
 
 ---
@@ -2860,8 +2860,9 @@ Spanish.
 
 ### 1.199 The questions card by keyboard and on a phone (3.106.3)
 
-On **Add event**, the **Questions for registrants** card opens on one empty
-question. Using the keyboard only: Tab into the question, type it, Tab to
+On **Add event**, tick **Accept RSVPs** in the Registration card (from 3.107.0
+the questions are a section of that card); **Questions for registrants** opens
+on one empty question. Using the keyboard only: Tab into the question, type it, Tab to
 Required and press Space, Tab to the x and see the ring around it, Tab on to
 the options. On an option's handle, press Up and Down: the option moves and the
 handle keeps focus. Save, then reopen and check the order held. Open the same
@@ -2871,6 +2872,82 @@ only and the x sit on the line under it, and nothing runs off the side.
 **Why it needs a person:** a real keyboard, a real screen reader reading the
 three button names ("Remove question", "Remove option", "Move option up or
 down"), and a real phone.
+
+### 1.200 Schema 12 ran, and no live event became waitlist-only (3.107.0)
+
+Before updating, note two published events that take RSVPs with **no limit**.
+After updating, open each: the Capacity box is **empty**, showing No limit, and
+the event page's button still says **RSVP**, not Join the waitlist. Open an
+event that had a real number: the number is unchanged. **If any event that had
+no limit now says Join the waitlist, the migration did not run**, and every
+such event is turning registrations away into a waitlist: tell Claude at once.
+
+**Why it needs a person:** the real database, updated on the first load after
+updating; the migration's record is the option `sfaf_capacity_zero_migration`.
+
+### 1.201 Capacity 0 sends everybody to the waitlist (3.107.0)
+
+On a test event, set Capacity to **0** and save. The event page's button says
+**Join the waitlist**, and registering puts you on the waitlist with the
+waitlist confirmation. Empty the box and save: the button says **RSVP** again.
+
+**Why it needs a person:** a real registration through the real form and mail.
+
+### 1.202 The editor's card order, Add event and Edit event (3.107.0)
+
+Open **Add event** and an existing event. Left column: Title, Schedule,
+Location, Registration, Event details, FAQs, Classification, Notifications.
+Right: Series and language, Links, Display (and Who can edit this on an
+existing event). Untick **Accept RSVPs**: Registration shows only the tick.
+Tick it: Email required, Capacity and the questions appear. Save an event with
+RSVPs on, a capacity and a question, reopen it: all three kept.
+
+**Why it needs a person:** the real caladmin with real cards, and the real save.
+
+### 1.203 The action bar while scrolling, on a laptop and a phone (3.107.0)
+
+On a long event, scroll: **Save draft and Publish** (Add) or **Delete, Cancel
+event and Save changes** (Edit) stay at the bottom of the window. Delete is on
+the left; the green button is the largest. Open **Cancel event**: the bar stops
+following, and the panel opens under the buttons. On a phone every button is
+reachable without scrolling sideways. **The left-to-right order is new on
+screen** (it was Save, Publish, Cancel, Delete until now).
+
+**Why it needs a person:** a real browser height, a real phone, and Mark's eye on
+an order that has not been seen before.
+
+### 1.204 The picture list follows the series (3.107.0)
+
+Only meaningful once **1.74** has tagged the pictures. On Add event, open
+**Choose a picture**, then change **Series** without saving: the list narrows
+to that series; choose Not part of a series and it shows the whole folder. Pick
+a picture, then switch to a series it is not in: it stays chosen, and the line
+"Not in this series. It stays chosen until you pick another." appears.
+
+**Why it needs a person:** the real calendar folder and real tags.
+
+### 1.205 The FAQ set follows the series, and the weekday follows the date (3.107.0)
+
+On Add event, choose a series that has exactly one FAQ set named after it: the
+set is preselected in **Apply a saved FAQ set**. Choose one with none or two:
+the dropdown is empty. Then choose Weekly under Repeats, change the **Date**:
+the ticked weekday moves with it. Tick another day by hand, change the date
+again: the ticks stay as you left them. On Edit event, changing the date never
+moves the ticks.
+
+**Why it needs a person:** the real FAQ set names, which the match depends on.
+
+### 1.206 One sign-out, Links, Organizer and the Notifications card (3.107.0)
+
+Every caladmin screen has no **Log out** at the top right; **Sign out** in the
+sidebar works, and on a phone it is in the menu. The **Links** card has the
+donation dropdown and Volunteer link. **Organizer** shows chips and
+**+ Add organizer**; add two, save, reopen: both kept. **Notifications** on Add
+event shows one line, "Nobody else yet.", until somebody is added, and adding a
+typed address takes it away.
+
+**Why it needs a person:** the real caladmin, the real save, and the real people
+list.
 
 ## 2. Needs real conditionsWaiting for an unattended job to fire, a real removal at source, or a real event
 with real registrations and real mail.
@@ -3469,6 +3546,17 @@ with somebody registered, the screen offers no **Delete them anyway**.
 
 **Why it needs real conditions:** real mail, which cannot be recalled. Use
 addresses you own.
+
+### 2.40 A waitlist when a limit is taken off (3.107.0)
+
+On an event with a capacity and somebody on the waitlist, empty the Capacity
+box and save. **Expected, and a known gap rather than a fault of this
+release:** nobody on the waitlist is offered a place, because offers serve only
+an event with a limit. Newcomers register straight in. Say whether the waitlist
+should be offered places when a limit is removed; until then, confirm them by
+hand on the registrations screen.
+
+**Why it needs a person:** a real event with real people waiting, and a decision.
 
 ## 3. Blocked on other peopleNothing here can move until somebody outside the build answers.
 
