@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.107.0
+Stable tag: 3.107.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,16 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.107.1 =
+
+**Series and language is the first card on Add event and Edit event again.**
+
+**THE SERIES CARD.** It moved out of the right column to the top of the left one, above Title, the left column's full width. The right column is Links and Display, then Who can edit this on an existing event. Nothing else moved. The 18px it added under itself is gone, so it sits 16px above Title like every other card.
+
+**THE SERIES THUMBNAIL WAS NOT CHANGED.** The picture in the series card's "Fill this event in" panel on Add event measures 56 x 32 in Chrome on 3.106.3 and on 3.107.0, at 1280px and 390px, and its rule has not changed since 3.64.2. It stays 56 x 32. Edit event shows no picture in that card, before 3.107.0 or since.
+
+**CHECKED.** In Chrome, Add event and Edit event at 1280px and 390px: the series card first in the left column and the first card on the page, as wide as the column, 16px above Title, and on Add its thumbnail at 56 x 32; screenshots in `.claude/screens/`. Planted and caught: the card back in the right column (in the browser and in the render test), under Title, last in the left column, gone, narrower than the column, the 18px back, and the thumbnail smaller.
 
 = 3.107.0 =
 

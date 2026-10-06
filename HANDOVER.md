@@ -4,15 +4,16 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-05, at 3.107.0, released.
+**Last updated:** 2026-10-06, at 3.107.1, released.
 
 ---
 
 ## What shipped last
 
-**3.107.0**: **the event editor rearranged** (Title, Schedule, Location,
-**Registration**, Event details, FAQs, Classification, Notifications; Series and
-language, **Links**, Display), the actions in a **bar stuck to the window's
+**3.107.1**: Series and language back first, above Title; its 56 x 32
+thumbnail had not changed. **3.107.0**: **the editor rearranged** (Title,
+Schedule, Location, **Registration**, Event details, FAQs, Classification,
+Notifications; **Links**, Display), the actions in a **bar stuck to the window's
 foot**, helper text cut to one sentence, Organizer as chips, the pictures and
 the FAQ set following the series, the weekday following the date on a new
 event, one sign-out, `data-uc-card` on every card for a later tour.

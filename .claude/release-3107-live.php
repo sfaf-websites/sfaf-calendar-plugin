@@ -45,11 +45,15 @@ function rv_capture( $fn ) {
     return $h;
 }
 
-/* Three pictures in the calendar folder: one per series and one untagged. */
+/* Three pictures in the calendar folder: one per series and one untagged.
+   Each a real 1200x675 image that decodes (3.107.1): the 1x1 GIF used until
+   then was truncated, so every thumbnail drew as a broken image and the series
+   card's fell back to its file name. Alpha's tagged picture is its series
+   picture, so it is the one the prefill panel shows. */
 foreach ( array( 601 => 11, 602 => 12, 603 => 0 ) as $pid => $sid ) {
     kit_write_post( array( 'ID' => $pid, 'post_type' => 'attachment', 'post_status' => 'inherit', 'post_title' => 'Picture ' . $pid ) );
     update_post_meta( $pid, '_wp_attached_file', SFAF_Media_Folder::prefix() . 'pic-' . $pid . '.jpg' );
-    $GLOBALS['kit_images'][ $pid ] = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+    $GLOBALS['kit_images'][ $pid ] = 'data:image/svg+xml;base64,' . base64_encode( '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675"><rect width="1200" height="675" fill="#0E818C"/></svg>' );
     if ( $sid ) { $GLOBALS['kit_terms'][ $pid ][ SFAF_Media::TAXONOMY ] = array( $sid ); }
 }
 /* Three FAQ sets: one starts with Alpha, two with Beta. */
@@ -58,9 +62,6 @@ update_option( SFAF_FAQ_Sets::OPTION, array(
     'setbeta1' => array( 'name' => 'Beta one', 'rows' => array( array( 'question' => 'Parking?', 'answer' => 'No.' ) ) ),
     'setbeta2' => array( 'name' => 'Beta two', 'rows' => array( array( 'question' => 'Food?', 'answer' => 'Yes.' ) ) ),
 ) );
-/* Alpha has a picture of its own, so Add event's prefill panel shows the
-   series thumbnail (3.107.1). A 1200x675 file: the stylesheet decides the size. */
-update_term_meta( 11, SFAF_Series::META_IMAGE_URL, 'data:image/svg+xml;base64,' . base64_encode( '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675"><rect width="1200" height="675" fill="#0E818C"/></svg>' ) );
 $GLOBALS['kit_query'] = function ( $a ) {
     $out  = array();
     $type = isset( $a['post_type'] ) ? $a['post_type'] : 'uc_event';
@@ -193,8 +194,6 @@ window.addEventListener('load', function () { setTimeout(function () {
     out.picsNone = shownPics(); out.faqNone = faq ? faq.value : null;
     series.value = '11'; change(series);
     out.picsAlpha = shownPics(); out.faqAlpha = faq ? faq.value : null;
-    var th = q('[data-uc-card="series"] .uc-prefill-thumb');
-    out.thumb = th && seen(th) ? { w: Math.round(th.getBoundingClientRect().width), h: Math.round(th.getBoundingClientRect().height) } : null;
     series.value = '12'; change(series);
     out.picsBeta = shownPics(); out.faqBeta = faq ? faq.value : null;
     var r602 = q('[data-uc-image-picker] input[value="602"]');
@@ -215,7 +214,16 @@ window.addEventListener('load', function () { setTimeout(function () {
     var mon = q('[data-uc-repeat-day][value="1"]'); mon.click();
     date.value = '2026-11-24'; change(date); out.daysAfterTouch = days();
   }
-  finish();
+  /* A.4 (3.107.1): the series thumbnail, measured once the picture has
+     decoded. Measured at once, a picture that fails to load still has its box,
+     and a moment later it is replaced by its file name. The series is Alpha
+     again by now. */
+  setTimeout(function () {
+    var th = q('[data-uc-card="series"] .uc-prefill-thumb');
+    out.thumb = th && seen(th) && th.complete && th.naturalWidth > 0
+      ? { w: Math.round(th.getBoundingClientRect().width), h: Math.round(th.getBoundingClientRect().height) } : null;
+    finish();
+  }, 500);
 }, 600); });
 })();
 JS;

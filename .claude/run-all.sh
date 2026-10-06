@@ -60,6 +60,7 @@ for f in .claude/*.php; do
     release-31063-live.php) continue ;; # run below with --run
     release-3107-live.php) continue ;;  # run below with --run
     plant-3107.php) continue ;;        # a fault planter for the 3.107.0 checks, not a check
+    plant-31071.php) continue ;;       # a fault planter for the 3.107.1 checks, not a check
     login-check.php) continue ;;       # run last, after every capture is rewritten
     byline-live.php) continue ;;       # run below with --run; --live checks the site itself
   esac

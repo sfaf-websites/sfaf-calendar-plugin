@@ -1003,6 +1003,7 @@ scrolls. Screenshots: `.claude/screens/editor-3107-add-desktop.png`,
 `editor-3107-add-phone.png` (Registration closed),
 `editor-3107-edit-desktop.png` and `editor-3107-edit-phone.png` (Registration
 open, a picture outside the series chosen, the weekday ticks after the probe).
+Retaken for 3.107.1 with the series card first in the main column.
 
 **The card order, and the names a guided tour targets.** Every card carries
 `data-uc-card`. The names are stable: change one here and in
@@ -1010,7 +1011,8 @@ open, a picture outside the series chosen, the weekday ticks after the probe).
 
 | Column | Order | `data-uc-card` |
 |---|---|---|
-| Main | Title | `title` |
+| Main | Series and language (3.107.1) | `series` |
+| | Title | `title` |
 | | Schedule | `schedule` |
 | | Location | `location` |
 | | Registration | `registration` |
@@ -1019,8 +1021,7 @@ open, a picture outside the series chosen, the weekday ticks after the probe).
 | | Classification | `classification` |
 | | Notifications (native events) | `notifications` |
 | | Other details (the catch-all, when anything is left) | `other-details` |
-| Side | Series and language | `series` |
-| | Links | `links` |
+| Side | Links | `links` |
 | | Display | `display` |
 | | Who can edit this (Edit event only) | `access` |
 | Foot | The action bar, not a card | `actions` |
@@ -1029,6 +1030,13 @@ open, a picture outside the series chosen, the weekday ticks after the probe).
 radius, 16px between cards. The brief placed eleven cards; **Who can edit this
 was not named and stays last in the side column**, and the catch-all stays last
 in the main one, because it must be the last call that places a field.
+
+**The series card is first in the main column (3.107.1)**, its full width and
+16px above Title, with no margin of its own: the 18px `.uc-series-first` used
+to add made that gap 34px. **Its thumbnail**, the picture in the prefill panel
+on Add event, is 56 x 32 with a 4px radius and a `--p-border` edge, unchanged
+since 3.64.2: measured at 56 x 32 on 3.106.3 and 3.107.0 alike, at 1280px and
+390px. Edit event draws no picture in this card.
 
 **Registration is the tick alone until it is ticked.** The body (Email
 required, Capacity, Questions for registrants) is visible in the markup and

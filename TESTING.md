@@ -2897,12 +2897,13 @@ no limit. The staff form's confirmation email says "Yes, waitlist only" for 0.
 **Why it needs a person:** a real registration through the real form and mail,
 and the two real public forms.
 
-### 1.202 The editor's card order, Add event and Edit event (3.107.0)
+### 1.202 The editor's card order, Add event and Edit event (3.107.0, 3.107.1)
 
-Open **Add event** and an existing event. Left column: Title, Schedule,
-Location, Registration, Event details, FAQs, Classification, Notifications.
-Right: Series and language, Links, Display (and Who can edit this on an
-existing event). Untick **Accept RSVPs**: Registration shows only the tick.
+Open **Add event** and an existing event. Left column: Series and language,
+Title, Schedule, Location, Registration, Event details, FAQs, Classification,
+Notifications. Right: Links, Display (and Who can edit this on an existing
+event). On Add event, choose a series with a picture: the picture in the panel
+is small but recognisable, on a laptop and on a phone. Untick **Accept RSVPs**: Registration shows only the tick.
 Tick it: Email required, Capacity and the questions appear. Save an event with
 RSVPs on, a capacity and a question, reopen it: all three kept.
 

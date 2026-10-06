@@ -2405,13 +2405,15 @@ deleting keeps nothing and tells nobody. It posts the same route the events list
 posts, so it inherits the same refusal on an event with registrations that has
 not been cancelled, and says why rather than offering a button that bounces.
 
-### The editor's cards, and the bar (3.107.0)
+### The editor's cards, and the bar (3.107.0, series card moved 3.107.1)
 
-**Main column**: Title, Schedule, Location, Registration, Event details (the
-description, Insert image, the featured picture and its URL, the video), FAQs,
-Classification, Notifications, then the catch-all. **Side column**: Series and
-language, Links (the donation dropdown and the Volunteer link), Display, then
-Who can edit this on an existing event. Every card carries `data-uc-card`, a
+**Main column**: Series and language, Title, Schedule, Location,
+Registration, Event details (the description, Insert image, the featured
+picture and its URL, the video), FAQs, Classification, Notifications, then the
+catch-all. **Side column**: Links (the donation dropdown and the Volunteer
+link), Display, then Who can edit this on an existing event. The series card
+is printed directly at the top of the main column; the side column is still
+buffered first so the catch-all stays the last field render. Every card carries `data-uc-card`, a
 stable name for a later guided tour; `DESIGN.md` 4 lists them.
 
 - **Registration** holds Accept RSVPs, Email required, Capacity and the
