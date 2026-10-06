@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Events - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.107.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.107.0" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.107.0" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.107.1" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.107.1" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.107.1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.107.0" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.107.1" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -162,6 +162,50 @@
                         <div class="uc-bento">
             <div class="uc-bento-main">
 
+                                                <section class="uc-bento-card uc-series-first" data-uc-card="series" data-uc-series-prefill>
+            <h2 class="uc-bento-title">Series and language
+                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-series-0" aria-label="More about series">?</button><span class="uc-help-body" id="uc-help-series-0" data-uc-help-body>Add and remove repeating dates on the series schedule screen.</span>            </h2>
+
+            <label class="uc-field">
+                <span class="uc-field-label">Series</span>
+                <select name="series" data-uc-series-select>
+                    <option value="0">Not part of a series</option>
+                                            <option value="11" >
+                            Alpha                        </option>
+                                            <option value="12" >
+                            Beta                        </option>
+                                    </select>
+            </label>
+
+                        <label class="uc-field">
+                <span class="uc-field-label">Language</span>
+                <select name="event_language" data-uc-event-language
+                        data-uc-series-langs="{&quot;11&quot;:&quot;en&quot;,&quot;12&quot;:&quot;en&quot;}"
+                        >
+                                            <option value="en"  selected="selected">English</option>
+                                            <option value="es" >Spanish</option>
+                                    </select>
+                <span class="uc-hint">Emails to people who register go out in this language.</span>
+            </label>
+
+                                    <div class="uc-prefill" data-uc-prefill-panel hidden>
+                <p class="uc-prefill-head">
+                    Fill this event in from <strong data-uc-prefill-name></strong>?
+                </p>
+                <div class="uc-prefill-opts" data-uc-prefill-opts></div>
+                <div class="uc-prefill-actions">
+                    <button type="button" class="uc-btn uc-btn-sm uc-btn-primary" data-uc-prefill-apply>Fill these in</button>
+                    <button type="button" class="uc-btn uc-btn-sm" data-uc-prefill-none>Start from scratch</button>
+                </div>
+                <p class="uc-flash uc-prefill-said" data-uc-prefill-said role="status" hidden></p>
+                <p class="uc-hint">
+                    The date is never filled in.
+                </p>
+            </div>
+
+            <script type="application/json" data-uc-prefill-data>{"11":{"location_mode":"custom","venue":0,"venue_name":"","location":"1035 Market St","location_name":"","location_parts":{"street":"1035 Market St","city":"","state":"","zip":""},"start_time":"18:00","end_time":"19:30","description":"\u003Cp\u003EWords.\u003C\/p\u003E","image_url":"","image_id":0,"image_preview":"","categories":[],"category_names":[],"organizers":[],"organizer_name":"","faq_set":"","faq_set_name":"","from_event":505},"12":{"location_mode":"custom","venue":0,"venue_name":"","location":"1035 Market St","location_name":"","location_parts":{"street":"1035 Market St","city":"","state":"","zip":""},"start_time":"18:00","end_time":"19:30","description":"\u003Cp\u003EWords.\u003C\/p\u003E","image_url":"","image_id":0,"image_preview":"","categories":[],"category_names":[],"organizers":[],"organizer_name":"","faq_set":"","faq_set_name":"","from_event":505}}</script>
+                    </section>
+        
                                                 <section class="uc-bento-card" data-uc-card="title">
                     <h2 class="uc-bento-title" id="uc-title-heading">Title<span class="uc-req" aria-hidden="true">*</span></h2>
                     <label class="uc-field">
@@ -330,13 +374,13 @@
                         </label>
                                             <label class="uc-day">
                             <input type="checkbox" name="repeat_days[]" value="1"
-                                    checked="checked" data-uc-repeat-day />
+                                    data-uc-repeat-day />
                             <span aria-hidden="true">M</span>
                             <span class="uc-visually-hidden">Monday</span>
                         </label>
                                             <label class="uc-day">
                             <input type="checkbox" name="repeat_days[]" value="2"
-                                    data-uc-repeat-day />
+                                    checked="checked" data-uc-repeat-day />
                             <span aria-hidden="true">T</span>
                             <span class="uc-visually-hidden">Tuesday</span>
                         </label>
@@ -387,8 +431,8 @@
                                             </select>
                     <select name="repeat_nth_dow" aria-label="Which weekday">
                                                     <option value="0" >Sunday</option>
-                                                    <option value="1"  selected="selected">Monday</option>
-                                                    <option value="2" >Tuesday</option>
+                                                    <option value="1" >Monday</option>
+                                                    <option value="2"  selected="selected">Tuesday</option>
                                                     <option value="3" >Wednesday</option>
                                                     <option value="4" >Thursday</option>
                                                     <option value="5" >Friday</option>
@@ -1017,51 +1061,7 @@
                 
                 
             </div>
-                        <div class="uc-bento-side">                                <section class="uc-bento-card uc-series-first" data-uc-card="series" data-uc-series-prefill>
-            <h2 class="uc-bento-title">Series and language
-                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-series-0" aria-label="More about series">?</button><span class="uc-help-body" id="uc-help-series-0" data-uc-help-body>Add and remove repeating dates on the series schedule screen.</span>            </h2>
-
-            <label class="uc-field">
-                <span class="uc-field-label">Series</span>
-                <select name="series" data-uc-series-select>
-                    <option value="0">Not part of a series</option>
-                                            <option value="11" >
-                            Alpha                        </option>
-                                            <option value="12" >
-                            Beta                        </option>
-                                    </select>
-            </label>
-
-                        <label class="uc-field">
-                <span class="uc-field-label">Language</span>
-                <select name="event_language" data-uc-event-language
-                        data-uc-series-langs="{&quot;11&quot;:&quot;en&quot;,&quot;12&quot;:&quot;en&quot;}"
-                        >
-                                            <option value="en"  selected="selected">English</option>
-                                            <option value="es" >Spanish</option>
-                                    </select>
-                <span class="uc-hint">Emails to people who register go out in this language.</span>
-            </label>
-
-                                    <div class="uc-prefill" data-uc-prefill-panel hidden>
-                <p class="uc-prefill-head">
-                    Fill this event in from <strong data-uc-prefill-name></strong>?
-                </p>
-                <div class="uc-prefill-opts" data-uc-prefill-opts></div>
-                <div class="uc-prefill-actions">
-                    <button type="button" class="uc-btn uc-btn-sm uc-btn-primary" data-uc-prefill-apply>Fill these in</button>
-                    <button type="button" class="uc-btn uc-btn-sm" data-uc-prefill-none>Start from scratch</button>
-                </div>
-                <p class="uc-flash uc-prefill-said" data-uc-prefill-said role="status" hidden></p>
-                <p class="uc-hint">
-                    The date is never filled in.
-                </p>
-            </div>
-
-            <script type="application/json" data-uc-prefill-data>{"11":{"location_mode":"custom","venue":0,"venue_name":"","location":"1035 Market St","location_name":"","location_parts":{"street":"1035 Market St","city":"","state":"","zip":""},"start_time":"18:00","end_time":"19:30","description":"\u003Cp\u003EWords.\u003C\/p\u003E","image_url":"","image_id":0,"image_preview":"","categories":[],"category_names":[],"organizers":[],"organizer_name":"","faq_set":"","faq_set_name":"","from_event":505},"12":{"location_mode":"custom","venue":0,"venue_name":"","location":"1035 Market St","location_name":"","location_parts":{"street":"1035 Market St","city":"","state":"","zip":""},"start_time":"18:00","end_time":"19:30","description":"\u003Cp\u003EWords.\u003C\/p\u003E","image_url":"","image_id":0,"image_preview":"","categories":[],"category_names":[],"organizers":[],"organizer_name":"","faq_set":"","faq_set_name":"","from_event":505}}</script>
-                    </section>
-        
-                                                <section class="uc-bento-card" data-uc-card="links" data-uc-donate>
+                        <div class="uc-bento-side">                                                <section class="uc-bento-card" data-uc-card="links" data-uc-donate>
                     <h2 class="uc-bento-title">Links</h2>
                     <label class="uc-field">
                         <span class="uc-field-label">Donation link in emails</span>
@@ -1125,8 +1125,8 @@
                         </main>
             </div>
         </div>
-        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.107.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.107.0"></script>
-<script src="../public/js/portal.js?ver=3.107.0"></script>
+        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.107.1"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.107.1"></script>
+<script src="../public/js/portal.js?ver=3.107.1"></script>
 <script>window.RQ_PAGE="editor-add-desktop";(function () {
 var P = window.RQ_PAGE, out = { page: P, errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });

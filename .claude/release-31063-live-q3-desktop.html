@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Events - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.107.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.107.0" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.107.0" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.107.1" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.107.1" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.107.1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.107.0" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.107.1" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -162,6 +162,35 @@
                         <div class="uc-bento">
             <div class="uc-bento-main">
 
+                                                <section class="uc-bento-card uc-series-first" data-uc-card="series">
+            <h2 class="uc-bento-title">Series and language
+                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-series-502" aria-label="More about series">?</button><span class="uc-help-body" id="uc-help-series-502" data-uc-help-body>Add and remove repeating dates on the series schedule screen.</span>            </h2>
+
+            <label class="uc-field">
+                <span class="uc-field-label">Series</span>
+                <select name="series" data-uc-series-select>
+                    <option value="0">Not part of a series</option>
+                                            <option value="11" >
+                            Alpha                        </option>
+                                            <option value="12" >
+                            Beta                        </option>
+                                    </select>
+            </label>
+
+                        <label class="uc-field">
+                <span class="uc-field-label">Language</span>
+                <select name="event_language" data-uc-event-language
+                        data-uc-series-langs="{&quot;11&quot;:&quot;en&quot;,&quot;12&quot;:&quot;en&quot;}"
+                        >
+                                            <option value="en"  selected="selected">English</option>
+                                            <option value="es" >Spanish</option>
+                                    </select>
+                <span class="uc-hint">Emails to people who register go out in this language.</span>
+            </label>
+
+                                            <p class="uc-hint">Moving it changes only which series it is listed under.</p>
+                    </section>
+        
                                                 <section class="uc-bento-card" data-uc-card="title">
                     <h2 class="uc-bento-title" id="uc-title-heading">Title<span class="uc-req" aria-hidden="true">*</span></h2>
                     <label class="uc-field">
@@ -1206,36 +1235,7 @@
                                     </section>
                 
             </div>
-                        <div class="uc-bento-side">                                <section class="uc-bento-card uc-series-first" data-uc-card="series">
-            <h2 class="uc-bento-title">Series and language
-                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-series-502" aria-label="More about series">?</button><span class="uc-help-body" id="uc-help-series-502" data-uc-help-body>Add and remove repeating dates on the series schedule screen.</span>            </h2>
-
-            <label class="uc-field">
-                <span class="uc-field-label">Series</span>
-                <select name="series" data-uc-series-select>
-                    <option value="0">Not part of a series</option>
-                                            <option value="11" >
-                            Alpha                        </option>
-                                            <option value="12" >
-                            Beta                        </option>
-                                    </select>
-            </label>
-
-                        <label class="uc-field">
-                <span class="uc-field-label">Language</span>
-                <select name="event_language" data-uc-event-language
-                        data-uc-series-langs="{&quot;11&quot;:&quot;en&quot;,&quot;12&quot;:&quot;en&quot;}"
-                        >
-                                            <option value="en"  selected="selected">English</option>
-                                            <option value="es" >Spanish</option>
-                                    </select>
-                <span class="uc-hint">Emails to people who register go out in this language.</span>
-            </label>
-
-                                            <p class="uc-hint">Moving it changes only which series it is listed under.</p>
-                    </section>
-        
-                                                <section class="uc-bento-card" data-uc-card="links" data-uc-donate>
+                        <div class="uc-bento-side">                                                <section class="uc-bento-card" data-uc-card="links" data-uc-donate>
                     <h2 class="uc-bento-title">Links</h2>
                     <label class="uc-field">
                         <span class="uc-field-label">Donation link in emails</span>
@@ -1370,8 +1370,8 @@
                         </main>
             </div>
         </div>
-        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.107.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.107.0"></script>
-<script src="../public/js/portal.js?ver=3.107.0"></script>
+        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.107.1"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.107.1"></script>
+<script src="../public/js/portal.js?ver=3.107.1"></script>
 <script>window.RT_PAGE="q3-desktop";(function () {
 var P = window.RT_PAGE, out = { page: P, errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
