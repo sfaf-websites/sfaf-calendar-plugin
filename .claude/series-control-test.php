@@ -851,19 +851,19 @@ expect( 'the prefill card is not on the edit screen',
  * called" is the property believed to imply it, and PROJECT.md 7 has three
  * releases of that distinction costing a build.
  * ------------------------------------------------------------------------ */
-/* FROM 3.107.0 THE SAME PLACE IS THE TOP OF THE SIDE COLUMN, the first card
- * there, on both screens; the brief put Title first in the main one. What 3.72.0
- * was protecting, one place on both screens, is what is asserted. */
-function first_in_side( $html ) {
-    $side = strpos( $html, '<div class="uc-bento-side">' );
+/* 3.107.0 PUT IT AT THE TOP OF THE SIDE COLUMN; 3.107.1 PUT IT BACK AT THE TOP
+ * OF THE MAIN ONE, above Title, on both screens. What 3.72.0 was protecting,
+ * one place on both screens, is what is asserted. */
+function first_in_main( $html ) {
+    $main = strpos( $html, '<div class="uc-bento-main">' );
     $sel  = strpos( $html, 'name="series"' );
-    $next = strpos( $html, '>Links</h2>' );
+    $next = strpos( $html, 'data-uc-card="title"' );
     if ( false === $sel ) { return 'no series control in the render'; }
-    if ( false === $side || false === $next ) { return 'no side column, or no Links card, in the render'; }
-    return ( $sel > $side && $sel < $next ) ? 'first' : 'elsewhere';
+    if ( false === $main || false === $next ) { return 'no main column, or no Title card, in the render'; }
+    return ( $sel > $main && $sel < $next ) ? 'first' : 'elsewhere';
 }
-expect( 'New Event asks which series in the first card of the side column', first_in_side( $new ), 'first' );
-expect( 'Edit Event asks which series in the same place', first_in_side( $edit ), 'first' );
+expect( 'New Event asks which series in the first card of the main column', first_in_main( $new ), 'first' );
+expect( 'Edit Event asks which series in the same place', first_in_main( $edit ), 'first' );
 
 /* ===========================================================================
  * 5. THE HOOKS THE PREFILL WRITES THROUGH ARE ON THE PAGE (3.64.2).

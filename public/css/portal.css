@@ -4385,7 +4385,8 @@ body.uc-modal-open { overflow: hidden; }
    rest. Hidden until a series is chosen, and hidden again when the choice goes
    back to none: a panel of checkboxes about nothing is worse than no panel.
    ------------------------------------------------------------------------- */
-.uc-series-first { margin-bottom: 18px; }
+/* No margin of its own (3.107.1): it sits in the main column, whose 16px gap is
+   the space between every card. The 18px it had added to that gap. */
 .uc-prefill { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--p-border);
     border-radius: 10px; background: var(--p-bg); }
 .uc-prefill-head { margin: 0 0 10px; font-size: 13.5px; line-height: 1.5; }

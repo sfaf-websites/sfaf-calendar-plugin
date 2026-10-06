@@ -189,6 +189,35 @@
                         <div class="uc-bento">
             <div class="uc-bento-main">
 
+                                                <section class="uc-bento-card uc-series-first" data-uc-card="series">
+            <h2 class="uc-bento-title">Series and language
+                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-series-501" aria-label="More about series">?</button><span class="uc-help-body" id="uc-help-series-501" data-uc-help-body>Add and remove repeating dates on the series schedule screen.</span>            </h2>
+
+            <label class="uc-field">
+                <span class="uc-field-label">Series</span>
+                <select name="series" data-uc-series-select>
+                    <option value="0">Not part of a series</option>
+                                            <option value="11"  selected="selected">
+                            Alpha                        </option>
+                                            <option value="12" >
+                            Beta                        </option>
+                                    </select>
+            </label>
+
+                        <label class="uc-field">
+                <span class="uc-field-label">Language</span>
+                <select name="event_language" data-uc-event-language
+                        data-uc-series-langs="{&quot;11&quot;:&quot;en&quot;,&quot;12&quot;:&quot;en&quot;}"
+                        >
+                                            <option value="en"  selected="selected">English</option>
+                                            <option value="es" >Spanish</option>
+                                    </select>
+                <span class="uc-hint">Emails to people who register go out in this language.</span>
+            </label>
+
+                                            <p class="uc-hint">Moving it changes only which series it is listed under.</p>
+                    </section>
+        
                                                 <section class="uc-bento-card" data-uc-card="title">
                     <h2 class="uc-bento-title" id="uc-title-heading">Title<span class="uc-req" aria-hidden="true">*</span></h2>
                     <label class="uc-field">
@@ -1159,36 +1188,7 @@
                                     </section>
                 
             </div>
-                        <div class="uc-bento-side">                                <section class="uc-bento-card uc-series-first" data-uc-card="series">
-            <h2 class="uc-bento-title">Series and language
-                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-series-501" aria-label="More about series">?</button><span class="uc-help-body" id="uc-help-series-501" data-uc-help-body>Add and remove repeating dates on the series schedule screen.</span>            </h2>
-
-            <label class="uc-field">
-                <span class="uc-field-label">Series</span>
-                <select name="series" data-uc-series-select>
-                    <option value="0">Not part of a series</option>
-                                            <option value="11"  selected="selected">
-                            Alpha                        </option>
-                                            <option value="12" >
-                            Beta                        </option>
-                                    </select>
-            </label>
-
-                        <label class="uc-field">
-                <span class="uc-field-label">Language</span>
-                <select name="event_language" data-uc-event-language
-                        data-uc-series-langs="{&quot;11&quot;:&quot;en&quot;,&quot;12&quot;:&quot;en&quot;}"
-                        >
-                                            <option value="en"  selected="selected">English</option>
-                                            <option value="es" >Spanish</option>
-                                    </select>
-                <span class="uc-hint">Emails to people who register go out in this language.</span>
-            </label>
-
-                                            <p class="uc-hint">Moving it changes only which series it is listed under.</p>
-                    </section>
-        
-                                                <section class="uc-bento-card" data-uc-card="links" data-uc-donate>
+                        <div class="uc-bento-side">                                                <section class="uc-bento-card" data-uc-card="links" data-uc-donate>
                     <h2 class="uc-bento-title">Links</h2>
                     <label class="uc-field">
                         <span class="uc-field-label">Donation link in emails</span>
@@ -1353,6 +1353,11 @@ window.addEventListener('load', function () { setTimeout(function () {
   out.main = qa('.uc-bento-main > [data-uc-card]').map(function (c) { return c.getAttribute('data-uc-card'); });
   out.side = qa('.uc-bento-side > [data-uc-card]').map(function (c) { return c.getAttribute('data-uc-card'); });
   out.unnamed = qa('.uc-bento-main > section, .uc-bento-side > section').filter(function (c) { return !c.hasAttribute('data-uc-card'); }).length;
+  out.seriesCount = qa('[data-uc-card="series"]').length;
+  out.seriesBox = box(q('[data-uc-card="series"]'));
+  out.titleBox = box(q('[data-uc-card="title"]'));
+  out.mainBox = box(q('.uc-bento-main'));
+  out.firstCardTop = Math.min.apply(null, qa('.uc-bento [data-uc-card]').filter(seen).map(function (c) { return Math.round(c.getBoundingClientRect().top); }));
   out.cardStyles = qa('.uc-bento [data-uc-card]').map(function (c) { var s = getComputedStyle(c); return c.getAttribute('data-uc-card') + ' ' + s.borderTopColor + ' ' + s.borderTopWidth + ' ' + s.paddingTop + ' ' + s.borderTopLeftRadius; });
   out.titles = qa('.uc-bento [data-uc-card] > h2, .uc-bento [data-uc-card] > .uc-bento-head > h2').map(function (h) { return own(h).replace(/\s*\*$/, ''); });
   out.logout = qa('.uc-portal-logout').length;
@@ -1422,6 +1427,8 @@ window.addEventListener('load', function () { setTimeout(function () {
     out.picsNone = shownPics(); out.faqNone = faq ? faq.value : null;
     series.value = '11'; change(series);
     out.picsAlpha = shownPics(); out.faqAlpha = faq ? faq.value : null;
+    var th = q('[data-uc-card="series"] .uc-prefill-thumb');
+    out.thumb = th && seen(th) ? { w: Math.round(th.getBoundingClientRect().width), h: Math.round(th.getBoundingClientRect().height) } : null;
     series.value = '12'; change(series);
     out.picsBeta = shownPics(); out.faqBeta = faq ? faq.value : null;
     var r602 = q('[data-uc-image-picker] input[value="602"]');

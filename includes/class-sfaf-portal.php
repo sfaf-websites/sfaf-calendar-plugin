@@ -7053,7 +7053,7 @@ class SFAF_Portal {
             }
         }
         ?>
-        <?php // "Series and language" from 3.107.0, at the top of the side column. ?>
+        <?php // "Series and language", the first card of the main column (3.107.1). ?>
         <section class="uc-bento-card uc-series-first" data-uc-card="series"<?php echo $offer ? ' data-uc-series-prefill' : ''; ?>>
             <h2 class="uc-bento-title">Series and language
                 <?php
@@ -13007,11 +13007,12 @@ class SFAF_Portal {
             $placed  = array();
 
             /*
-             * THE CARD ORDER (3.107.0).
+             * THE CARD ORDER (3.107.0, series card moved in 3.107.1).
              *
-             *   main   Title, Schedule, Location, Registration, Event details,
-             *          FAQs, Classification, Notifications, then the catch-all
-             *   side   Series and language, Links, Display, then Who can edit
+             *   main   Series and language, Title, Schedule, Location,
+             *          Registration, Event details, FAQs, Classification,
+             *          Notifications, then the catch-all
+             *   side   Links, Display, then Who can edit
              *
              * EVERY CARD CARRIES data-uc-card, a stable name a later guided tour
              * targets without further markup changes. DESIGN.md lists the
@@ -13028,8 +13029,8 @@ class SFAF_Portal {
 
             /*
              * WHICH SERIES THIS EVENT IS IN, worked out once and above both
-             * columns, because the series card is in the side column now and
-             * the Schedule card in the main one reads the same answer. See
+             * columns, because the series card, the Links card in the side
+             * column and the Schedule card all read the same answer. See
              * .claude/series-control-test.php for the 3.64.1 ordering fault
              * these two lines once caused, and why nothing may render
              * name="series" anywhere else.
@@ -13050,8 +13051,6 @@ class SFAF_Portal {
             // ---- THE SIDE COLUMN, built now and printed further down. ------
             ob_start();
             ?>
-                <?php $this->render_series_prefill( $all_series, $cur_series, (int) $event_id ); ?>
-
                 <?php
                 // ---- Links -------------------------------------------------
                 // The Donate URL is the campaign link on an imported campaign
@@ -13216,7 +13215,10 @@ class SFAF_Portal {
             <div class="uc-bento">
             <div class="uc-bento-main">
 
-                <?php // ---- Title: its own card, first (3.107.0). ---------- ?>
+                <?php // ---- Series and language: first, above Title (3.107.1). ?>
+                <?php $this->render_series_prefill( $all_series, $cur_series, (int) $event_id ); ?>
+
+                <?php // ---- Title: its own card (3.107.0). ----------------- ?>
                 <?php
                 $s_title     = $st( 'title' );
                 $title_badge = $this->field_badge( $s_title, $prov['label'] );

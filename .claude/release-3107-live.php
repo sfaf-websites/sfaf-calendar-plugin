@@ -12,7 +12,9 @@
  * bar can be seen doing its job. Every value is read off the laid-out page and
  * compared with the DESIGN.md token it should be.
  *
- *   A   the card order in both columns, by data-uc-card, on Add and on Edit
+ *   A   the card order in both columns, by data-uc-card, on Add and on Edit;
+ *       from 3.107.1 the series card first in the main column, its width, 16px
+ *       above Title, and the series thumbnail at 56x32 on Add
  *   B   Registration: the tick alone while RSVPs are off, the rest on ticking
  *   D   Links holds the donation dropdown and Volunteer; Organizer is chips and
  *       "+ Add organizer"; the address boxes are labelled by placeholders in
@@ -56,6 +58,9 @@ update_option( SFAF_FAQ_Sets::OPTION, array(
     'setbeta1' => array( 'name' => 'Beta one', 'rows' => array( array( 'question' => 'Parking?', 'answer' => 'No.' ) ) ),
     'setbeta2' => array( 'name' => 'Beta two', 'rows' => array( array( 'question' => 'Food?', 'answer' => 'Yes.' ) ) ),
 ) );
+/* Alpha has a picture of its own, so Add event's prefill panel shows the
+   series thumbnail (3.107.1). A 1200x675 file: the stylesheet decides the size. */
+update_term_meta( 11, SFAF_Series::META_IMAGE_URL, 'data:image/svg+xml;base64,' . base64_encode( '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675"><rect width="1200" height="675" fill="#0E818C"/></svg>' ) );
 $GLOBALS['kit_query'] = function ( $a ) {
     $out  = array();
     $type = isset( $a['post_type'] ) ? $a['post_type'] : 'uc_event';
@@ -114,6 +119,11 @@ window.addEventListener('load', function () { setTimeout(function () {
   out.main = qa('.uc-bento-main > [data-uc-card]').map(function (c) { return c.getAttribute('data-uc-card'); });
   out.side = qa('.uc-bento-side > [data-uc-card]').map(function (c) { return c.getAttribute('data-uc-card'); });
   out.unnamed = qa('.uc-bento-main > section, .uc-bento-side > section').filter(function (c) { return !c.hasAttribute('data-uc-card'); }).length;
+  out.seriesCount = qa('[data-uc-card="series"]').length;
+  out.seriesBox = box(q('[data-uc-card="series"]'));
+  out.titleBox = box(q('[data-uc-card="title"]'));
+  out.mainBox = box(q('.uc-bento-main'));
+  out.firstCardTop = Math.min.apply(null, qa('.uc-bento [data-uc-card]').filter(seen).map(function (c) { return Math.round(c.getBoundingClientRect().top); }));
   out.cardStyles = qa('.uc-bento [data-uc-card]').map(function (c) { var s = getComputedStyle(c); return c.getAttribute('data-uc-card') + ' ' + s.borderTopColor + ' ' + s.borderTopWidth + ' ' + s.paddingTop + ' ' + s.borderTopLeftRadius; });
   out.titles = qa('.uc-bento [data-uc-card] > h2, .uc-bento [data-uc-card] > .uc-bento-head > h2').map(function (h) { return own(h).replace(/\s*\*$/, ''); });
   out.logout = qa('.uc-portal-logout').length;
@@ -183,6 +193,8 @@ window.addEventListener('load', function () { setTimeout(function () {
     out.picsNone = shownPics(); out.faqNone = faq ? faq.value : null;
     series.value = '11'; change(series);
     out.picsAlpha = shownPics(); out.faqAlpha = faq ? faq.value : null;
+    var th = q('[data-uc-card="series"] .uc-prefill-thumb');
+    out.thumb = th && seen(th) ? { w: Math.round(th.getBoundingClientRect().width), h: Math.round(th.getBoundingClientRect().height) } : null;
     series.value = '12'; change(series);
     out.picsBeta = shownPics(); out.faqBeta = faq ? faq.value : null;
     var r602 = q('[data-uc-image-picker] input[value="602"]');
@@ -253,11 +265,23 @@ foreach ( array_keys( $pages ) as $t ) {
 
     /* A and H. */
     $main = $add
-        ? array( 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications' )
-        : array( 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications', 'other-details' );
-    $side = $add ? array( 'series', 'links', 'display' ) : array( 'series', 'links', 'display', 'access' );
+        ? array( 'series', 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications' )
+        : array( 'series', 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications', 'other-details' );
+    $side = $add ? array( 'links', 'display' ) : array( 'links', 'display', 'access' );
     rv_check( $main === $v( $t, 'main' ), "PLANT A: $t: the main column reads " . json_encode( $v( $t, 'main' ) ) );
     rv_check( $side === $v( $t, 'side' ), "PLANT A: $t: the side column reads " . json_encode( $v( $t, 'side' ) ) );
+
+    /* A.4 (3.107.1): the series card is the first card on the page, as wide as
+       the main column, 16px above Title, and on Add its thumbnail is 56x32. */
+    $sb = (array) $v( $t, 'seriesBox' ); $tb = (array) $v( $t, 'titleBox' ); $mb = (array) $v( $t, 'mainBox' );
+    rv_check( 1 === $v( $t, 'seriesCount' ), "PLANT A.4: $t: " . (int) $v( $t, 'seriesCount' ) . ' series card(s) on the page' );
+    rv_check( $sb && $tb && $mb && $sb['top'] < $tb['top'] && $sb['left'] === $mb['left'] && $sb['w'] === $mb['w'],
+        "PLANT A.4: $t: the series card is not first and full width in the main column: " . json_encode( array( 'series' => $sb, 'title' => $tb, 'main' => $mb ) ) );
+    rv_check( $sb && $tb && 16 === $tb['top'] - $sb['bottom'], "PLANT A.4: $t: series to Title is " . ( $sb && $tb ? $tb['top'] - $sb['bottom'] : '?' ) . 'px, not 16' );
+    rv_check( (int) $v( $t, 'firstCardTop' ) === ( $sb ? $sb['top'] : -1 ), "PLANT A.4: $t: a card sits above the series card at " . $v( $t, 'firstCardTop' ) );
+    if ( $add ) {
+        rv_check( array( 'w' => 56, 'h' => 32 ) === $v( $t, 'thumb' ), "PLANT A.4: $t: the series thumbnail is " . json_encode( $v( $t, 'thumb' ) ) . ', not 56x32' );
+    }
     rv_check( 0 === $v( $t, 'unnamed' ), "PLANT H: $t: " . $v( $t, 'unnamed' ) . ' card(s) carry no data-uc-card' );
     foreach ( (array) $v( $t, 'cardStyles' ) as $cs ) {
         rv_check( false !== strpos( $cs, "$P_BORDER 1px 18px 12px" ), "$t: a card is not the standard card: $cs" );
@@ -368,4 +392,4 @@ if ( $fails ) {
     echo 'RELEASE 3.107.0 LIVE: ' . count( $fails ) . " FAILURE(S)\n  - " . implode( "\n  - ", $fails ) . "\n";
     exit( 1 );
 }
-echo "3.107.0 live: card order and names, Registration closed and open, Links, the Organizer picker, the address labels, Insert image, one sign-out, one empty line, the FAQ set and the pictures following the series, the weekday following the date, and the sticky bar, on Add and Edit at 1280px and 390px.\n";
+echo "3.107.0 live: card order and names with the series card first in the main column and its thumbnail at 56x32, Registration closed and open, Links, the Organizer picker, the address labels, Insert image, one sign-out, one empty line, the FAQ set and the pictures following the series, the weekday following the date, and the sticky bar, on Add and Edit at 1280px and 390px.\n";
