@@ -7036,6 +7036,43 @@ class SFAF_Portal {
      * @param int       $event_id 0 on a new event, which is what decides
      *                            whether the prefill offer is drawn at all.
      */
+    /**
+     * The event editor's tour, in page order (3.108.0).
+     *
+     * One entry per data-uc-card name, with the name the panel shows and the
+     * caption Mark wrote, word for word. Who can edit this is listed on both
+     * screens: the script skips any step whose card is not on the page, which
+     * is the rule that also drops Notifications from an imported event. The
+     * action bar is the one step whose caption depends on the screen.
+     *
+     * @param bool $is_edit
+     * @return array[] Each array( 'card' => ..., 'name' => ..., 'text' => ... ).
+     */
+    private function editor_tour_steps( $is_edit ) {
+        $steps = array(
+            array( 'series', 'Series and language', 'Choose the series first. The event takes its description, picture and defaults from it, and the picture list narrows to that series. Choose Spanish if registrants should receive their emails in Spanish.' ),
+            array( 'title', 'Title', 'Give the event the name people will see on the calendar. Keep it short; the description carries the detail.' ),
+            array( 'schedule', 'Schedule', 'Pick the date and the start and end times. For an event that repeats, choose how often and the plugin creates every date for you.' ),
+            array( 'location', 'Location', 'Pick a venue from the list, or choose A different location and type an address. Tick online for a video event, or hybrid when people can come in person or join online.' ),
+            array( 'registration', 'Registration', 'Tick Accept RSVPs to let people register. Set a capacity if places are limited, leave it empty for no limit, or type 0 to send everyone to the waitlist. Add questions if you need to ask registrants something before the event.' ),
+            array( 'details', 'Event details', 'Write the description, add a featured picture from the calendar folder or paste an image link, and add a YouTube or Vimeo link if there is a video.' ),
+            array( 'faqs', 'FAQs', 'Add questions and answers for this event, or apply a saved set and edit it.' ),
+            array( 'classification', 'Classification', 'Add at least one category and one organizer. These decide where the event appears in the calendar filters.' ),
+            array( 'notifications', 'Notifications', 'Choose who is told when people register or cancel, and who gets the reminder copies. Set the reply address for the reminder email.' ),
+            array( 'links', 'Links', 'Choose which donation link goes in the emails, and paste a volunteer page if there is one.' ),
+            array( 'display', 'Display', 'Choose which buttons appear on the public event page.' ),
+            array( 'access', 'Who can edit this', 'Add the people who may change this event besides its creator.' ),
+            array( 'actions', 'Action bar', $is_edit
+                ? 'Save changes updates the event. Cancel event keeps it on the calendar marked cancelled and tells registrants. Delete removes it for good.'
+                : 'Save draft keeps the event private until you are ready. Publish puts it on the calendar.' ),
+        );
+        $out = array();
+        foreach ( $steps as $s ) {
+            $out[] = array( 'card' => $s[0], 'name' => $s[1], 'text' => $s[2] );
+        }
+        return $out;
+    }
+
     private function render_series_prefill( $all_series, $cur_series, $event_id = 0 ) {
         if ( empty( $all_series ) ) {
             // No series, no choice to make, and no card saying so.
@@ -12801,7 +12838,20 @@ class SFAF_Portal {
         ?>
         <div class="uc-page-head">
             <h1><?php echo $event_id ? 'Edit Event' : 'New Event'; ?></h1>
-            <a href="<?php echo esc_url( $this->url( 'events' ) ); ?>" class="uc-btn">&larr; Back</a>
+            <div class="uc-page-head-actions">
+                <?php
+                /*
+                 * THE GUIDED TOUR (3.108.0). Pressed, never started on its own,
+                 * and nothing is stored, so it runs as often as anybody likes.
+                 * A button, because it opens something rather than going
+                 * somewhere; it is drawn as a text link. initEditorTour() in
+                 * portal.js runs it and skips any step whose card is absent.
+                 */
+                ?>
+                <button type="button" class="uc-tour-link" data-uc-tour-start
+                        data-uc-tour-steps="<?php echo esc_attr( wp_json_encode( $this->editor_tour_steps( (bool) $event_id ) ) ); ?>">Take the tour</button>
+                <a href="<?php echo esc_url( $this->url( 'events' ) ); ?>" class="uc-btn">&larr; Back</a>
+            </div>
         </div>
 
         <?php
@@ -14227,7 +14277,20 @@ class SFAF_Portal {
 
         $venues   = SFAF_Venues::all();
         $venue_id = $event_id ? SFAF_Venues::id_for_event( $event_id ) : 0;
-        $mode     = $venue_id ? 'venue' : 'custom';
+        /*
+         * A NEW EVENT OPENS ON "A venue" (3.108.0), with the dropdown showing.
+         * An existing one opens on what it has. With no venues at all there is
+         * no venue radio, so the address is the only choice. The series
+         * prefill still switches to "A different location" when it brings an
+         * address; it ticks the radio itself.
+         */
+        if ( $venue_id ) {
+            $mode = 'venue';
+        } elseif ( ! $event_id && ! empty( $venues ) ) {
+            $mode = 'venue';
+        } else {
+            $mode = 'custom';
+        }
 
         $online     = $event_id ? SFAF_Online::is_online( $event_id ) : false;
         $hybrid     = $event_id ? SFAF_Online::is_hybrid( $event_id ) : false;

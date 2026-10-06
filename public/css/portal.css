@@ -49,6 +49,11 @@
     --uc-band: #E8F9FA;      /* over a white card */
     --uc-band-alt: #DFF0F3;  /* over the page background */
 
+    /* The dim behind a modal, the value the confirm and scope dialogs'
+       ::backdrop has always used, named for the tour (3.108.0). */
+    --p-scrim: rgba(15, 23, 42, 0.55);
+    --p-shadow-raised: 0 24px 60px rgba(0, 0, 0, 0.28);
+
     --p-bg: #F5F6F7;
     --p-panel: #ffffff;
     /* Hairlines between rows: decorative, so brand Light Gray at low contrast
@@ -4932,3 +4937,42 @@ body.uc-modal-open { overflow: hidden; }
 .uc-rsvp-answers dt:first-child { margin-top: 0; }
 .uc-rsvp-answers dd { margin: 0; }
 .uc-rsvp-answer-more { display: block; font-size: 12px; color: var(--p-muted); }
+
+/* ---------------------------------------------------------------------------
+   THE EVENT EDITOR'S TOUR (3.108.0)
+
+   "Take the tour" is a text link in the accent, 14px/600, beside Back. The
+   tour itself is a shield, a ring and a panel appended to <body>: the ring is
+   the focus ring's colour, 3px, 6px outside the card, and its box-shadow is
+   the dim. The panel is the standard card on --p-panel with the confirm
+   dialog's shadow, 320px wide or the window less 24px.
+
+   EVERY SELECTOR HERE IS TWO CLASSES, because `.uc-portal h2` and
+   `.uc-portal p` are a class and a type and outrank one class.
+   ------------------------------------------------------------------------ */
+.uc-page-head .uc-tour-link {
+    margin: 0 8px 0 0; padding: 4px 0; border: 0; background-color: transparent; cursor: pointer;
+    font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1.4; color: var(--uc-accent-text);
+    text-decoration: underline; text-underline-offset: 3px;
+}
+.uc-page-head .uc-tour-link:hover { text-decoration-thickness: 2px; }
+.uc-page-head .uc-tour-link:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; border-radius: 4px; }
+
+.uc-tour .uc-tour-shield { position: fixed; inset: 0; z-index: 100000; }
+.uc-tour .uc-tour-ring {
+    position: fixed; z-index: 100001; box-sizing: border-box; pointer-events: none;
+    border: 3px solid var(--uc-accent-text); border-radius: 16px;
+    box-shadow: 0 0 0 9999px var(--p-scrim);
+}
+.uc-tour .uc-tour-panel {
+    position: fixed; z-index: 100002; box-sizing: border-box; width: min(320px, calc(100vw - 24px));
+    padding: 16px; border: 1px solid var(--p-border); border-radius: 12px;
+    background: var(--p-panel); color: var(--p-text); box-shadow: var(--p-shadow-raised);
+}
+.uc-tour .uc-tour-panel:focus { outline: none; }
+.uc-tour .uc-tour-count { margin: 0 0 4px; font-size: 12px; font-weight: 600; line-height: 1.4; color: var(--p-muted); }
+.uc-tour .uc-tour-name { margin: 0 0 8px; font-size: 16px; font-weight: 700; line-height: 1.3; color: var(--p-text); }
+.uc-tour .uc-tour-text { margin: 0 0 16px; font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--p-text); }
+.uc-tour .uc-tour-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.uc-tour .uc-tour-done { margin-left: auto; }
+.uc-tour .uc-btn[disabled] { cursor: default; }

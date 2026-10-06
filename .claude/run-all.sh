@@ -61,6 +61,8 @@ for f in .claude/*.php; do
     release-3107-live.php) continue ;;  # run below with --run
     plant-3107.php) continue ;;        # a fault planter for the 3.107.0 checks, not a check
     plant-31071.php) continue ;;       # a fault planter for the 3.107.1 checks, not a check
+    release-3108-live.php) continue ;;  # run below with --run
+    plant-3108.php) continue ;;        # a fault planter for the 3.108.0 checks, not a check
     login-check.php) continue ;;       # run last, after every capture is rewritten
     byline-live.php) continue ;;       # run below with --run; --live checks the site itself
   esac
@@ -294,6 +296,8 @@ run "release-31063-live --run" php .claude/release-31063-live.php --run
 # The editor's layout and behaviour pass (3.107.0): card order, Registration,
 # the sticky bar, the picker and the weekday following, at 1280px and 390px.
 run "release-3107-live --run" php .claude/release-3107-live.php --run
+# A venue by default, and the editor's tour (3.108.0), at 1280px and 390px.
+run "release-3108-live --run" php .claude/release-3108-live.php --run
 
 echo
 # No real name or login in a tracked file (3.106.2). Last, because the browser
