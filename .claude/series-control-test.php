@@ -619,6 +619,9 @@ require_once $root . '/includes/class-sfaf-cancellation.php';
 require_once $root . '/includes/class-sfaf-notifications.php';
 require_once $root . '/includes/class-sfaf-messages.php';
 require_once $root . '/includes/class-sfaf-questions.php'; // 3.106.2
+require_once $root . '/includes/class-sfaf-agreement.php'; // 3.110.0
+require_once $root . '/includes/class-sfaf-checkin.php'; // 3.110.0
+require_once $root . '/includes/class-sfaf-registrant-mail.php'; // 3.110.0
 require_once $root . '/includes/class-sfaf-request.php';
 require_once $root . '/includes/class-sfaf-uploads.php';
 /* Pictures inside a description (3.96.0): the editor draws the chooser, so

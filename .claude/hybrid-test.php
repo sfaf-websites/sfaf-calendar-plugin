@@ -264,8 +264,9 @@ check( (bool) preg_match( '/SFAF_Online::MODE_ONLINE === \(string\) \$format\s*\
 /* 3.106.0: facts() also takes the language and the context, and the three
    waitlist messages pass the format too: seven builders in all. */
 $with_format = preg_match_all( '/self::facts\( \$event_id, self::person_format\( \$person \), \$lang, \$context \)/', $notif );
-check( 7 === $with_format,
-    sprintf( 'only %d of the seven messages pass the recipient format to facts()', $with_format ) );
+// 3.110.0: the two offer messages went and the message from the RSVP list came: six in all.
+check( 6 === $with_format,
+    sprintf( 'only %d of the six messages pass the recipient format to facts()', $with_format ) );
 
 /* AND BOTH HALVES OF BOTH MESSAGES THAT CARRY A JOINING BLOCK. */
 /* 3.106.0: both messages reach the block through joining(), which passes the

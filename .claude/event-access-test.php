@@ -478,6 +478,11 @@ $ALLOWED = array(
      */
     'POST:save_preferences'       => array( 'access' ),
     'POST:change_password'        => array( 'access' ),   // 3.109.0: a calendar role, then the person's own current password
+    'POST:checkin_mode'           => array( 'event' ),    // 3.110.0: SFAF_Checkin, the event gate
+    'POST:checkin_toggle'         => array( 'event' ),    // 3.110.0: the row's event, the event gate
+    'POST:attendance_save'        => array( 'event' ),    // 3.110.0
+    'POST:registrant_mail_preview' => array( 'event' ),   // 3.110.0: SFAF_Registrant_Mail, the event gate
+    'POST:registrant_mail_send'   => array( 'event' ),    // 3.110.0
     // Reached only past handle()'s get_role() check, and draws the caller's own.
     'GET:preferences'             => array( 'none' ),
 

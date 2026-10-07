@@ -58,7 +58,8 @@ function check_modals( $js, $css ) {
             $f[] = "#{$id} is not a <dialog>, so it cannot reach the top layer";
         }
     }
-    $opens  = preg_match_all( '/<dialog class="uc-rsvp-modal-overlay"/', $js );
+    // Any dialog wearing the overlay class, the agreement's (3.110.0) included.
+    $opens  = preg_match_all( '/<dialog class="uc-rsvp-modal-overlay[" ]/', $js );
     $closes = preg_match_all( '#</dialog>#', $js );
     if ( $opens !== $closes ) {
         $f[] = "{$opens} <dialog> opened and {$closes} closed: the markup is unbalanced";

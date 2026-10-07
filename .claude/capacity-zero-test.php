@@ -125,7 +125,8 @@ cz( is_array( $opt ) && 3 === $opt['touched'], 'PLANT B.3: the migration did not
 update_post_meta( $m7, '_uc_capacity', '0' );   // somebody chooses "no places" after the update
 sfaf_migrate_capacity_zero();
 cz( '0' === get_post_meta( $m7, '_uc_capacity', true ), 'PLANT B.3: a second run emptied a 0 typed after the update' );
-cz( '12' === SFAF_DB_VERSION, 'the schema is ' . SFAF_DB_VERSION . ', wanted 12, so the migration would never run on update' );
+// 3.110.0 bumped the schema to 13; the pass is keyed on its own option, so any schema from 12 runs it.
+cz( (int) SFAF_DB_VERSION >= 12, 'the schema is ' . SFAF_DB_VERSION . ', wanted 12 or later, so the migration would never run on update' );
 
 if ( $fails ) {
     echo 'CAPACITY: ' . count( $fails ) . " FAILURE(S)\n  - " . implode( "\n  - ", $fails ) . "\n";

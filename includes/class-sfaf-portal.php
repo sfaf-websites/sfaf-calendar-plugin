@@ -2127,38 +2127,21 @@ class SFAF_Portal {
 
             /* ---- Email registrants (3.110.0). See SFAF_Registrant_Mail. --- */
             case 'registrant_mail_preview':
+                $event_id = isset( $_POST['event_id'] ) ? (int) $_POST['event_id'] : 0;
+                $post     = $event_id ? get_post( $event_id ) : null;
+                if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
+                    wp_die( 'Denied' );
+                }
+                $this->registrant_mail_route( $user, $event_id, false );
+                break;
+
             case 'registrant_mail_send':
                 $event_id = isset( $_POST['event_id'] ) ? (int) $_POST['event_id'] : 0;
                 $post     = $event_id ? get_post( $event_id ) : null;
                 if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
                     wp_die( 'Denied' );
                 }
-                $rm_subject = trim( sanitize_text_field( wp_unslash( $_POST['rm_subject'] ?? '' ) ) );
-                $rm_body    = trim( sanitize_textarea_field( wp_unslash( $_POST['rm_body'] ?? '' ) ) );
-                $rm_wait    = ! empty( $_POST['rm_waitlist'] );
-                $rm_bad     = SFAF_Registrant_Mail::unknown_tokens( $rm_subject . ' ' . $rm_body );
-                $rm_error   = '';
-                if ( '' === $rm_subject || '' === $rm_body ) {
-                    $rm_error = 'Write a subject and a message first.';
-                } elseif ( $rm_bad ) {
-                    $rm_error = 'Remove {' . implode( '}, {', $rm_bad ) . '}: the message cannot fill it.';
-                }
-                if ( 'registrant_mail_preview' === $action ) {
-                    if ( '' !== $rm_error ) {
-                        wp_send_json_error( array( 'message' => $rm_error ) );
-                    }
-                    $pv = SFAF_Registrant_Mail::preview( $event_id, $rm_subject, $rm_body, $rm_wait );
-                    if ( ! $pv ) {
-                        wp_send_json_error( array( 'message' => 'Nobody on this list has an email address to send to.' ) );
-                    }
-                    wp_send_json_success( array( 'subject' => $pv['subject'], 'html' => $pv['html'], 'to' => $pv['to'] ) );
-                }
-                if ( '' !== $rm_error ) {
-                    set_transient( 'sfaf_rm_said_' . $user->ID, array( 'error' => $rm_error ), 5 * MINUTE_IN_SECONDS );
-                    $this->redirect( 'rsvps', array( 'event_id' => $event_id ) );
-                }
-                set_transient( 'sfaf_rm_said_' . $user->ID, SFAF_Registrant_Mail::send( $event_id, $rm_subject, $rm_body, $rm_wait, (int) $user->ID ), 5 * MINUTE_IN_SECONDS );
-                $this->redirect( 'rsvps', array( 'event_id' => $event_id ) );
+                $this->registrant_mail_route( $user, $event_id, true );
                 break;
 
             /* ---- Teams. A name and a set of users, and nothing else. ------ */
@@ -17830,6 +17813,40 @@ class SFAF_Portal {
      * (3.110.0), so there is no offer column any more.
      * Both are the event gate's, asked again at the route.
      */
+    /**
+     * Email registrants' preview and send (3.110.0), once the event gate has
+     * passed in the route. Preview answers JSON; send redirects with what it
+     * did in a transient the list reads once.
+     */
+    private function registrant_mail_route( $user, $event_id, $send ) {
+        $rm_subject = trim( sanitize_text_field( wp_unslash( $_POST['rm_subject'] ?? '' ) ) );
+        $rm_body    = trim( sanitize_textarea_field( wp_unslash( $_POST['rm_body'] ?? '' ) ) );
+        $rm_wait    = ! empty( $_POST['rm_waitlist'] );
+        $rm_bad     = SFAF_Registrant_Mail::unknown_tokens( $rm_subject . ' ' . $rm_body );
+        $rm_error   = '';
+        if ( '' === $rm_subject || '' === $rm_body ) {
+            $rm_error = 'Write a subject and a message first.';
+        } elseif ( $rm_bad ) {
+            $rm_error = 'Remove {' . implode( '}, {', $rm_bad ) . '}: the message cannot fill it.';
+        }
+        if ( ! $send ) {
+            if ( '' !== $rm_error ) {
+                wp_send_json_error( array( 'message' => $rm_error ) );
+            }
+            $pv = SFAF_Registrant_Mail::preview( $event_id, $rm_subject, $rm_body, $rm_wait );
+            if ( ! $pv ) {
+                wp_send_json_error( array( 'message' => 'Nobody on this list has an email address to send to.' ) );
+            }
+            wp_send_json_success( array( 'subject' => $pv['subject'], 'html' => $pv['html'], 'to' => $pv['to'] ) );
+        }
+        if ( '' !== $rm_error ) {
+            set_transient( 'sfaf_rm_said_' . $user->ID, array( 'error' => $rm_error ), 5 * MINUTE_IN_SECONDS );
+            $this->redirect( 'rsvps', array( 'event_id' => $event_id ) );
+        }
+        set_transient( 'sfaf_rm_said_' . $user->ID, SFAF_Registrant_Mail::send( $event_id, $rm_subject, $rm_body, $rm_wait, (int) $user->ID ), 5 * MINUTE_IN_SECONDS );
+        $this->redirect( 'rsvps', array( 'event_id' => $event_id ) );
+    }
+
     /**
      * EMAIL REGISTRANTS (3.110.0): a closed section on one event's RSVP list,
      * for whoever may edit the event, and the log of what was sent under it.

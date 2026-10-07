@@ -5118,7 +5118,7 @@ body.uc-modal-open { overflow: hidden; }
    accent: --uc-accent-text edge and ink on --uc-band. "Texts" is a small
    neutral mark after the phone number.
    ------------------------------------------------------------------------ */
-.uc-rsvp-counts { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: 14px; font-weight: 400; color: var(--p-text); }
+.uc-rsvp-counts { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
 .uc-checkin-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 20px; margin: 0 0 16px; }
 .uc-checkin-bar .uc-checkin-mode { margin: 0; }
 .uc-checkin-bar .uc-seg-opt-btn {
