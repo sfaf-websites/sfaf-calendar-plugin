@@ -8358,11 +8358,14 @@ class SFAF_Portal {
                      * the event's own, Remove on its corner; "Choose a picture"
                      * under it names the picture, inherited ones included.
                      *
-                     * NO IMAGE URL BOX ANY MORE. _uc_image_url stays stored and
-                     * still renders for the events that have one; nothing posts
-                     * image_url, so the save leaves it alone. Remove posts
+                     * NO IMAGE URL BOX ON THE EDITORS. _uc_image_url stays stored
+                     * and still renders for the events that have one; nothing
+                     * posts image_url, so the save leaves it alone. Remove posts
                      * reset_series_image, which clears it with the thumbnail.
+                     * The pending queue keeps its box: an approver still reads
+                     * and corrects what a submitter typed there.
                      */
+                    $on_editor = ( 'queue' !== $ctx['screen'] );
                     $series_pics = array();
                     foreach ( SFAF_Series::all() as $s_term ) {
                         $s_src = (string) SFAF_Series::image_url( $s_term->term_id );
@@ -8392,7 +8395,14 @@ class SFAF_Portal {
                         'locked_note' => ( 'locked' === $state )
                             ? $label . ' supplies this image and refreshes it on every fetch. Change it there and it follows through on the next fetch.'
                             : '',
-                        'show_url'    => false,
+                        'show_url'    => ! $on_editor,
+                        'url_name'    => 'image_url',
+                        'url_value'   => $own_url,
+                        'url_help'    => sfaf_help(
+                            'uc-help-imgurl-' . $uid,
+                            'Used only when no picture is chosen above.',
+                            'the image URL'
+                        ),
                         'pill'        => isset( $src_labels[ $img_source ] ) ? $src_labels[ $img_source ] : $img_source,
                         'pill_labels' => $src_labels,
                         'series_pictures' => $series_pics,

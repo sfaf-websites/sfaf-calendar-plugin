@@ -24,10 +24,11 @@
  * built by hand, so it could hold a shape the event form does not render, and
  * this test would pass over markup that does not exist.
  * .claude/series-control-test.php is the other half: it RENDERS New Event and
- * asserts that `.uc-image-field` carries `[data-uc-image-id]`,
- * `[data-uc-image-url]`, `[data-uc-image-preview]`,
+ * asserts that `.uc-image-field` carries `[data-uc-image-block]`,
+ * `[data-uc-image-remove]`, `[data-uc-image-reset]`, `[data-uc-image-preview]`,
  * `[data-uc-image-preview-img]` and `[data-uc-img-source-tag]` with its
- * `data-uc-img-source-own` label. Rename one of those and that file fails.
+ * `data-uc-img-source-own` label, and no `[data-uc-image-url]` (3.108.1).
+ * Rename one of those and that file fails.
  * Neither test is worth much alone; the pair is the assertion.
  *
  * THE STUB IS DELIBERATELY SMALL: elements, attributes, class lists, a
@@ -74,7 +75,9 @@ function slice(name) {
     throw new Error('unbalanced braces reading ' + name + '() out of portal.js');
 }
 
-const NEEDED = ['showImagePreview', 'hideImagePreview', 'markImageAsOwn', 'initSeriesPrefill'];
+/* 3.108.1: the prefill writes through the picker's radios, and initImageBlock()
+   is what puts the result on the screen, so both run. */
+const NEEDED = ['initSeriesPrefill', 'initImageBlock'];
 
 /* =========================================================================
  * THE STUB
@@ -140,6 +143,19 @@ class El {
     set className(v) { this.attrs.class = String(v); }
     classes() { return this.className.split(/\s+/).filter(Boolean); }
 
+    /* A RADIO GROUP, as a browser keeps one (3.108.1): checking a radio
+       unchecks every other radio of the same name in the same document. */
+    get checked() { return !!this._checked; }
+    set checked(v) {
+        this._checked = !!v;
+        if (!v || this.attrs.type !== 'radio' || !this.attrs.name) { return; }
+        let top = this;
+        while (top.parentNode) { top = top.parentNode; }
+        top.descendants().forEach(n => {
+            if (n !== this && n.attrs.type === 'radio' && n.attrs.name === this.attrs.name) { n._checked = false; }
+        });
+    }
+
     get hidden() { return this.attrs.hidden !== undefined; }
     set hidden(v) { if (v) { this.attrs.hidden = 'hidden'; } else { delete this.attrs.hidden; } }
 
@@ -196,11 +212,17 @@ class El {
     }
 
     addEventListener(type, fn) { (this.listeners[type] = this.listeners[type] || []).push(fn); }
+    /* An event that says it bubbles goes up the parents, with its target set,
+       because initImageBlock() hears the picker's radios from the picker. */
     dispatchEvent(ev) {
-        (this.listeners[ev.type] || []).forEach(fn => fn.call(this, ev));
+        if (!ev.target) { ev.target = this; }
+        for (let node = this; node; node = ev.bubbles ? node.parentNode : null) {
+            (node.listeners[ev.type] || []).forEach(fn => fn.call(node, ev));
+        }
         return true;
     }
     click() { this.dispatchEvent({ type: 'click', preventDefault() {} }); }
+    focus() {}
 }
 
 /** A <select>, which the sliced code reads through .options and .selectedIndex. */
@@ -244,6 +266,7 @@ function el(tag, attrs, kids) {
  * ====================================================================== */
 
 const SERIES_IMAGE = 'https://example.org/wp-content/uploads/sfaf-calendar/prop-harm-reduction-1024x576.jpg';
+const LIBRARY_IMAGE = 'https://example.org/wp-content/uploads/sfaf-calendar/library-4021.jpg';
 
 function build(payload) {
     const select = new Select();
@@ -271,30 +294,37 @@ function build(payload) {
         dataNode
     ]);
 
-    /* The featured image field, exactly as render_image_picker() emits it. */
+    /* The featured image block, as render_image_picker() emits it on a new
+       event since 3.108.1: no URL box, the pill and Remove on the preview, and
+       the picker's radios, "The series picture" (0) and one library picture. */
     const tag = el('span', {
-        class: 'uc-img-source-tag',
+        class: 'uc-image-pill',
         'data-uc-img-source-tag': '',
         'data-uc-img-source-own': 'Event-specific',
+        'data-uc-img-source-series': 'From series',
+        'data-uc-img-source-none': 'Placeholder',
         text: 'Placeholder'
     });
-    const idInput = el('input', { type: 'hidden', name: 'featured_image_id', 'data-uc-image-id': '', value: '0' });
-    const urlInput = el('input', { type: 'url', name: 'image_url', 'data-uc-image-url': '', value: '' });
-    const previewImg = el('img', { 'data-uc-image-preview-img': '' });
-    const preview = el('div', { class: 'uc-image-preview', 'data-uc-image-preview': '' }, [previewImg]);
-    preview.style.display = 'none';
-    const removeBtn = el('button', { class: 'uc-btn uc-remove-image', text: 'Remove' });
-    removeBtn.style.display = 'none';
+    const previewImg = el('img', { 'data-uc-image-preview-img': '', hidden: 'hidden' });
+    const removeBtn = el('button', { class: 'uc-image-remove', 'data-uc-image-remove': '', hidden: 'hidden', text: 'Remove' });
+    const preview = el('div', { class: 'uc-image-preview uc-image-preview-empty', 'data-uc-image-preview': '' }, [previewImg, tag, removeBtn]);
+    const resetInput = el('input', { type: 'hidden', name: 'reset_series_image', value: '1', 'data-uc-image-reset': '', disabled: 'disabled' });
+    resetInput.disabled = true;
+    const noneRadio = el('input', { type: 'radio', name: 'featured_image_id', value: '0', 'data-uc-image-option': '' });
+    noneRadio.checked = true;
+    const libRadio = el('input', { type: 'radio', name: 'featured_image_id', value: '4021', 'data-uc-image-option': '', 'data-uc-image-full': LIBRARY_IMAGE });
+    const current = el('span', { 'data-uc-image-current': '' });
+    const picker = el('details', { 'data-uc-image-picker': '' }, [el('summary', {}, [current]), noneRadio, libRadio]);
+    const block = el('div', {
+        'data-uc-image-block': '',
+        'data-uc-series-pictures': JSON.stringify({ '11': { src: SERIES_IMAGE, name: 'prop-harm-reduction-1024x576.jpg' } }),
+        'data-uc-image-start': 'none',
+        'data-uc-image-start-name': ''
+    }, [preview, resetInput, picker]);
 
     const imageField = el('div', { class: 'uc-field uc-image-field' }, [
-        el('span', { class: 'uc-field-label', text: 'Featured Image' }, [tag]),
-        idInput,
-        preview,
-        el('div', { class: 'uc-image-buttons' }, [
-            el('button', { class: 'uc-btn uc-choose-image', text: 'Choose Image' }),
-            removeBtn
-        ]),
-        el('label', { class: 'uc-field uc-image-url-field' }, [urlInput])
+        el('span', { class: 'uc-field-label', text: 'Featured Image' }),
+        block
     ]);
 
     /* The times and a description, so a payload carrying them proves the other
@@ -332,7 +362,7 @@ function build(payload) {
 
     return {
         root, form, select, panel, optsBox, applyBtn, noneBtn, said,
-        tag, idInput, urlInput, preview, previewImg, removeBtn,
+        tag, block, resetInput, noneRadio, libRadio, current, preview, previewImg, removeBtn,
         startInput, endInput, descInput, modeVenue, modeCustom, venueSel, loc
     };
 }
@@ -344,11 +374,13 @@ function runOver(dom, confirmAnswer) {
         querySelectorAll: sel => dom.root.querySelectorAll(sel)
     };
     const window = { confirm: () => (confirmAnswer === undefined ? true : confirmAnswer) };
-    const EventStub = function (type) { this.type = type; };
+    const EventStub = function (type, init) { this.type = type; this.bubbles = !!(init && init.bubbles); };
 
     const make = new Function('document', 'window', 'Event',
-        NEEDED.map(slice).join('\n\n') + '\nreturn { initSeriesPrefill: initSeriesPrefill };');
-    make(document, window, EventStub).initSeriesPrefill();
+        NEEDED.map(slice).join('\n\n') + '\nreturn { initSeriesPrefill: initSeriesPrefill, initImageBlock: initImageBlock };');
+    const fns = make(document, window, EventStub);
+    fns.initSeriesPrefill();
+    fns.initImageBlock();
 }
 
 /* Every option row's label and what is shown beside it, read off the card. */
@@ -420,6 +452,25 @@ if (process.argv.indexOf('--self-test') > -1) {
     q.appendChild(el('img', { class: 'uc-prefill-thumb' }));
     probe('sees an <img> in a preview', !!q.querySelector('img'), true);
 
+    /* The radio group, which initImageBlock() reads through :checked. */
+    const r1 = el('input', { type: 'radio', name: 'g' });
+    const r2 = el('input', { type: 'radio', name: 'g' });
+    const r3 = el('input', { type: 'radio', name: 'other' });
+    el('form', {}, [r1, r2, r3]);
+    r1.checked = true; r3.checked = true; r2.checked = true;
+    probe('checking a radio unchecks its group and only its group', [r1.checked, r2.checked, r3.checked], [false, true, true]);
+
+    /* An event that bubbles reaches the parent, with its target. */
+    const kid = el('span', {});
+    const mum = el('div', {}, [kid]);
+    let heard = null;
+    mum.addEventListener('change', e => { heard = e.target; });
+    kid.dispatchEvent({ type: 'change', bubbles: true });
+    probe('a bubbling event reaches the parent, target set', heard === kid, true);
+    heard = null;
+    kid.dispatchEvent({ type: 'change' });
+    probe('one that does not bubble stays put', heard, null);
+
     console.log('\n' + (ok ? 'the reader can see what it is looking for.' : 'THE READER IS BROKEN.'));
     process.exit(ok ? 0 : 1);
 }
@@ -487,17 +538,19 @@ const applied = build({
 runOver(applied);
 applied.select.choose('11');
 
-expect('before the button, the preview is hidden', applied.preview.style.display, 'none');
-expect('before the button, the tag says the event has no picture of its own',
-    applied.tag.textContent, 'Placeholder');
+/* 3.108.1: with no URL box to copy into, a series picture that is not a
+   library row stays inherited. The screen says so: the series picture in the
+   preview, the pill reading From series, and no Remove. */
+expect('choosing the series already shows its picture', [applied.previewImg.src, applied.previewImg.hidden], [SERIES_IMAGE, false]);
+expect('and the pill says where it comes from', applied.tag.textContent, 'From series');
 
 applied.applyBtn.click();
 
-expect('the preview is showing', applied.preview.style.display, '');
-expect('and it is showing the picture that arrived', applied.previewImg.src, SERIES_IMAGE);
-expect('Remove is offered, as it is after Choose Image', applied.removeBtn.style.display, '');
-expect('the tag says the picture is the event\'s own', applied.tag.textContent, 'Event-specific');
-expect('the URL field carries the value that will be saved', applied.urlInput.value, SERIES_IMAGE);
+expect('after the button the series picture is still showing', applied.previewImg.src, SERIES_IMAGE);
+expect('The series picture is the chosen row', [applied.noneRadio.checked, applied.libRadio.checked], [true, false]);
+expect('the pill still says From series', applied.tag.textContent, 'From series');
+expect('there is nothing of its own to Remove', applied.removeBtn.hidden, true);
+expect('the picker names the inherited picture', applied.current.textContent, 'prop-harm-reduction-1024x576.jpg');
 expect('and the card says what it did',
     applied.said.textContent.indexOf('Filled in 1 thing') > -1, true);
 
@@ -524,10 +577,14 @@ expect('a library picture is offered', rows(attachment).length, 1);
 expect('and it is shown as a picture', !!rows(attachment)[0].img, true);
 
 attachment.applyBtn.click();
-expect('the attachment id is what gets saved', attachment.idInput.value, '4021');
-expect('the URL box is left empty, so it cannot fight the chosen file', attachment.urlInput.value, '');
-expect('and the preview still shows something', attachment.previewImg.src, SERIES_IMAGE);
-expect('with the tag corrected', attachment.tag.textContent, 'Event-specific');
+expect('the attachment is the chosen radio, which is what gets saved', [attachment.libRadio.checked, attachment.noneRadio.checked], [true, false]);
+expect('the preview shows that picture', attachment.previewImg.src, LIBRARY_IMAGE);
+expect('the pill says it is the event\'s own', attachment.tag.textContent, 'Event-specific');
+expect('Remove is offered on it', attachment.removeBtn.hidden, false);
+expect('and the reset is off, so the save keeps it', attachment.resetInput.disabled, true);
+attachment.removeBtn.click();
+expect('Remove falls back to the series picture', [attachment.noneRadio.checked, attachment.tag.textContent, attachment.previewImg.src], [true, 'From series', SERIES_IMAGE]);
+expect('and turns the reset on, so the save clears it', attachment.resetInput.disabled, false);
 
 /* =========================================================================
  * 4. THE OTHER ROWS ARE UNTOUCHED.
@@ -561,7 +618,7 @@ mixed.applyBtn.click();
 expect('the times were still written', [mixed.startInput.value, mixed.endInput.value], ['18:00', '19:30']);
 expect('the description was still written',
     mixed.descInput.value, '<p>Peer support, every Monday, at the Strut.</p>');
-expect('and the preview came up with them', mixed.previewImg.src, SERIES_IMAGE);
+expect('and the series picture is showing with them', mixed.previewImg.src, SERIES_IMAGE);
 expect('the card counted all three',
     mixed.said.textContent.indexOf('Filled in 3 things') > -1, true);
 
@@ -628,8 +685,8 @@ if (fails.length) {
 
 console.log('PREFILL IMAGE');
 console.log('  the card       shows the picture, with the file name as its alt text');
-console.log('  the button     shows the preview, offers Remove, and turns the tag to Event-specific');
-console.log('  an attachment  writes the id, leaves the URL box empty, and still previews');
+console.log('  the button     leaves a series picture inherited, From series, named, with no Remove');
+console.log('  an attachment  is chosen in the picker, Event-specific, and Remove falls back to the series');
 console.log('  the other rows are still text, and are still written');
 console.log('  decided by running initSeriesPrefill() and reading the document afterwards.');
 process.exit(0);

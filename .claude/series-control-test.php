@@ -909,8 +909,15 @@ expect( 'New Event renders one featured image field', count( $img_fields ), 1 );
 $posts_id = nodes_matching( $new, '//*[contains(concat(" ", normalize-space(@class), " "), " uc-image-field ")]//input[@name="featured_image_id"]' );
 expect( 'the image field posts featured_image_id', count( $posts_id ) > 0, true );
 
+/* NO IMAGE URL BOX ON THE EDITORS (3.108.1), and this reversed with it: the
+   prefill now writes through the picker's radios and the block, and the block's
+   hooks are what prefill-image-test.js holds the script to. */
+expect( 'the image field has no image URL box',
+    count( nodes_matching( $new, '//*[contains(concat(" ", normalize-space(@class), " "), " uc-image-field ")]//*[@data-uc-image-url]' ) ), 0 );
 foreach ( array(
-    'the image URL box'          => '@data-uc-image-url',
+    'the picture block'          => '@data-uc-image-block',
+    'the Remove control'         => '@data-uc-image-remove',
+    'the reset it enables'       => '@data-uc-image-reset',
     'the preview container'      => '@data-uc-image-preview',
     'the preview <img>'          => '@data-uc-image-preview-img',
     'the source tag'             => '@data-uc-img-source-tag',
