@@ -42,7 +42,7 @@ class SFAF_Agreement {
         if ( '1' !== (string) get_post_meta( $event_id, '_uc_rsvp_enabled', true ) ) {
             return false;
         }
-        return '' === SFAF_Sources::registration_url( $event_id );
+        return ! SFAF_Sources::takes_rsvps_at_source( $event_id );
     }
 
     /** The series' default text, '' when it has none. */
