@@ -42,7 +42,7 @@ Words in a message that come from the event, such as its title, location and org
 
 | | English | Spanish |
 |---|---|---|
-| Text | Support this work: donate to SFAF (https://donate.sfaf.org/campaign/773029/donate). | Apoye este trabajo: done a SFAF (https://donate.sfaf.org/campaign/773029/donate). |
+| Text | You were on the waitlist and a place has opened up. | Estaba en la lista de espera y se liberó un lugar. |
 
 ## Event cancelled, waitlist
 
@@ -150,6 +150,36 @@ Words in a message that come from the event, such as its title, location and org
 | | English | Spanish |
 |---|---|---|
 | Text | Support this work: donate to SFAF (https://donate.sfaf.org/campaign/773029/donate). | Apoye este trabajo: done a SFAF (https://donate.sfaf.org/campaign/773029/donate). |
+
+## Agreement: heading
+
+| | English | Spanish |
+|---|---|---|
+| Text | Before you register | Antes de inscribirse |
+
+## Agreement: the tick
+
+| | English | Spanish |
+|---|---|---|
+| Text | I have read and agree to the event conditions | He leído y acepto las condiciones del evento |
+
+## Agreement: confirm button
+
+| | English | Spanish |
+|---|---|---|
+| Text | Confirm RSVP | Confirmar inscripción |
+
+## Agreement: cancel button
+
+| | English | Spanish |
+|---|---|---|
+| Text | Cancel | Cancelar |
+
+## Text opt-in
+
+| | English | Spanish |
+|---|---|---|
+| Text | Text me about this event | Envíenme mensajes de texto sobre este evento |
 
 ## Cancel your place page
 

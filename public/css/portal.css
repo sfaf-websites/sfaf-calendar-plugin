@@ -5226,6 +5226,10 @@ body.uc-modal-open { overflow: hidden; }
     .uc-page-head .uc-tour-link,
     .uc-questions .uc-icon-btn, .uc-questions .uc-o-add, .uc-questions .uc-q-add { min-height: 44px; }
     .uc-questions .uc-icon-btn { min-width: 44px; }
+    /* + Add option lines up with the option boxes, which the 44px handle moved 12px right. */
+    .uc-questions .uc-o-add { margin-left: 52px; }
+    /* Required, In person only and the 44px remove stay on one line in 390px. */
+    .uc-questions .uc-q-ticks { gap: 0 8px; }
     .uc-portal summary.uc-outline-btn { display: inline-flex; align-items: center; }
     .uc-portal .uc-check, .uc-portal .uc-radio-row { min-height: 44px; align-items: center; margin-bottom: 0; }
     /* The box carries align-self: flex-start from the baseline, so it is centred by name. */

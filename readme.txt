@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.109.0
+Stable tag: 3.110.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,32 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.110.0 =
+
+**A registration agreement, a text opt-in, emailing registrants, check-in, scheduled publishing, and a waitlist that adds people straight in.**
+
+**WHO CAN FIND THIS EVENT** is its own card under Display on Add event and Edit event, holding "Make this event private". Once a private event is saved, the card shows its link in a box with **Copy**, which reads **Copied** when pressed. On Add event, the first save of a private event comes back to the editor with the link showing. The tour has a step for it, and the Display step no longer mentions private.
+
+**REGISTRATION AGREEMENT.** The Registration card has "Ask registrants to agree before they register" and, when ticked, the agreement in a rich text box with no images. A series can set a default its events follow until they are edited. On the event page, Register Now opens a dialog with the agreement, "I have read and agree to the event conditions" and **Confirm RSVP**, which stays off until the tick is on. Esc or Cancel closes it with nothing sent. Joining the waitlist goes through the same dialog. The registration stores when they agreed, shown under Details on the registrations list. The server refuses a registration without agreement whenever the event asks. Never on an event with RSVPs off or an imported one. The dialog's words are in Email Templates in English and Spanish.
+
+**TEXT OPT-IN.** "Text me about this event" appears under the phone field once a number is typed, off by default. The registrations list marks those rows **Texts** and counts them. Nothing sends texts.
+
+**EMAIL REGISTRANTS.** One event's registrations list has **Email registrants**: a subject, a body with the token chips, "Include the waitlist", **Preview** and **Send**. Each person gets their own message in the standard email, in the event's language, replying to the event's Reply-To. Registrations without an email are named after sending. A log under it lists every send.
+
+**THE WAITLIST ADDS PEOPLE STRAIGHT IN.** When a place opens, the first person waiting is registered and sent the normal confirmation with "You were on the waitlist and a place has opened up." Somebody waiting without an email is registered too, and the notification list is told they could not be emailed. The offer email, the confirm page, the 24-hour and 2-hour windows, the expiry run, the offer-passed message and the offer-link page are gone. Any offer outstanding when you update goes back in the queue on the first cron run, and free places are filled from it.
+
+**CHECK-IN.** Each event's registrations list chooses **Check in by name** (a Check in button per person, which turns into "Checked in" and the time, and back on a second press) or **Enter a count** (People attended, Save). Both keep the same attendance figure. Anybody who can edit the event can check people in. On a phone the list is one column with a search box that narrows it by name as you type.
+
+**SCHEDULE FOR A LATER DATE.** Beside Publish, a tick with a date and time turns Publish into **Schedule**. The event goes live on its own at that time and is on no public page, list, feed or embed before then. The dashboard and the events list say "Goes live" and when. Editing keeps the schedule unless the tick is cleared.
+
+**THE PHONE PASS.** Add event, Edit event, the registrations list and the event page's registration dialog fit a 390px and a 430px screen with nothing off the side, and every button, field and tick is at least 44px tall to press. The registrations list and its waitlist are one column on a phone.
+
+**ALSO.** The sidebar logo sits straight on the sidebar, no white tile. The Logo setting in WordPress admin is removed. The message shown when a schedule's time has already passed was hidden behind another with the same name and now shows.
+
+**SCHEMA 13** adds three columns to the registrations table: when somebody agreed, whether they want texts, and when they were checked in.
+
+**CHECKED.** In Chrome at 1280px, 390px and 430px: the privacy card with no link before saving and the link with Copy after; the agreement dialog modal, its tick, Confirm, Esc and focus, sending agreed once confirmed; the text opt-in appearing with a phone; the registrations list's counts, check-in, search and Email registrants; no overflow and no target under 44px on the four screens. Registrations refused without agreement and stored with it, a waitlist join included; never asked on RSVPs off or an imported event; the series text inherited until edited; texts only with a phone. Email registrants sending once per address, never to a row without an email, with each person's tokens, the Reply-To and the event's language, and logging each send. Check-in stamping and reverting, refused for anybody not registered, the mode remembered per event. The waitlist adding one person per place, and the old offers migrated once. A scheduled event kept out of every public query. Planted and caught: the link shown before saving, a registration accepted without agreement, a message to a row without an email, two people added for one place, a check-in that does not revert, and a public list asking for scheduled events.
 
 = 3.109.0 =
 

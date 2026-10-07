@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 256 items.** Quick 214, needs real conditions 38, blocked on other
+**Outstanding: 266 items.** Quick 221, needs real conditions 41, blocked on other
 people 4.
 
 ---
@@ -2850,13 +2850,17 @@ the schema update to version 11 did not run.** It adds one table,
 **Why it needs a person:** a real database, updated on the first load after
 updating.
 
-### 1.198 The offer page in Email Templates (3.106.2)
+### 1.198 Email Templates without the offer messages, with the new lines (3.110.0; was the offer page, 3.106.2)
 
-In **Email Templates**, the list has **Offer link, event off** with two
-variants, Cancelled and Deleted, private or unpublished, in English and
-Spanish.
+In **Email Templates** the list no longer has **Waitlist offer**, **Offer
+passed**, **Confirm your place page** or **Offer link, event off**. It has
+**Added from the waitlist line**, the four **Agreement** lines (heading, tick,
+Confirm RSVP, Cancel) and the **Text opt-in line**, each in English and Spanish,
+each previewing its own words. An override saved on one of the removed messages
+before the update is simply not shown.
 
-**Why it needs a person:** the real caladmin.
+**Why it needs a person:** the real caladmin, with whatever overrides the site
+has saved.
 
 ### 1.199 The questions card by keyboard and on a phone (3.106.3)
 
@@ -3065,12 +3069,90 @@ signed in.
 ### 1.217 The two logos on the real site (3.109.0)
 
 The sign-in page shows the SFAF logo above the form, centred, on a laptop and a
-phone. Inside caladmin the sidebar shows the stacked logo on a white tile with
-"Calendar Admin" under it; on a phone, open the menu to see it. Both pictures
+phone. Inside caladmin the sidebar shows the stacked logo straight on the dark
+sidebar, no white tile since 3.110.0, with "Calendar Admin" under it; on a
+phone, open the menu to see it. Say whether the light grey wordmark reads well
+there. Both pictures
 load from resources.sfaf.org.
 
 **Why it needs a person:** the live site, with its caching and its own copy of
 the two files.
+
+### 1.218 Schema 13 ran (3.110.0)
+
+**Do this first after updating.** Register for any test event: the
+registration must go through. Then in the database, `wp_uc_rsvps` has the
+columns `agreed_at`, `text_opt_in` and `checked_in_at`, and the option
+`sfaf_db_version` is 13. If a registration fails with a database error, the
+columns did not arrive: report it before anything else.
+
+**Why it needs a person:** a real database upgrading from 12.
+
+### 1.219 Who can find this event, and Copy (3.110.0)
+
+On **Add event**, the card **Who can find this event** sits under Display with
+the tick and no link. Tick it, fill in what a publish needs and save: the
+editor comes back with the card showing the event's link in a box and **Copy**.
+Press Copy: it reads **Copied**. Paste the link into a private window: the
+event opens. On an event that is not private, the card has no link box.
+
+**Why it needs a person:** a real browser's clipboard, which the build's
+headless browser does not have.
+
+### 1.220 The agreement dialog with a screen reader, and on a phone (3.110.0)
+
+On a test event, tick **Ask registrants to agree before they register** and
+type a short agreement. On the event page press **RSVP**, fill in the form and
+press **Register Now**. With VoiceOver or NVDA on: the dialog is announced with
+its heading "Before you register", Tab stays inside it, **Confirm RSVP** is
+announced as unavailable until the tick is on, and **Esc** closes it and puts
+you back on Register Now with nothing sent. Then on a real phone: the dialog
+fits, the agreement scrolls inside its box if it is long, and every control is
+easy to press.
+
+**Why it needs a person:** a real screen reader and a real phone.
+
+### 1.221 A series' default agreement on Add event (3.110.0)
+
+On a series, type a **Default registration agreement** and save. On **Add
+event** choose that series: with **Ask registrants to agree** ticked, the box
+shows the series' text; choose another series and it follows. Save an event
+without editing the box, then change the series' text: the event's public
+dialog shows the new text. Edit the box on a second event: it keeps its own
+words when the series changes.
+
+**Why it needs a person:** the real editor's rich text box and its series
+dropdown.
+
+### 1.222 The RSVP list at the door, on a phone (3.110.0)
+
+On a phone, open the registrations list for an event with a few registrations.
+The counts strip reads registered, checked in and waitlisted. Type part of a
+name in **Find by name**: the list narrows as you type. Press **Check in**: the
+button reads **Checked in** and the time, and the count goes up; press it again
+and it goes back. Switch to **Enter a count**, type a number and **Save**: it
+holds after a reload. Then check somebody in with the phone's data off: the
+page reloads with the press saved, or says why not. Nothing on the page scrolls
+sideways.
+
+**Why it needs a person:** a real phone, and a real network that can drop.
+
+### 1.223 The text opt-in on a real phone (3.110.0)
+
+On the event page, open the RSVP form on a phone. **Text me about this event**
+is not shown until a phone number is typed; type one and it appears, unticked;
+clear the number and it goes. Register with it ticked: the registrations list
+shows **Texts** on that row and "1 want texts" in the counts. Nothing is texted.
+
+**Why it needs a person:** a real phone's keyboard and autofill, which fill the
+field without the typing events a desk browser sends.
+
+### 1.224 wp-admin Settings without the Logo field (3.110.0)
+
+In wp-admin, **Calendar, Settings**: there is no Logo field and no upload
+button, and **Save** still saves the other settings.
+
+**Why it needs a person:** the real wp-admin.
 
 ## 2. Needs real conditionsWaiting for an unattended job to fire, a real removal at source, or a real event
 with real registrations and real mail.
@@ -3575,9 +3657,9 @@ Report the numbers from steps 3 and 4, and any row the box named.
 **Why it needs real conditions:** real imported rows in the queue, a real series
 and the real public calendar.
 
-### 2.35 The waitlist, end to end (3.106.0)
+### 2.35 The waitlist, end to end (3.106.0; added straight in since 3.110.0)
 
-A test event with **capacity 1** and RSVPs on, starting more than a day away.
+A test event with **capacity 1** and RSVPs on.
 
 1. Register person **A** with a real address you can read. The button then reads
    **Join the waitlist**.
@@ -3586,31 +3668,28 @@ A test event with **capacity 1** and RSVPs on, starting more than a day away.
    and has no calendar file.
 3. On the registrations list: counts under the heading, a **Waitlist** card with
    B at 1 and C at 2.
-4. Cancel A with the link in A's email. B gets **A place is open**, with a
-   deadline 24 hours ahead. B's row reads **Offered** with the expiry.
-5. Open B's confirm link: a page asks; press confirm. B gets the normal
-   confirmation, the list gets the usual alert, B is confirmed.
-6. Remove B on the list. C has no email, so the notification list gets C's name
-   and phone, C's row reads **Needs a call**, and the offer moves on (to nobody).
-7. Join as **D**, cancel someone to open a place, and **do not answer**. After 24
-   hours (2, if the event is within a day) the next cron run emails D that the
-   offer passed and marks the row **Offer passed**.
-8. Raise the capacity by one in the editor with somebody waiting: they are
-   offered the place at once.
+4. Cancel A with the link in A's email. **B is registered at once**: B gets the
+   normal confirmation with "You were on the waitlist and a place has opened
+   up.", the notification list gets the usual alert, and B's row is Registered.
+   No email asks B to confirm anything.
+5. Remove B on the list. C has no email: C is registered, and the notification
+   list gets one email naming C, with the phone, saying C was added and could
+   not be told.
+6. Join as **D** and **E**, then raise the capacity by one in the editor: D is
+   registered at once with the same confirmation, and E still waits. One place,
+   one person.
 
 Report any step whose email, row status or count is not as written.
 
-**Why it needs real conditions:** real mail, real cron, and a day of waiting
-for the expiry.
+**Why it needs real conditions:** real mail to real inboxes.
 
 ### 2.36 A cancellation with a waitlist (3.106.1)
 
 A test event in a series that has **at least three published dates ahead**,
 capacity 1, RSVPs on.
 
-1. Register **A** (a real address), then join the waitlist as **B** (a real
-   address). Cancel A's place and do not answer B's offer yet, so B is
-   **Offered**. Join as **C** (a real address), who is **Waitlisted**.
+1. Register **A** (a real address), then join the waitlist as **B** and **C**
+   (real addresses), both **Waiting**.
 2. Cancel the event from the editor and choose **Cancel and email them**. The
    screen says how many people were told, then "N people on the waitlist were
    told too".
@@ -3629,24 +3708,22 @@ in Next dates that is cancelled, private, a draft or already past.
 **Why it needs real conditions:** real registrations, a real cancellation and
 real mail, which cannot be recalled. Use addresses you own.
 
-### 2.37 An offer's link after the event is cancelled (3.106.2)
+### 2.37 The first cron run after updating puts the old offers back in the queue (3.110.0; was an offer's link after a cancellation, 3.106.2)
 
-A test event with capacity 1: register **A**, join the waitlist as **B** (an
-address you read), and cancel A's place so B is offered it. **Do not answer
-B's offer.** Cancel the event. Open B's confirm link: a page says **This event
-has been cancelled** and has no button. B's row on the registrations list still
-reads Offered. Put the event back on, make it Private, and open the link again:
-**This event is no longer available**. Wait past the offer's expiry: B is not
-emailed that the offer passed.
+Before updating to 3.110.0, note every registrations list that has a row reading
+**Offered** or **Needs a call**. After updating, let one cron run happen (or
+press the dashboard's run button). Each of those rows now reads **Waiting** in
+the order its person joined, or **Registered** if a place was free, in which
+case that person got the confirmation with the waitlist line. No list reads
+Offered or Needs a call any more, and a second run changes nothing. If the site
+had no such rows, report that, and this item is done.
 
-**Why it needs real conditions:** a real offer, a real cancellation and a day of
-waiting.
+**Why it needs real conditions:** the live site's own rows and its cron.
 
 ### 2.38 Cancelling an event that has only a waitlist (3.106.2)
 
-A test event with capacity 1: register **A**, put **B** and **C** (addresses
-you read) on the waitlist, then remove A on the registrations list so nobody is
-registered and B is offered the place. Press **Cancel event**: the card says
+A test event with **capacity 0**, so everybody goes to the waitlist: put **B**
+and **C** (addresses you read) on it. Press **Cancel event**: the card says
 "Nobody is registered. 2 people are on the waitlist." and the dialog asks
 whether to email them. Choose **Cancel and email them all**. B and C each get
 the waitlist's cancellation, and the screen says "2 people on the waitlist
@@ -3657,9 +3734,8 @@ addresses you own.
 
 ### 2.39 Deleting a series that has only a waitlist (3.106.3)
 
-A test series with two events, capacity 1 each. Register **A** on one and put
-**B** and **C** (addresses you read) on its waitlist, then remove A on the
-registrations list so nobody is registered. On the series, **Remove**, choose
+A test series with two events, one with **capacity 0**, and put **B** and **C**
+(addresses you read) on its waitlist, so nobody is registered. On the series, **Remove**, choose
 deleting the events, and continue: the screen offers to cancel instead, saying
 "Nobody is registered, and 2 people are on a waitlist", with **Cancel these and
 email the 2 people**, **Cancel these without telling them** and **Delete them
@@ -3670,17 +3746,56 @@ with somebody registered, the screen offers no **Delete them anyway**.
 **Why it needs real conditions:** real mail, which cannot be recalled. Use
 addresses you own.
 
-### 2.40 A waitlist when a limit is taken off (3.107.0)
+### 2.40 A waitlist when a limit is taken off (3.107.0; added straight in since 3.110.0)
 
 On a test event with a capacity of 0 and three people on the waitlist (one
-registered without an email), empty the Capacity box and save. The two with an
-address each get one **A place is open** email, in the order they joined, and
-the notification list gets one phone-call alert for the third. Save again
-without changing anything: nobody gets a second email. Accept one offer from
-the email: it confirms as usual.
+registered without an email), empty the Capacity box and save. All three are
+registered, in the order they joined: the two with an address each get one
+confirmation with "You were on the waitlist and a place has opened up.", and
+the notification list gets one alert naming the third as added and not told.
+Save again without changing anything: nobody gets a second email.
 
 **Why it needs a person:** real mail to real inboxes, in the order it arrives.
 
+### 2.41 A scheduled event goes live on its own, and not before (3.110.0)
+
+On a test event, tick **Schedule for a later date**, set a time about an hour
+ahead and press **Schedule**. The dashboard and the events list say **Goes
+live** and that time. Until then the event is on no public surface: the
+calendar, the embeds, the event's own address (logged out), the Yoast sitemap,
+the RSS feed and site search. After the time, with nobody touching it, it is
+live on all of them. Then schedule a second event and clear the tick before the
+time: it stays a draft.
+
+**Why it needs real conditions:** WordPress's own cron, unattended, on the live
+site's caching.
+
+### 2.42 Email registrants, for real (3.110.0)
+
+On a test event with you registered twice under two addresses, one waiting
+address, and one registration without an email: open **Email registrants**,
+write a subject and a body with the First name and Event page link chips, and
+press **Preview**: it shows your first address's message. Press **Send**: it
+asks "Send to 2 people?" once. Both addresses get one message each, greeted by
+their own first name, in the standard wrapper, and replying goes to the event's
+Reply-To. The line after Send names the registration without an email. Send
+again with **Include the waitlist** ticked: the waiting address gets it too.
+The log under the section shows both sends. Read one in Outlook on Windows.
+
+**Why it needs real conditions:** real mail, which cannot be recalled. Use
+addresses you own.
+
+### 2.43 The registration agreement, end to end (3.110.0)
+
+On a test event with the agreement on and capacity 1: register **A** through
+the dialog. A's row in the registrations list shows, under Details, **Agreed**
+and the date and time. Join the waitlist as **B**: the same dialog appears
+first. On an event with RSVPs off, and on an imported event, the agreement
+section is not offered and no dialog appears whatever was ticked before. Set an
+event to Spanish: the dialog's heading, tick and buttons are in Spanish and the
+agreement is as typed.
+
+**Why it needs real conditions:** real registrations on the live site.
 ## 3. Blocked on other peopleNothing here can move until somebody outside the build answers.
 
 | Who | What is needed | Status |

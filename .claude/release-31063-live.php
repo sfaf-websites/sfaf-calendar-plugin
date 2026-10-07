@@ -229,12 +229,12 @@ foreach ( array( 'q1-desktop', 'q1-phone', 'q3-desktop', 'q3-phone', 'add-deskto
         rt_check( $sc['inside'] && ! $sc['overflow'], "PLANT A.8: $t: question " . ( $i + 1 ) . ' overflows: ' . json_encode( $sc ) );
     }
     $top = (array) $v( $t, 'top' );
-    rt_check( isset( $top['rmLabel'] ) && 'Remove question' === $top['rmLabel'] && 'button' === $top['rmType'] && '' === $top['rmWords'] && 32 === $top['rm']['w'] && 32 === $top['rm']['h'], "$t: the question's remove is not a 32px button labelled Remove question: " . json_encode( $top['rm'] ?? null ) );
+    rt_check( isset( $top['rmLabel'] ) && 'Remove question' === $top['rmLabel'] && 'button' === $top['rmType'] && '' === $top['rmWords'] && ( $phone ? 44 : 32 ) === $top['rm']['w'] && ( $phone ? 44 : 32 ) === $top['rm']['h'], "$t: the question's remove is not a " . ( $phone ? 44 : 32 ) . "px button labelled Remove question (44px on a phone since 3.110.0): " . json_encode( $top['rm'] ?? null ) );
     rt_check( isset( $top['rm']['color'] ) && $P_MUTED === $top['rm']['color'] && $top['rm']['contrast'] >= 3, "$t: the remove icon is not --p-muted at 3:1: " . json_encode( $top['rm'] ?? null ) );
     if ( isset( $top['text'], $top['req'], $top['rm'] ) ) {
         if ( $phone ) {
             rt_check( $top['req']['top'] >= $top['text']['bottom'] && $top['text']['w'] >= $top['rowW'] - 1, "PLANT A.8: $t: at 390px the box does not take its own line with the ticks under it: " . json_encode( $top ) );
-            rt_check( abs( ( $top['rm']['top'] + 16 ) - ( $top['req']['top'] + 11 ) ) <= 6, "$t: at 390px the remove is not on the ticks' line: " . json_encode( array( $top['req'], $top['rm'] ) ) );
+            rt_check( abs( ( $top['rm']['top'] + $top['rm']['h'] / 2 ) - ( $top['req']['top'] + $top['req']['h'] / 2 ) ) <= 6, "$t: at 390px the remove is not on the ticks' line: " . json_encode( array( $top['req'], $top['rm'] ) ) );
         } else {
             rt_check( abs( $top['req']['top'] - $top['text']['top'] ) <= 12 && $top['req']['left'] > $top['text']['right'] && $top['rm']['left'] > $top['req']['right'], "$t: the box, Required and the remove are not one row in that order: " . json_encode( $top ) );
             // The box takes every pixel the ticks and the remove leave, less the 16px gap.
@@ -248,7 +248,7 @@ foreach ( array( 'q1-desktop', 'q1-phone', 'q3-desktop', 'q3-phone', 'add-deskto
     rt_check( isset( $on['bg'] ) && $ACCENT === $on['bg'] && $WHITE === $on['color'], "$t: the chosen answer style is not white on the accent: " . json_encode( $on ) );
     $rows = (array) $v( $t, 'optRows' );
     foreach ( $rows as $k => $r ) {
-        rt_check( 'Remove option' === $r['rmLabel'] && '' === $r['rmWords'] && 32 === $r['rm']['w'], "$t: option " . ( $k + 1 ) . "'s remove is not a wordless 32px Remove option button" );
+        rt_check( 'Remove option' === $r['rmLabel'] && '' === $r['rmWords'] && ( $phone ? 44 : 32 ) === $r['rm']['w'], "$t: option " . ( $k + 1 ) . "'s remove is not a wordless " . ( $phone ? 44 : 32 ) . "px Remove option button (44px on a phone since 3.110.0)" );
         rt_check( 'BUTTON' === $r['gripTag'] && $r['grip']['left'] < $r['input']['left'], "$t: option " . ( $k + 1 ) . "'s handle is not a button left of the box" );
         rt_check( $phone || $r['h'] <= 40, "$t: option " . ( $k + 1 ) . ' is ' . $r['h'] . 'px tall, not a tight row' );
         rt_check( $r['rm']['right'] <= $r['input']['right'] + 220 && $r['rm']['right'] >= $r['input']['right'] - 1, "$t: option " . ( $k + 1 ) . "'s remove is not at the row's right-hand end" );

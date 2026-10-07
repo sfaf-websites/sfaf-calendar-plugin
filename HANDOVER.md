@@ -4,25 +4,30 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-07, at 3.109.0, released.
+**Last updated:** 2026-10-07, at 3.110.0, released.
 
 ---
 
 ## What shipped last
 
-**3.109.0**: **private on Add event too**, private from the first save; the
-**Add and Edit parity rule** in CLAUDE.md 7 with a whole-page test; **Forgot
-your password** and **Change password** inside caladmin; the SFAF logos on the
-sign-in and the sidebar (`TESTING.md` 1.214 to 1.217). The wp-admin `brand_logo`
-setting is no longer read. **3.108.x**: no image URL box on the editors, FAQs
-folded, the tour. **3.107.x**: the editor rearranged (`readme.txt` has the rest).
+**3.110.0**: a **registration agreement** with a dialog on the public form; a
+**text opt-in** (nothing sends texts); **Email registrants** from the RSVP list;
+**check-in** by name or by count; **Schedule for a later date**; Who can find
+this event as its own card with Copy; the wp-admin Logo setting removed; the
+sidebar logo off its tile; a phone pass to 44px targets (`TESTING.md` 1.218 to
+1.224, 2.41 to 2.43). **Schema 13**: `agreed_at`, `text_opt_in`, `checked_in_at`.
+> **THE WAITLIST NO LONGER OFFERS.** A place goes straight to the next person,
+> with the normal confirmation. Offers, their links, windows and expiry are
+> gone. The first cron run after the update puts any Offered or Needs a call
+> row back in the queue and fills free places: `TESTING.md` **2.37**.
+**3.109.0**: private on Add event, the Add and Edit parity rule, passwords in
+caladmin. **3.108.x**: the tour, FAQs folded. (`readme.txt` has the rest.)
 > **CAPACITY CHANGED MEANING.** An empty box is no limit; **0 is no places, so
 > everybody goes to the waitlist.** Until now 0 meant no limit. **Schema 12**
-> empties every stored 0 once so no live event turns waitlist-only: check that
-> first, `TESTING.md` **1.200**. `PROJECT.md` 2.
-> **The editor's button order is new on screen** (Delete, Save draft, Publish):
-> written in CSS in 3.97.0, it never rendered, because no element carried the
-> class it selects on. `TESTING.md` 1.203.
+> empties every stored 0 once so no live event turns waitlist-only: check it,
+> `TESTING.md` **1.200**. `PROJECT.md` 2.
+> **The editor's button order** (Delete, Save draft, Publish) is new on screen,
+> never having rendered before. `TESTING.md` 1.203.
 **3.106.x**: Questions for registrants (schema 11), a waitlist, Email
 Templates, a Language, no author on public pages (`PROJECT.md` 3).
 > **THE SPANISH HAS NOT BEEN READ BY A SPANISH SPEAKER.** `EMAILS.md` is for that
@@ -54,13 +59,9 @@ Earlier releases, and the reasoning for all of it: **`readme.txt` is the changel
 > **EVERY PERSON OBJECT REACHING A MAIL BUILDER CARRIES `format` (3.97.3)**, or
 > the gates refuse the link to the one person it is for. `PROJECT.md` 2 and 7.
 
-**Two things a new session needs, each retiring or reversing something:**
-
-> **UPLOADING A PICTURE FROM THE EVENT EDITOR IS GONE**, with the media modal,
-> and so is the 3.87.0 tagging on it. Both public forms keep their own upload.
-
-> **CHECK THE INSTALLED VERSION BEFORE BUILDING ANYTHING REPORTED MISSING.** Two
-> items in the 3.94.0 brief were already built, and were asked for again.
+> **UPLOADING A PICTURE FROM THE EVENT EDITOR IS GONE**, with its 3.87.0 tagging;
+> the public forms keep theirs. **CHECK THE INSTALLED VERSION BEFORE BUILDING
+> ANYTHING REPORTED MISSING**: two 3.94.0 items were already built.
 
 ---
 
@@ -95,8 +96,9 @@ Earlier releases, and the reasoning for all of it: **`readme.txt` is the changel
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 256 items.** **1.200** first,
-that schema 12 ran and no event became waitlist-only, then **1.197**, that
+**`TESTING.md` holds the manual testing backlog: 266 items.** **1.218** first,
+that schema 13 ran, then **2.37**, the old offers moved, then **1.200**, that
+schema 12 ran and no event became waitlist-only, then **1.197**, that
 schema 11 ran, then **1.192**, the byline check on the site, **1.176**, the
 donate line, and **1.189**, that schema 10 ran. Then two, in this order:
 **1.74**, naming and tagging the six pictures, which is what makes every

@@ -3022,6 +3022,32 @@ it stripped by hand is still refused at the write.
 both against one `$today` so a press that straddles midnight judges every row
 against one date. The ticks narrow; they never widen.
 
+### Schedule for a later date (3.110.0)
+
+**The action bar has "Schedule for a later date" beside Publish**, with a date
+and a time. Ticked, Publish reads Schedule, and the event is stored with
+WordPress's own `future` status and that date; WordPress's cron publishes it
+then (`future_uc_event` is registered for every post type). Nothing of ours
+runs at go-live.
+
+- **The publish rule runs at scheduling time.** While the rules run, a
+  scheduled save is judged as a publish, so an event missing what a publish
+  needs is held as a draft exactly as Publish would hold it.
+- **A time that has passed schedules nothing** and says so ("That date and time
+  has passed"); the event stays a draft. Its flash key is `schedule_time_past`:
+  `schedule_past` is the series screen's, and the flash map is one array
+  literal, so the second of two equal keys silently wins.
+  `.claude/scheduled-publish-test.php` checks the map has no repeated key.
+- **Editing keeps the schedule** unless the tick is cleared, which makes it a
+  draft. Publishing it without the tick puts it live now, dated now, so
+  WordPress does not schedule it again.
+- **The dashboard and the events list say "Goes live [date, time]"**, from
+  `sfaf_event_status_label()`.
+- **Not public anywhere until it goes live.** Every public query asks for
+  `publish` only. `.claude/private-events-test.php` treats a scheduled event
+  as the second hidden state: any query that keeps private events out must not
+  ask for `future` or `any` (plant G.2). `.claude/scheduled-publish-test.php`
+  runs the save and the public builders.
 ### The picture picker hides by series, and the two forms filter in different places
 
 From 3.80.0 the public forms' picker shows **only** the chosen series' pictures.
@@ -4048,7 +4074,9 @@ person in" goes through `person_format()`.
 
 ### Private events are unlisted links, not access control
 
-One checkbox on the event, default off (`_uc_private`).
+One checkbox on the event, default off (`_uc_private`). Since 3.110.0 it is in
+its own card on Add event and Edit event, "Who can find this event", which
+shows the link with a Copy button once the event is saved private.
 
 **It is an unlisted-link scheme and everybody involved knows a link can be
 forwarded.** What it must guarantee is that the event cannot be *found* by
@@ -5221,8 +5249,8 @@ narrow end instead. Somebody who released their place is `cancelled` and is not
 written to.
 
 **THE WAITLIST IS TOLD OF A CANCELLATION, AND OF NOTHING ELSE (3.106.1).**
-`SFAF_Announce::cancelled()` also reads `waitlisted()`, the event's waiting,
-offered and offered-manual rows, and sends them **Event cancelled, waitlist**:
+`SFAF_Announce::cancelled()` also reads `waitlisted()`, the event's waiting rows
+(with any offered rows the 3.110.0 migration has not yet reached), and sends them **Event cancelled, waitlist**:
 the event is off, the dates it was going to be, and the series' next three
 published dates with a link to each, or none when there is no series or
 nothing ahead. No cancel link, no donate line, and the public reason but not
@@ -5612,8 +5640,6 @@ for an unresolved token or an em dash.
 |---|---|---|
 | Confirmation | in person; online, with link; online, link to come | on registering |
 | Waitlist confirmation | one | on joining the waitlist; the position, no calendar file |
-| Waitlist offer | one | a place opened; the confirm link and the expiry |
-| Offer passed | one | an offer ran out unanswered |
 | Event cancelled, waitlist | with dates; without dates | the event they were waiting for cancelled; the series' next three dates when there are any (3.106.1) |
 | Morning-of reminder | the confirmation's three | the morning of the event |
 | Event cancelled | one date; several dates | the event, or several of a person's dates, cancelled |
@@ -5622,8 +5648,13 @@ for an unresolved token or an em dash.
 | Follow a series: confirm | one | the double opt-in for following |
 | Donate line | one | the one line in the confirmation and the reminder (§2) |
 | Cancel your place page | asking; released; leaving the waitlist; left; nothing to cancel | the cancel link's page |
-| Confirm your place page | asking; confirmed; offer passed | the offer's confirm link's page |
-| Offer link, event off page | cancelled; deleted, private or unpublished | the offer's confirm link on an event that is off (3.106.2) |
+| Email registrants | one | the subject and body typed on the RSVP list, in this wrapper (3.110.0) |
+| Added from the waitlist line | one | the confirmation's extra line for somebody added from the waitlist (3.110.0) |
+| Agreement lines | heading; tick; Confirm RSVP; Cancel | the registration agreement dialog's words (3.110.0) |
+| Text opt-in line | one | the label under the phone field (3.110.0) |
+
+The waitlist offer, Offer passed, the Confirm your place page and the Offer
+link, event off page were removed in 3.110.0 with the offers themselves.
 
 - **Three editable pieces per message**: the subject (a page's title), the words
   above the event details, and a closing line under them. The details table,
@@ -5683,7 +5714,7 @@ messages stay English whatever the event's language**, including the staff copy
 of the reminder. The event's own words (title, location, organizer) are printed
 as entered.
 
-### The waitlist (3.106.0)
+### The waitlist (3.106.0; a place goes straight to the next person since 3.110.0)
 
 **A full event's form offers "Join the waitlist" instead of Register**, per
 format on a hybrid event: with in person full and online open the button says
@@ -5694,11 +5725,10 @@ person is a row in `uc_rsvps` with a status of its own, ordered by
 | Status | Meaning |
 |---|---|
 | `waitlisted` | in the queue |
-| `offered` | a place is held for them until `offer_expires` |
-| `offered_manual` | no email to offer it by; the notification list was told their name and phone, and the offer moved on |
-| `expired` | their offer ran out unanswered |
-| `confirmed` | in, by accepting or by staff |
+| `confirmed` | in, added from the queue or by staff |
 | `cancelled` | left the waitlist, or removed |
+| `expired` | an offer that ran out before 3.110.0; kept as history, reads "Offer passed" |
+| `offered`, `offered_manual` | before 3.110.0 only; the migration below puts them back in the queue |
 
 - **EVERY COUNT STILL ASKS FOR `confirmed`.** Reminders, announcements, the
   summary, `has_registrations()` and the count cache never see another status,
@@ -5706,42 +5736,37 @@ person is a row in `uc_rsvps` with a status of its own, ordered by
   asserts the reads agree with every waitlist status present. **The one
   exception is a cancellation (3.106.1)**, which reads the waitlist separately
   and tells it: see "Telling registrants", above.
-- **What changes is only whether a format is FULL.** `sfaf_format_full()` adds
-  the places held by open offers and treats anybody still waiting as full, so a
-  newcomer joins the queue rather than taking a place on offer.
+- **What changes is only whether a format is FULL.** `sfaf_format_full()` treats
+  anybody still waiting as full, so a newcomer joins the queue behind them.
 - **A place opens three ways, and each calls `SFAF_Waitlist::advance()`**: the
   cancel link, Remove on the list (both fire `uc_rsvp_cancelled`), and capacity
-  raised or taken off in the editor (taken off from 3.107.0: everybody waiting
-  is offered a place). The first person for that format is offered it for 24
-  hours, or 2 when the event starts within 24, and it keeps going while places
-  are free.
-- **The confirm link is a token** (`?uc_rsvp_offer=`, `offer_token`). A GET shows
-  a page that asks; the POST confirms and sends the normal confirmation, and the
-  staff alert goes to the list as for any registration. The page refuses an
-  offer whose time has passed even if cron has not run.
-- **Expiry runs on the existing cron**, task `waitlist`: the person is told, the
-  row becomes `expired`, and the offer moves on.
-- **The RSVP list** carries the counts under the heading and a Waitlist card per
-  format: position, name, email, joined, offer status and expiry, with Confirm
-  (moves them in and sends the confirmation, or nothing when there is no email)
-  and Remove. The all-registrations view shows confirmed and cancelled rows only.
+  raised or taken off in the editor (taken off: everybody waiting is added).
+- **SINCE 3.110.0 THE FIRST PERSON IS ADDED, NOT OFFERED.** `advance()` moves the
+  first waiting person for that format to `confirmed`, one person per free
+  place and no more, and `admit()` sends the normal confirmation with the line
+  "You were on the waitlist and a place has opened up." (`waitlist_added_line`
+  in Email Templates, both languages). The staff alert goes to the
+  notification list as for any registration. **Somebody with no email is added
+  the same way**, and the list is told by name and phone that they were added
+  and could not be told.
+- **What 3.110.0 removed**: the offer email, the confirm page and its token
+  link (`?uc_rsvp_offer=`), the 24-hour and 2-hour windows, the expiry run, the
+  "offer passed" message and the "offer link, event off" page, from the code,
+  Email Templates and `EMAILS.md`. The schema 10 columns (`offer_token`,
+  `offered_at`, `offer_expires`) stay on the table and are no longer written.
+- **The migration runs once, on the first cron run after the update.**
+  `SFAF_Waitlist::migrate()` sets every `offered` and `offered_manual` row back
+  to `waitlisted`, keeping its place by `created_at`, then runs `advance()` on
+  each event it touched, so a place held by an offer goes to the first person.
+  It records `sfaf_waitlist_offers_migrated` and never runs again. Until it has
+  run the two old statuses still count as waiting.
+- **The RSVP list** carries the counts and a Waitlist card per format:
+  position, name, email, joined and status, with Confirm (moves them in and
+  sends the confirmation, or nothing when there is no email) and Remove. The
+  all-registrations view shows confirmed and cancelled rows only.
 - **A third-party event and one with RSVPs off never have a waitlist**:
   `sfaf_rsvp_block()` returns before the button for both, and `applies()` says
   no.
-- **An offer's confirm link on an event that is off takes no action (3.106.2).**
-  `SFAF_Waitlist::offer_blocked()` answers `cancelled` for a cancelled event and
-  `unavailable` for one deleted, in the bin, made private or no longer
-  published. The link then opens **Offer link, event off**, in the event's
-  language, with no button, on a GET and a POST alike; `accept()` refuses the
-  same way; **the row is not changed**. The expiry cron skips such an offer too,
-  so nobody told an event is off is then told their offer passed. Before
-  3.106.2 the link confirmed them into a cancelled event and sent a normal
-  confirmation.
-- **Schema 10** added `offer_token`, `offered_at`, `offer_expires` and a key on
-  `offer_token`. dbDelta adds them; existing rows are untouched and need no
-  backfill: no existing status is one of the four new ones, and the new
-  columns are read only for rows that are.
-
 ### Capacity: an empty box is unlimited, and 0 is no places (3.107.0)
 
 **THE RULE.** A capacity box left empty means no limit. A capacity of **0 means
@@ -5756,7 +5781,7 @@ the two are told apart by whether anything is stored, not by the number:
 |---|---|
 | `sfaf_capacity_limited( $id, $format )` | is there a limit at all: something numeric is stored under the format's key |
 | `sfaf_event_capacity( $id, $format )` | the number, 0 when there is none; never read on its own as "has a limit" |
-| `sfaf_format_full()` | false with no limit; otherwise places taken, held by offers or anybody waiting, against the limit, so 0 is always full |
+| `sfaf_format_full()` | false with no limit; otherwise places taken, or anybody waiting, against the limit, so 0 is always full |
 
 **Every reader asks `sfaf_capacity_limited()`**: the RSVP button and its
 capacity bar, the "spots left" line, the waitlist (`applies()`), the
@@ -5845,6 +5870,100 @@ questions opens on one blank one, which a save drops.
 - **The registration alert** carries the answers under the person's name. The
   two-hour summary, the day-before count and the digest do not.
 
+### The registration agreement (3.110.0)
+
+**An event can ask everybody registering to agree to its conditions first.**
+Off by default. The Registration card has a "Registration agreement" section:
+the tick "Ask registrants to agree before they register" and, when on, the
+agreement in the description's rich text editor, with no images. The series
+screen has a "Default registration agreement" the event inherits.
+
+| Key | Holds |
+|---|---|
+| `_uc_agreement` | `'1'` when the event asks |
+| `_uc_agreement_text` | the event's own text, absent to follow the series |
+| `_sfaf_series_agreement` | the series' default (term meta) |
+
+- **The series text is inherited, not copied.** `SFAF_Agreement::text()` reads
+  the event's own text, else its series' as it stands today. The save keeps the
+  box as the event's own only when it differs from the series text, so a series
+  change reaches every event that never edited it. `agreement_present` on the
+  form is what lets another screen save the event without touching it.
+- **On the public form**, Register Now inside the RSVP form opens a modal
+  dialog over it once the fields are valid: the heading "Before you register",
+  the agreement as typed, the tick "I have read and agree to the event
+  conditions", Confirm RSVP (off until the tick is on) and Cancel. Confirming
+  sends the registration as before with `agreed=1`; Esc, Cancel or a press on
+  the dim closes it with nothing sent and focus back on Register Now. The words
+  around the agreement are lines in Email Templates (`agreement_heading`,
+  `agreement_tick`, `agreement_confirm`, `agreement_cancel`) in the event's
+  language, carried on the Register button as `data-uc-agreement`. A waitlist
+  join goes through the same dialog. The embed's buttons go to the event page,
+  where the dialog is.
+- **THE SERVER DECIDES.** `SFAF_RSVP::submit()` refuses a registration without
+  agreement whenever `SFAF_Agreement::is_on()` says yes, whatever the form did,
+  and stores `agreed_at` (schema 13) on the row when it says yes. The RSVP
+  list's Details shows "Agreed [date, time]".
+- **NEVER ON AN EVENT THAT DOES NOT TAKE REGISTRATIONS HERE.** `is_on()` answers
+  no for RSVPs off and for a third-party event (`takes_rsvps_at_source()`,
+  with or without a registration link), whatever the meta says.
+- `.claude/agreement-test.php` runs it; plant B.4 takes out the refusal.
+
+### The text opt-in (3.110.0)
+
+Under the phone field, "Text me about this event" (`text_opt_in` in Email
+Templates, both languages), off by default and shown only once a phone is
+typed. Stored per row as `text_opt_in` (schema 13), and only when the row has a
+phone: `submit()` drops a tick with no number. The RSVP list marks a row that
+opted in with "Texts" and counts them at the top. **Nothing sends texts.** The
+column is there for whatever sending is built later, which will also need the
+consent wording reviewed.
+
+### Email registrants (3.110.0)
+
+**One event's RSVP list has a closed "Email registrants" section**, for site
+admins and anybody who can edit that event (the routes ask
+`user_can_edit_event()`): a subject, a body in the Email Templates editor with
+its protected token chips (first name, event title, date, time, location,
+event page link), "Include the waitlist", Preview and Send.
+
+- **The message is `SFAF_Notifications::build( 'registrant_message' )`**, the
+  standard wrapper and details block in the event's language, the event's
+  Reply-To, through `SFAF_Email::send()`. No images: the body is the
+  paragraphs-and-tokens text the templates use, not rich text.
+- **Who it reaches**: everybody `confirmed` with an email, and everybody waiting
+  when ticked, once per address (`SFAF_Registrant_Mail::recipients()`). A row
+  with no email is sent nothing; the line after Send counts and names them.
+- **Preview** renders the first recipient's message and sends nothing. **Send**
+  asks "Send to N people?" once. A token the message cannot fill is refused
+  before either.
+- **The log** is post meta on the event (`_uc_registrant_mail_log`), newest
+  first: who sent, when, the subject and how many it went to, shown in a card
+  under the section.
+- `.claude/registrant-mail-test.php` runs it; plant D.2 takes a row with no
+  email as a recipient.
+
+### Check-in and attendance (3.110.0)
+
+**Each event's RSVP list chooses how attendance is taken**, remembered per
+event (`_uc_checkin_mode`, `name` by default):
+
+- **Check in by name**: a Check in button on each registered row. Pressed, the
+  row's `checked_in_at` (schema 13) is stamped and the button reads "Checked in
+  [time]"; pressed again, it is cleared. Only a `confirmed` row can be checked
+  in. With JavaScript the press is a fetch that answers JSON (`uc_ajax=1`);
+  without, the form posts and the page reloads.
+- **Enter a count**: a "People attended" box and Save.
+- **Both store the same figure**, `_uc_attendance`. By name, it is recounted
+  from the checked-in rows on every press and when the mode goes back to by
+  name, which replaces a count typed in count mode.
+- **Who may**: anybody who can edit the event, contributors included, through
+  the event gate on the three routes (`checkin_mode`, `checkin_toggle`,
+  `attendance_save`), asserted in `.claude/event-access-test.php`.
+- **On a phone** the list is one column with a search box that filters by name
+  as you type; see `DESIGN.md`.
+- `.claude/checkin-test.php` runs it; plant F.1 makes the second press not
+  revert.
 ### Cancellation tokens
 
 A registration gets a **128-bit token** (`SFAF_Reminders::new_token()`). The
@@ -6101,8 +6220,11 @@ nothing. **Nothing in caladmin links to the WordPress login or profile**;
 
 The sign-in pages show the wide logo and the sidebar the stacked one,
 `SFAF_Portal::LOGO_WIDE` and `LOGO_STACKED`, both from resources.sfaf.org and
-never copied into the plugin. **The `brand_logo` setting in wp-admin is no
-longer read by caladmin**, which was its only reader.
+never copied into the plugin. **The wp-admin Logo setting (`brand_logo`) was
+removed in 3.110.0**, its field, uploader and styles with it: caladmin had been
+its only reader and stopped reading it in 3.109.0. A value already stored in
+`uc_settings` goes the next time Settings is saved, since that option is
+rebuilt wholesale.
 
 ### Two concepts, deliberately separate
 
