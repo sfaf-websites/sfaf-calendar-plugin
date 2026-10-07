@@ -206,10 +206,20 @@ function get_posts( $a = array() ) { return array(); }
 function kit_write_post( $arr ) {
     $id = ! empty( $arr['ID'] ) ? (int) $arr['ID'] : ++$GLOBALS['kit_next'];
     $p  = get_post( $id );
+    $fresh = ! $p;
     if ( ! $p ) { $p = new WP_Post(); $p->ID = $id; }
+    /* With kit_slugs on, an insert with no address gets the one WordPress
+       would make from the title (3.109.0). Off, nothing changes. */
+    if ( $fresh && ! empty( $GLOBALS['kit_slugs'] ) && empty( $arr['post_name'] ) && ! empty( $arr['post_title'] ) ) { $arr['post_name'] = sanitize_title( $arr['post_title'] ); }
     foreach ( $arr as $k => $v ) { if ( 'ID' !== $k && property_exists( $p, $k ) ) { $p->$k = $v; } }
     $GLOBALS['kit_posts'][ $id ] = $p;
-    $GLOBALS['kit_writes'][] = array( 'id' => $id, 'status' => $p->post_status );
+    /* meta_input lands with the row, as wp_insert_post() writes it before any
+       status hook fires (3.109.0). */
+    if ( ! empty( $arr['meta_input'] ) && is_array( $arr['meta_input'] ) ) {
+        foreach ( $arr['meta_input'] as $mk => $mv ) { $GLOBALS['kit_meta'][ $id ][ $mk ] = $mv; }
+    }
+    $GLOBALS['kit_writes'][] = array( 'id' => $id, 'status' => $p->post_status, 'name' => (string) $p->post_name,
+        'private' => isset( $GLOBALS['kit_meta'][ $id ]['_uc_private'] ) ? (string) $GLOBALS['kit_meta'][ $id ]['_uc_private'] : '' );
     return $id;
 }
 function wp_insert_post( $arr, $err = false ) { return kit_write_post( $arr ); }

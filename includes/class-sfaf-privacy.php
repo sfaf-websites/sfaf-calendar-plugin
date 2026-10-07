@@ -468,6 +468,27 @@ class SFAF_Privacy {
         return self::is_private( $post_id ) ? 0 : $post_id;
     }
 
+    /**
+     * What wp_insert_post() needs for an event that is private from its first
+     * write (3.109.0): a token address and the private meta, both on the
+     * insert itself, so no hook, cache or feed ever sees it public. The
+     * readable address is remembered, as set() does, for making it public
+     * later.
+     *
+     * @param string $title The event's title.
+     * @return array post_name and meta_input, to merge into the insert.
+     */
+    public static function born_private_args( $title ) {
+        return array(
+            'post_name'  => self::new_slug(),
+            'meta_input' => array(
+                self::META               => '1',
+                self::YOAST_NOINDEX_META => '1',
+                self::PREV_SLUG_META     => sanitize_title( (string) $title ),
+            ),
+        );
+    }
+
     /** A slug nobody is going to type. */
     public static function new_slug() {
         try {

@@ -176,6 +176,15 @@ casually.
 - **Shared field lists: one list, one render, one save, catch-all last.**
 - One series per repeating event; the schedule editor lives on the series
   screen; writes are upcoming-only.
+- **Add event and Edit event offer the same settings.** Any setting or option
+  that shapes the event (private, RSVPs, capacity, questions, notifications,
+  language, links, display) must be on Add event, applying at the first save
+  where it needs the event to exist. Actions on a saved event may be
+  Edit-only: Cancel event, Delete, the RSVP list, Edit the schedule, Manage
+  the series, the no-JavaScript FAQ form, and Who can edit this. The series
+  prefill is Add-only. Anything else that differs is a defect. Each allowed
+  difference carries `data-uc-saved-action` or `data-uc-add-only` in the
+  markup, and `.claude/notifications-card-test.php` fails on any other.
 
 ---
 

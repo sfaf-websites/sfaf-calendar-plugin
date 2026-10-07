@@ -52,7 +52,7 @@ $CAPTIONS = array(
     'classification' => array( 'Classification', 'Add at least one category and one organizer. A category is the kind of event, such as a support group or a fundraiser, and drives the calendar filters. An organizer is the SFAF program or team hosting the event, and its events are listed together on the calendar.' ),
     'notifications'  => array( 'Notifications', 'Choose who is told when people register or cancel, and who gets the reminder copies. Set the reply address for the reminder email.' ),
     'links'          => array( 'Links', 'Choose which donation link goes in the emails, and paste a volunteer page if there is one.' ),
-    'display'        => array( 'Display', 'Choose which buttons appear on the public event page.' ),
+    'display'        => array( 'Display', 'Choose which buttons appear on the public event page, and tick Make this event private to keep it off the public calendar.' ),
     'access'         => array( 'Who can edit this', 'Add the people who may change this event besides its creator.' ),
 );
 $BAR_ADD  = 'Save draft keeps the event private until you are ready. Publish puts it on the calendar.';

@@ -983,7 +983,7 @@ class SFAF_Recurrence {
          */
         $slug_plan = SFAF_Privacy::occurrence_slug( $seed->ID, $base, $date );
 
-        $id = wp_insert_post( array(
+        $occurrence = array(
             'post_type'    => 'uc_event',
             'post_status'  => $seed->post_status,
             'post_title'   => $use,
@@ -991,7 +991,16 @@ class SFAF_Recurrence {
             'post_content' => $seed->post_content,
             'post_excerpt' => $seed->post_excerpt,
             'post_author'  => $seed->post_author,
-        ), true );
+        );
+        // Private on the insert itself too (3.109.0), not a moment after it.
+        if ( $slug_plan['private'] ) {
+            $occurrence['meta_input'] = array(
+                SFAF_Privacy::META               => '1',
+                SFAF_Privacy::YOAST_NOINDEX_META => '1',
+                SFAF_Privacy::PREV_SLUG_META     => $slug_plan['prev_slug'],
+            );
+        }
+        $id = wp_insert_post( $occurrence, true );
 
         if ( is_wp_error( $id ) ) {
             return 0;

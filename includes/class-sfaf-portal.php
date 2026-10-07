@@ -2502,6 +2502,16 @@ class SFAF_Portal {
 
         if ( $is_new ) {
             $postarr['post_author'] = $user->ID;
+            /*
+             * PRIVATE FROM THE FIRST WRITE (3.109.0). Ticked on Add event, the
+             * insert itself carries the token address and the private meta,
+             * so whether this is Save draft or Publish the event never has a
+             * public address. save_manager_fields_from_post() then finds it
+             * already private and set() changes nothing.
+             */
+            if ( isset( $_POST['uc_private'] ) && '1' === (string) wp_unslash( $_POST['uc_private'] ) ) {
+                $postarr = array_merge( $postarr, SFAF_Privacy::born_private_args( isset( $postarr['post_title'] ) ? $postarr['post_title'] : '' ) );
+            }
             $event_id = wp_insert_post( $postarr, true );
         } else {
             $postarr['ID'] = $event_id;
@@ -7037,6 +7047,61 @@ class SFAF_Portal {
      *                            whether the prefill offer is drawn at all.
      */
     /**
+     * "Make this event private" (3.29.0; one renderer since 3.109.0).
+     *
+     * The Display card draws it on Add event and Edit event, under Follow the
+     * series; the pending queue draws it in its manager panel. On Add event it
+     * applies at the first save: save_event_from_post() inserts the event with
+     * a token address and the private meta already set. SFAF_Privacy::set() is
+     * the one writer after that.
+     *
+     * @param int  $event_id 0 on Add event.
+     * @param bool $imported Whether a source owns the event.
+     * @param bool $headed   The queue's panel heads it as a field; the Display
+     *                       card is a list of ticks and does not.
+     */
+    private function render_private_control( $event_id, $imported, $headed ) {
+        $event_id   = (int) $event_id;
+        $is_private = $event_id ? SFAF_Privacy::is_private( $event_id ) : false;
+        $help       = sfaf_help(
+            'uc-help-private-' . $event_id,
+            'The link is the whole of the protection: anybody who has it can open the event and can pass it on. There is no list of who has looked and no way to take the link back except making a new one.',
+            'private events'
+        );
+        ?>
+        <div class="uc-field uc-private-field" data-uc-private>
+            <?php if ( $headed ) : ?>
+                <span class="uc-field-label">Who can find this event <?php echo $help; ?></span>
+            <?php endif; ?>
+            <?php // Hidden 0 first: an absent checkbox has to mean off rather than "not submitted". ?>
+            <input type="hidden" name="uc_private" value="0" />
+            <label class="uc-check">
+                <input type="checkbox" name="uc_private" value="1" <?php checked( $is_private ); ?> />
+                Make this event private
+                <?php echo $headed ? '' : $help; ?>
+            </label>
+            <?php if ( $event_id ) : ?>
+                <p class="uc-hint">
+                    The event will not appear anywhere on the site. Only people you send the link to can
+                    find it. Turning this on gives the event a new link, so any link you have already
+                    shared will stop working.
+                </p>
+            <?php else : ?>
+                <p class="uc-hint">The event will not appear anywhere on the site. Only people you send the link to can find it.</p>
+            <?php endif; ?>
+            <?php if ( $is_private ) : ?>
+                <p class="uc-hint uc-private-link">
+                    Send this address:
+                    <code><?php echo esc_html( get_permalink( $event_id ) ); ?></code>
+                </p>
+            <?php endif; ?>
+            <?php if ( $imported ) : ?>
+                <p class="uc-hint">This choice is yours permanently. A fetch never changes it.</p>
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+    /**
      * The event editor's tour, in page order (3.108.0).
      *
      * One entry per data-uc-card name, with the name the panel shows and the
@@ -7060,7 +7125,7 @@ class SFAF_Portal {
             array( 'classification', 'Classification', 'Add at least one category and one organizer. A category is the kind of event, such as a support group or a fundraiser, and drives the calendar filters. An organizer is the SFAF program or team hosting the event, and its events are listed together on the calendar.' ),
             array( 'notifications', 'Notifications', 'Choose who is told when people register or cancel, and who gets the reminder copies. Set the reply address for the reminder email.' ),
             array( 'links', 'Links', 'Choose which donation link goes in the emails, and paste a volunteer page if there is one.' ),
-            array( 'display', 'Display', 'Choose which buttons appear on the public event page.' ),
+            array( 'display', 'Display', 'Choose which buttons appear on the public event page, and tick Make this event private to keep it off the public calendar.' ),
             array( 'access', 'Who can edit this', 'Add the people who may change this event besides its creator.' ),
             array( 'actions', 'Action bar', $is_edit
                 ? 'Save changes updates the event. Cancel event keeps it on the calendar marked cancelled and tells registrants. Delete removes it for good.'
@@ -7157,7 +7222,7 @@ class SFAF_Portal {
              * saves the series, which is the behaviour this screen had before.
              */
             ?>
-            <div class="uc-prefill" data-uc-prefill-panel hidden>
+            <div class="uc-prefill" data-uc-prefill-panel data-uc-add-only="series-prefill" hidden>
                 <p class="uc-prefill-head">
                     Fill this event in from <strong data-uc-prefill-name></strong>?
                 </p>
@@ -7814,14 +7879,17 @@ class SFAF_Portal {
          * exactly like the fundraising toggle. See SFAF_Sources::import_event()
          * and the guard on the adapter meta loop.
          *
-         * NOT OFFERED BEFORE THE EVENT EXISTS. Making an event private rewrites
-         * its slug, and there is no post to rewrite until the first save. A
-         * manager ticking it on the new-event form would be ticking something
-         * that could not take effect, so the control appears the moment there
-         * is an event to apply it to.
+         * ON ADD EVENT TOO SINCE 3.109.0. It was left off the new-event form
+         * from 3.29.0 because making an event private rewrites its slug and
+         * there was no post to rewrite. The insert now carries the token and
+         * the meta itself (SFAF_Privacy::born_private_args()), so the tick
+         * applies at the first save, and the editors draw it in the Display
+         * card rather than here.
          */
         $fields = array_diff( $fields, array( 'private' ) );
-        if ( $ctx['event_id'] ) {
+        /* THE EDITORS DRAW IT IN THE DISPLAY CARD (3.109.0), on Add event as well,
+         * where it applies at the first save. The pending queue keeps it here. */
+        if ( $ctx['event_id'] && 'queue' === $ctx['screen'] ) {
             $fields[] = 'private';
         }
 
@@ -8743,71 +8811,8 @@ class SFAF_Portal {
                 break;
 
             case 'private':
-                $is_private = SFAF_Privacy::is_private( $event_id );
-                ?>
-                <div class="uc-field uc-private-field">
-                    <span class="uc-field-label">Who can find this event
-                        <?php
-                        /* THE HINT SAYS WHAT HAPPENS; THIS SAYS THE PART THAT
-                         * IS NOT ABOUT THIS EVENT. Anybody holding the address
-                         * can pass it on, and nothing here can stop them or
-                         * find out, which is the thing to weigh before ticking
-                         * it rather than a description of what ticking it
-                         * does. */
-                        echo sfaf_help(
-                            'uc-help-private-' . (int) $event_id,
-                            'The link is the whole of the protection: anybody who has it can open the event and can pass it on. There is no list of who has looked and no way to take the link back except making a new one.',
-                            'private events'
-                        );
-                        ?>
-                    </span>
-                    <?php // Hidden 0 first, same reason as the toggle above: the
-                          // pending queue posts this control on its own, so an
-                          // absent checkbox has to mean off rather than
-                          // "not submitted". ?>
-                    <input type="hidden" name="uc_private" value="0" />
-                    <label class="uc-check">
-                        <input type="checkbox" name="uc_private" value="1" <?php checked( $is_private ); ?> />
-                        Make this event private
-                    </label>
-                    <?php
-                    /*
-                     * WHAT HAPPENS, AND THE ONE CONSEQUENCE NOBODY EXPECTS
-                     * (3.68.0).
-                     *
-                     * This ran to five sentences and two of them described the
-                     * mechanism: which surfaces the event is left out of, and
-                     * what happens to the old address if it is switched back
-                     * off. Neither is a thing to do or a thing that will happen
-                     * to the reader at the moment they are deciding.
-                     *
-                     * THE THIRD SENTENCE IS THE ONE THAT MATTERS AND IS WHY
-                     * THIS IS NOT ONE SENTENCE. Ticking this box breaks a link
-                     * somebody may already have sent to a room full of people,
-                     * and nothing else on this screen would tell them.
-                     *
-                     * THE NO-INDEX HALF NEEDS NO SENTENCE. It is not a decision
-                     * a manager makes or a consequence they meet: the page
-                     * emits noindex, nofollow and is out of both sitemaps
-                     * whatever they do. See SFAF_Privacy::robots().
-                     */
-                    ?>
-                    <p class="uc-hint">
-                        The event will not appear anywhere on the site. Only people you send the link to can
-                        find it. Turning this on gives the event a new link, so any link you have already
-                        shared will stop working.
-                    </p>
-                    <?php if ( $is_private ) : ?>
-                        <p class="uc-hint uc-private-link">
-                            Send this address:
-                            <code><?php echo esc_html( get_permalink( $event_id ) ); ?></code>
-                        </p>
-                    <?php endif; ?>
-                    <?php if ( '' !== $ctx['prov']['source'] ) : ?>
-                        <p class="uc-hint">This choice is yours permanently. A fetch never changes it.</p>
-                    <?php endif; ?>
-                </div>
-                <?php
+                // The pending queue's copy; both editors draw it in the Display card (3.109.0).
+                $this->render_private_control( $event_id, '' !== $ctx['prov']['source'], true );
                 break;
         }
     }
@@ -12949,7 +12954,7 @@ class SFAF_Portal {
         <?php if ( $series_term ) : ?>
             <div class="uc-flash uc-flash-info">
                 Part of the series <strong><?php echo esc_html( $series_term->name ); ?></strong>.
-                <a href="<?php echo esc_url( $this->url( 'series/edit/' . $series_term->term_id ) ); ?>">Manage the series &rarr;</a>
+                <a href="<?php echo esc_url( $this->url( 'series/edit/' . $series_term->term_id ) ); ?>" data-uc-saved-action="manage-series">Manage the series &rarr;</a>
             </div>
         <?php endif; ?>
 
@@ -13331,6 +13336,8 @@ class SFAF_Portal {
                             </p>
                         <?php endif; ?>
                     <?php endforeach; ?>
+                    <?php // Private, under Follow the series, on both editors (3.109.0). ?>
+                    <?php $this->render_private_control( (int) $event_id, '' !== $prov['source'], false ); ?>
                 </section>
 
                 <?php $this->render_access_card( $user, $event_id ); ?>
@@ -13393,7 +13400,7 @@ class SFAF_Portal {
                     ?>
                     <?php if ( $cur_series && $event_id ) : ?>
                         <p class="uc-bento-link">
-                            <a href="<?php echo esc_url( $this->url( 'series/edit/' . $cur_series ) ); ?>">
+                            <a href="<?php echo esc_url( $this->url( 'series/edit/' . $cur_series ) ); ?>" data-uc-saved-action="edit-schedule">
                                 <?php echo sfaf_icon( 'repeat', array( 'size' => '15px' ) ); ?>
                                 <span>Edit the schedule</span>
                             </a>
@@ -14006,7 +14013,7 @@ class SFAF_Portal {
             return;
         }
         ?>
-        <button type="submit" form="uc-delete-event-<?php echo (int) $event_id; ?>"
+        <button type="submit" form="uc-delete-event-<?php echo (int) $event_id; ?>" data-uc-saved-action="delete"
                 class="uc-btn uc-btn-stop uc-editor-delete"
                 data-uc-confirm="Delete this event? Nothing puts it back.">Delete</button>
         <?php
@@ -14045,7 +14052,7 @@ class SFAF_Portal {
             <?php else : ?>
                 <?php /* The form only. Its submit is in the actions row above,
                    associated by id. */ ?>
-                <form method="post" id="uc-delete-event-<?php echo (int) $event_id; ?>" action="<?php echo esc_url( $this->url( 'events' ) ); ?>">
+                <form method="post" id="uc-delete-event-<?php echo (int) $event_id; ?>" action="<?php echo esc_url( $this->url( 'events' ) ); ?>" data-uc-saved-action="delete">
                     <input type="hidden" name="uc_action" value="trash_event" />
                     <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
                     <?php wp_nonce_field( 'uc_portal_trash_event', 'uc_nonce' ); ?>
@@ -15457,7 +15464,7 @@ class SFAF_Portal {
          */
         if ( $cancelled ) :
             ?>
-        <section class="uc-bento-card uc-cancel-card is-cancelled">
+        <section class="uc-bento-card uc-cancel-card is-cancelled" data-uc-saved-action="cancel">
             <h2 class="uc-bento-title">This event is cancelled</h2>
 
                 <p class="uc-cancel-state">
@@ -15642,7 +15649,7 @@ class SFAF_Portal {
          * IS the button.
          */
         ?>
-        <details class="uc-cancel-inline" id="uc-cancel-this" data-uc-disclosure<?php echo $came_to_cancel ? ' open' : ''; ?>>
+        <details class="uc-cancel-inline" id="uc-cancel-this" data-uc-saved-action="cancel" data-uc-disclosure<?php echo $came_to_cancel ? ' open' : ''; ?>>
                 <?php /* THE CHEVRON STAYS. It is a button in a row of buttons and it is
                    also the only one of the three that opens something rather than doing
                    it, which is exactly what the mark is for. control-standard-audit.php
@@ -15861,7 +15868,7 @@ class SFAF_Portal {
         $chosen    = SFAF_Teams::access_for_event( $event_id );
         $notified  = SFAF_Teams::for_event( $event_id );
         ?>
-        <section class="uc-bento-card" data-uc-card="access">
+        <section class="uc-bento-card" data-uc-card="access" data-uc-saved-action="access">
             <h2 class="uc-bento-title">Who can edit this
                 <?php
                 /* THE LIVE RESOLUTION IS THE SURPRISE. Naming a team here is
@@ -19122,7 +19129,7 @@ class SFAF_Portal {
          * faq_set_picker().
          */
         ?>
-        <div class="uc-faq-set-panel" data-uc-faq-fallback-block>
+        <div class="uc-faq-set-panel" data-uc-faq-fallback-block data-uc-saved-action="faq-form">
 
             <?php if ( is_array( $result ) ) : ?>
                 <?php if ( ! empty( $result['error'] ) ) : ?>
