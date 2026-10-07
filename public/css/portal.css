@@ -5164,7 +5164,13 @@ body.uc-modal-open { overflow: hidden; }
     .uc-rsvp-table tr[data-uc-rsvp-row] > td { display: block; padding: 0; border: 0; min-width: 0; }
     .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(1) { order: 1; font-size: 16px; }
     .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(2) { order: 2; flex: 1 1 0; font-size: 16px; font-weight: 600; }
-    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(8) { order: 3; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+    /* The actions cell lets go of its three: Check in stays on the name's line,
+       Details and Remove go to a line of their own at the bottom. */
+    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(8) { display: contents; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] .uc-rsvp-actions > form,
+    .uc-rsvp-table tr[data-uc-rsvp-row] .uc-rsvp-actions > button { order: 5; margin: 0; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] .uc-rsvp-actions > .uc-checkin-form { order: 3; display: block; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(2) { overflow-wrap: anywhere; }
     .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(3),
     .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(4),
     .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(6) { order: 4; font-size: 13px; color: var(--p-muted); overflow-wrap: anywhere; }
@@ -5172,6 +5178,24 @@ body.uc-modal-open { overflow: hidden; }
     .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(5),
     .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(7) { display: none; }
     .uc-rsvp-table td:nth-child(2) .uc-muted { display: none; }
+    /* The line under the name breaks before the buttons at the bottom. */
+    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(6) { flex: 1 1 100%; }
+    /* The waitlist, the same way: position and name, then email and status,
+       then Confirm and Remove. Joined goes. */
+    .uc-waitlist .uc-table thead { display: none; }
+    .uc-waitlist .uc-table, .uc-waitlist .uc-table tbody { display: block; width: 100%; }
+    .uc-waitlist .uc-table tr {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px;
+        padding: 12px 0; border-bottom: 1px solid var(--p-border);
+    }
+    .uc-waitlist .uc-table tr > td { display: block; padding: 0; border: 0; min-width: 0; }
+    .uc-waitlist .uc-table tr > td:nth-child(1) { font-size: 16px; }
+    .uc-waitlist .uc-table tr > td:nth-child(2) { flex: 1 1 0; font-size: 16px; overflow-wrap: anywhere; }
+    .uc-waitlist .uc-table tr > td:nth-child(3) { flex: 1 1 100%; font-size: 13px; color: var(--p-muted); overflow-wrap: anywhere; }
+    .uc-waitlist .uc-table tr > td:nth-child(4) { display: none; }
+    .uc-waitlist .uc-table tr > td:nth-child(6) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex: 1 1 100%; }
+    .uc-waitlist .uc-table .uc-rsvp-actions form { margin: 0; }
+    .uc-waitlist .uc-table .uc-rsvp-actions button { min-height: 44px; }
     .uc-rsvp-table .uc-rsvp-actions .uc-btn,
     .uc-rsvp-table .uc-rsvp-actions button { min-height: 44px; display: inline-flex; align-items: center; }
     .uc-rsvp-table tr.uc-rsvp-details { display: block; }
@@ -5180,4 +5204,33 @@ body.uc-modal-open { overflow: hidden; }
     .uc-rsvp-search { max-width: none; }
     .uc-checkin-bar .uc-seg-opt-btn { min-height: 44px; }
     .uc-checkin-bar .uc-attendance-form .uc-btn { min-height: 44px; }
+}
+
+/* ---------------------------------------------------------------------------
+   A FINGER'S WORTH OF TARGET (3.110.0)
+
+   Everything a thumb presses in caladmin is at least 44px tall on a phone,
+   and on any screen driven by touch: `pointer: coarse` for the finger, as the
+   calendar decides it, and 600px for a narrow window, which is what the
+   phone pass measures. Fields, selects, buttons, tick-box rows and the
+   summary that opens the image picker take min-height, which wins over any
+   height they declare. The 16px "?" keeps its look and gains a 44px hit
+   area round it, drawn by ::after. Two classes or more throughout, so the
+   button rules above, at one class plus one, cannot take it back.
+   ------------------------------------------------------------------------ */
+@media (pointer: coarse), (max-width: 600px) {
+    .uc-portal input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]):not([type="range"]):not([type="color"]),
+    .uc-portal select { min-height: 44px; }
+    .uc-portal .uc-btn, .uc-portal .uc-picker-tab, .uc-portal .uc-tpl-token,
+    .uc-portal .uc-link-danger, .uc-portal .uc-link-btn, .uc-portal .uc-outline-btn,
+    .uc-page-head .uc-tour-link,
+    .uc-questions .uc-icon-btn, .uc-questions .uc-o-add, .uc-questions .uc-q-add { min-height: 44px; }
+    .uc-questions .uc-icon-btn { min-width: 44px; }
+    .uc-portal summary.uc-outline-btn { display: inline-flex; align-items: center; }
+    .uc-portal .uc-check, .uc-portal .uc-radio-row { min-height: 44px; align-items: center; margin-bottom: 0; }
+    /* The box carries align-self: flex-start from the baseline, so it is centred by name. */
+    .uc-portal .uc-check > input, .uc-portal .uc-radio-row > input { align-self: center; margin-top: 0; }
+    .uc-portal .uc-seg-opt span { display: flex; align-items: center; min-height: 44px; }
+    .uc-portal .uc-help-btn { position: relative; }
+    .uc-portal .uc-help-btn::after { content: ""; position: absolute; top: -14px; right: -14px; bottom: -14px; left: -14px; }
 }
