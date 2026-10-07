@@ -95,8 +95,8 @@ $plants = array(
     /* ---- THE KEYBOARD. -------------------------------------------------- */
     'Enter in the title field reaches Delete, because Delete became a submit of the event form' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => "        <button type=\"submit\" form=\"uc-delete-event-<?php echo (int) \$event_id; ?>\"\n                class=\"uc-btn uc-btn-stop uc-editor-delete\"",
-        'to'   => "        <button type=\"submit\"\n                class=\"uc-btn uc-btn-stop uc-editor-delete\"",
+        'from' => "        <button type=\"submit\" form=\"uc-delete-event-<?php echo (int) \$event_id; ?>\" data-uc-saved-action=\"delete\"\n                class=\"uc-btn uc-btn-stop uc-editor-delete\"",
+        'to'   => "        <button type=\"submit\" data-uc-saved-action=\"delete\"\n                class=\"uc-btn uc-btn-stop uc-editor-delete\"",
     ),
 
     'the row is reordered in the markup instead of in CSS, putting Delete first' => array(
