@@ -2442,6 +2442,20 @@ stable name for a later guided tour; `DESIGN.md` 4 lists them.
 - **Organizer** uses the category chips' pattern; the checkboxes are still the
   form.
 - **One sign-out**, in the sidebar foot; the top bar shows only below 720px.
+- **Add event opens on "A venue"** (3.108.0), decided in
+  `render_location_field()`: a venue if the event has one, "A venue" for a new
+  event when any venue exists, otherwise the address. The series prefill ticks
+  the radio itself, so it still switches to the address when it brings one.
+  The request forms have their own venue select and are not affected.
+- **The tour** (3.108.0). "Take the tour" beside the page title, a button.
+  `editor_tour_steps()` is the one list of steps, in page order, each a
+  `data-uc-card` name, the name shown and Mark's caption; it lists Who can edit
+  this on both screens and the action bar's caption by screen.
+  `initEditorTour()` drops any step whose card is not on the page and drawn,
+  which is the whole skip rule. It stores nothing and never starts itself.
+  While it runs every other child of `<body>` is `inert`, and Tab is trapped by
+  hand as well. A card added to the editor gets a step only when it is added to
+  that list.
 
 ### Descriptions are rich text, with a deliberately short toolbar
 

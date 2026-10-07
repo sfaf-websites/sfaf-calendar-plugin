@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 245 items.** Quick 203, needs real conditions 38, blocked on other
+**Outstanding: 248 items.** Quick 206, needs real conditions 38, blocked on other
 people 4.
 
 ---
@@ -2953,6 +2953,40 @@ typed address takes it away.
 
 **Why it needs a person:** the real caladmin, the real save, and the real people
 list.
+
+### 1.207 Add event opens on A venue (3.108.0)
+
+Open **Add event**: Location has **A venue** selected and the venue dropdown
+showing. Pick a venue, save a draft, reopen it: the venue is kept. Open a new
+one, choose **A different location**, type an address, save, reopen: it opens on
+A different location with the address. Open a new one, choose a series whose
+last event was at an address and press **Fill these in**: A different location
+is selected and filled.
+
+**Why it needs a person:** the real venues, the real series and the real save.
+
+### 1.208 The tour with the keyboard and a screen reader (3.108.0)
+
+On **Add event** and an existing event, Tab to **Take the tour** and press Enter.
+The screen reader announces a dialog named after the card, then the caption.
+Tab and Shift+Tab stay on Back, Next and Done; nothing on the page behind is
+reached. The arrow keys move between steps; Esc closes and the focus is back on
+Take the tour. Add event counts 12 steps, an existing event 13.
+
+**Why it needs a person:** a real screen reader (NVDA or VoiceOver), and a real
+keyboard; the build can only dispatch key events, not press keys.
+
+### 1.209 The tour with a mouse, and on a phone (3.108.0)
+
+Press **Take the tour** with the mouse on a laptop: the page dims, the first card
+has a teal ring, and the panel sits beside it. Click Next to the end: every
+card is ringed and the panel is always fully on screen; the last step rings the
+bar at the foot. Do the same on a phone: the panel sits under each card, or over
+the foot of a card taller than the screen. Run it twice; reload the page: it
+does not start on its own.
+
+**Why it needs a person:** the real caladmin with the WordPress admin bar, real
+fonts and a real phone browser, none of which the build's Chrome has.
 
 ## 2. Needs real conditionsWaiting for an unattended job to fire, a real removal at source, or a real event
 with real registrations and real mail.

@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.107.1
+Stable tag: 3.108.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,16 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.108.0 =
+
+**Add event opens on A venue, and both editors have a guided tour.**
+
+**A VENUE BY DEFAULT.** On Add event, Location opens with **A venue** selected and the venue dropdown showing. **A different location** is chosen only by picking it. Edit event opens on what the event has. **Fill these in** from a series still switches to A different location and fills the address when the series' last event was at one, and picks the venue when it was at a venue.
+
+**TAKE THE TOUR.** A text link beside the page title on Add event and Edit event, left of Back. Pressing it dims the page, rings the first card in the focus colour, and shows a panel beside it (below it on a phone) with the card's name, a short caption, a step counter, and Back, Next and Done. One step per card on the page, in page order, then the action bar: 12 on Add event, 13 on Edit event. Arrow keys move, Esc closes, Tab stays in the panel, and the page behind cannot be reached; screen readers hear a dialog. It never starts on its own and nothing is stored.
+
+**CHECKED.** In Chrome, Add event and Edit event at 1280px and 390px: the location each opens on, the series prefill with an address and with a venue; the link's place, that nothing started or was stored, the dialog's name and description, Tab and Shift+Tab cycling, every element behind inert and refusing focus, the arrows, Esc and Done handing focus back, a second run; the step count against the cards present, every name and caption word for word, the ring 6px outside the card and the panel inside the window on every step; screenshots of step one and the action bar in `.claude/screens/`. Planted and caught: Add event opening on the address, Edit event opening on a venue, the prefill not switching, an absent card shown, Tab not trapped, the page behind not inert, Esc doing nothing, focus not handed back, no dialog role, the tour starting on its own, the ring off the card, and the panel leaving the window.
 
 = 3.107.1 =
 

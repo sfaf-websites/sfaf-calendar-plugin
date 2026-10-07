@@ -4,19 +4,19 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-06, at 3.107.1, released.
+**Last updated:** 2026-10-07, at 3.108.0, released.
 
 ---
 
 ## What shipped last
 
-**3.107.1**: Series and language back first, above Title; its 56 x 32
-thumbnail had not changed. **3.107.0**: **the editor rearranged** (Title,
-Schedule, Location, **Registration**, Event details, FAQs, Classification,
-Notifications; **Links**, Display), the actions in a **bar stuck to the window's
-foot**, helper text cut to one sentence, Organizer as chips, the pictures and
-the FAQ set following the series, the weekday following the date on a new
-event, one sign-out, `data-uc-card` on every card for a later tour.
+**3.108.0**: Add event opens on **A venue**; **Take the tour** on both editors
+(`TESTING.md` 1.207 to 1.209, `DESIGN.md` 4). **3.107.1**: Series and language
+first, above Title. **3.107.0**: **the editor rearranged** (Registration its
+own card, **Links**), the actions in a **bar stuck to the window's foot**,
+helper text cut to one sentence, Organizer as chips, the pictures and the FAQ
+set following the series, the weekday following the date on a new event, one
+sign-out, `data-uc-card` on every card.
 > **CAPACITY CHANGED MEANING.** An empty box is no limit; **0 is no places, so
 > everybody goes to the waitlist.** Until now 0 meant no limit. **Schema 12**
 > empties every stored 0 once so no live event turns waitlist-only: check that
@@ -96,7 +96,7 @@ Earlier releases, and the reasoning for all of it: **`readme.txt` is the changel
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 245 items.** **1.200** first,
+**`TESTING.md` holds the manual testing backlog: 248 items.** **1.200** first,
 that schema 12 ran and no event became waitlist-only, then **1.197**, that
 schema 11 ran, then **1.192**, the byline check on the site, **1.176**, the
 donate line, and **1.189**, that schema 10 ran. Then two, in this order:

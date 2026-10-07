@@ -1068,6 +1068,45 @@ neutral, tinted from `--p-text`, because an organizer has no colour to mean.
 **One sign-out**: Sign out in the sidebar foot; the top bar now shows only
 below 720px, where it holds the menu button.
 
+**Location opens on A venue on Add event (3.108.0)**, with the dropdown
+showing. Edit event opens on what the event has. With no venues at all there
+is no venue radio and the address is the only choice.
+
+### The event editor's tour (3.108.0)
+
+Measured in Chrome by `.claude/release-3108-live.php` on Add event and Edit
+event at 1280px and 390px, each page in a 900px-tall frame. Screenshots in
+`.claude/screens/`: `editor-tour-add-first-desktop.png`, `-phone.png`
+(step one), `editor-tour-add-last-desktop.png`, `-phone.png` (the action bar),
+and the same four for `edit`.
+
+| Part | What it is | Values |
+|---|---|---|
+| Take the tour | a `<button>` drawn as a text link, between the page title and Back | 14px/600 `--uc-accent-text` (5.35:1), underlined at 3px offset, 2px thickness on hover, the 2px accent focus ring; 16px to Back |
+| The dim | the ring's own box-shadow, so the card stays undimmed | `--p-scrim`, the confirm dialog's backdrop value, now a token |
+| The ring | 6px outside the card on every side, so the page between ring and card is undimmed and the ring reads against `--p-bg` (4.95:1) | 3px `--uc-accent-text`, 16px radius |
+| The panel | the standard card, a modal dialog | `--p-panel`, 1px `--p-border`, 12px radius, 16px padding, `--p-shadow-raised`; 320px or the window less 24px |
+| Count, name, caption | "3 of 12", the card's name, Mark's caption | 12px/600 `--p-muted`; 16px/700 `--p-text`; 14px/400 `--p-text` at 1.5 |
+| Buttons | Back, Next, Done, the standard small button; Done pushed right | `.uc-btn .uc-btn-sm`; a disabled one keeps `.uc-btn[disabled]`'s .65 opacity |
+
+**Where the panel goes.** 720px and wider: beside the card, to the right when
+it fits, otherwise to the left, top-aligned with it. Narrower: below the card.
+When below will not fit, above; when neither fits (a card taller than the
+window), held 12px above the window's foot over the card. Always clamped 12px
+inside the window. Each card is scrolled to 80px from the window's top, clear
+of the phone's top bar; the action bar is not scrolled, being stuck to the
+window's foot already, so its panel goes above it.
+
+**Steps.** One per `data-uc-card` in the 3.107.1 order (table above) that is
+on the page and drawn, then the action bar: 12 on Add event, 13 on Edit event
+with Who can edit this. The catch-all, Other details, has no step. The bar's
+step is named **Action bar**, the name the brief gave it.
+
+**While it runs** every child of `<body>` but the tour is `inert`, and Tab and
+Shift+Tab cycle Back, Next and Done by hand (a disabled button drops out).
+Arrow Right and Down go forward, Left and Up back, Esc and Done close and focus
+returns to Take the tour. Nothing is stored. Focus opens on Next.
+
 ---
 
 ## 5. CSS discipline
