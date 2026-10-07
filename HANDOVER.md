@@ -4,19 +4,18 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-07, at 3.108.0, released.
+**Last updated:** 2026-10-07, at 3.108.1, released.
 
 ---
 
 ## What shipped last
 
-**3.108.0**: Add event opens on **A venue**; **Take the tour** on both editors
-(`TESTING.md` 1.207 to 1.209, `DESIGN.md` 4). **3.107.1**: Series and language
-first, above Title. **3.107.0**: **the editor rearranged** (Registration its
-own card, **Links**), the actions in a **bar stuck to the window's foot**,
-helper text cut to one sentence, Organizer as chips, the pictures and the FAQ
-set following the series, the weekday following the date on a new event, one
-sign-out, `data-uc-card` on every card.
+**3.108.1**: **no image URL box on the editors** (stored URLs still show; the
+queue keeps its box), the picture one block with a pill and a corner Remove,
+FAQs folded, one green notice, the emails row restyled, three tour captions
+(`TESTING.md` 1.210 to 1.213). **3.108.0**: Add event opens on **A venue**;
+**Take the tour**. **3.107.x**: **the editor rearranged**, the actions in a
+**bar stuck to the window's foot** (`readme.txt` has the rest).
 > **CAPACITY CHANGED MEANING.** An empty box is no limit; **0 is no places, so
 > everybody goes to the waitlist.** Until now 0 meant no limit. **Schema 12**
 > empties every stored 0 once so no live event turns waitlist-only: check that
@@ -96,7 +95,7 @@ Earlier releases, and the reasoning for all of it: **`readme.txt` is the changel
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 248 items.** **1.200** first,
+**`TESTING.md` holds the manual testing backlog: 252 items.** **1.200** first,
 that schema 12 ran and no event became waitlist-only, then **1.197**, that
 schema 11 ran, then **1.192**, the byline check on the site, **1.176**, the
 donate line, and **1.189**, that schema 10 ran. Then two, in this order:

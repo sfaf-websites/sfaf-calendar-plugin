@@ -1034,9 +1034,9 @@ in the main one, because it must be the last call that places a field.
 **The series card is first in the main column (3.107.1)**, its full width and
 16px above Title, with no margin of its own: the 18px `.uc-series-first` used
 to add made that gap 34px. **Its thumbnail**, the picture in the prefill panel
-on Add event, is 56 x 32 with a 4px radius and a `--p-border` edge, unchanged
-since 3.64.2: measured at 56 x 32 on 3.106.3 and 3.107.0 alike, at 1280px and
-390px. Edit event draws no picture in this card.
+on Add event, is **160 x 90, cropped 16:9, with the cards' 12px radius** and a
+`--p-border` edge (3.108.1; it was 56 x 32 at 4px from 3.64.2). Edit event draws
+no picture in this card.
 
 **Registration is the tick alone until it is ticked.** The body (Email
 required, Capacity, Questions for registrants) is visible in the markup and
@@ -1106,6 +1106,54 @@ step is named **Action bar**, the name the brief gave it.
 Shift+Tab cycle Back, Next and Done by hand (a disabled button drops out).
 Arrow Right and Down go forward, Left and Up back, Esc and Done close and focus
 returns to Take the tour. Nothing is stored. Focus opens on Next.
+
+### The editors' picture, FAQs, notices and emails row (3.108.1)
+
+Measured in Chrome by `.claude/release-31081-live.php` at 1280px and 390px.
+Screenshots in `.claude/screens/`, each `-desktop.png` and `-phone.png`:
+`editor-31081-series-panel` (the prefill panel with its picture),
+`editor-31081-image-own` and `editor-31081-image-series` (the picture block
+before and after Remove), `editor-31081-faqs-closed` and
+`editor-31081-faqs-open` (four FAQs, then one open), and
+`editor-31081-notifications`.
+
+**The featured picture is one block.** The preview on top, at most 280px wide
+and 16:9, with a 10px radius. On it:
+
+| Part | Where | Values |
+|---|---|---|
+| The pill | 8px in from the top-left corner (9px on the empty tile, inside its border) | Helper, 12px/400 `--p-text` on `--p-panel` (11.80:1), 1px `--p-border`, 99px radius, 2px 8px |
+| Remove | 8px in from the top-right corner, only while the picture is the event's own | 13px/600 `--p-text` on `--p-panel`, 1px `--p-border-strong` (3.33:1), 8px radius, 3px 10px, `--p-bg` on hover, the 2px accent focus ring |
+| The empty tile | instead of a picture | 16:9, `--p-bg`, 1px `--p-border` |
+
+The pill reads **Event-specific**, **From series** or **Placeholder**; an imported
+picture keeps the server's **From source** or **Synced**. "Choose a picture"
+sits under the preview and names the picture, the inherited one included, as
+the picker lists it (its title where it has a real one, otherwise its file).
+**Inside the block the picker draws no thumbnail of its own**, because the
+preview above it is that picture. The size line and the Images screen line stay
+under the block.
+
+**FAQs, folded.** Each FAQ keeps the row's ground (`--p-bg`, 1px `--p-border`,
+10px radius) at 6px 6px 6px 14px, with a 32px head: the question in Body, 14px/400
+`--p-text`, or "New question" in `--p-muted`; then **Edit** (Close when open),
+a text button, 13px/600 `--uc-accent-text`; then the remove icon, the 32px
+`--p-muted` icon button the registration questions use, `--p-text` on
+`--p-border` on hover. Open, the question and answer sit 10px under the head and
+the row pads to 14px.
+
+**One inline notice.** `.uc-notice`: `--p-ok-ink` `#46661F` on `--p-ok-tint`
+`#F1F8E9` (6.08:1), the palette's success state; 10px 14px, 8px radius, 10px
+above; Field label, 13px/600 at 1.45. A failure in the same place is
+`--p-error-ink` `#AD1C0D` on `--p-error-tint` `#FDE9E7` (6.10:1). It is what the
+series prefill, the FAQ set and Insert image say after they act. **Caladmin's
+page-level `.uc-flash` banners are unchanged** and still use their own greens.
+
+**The emails row** is the `.uc-picker` row "Choose who else gets it" uses: full
+width, 1px `--p-border`, 10px radius, the label left at 14px/600 with 11px 14px
+padding, the chevron right, and the same 12px 14px 14px panel. It keeps its
+sentence, "Emails for this event: all 6 are on", as the label. It is the first
+thing in its own section of the card, so the space above it is the section's.
 
 ---
 

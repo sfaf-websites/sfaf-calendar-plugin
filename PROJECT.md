@@ -1769,6 +1769,32 @@ platform sending HTML had its paragraph boundaries destroyed before storage.
 They are kept as markup now. The first fetch after upgrading reports those rows
 as changed once, because the stored string genuinely changes.
 
+### The featured image on the editors is one block with one state (3.108.1)
+
+On Add event and Edit event the picture is a preview with a pill on it, Remove
+on its corner, and "Choose a picture" under it naming the picture.
+`initImageBlock()` decides the state, and the pill, Remove and the name follow:
+
+| State | When | Pill | Remove |
+|---|---|---|---|
+| event | a picture chosen in the picker, or one stored only as `_uc_image_url` | Event-specific | shown |
+| series | none of its own, and the series in the dropdown has a picture | From series | hidden |
+| none | neither | Placeholder | hidden |
+
+**There is no image URL box on the editors.** `_uc_image_url` stays stored and
+still renders for the events that have one, as Event-specific, named by its
+file. Nothing posts `image_url` from the editors, and the save only touches the
+key when `image_url` is posted, so a save leaves it alone. **Remove** checks "The
+series picture" and enables a hidden `reset_series_image`, the same field the
+old "Reset to series image" tick posted, so the save clears the thumbnail and
+any stored URL and the event falls back to the series picture, or to the
+placeholder with no series. Choosing a picture disables it again.
+
+**The pending queue keeps its URL box.** It draws the same control through
+`render_manager_control()`, and an approver still reads and corrects what a
+submitter typed; `'queue' === $ctx['screen']` is the switch. The series screen's
+picker is untouched. The WordPress admin "Event Image" box never had a URL box.
+
 ### There is one image picker, and it is a renderer rather than markup
 
 `render_image_picker()` emits every featured-image control in caladmin: the
@@ -2456,6 +2482,15 @@ stable name for a later guided tour; `DESIGN.md` 4 lists them.
   While it runs every other child of `<body>` is `inert`, and Tab is trapped by
   hand as well. A card added to the editor gets a step only when it is added to
   that list.
+- **FAQs are folded on the editors** (3.108.1): `faq_repeater()` takes `$fold`,
+  which only the editors pass, and `sfaf_faq_row_folded()` draws a head (the
+  question or "New question", Edit, the remove icon) over the same fields, so
+  the save is unchanged. `initFaqFold()` keeps one open, opens a row "+ Add FAQ"
+  appends and leaves a set's rows shut. The FAQ Sets screen, wp-admin and the
+  public forms keep the open rows. **FAQs have no reordering**; nothing there
+  ever had a drag handle.
+- **One inline notice** (3.108.1): `.uc-notice`, the Green family's tint and ink,
+  is what the prefill, the FAQ set and Insert image say after they act.
 
 ### Descriptions are rich text, with a deliberately short toolbar
 
@@ -3291,13 +3326,12 @@ nothing already typed is lost, which is the FAQ set picker's shape and 3.3.0's
 reason for it. **The date is never in the payload at all**: setting the date is
 why somebody is on that screen.
 
-The consequence to know is that **a later change to the series image no longer
-reaches an event filled in from it**. That is intended, it is how the default
-FAQ set has always behaved, and **Reset to series image** on the Edit screen is
-what undoes it for a single event. Because the picture is the event's own from
-that moment, the tag beside **Featured Image** reads "Event-specific" as soon as
-the button runs, and the preview shows the picture exactly as it does after
-Choose Image (3.64.2).
+**The picture is no longer copied (3.108.1).** With no URL box on the editors
+there is nothing to copy a series picture into, so "Fill these in" chooses the
+last event's own picture when the picker lists it, and otherwise "The series
+picture", which the event then inherits: a later change to the series picture
+reaches it, and the pill reads "From series". Until 3.108.1 the series picture
+was copied into the URL box and the event kept that copy.
 
 `prefill_data()` returns `image_url` and `image_preview` and they are different
 jobs. `image_url` is the value COPIED into the event's URL field, and it is

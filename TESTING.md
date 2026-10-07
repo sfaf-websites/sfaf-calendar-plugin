@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 248 items.** Quick 206, needs real conditions 38, blocked on other
+**Outstanding: 252 items.** Quick 210, needs real conditions 38, blocked on other
 people 4.
 
 ---
@@ -2987,6 +2987,46 @@ does not start on its own.
 
 **Why it needs a person:** the real caladmin with the WordPress admin bar, real
 fonts and a real phone browser, none of which the build's Chrome has.
+
+### 1.210 The featured picture block, saved and reopened (3.108.1)
+
+Open an event in a series that has its own picture. The pill on the preview
+reads **Event-specific** and **Remove** sits on its top-right corner. Press
+Remove: the series picture shows, the pill reads **From series**, and "Choose a
+picture" names it. Save, reopen: still From series, and the event page shows the
+series picture. Then open an event that had a typed image URL from before this
+release: its picture still shows, as Event-specific, named by its file; there is
+no box to type a URL into. Press Remove, save: the URL is gone.
+
+**Why it needs a person:** the real save and the real event page.
+
+### 1.211 FAQs folded, with the real answer editor (3.108.1)
+
+On an event with several FAQs, each shows only its question with **Edit** and
+an x. Open one: the answer editor (the rich one) works, and opening another
+closes the first. Press **+ Add FAQ**: a new one opens with the cursor in it.
+Apply a saved set: its questions arrive folded. Change an answer in a folded
+FAQ, save, reopen: the change is kept.
+
+**Why it needs a person:** the real TinyMCE answer editor, which the build has
+no copy of, inside a row that opens and shuts.
+
+### 1.212 Fill these in leaves the series picture inherited (3.108.1)
+
+On **Add event**, choose a series with a picture and press **Fill these in**
+with Image ticked. The pill reads **From series**. Publish, then change that
+series' picture on the series screen: the event's picture follows. Until this
+release the event kept a copy and did not follow.
+
+**Why it needs a person:** the real series screen and a real publish.
+
+### 1.213 The pending queue keeps its image URL box (3.108.1)
+
+Open **Pending** on a submitted event that came with a typed image URL. The URL
+box is still there with the URL in it. Change it, approve: the event shows the
+new picture.
+
+**Why it needs a person:** a real submission through a public form.
 
 ## 2. Needs real conditionsWaiting for an unattended job to fire, a real removal at source, or a real event
 with real registrations and real mail.

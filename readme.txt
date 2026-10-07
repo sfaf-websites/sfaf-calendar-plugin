@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.108.0
+Stable tag: 3.108.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,24 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.108.1 =
+
+**The editors' picture, FAQs, notices and emails row, and three tour captions.**
+
+**THE SERIES PICTURE IN "FILL THIS EVENT IN"** is 160 x 90, cropped 16:9, with the cards' corner radius. It was 56 x 32.
+
+**THE FEATURED PICTURE IS ONE BLOCK.** The preview at the top carries a pill reading **Event-specific** or **From series** (or **Placeholder** when there is no picture), and **Remove** on its top-right corner while the picture is the event's own. **Choose a picture** under it names the picture, the inherited one included. Remove goes back to the series picture, or to the empty placeholder with no series. **The "Or an image URL" box is gone from Add event and Edit event.** A picture an event already has as a URL still shows, as Event-specific, until Remove. The pending queue keeps its URL box, and the series screen is unchanged. **Fill these in** now leaves the series picture inherited rather than copying it, so a later change to the series picture reaches the event. The size line and the Images screen line stay.
+
+**FAQs ARE FOLDED.** Each FAQ is one row with its question, or "New question", then **Edit** and a remove icon. One opens at a time. **+ Add FAQ** adds one open; a saved set's questions arrive folded. Saving is unchanged.
+
+**ONE NOTICE.** "Filled in 7 things...", "Added 4 questions..." and Insert image's "Added to the description." are one green notice, in the brand's success colours. The wording is unchanged.
+
+**THE EMAILS ROW.** "Emails for this event: all 6 are on" is a full-width row like "Choose who else gets it", the label left and the arrow right, and opens the same list.
+
+**THE TOUR'S CAPTIONS** for Event details, FAQs and Classification are the new wording.
+
+**CHECKED.** In Chrome, Add event and Edit event at 1280px and 390px: the series picture at 160 x 90 with a 12px radius inside its card; no input on either editor taking an image URL, a stored URL kept by a save and cleared by Remove; the pill, Remove and the name in every state, Remove falling back to the series picture and to the placeholder, a chosen picture surviving a series change; four FAQs folded, one open at a time, + Add FAQ open with the cursor in it, a set's questions folded, the head following the question; the three notices measured equal against the tokens; the two Notifications rows equal in width, height, border, radius and padding. Screenshots in `.claude/screens/`. Planted and caught: the picture shrinking, the URL box back, an inherited picture reading Event-specific, Remove not clearing, two FAQs open at once, a notice back on the old style, the emails row in its old style, and a caption drifting.
 
 = 3.108.0 =
 
