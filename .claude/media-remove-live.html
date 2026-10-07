@@ -168,7 +168,206 @@ function ucDismissOnBackdrop(dialog) {
         run('tickPickers', initTickPickers);
         run('descImages', initDescImages);
         run('videoPreview', initVideoPreview);
+        run('editorTour', initEditorTour);
     });
+
+    /* =====================================================================
+     * THE EVENT EDITOR'S TOUR (3.108.0)
+     *
+     * "Take the tour" beside the page title. Nothing starts it but that
+     * button and nothing is stored, so it runs as often as anybody likes.
+     *
+     *   the dim    one ring element: a focus-ring-coloured border around the
+     *              card, 6px out, and a box-shadow wide enough to cover the
+     *              window in --p-scrim. The 6px gap is undimmed page, so the
+     *              ring is read against the page, not against the dim.
+     *   the shield a transparent layer over everything, so nothing behind
+     *              the dim takes a click.
+     *   the panel  role="dialog", aria-modal, named by the card's name and
+     *              described by its caption. Beside the card where the window
+     *              is 720px or wider and there is room, otherwise below it,
+     *              otherwise above it, and always clamped inside the window.
+     *
+     * WHILE IT RUNS, EVERYTHING ELSE IN <body> IS inert, and Tab is also
+     * trapped by hand: inert takes the page out of the Tab order, and the trap
+     * is what keeps Tab from leaving the panel for the browser's own controls.
+     * Done and Esc put focus back on the button.
+     *
+     * THE SKIP RULE: a step runs only when its card is on the page and drawn.
+     * The steps come from the server (editor_tour_steps()), which lists Who
+     * can edit this on both screens; Add event has no such card, so it drops
+     * out here, as Notifications does on an imported event.
+     * ===================================================================== */
+    function initEditorTour() {
+        var link = document.querySelector('[data-uc-tour-start]');
+        if (!link) { return; }
+        var all = [];
+        try { all = JSON.parse(link.getAttribute('data-uc-tour-steps') || '[]'); } catch (e) { all = []; }
+
+        var root = null, ring, panel, nameEl, textEl, countEl, backBtn, nextBtn, doneBtn;
+        var steps = [], at = 0, held = [], frame = 0;
+
+        function cardOf(step) { return document.querySelector('[data-uc-card="' + step.card + '"]'); }
+        function present() {
+            return all.filter(function (step) {
+                var card = cardOf(step);
+                return !!card && card.getClientRects().length > 0;
+            });
+        }
+
+        function el(tag, cls, txt) {
+            var n = document.createElement(tag);
+            if (cls) { n.className = cls; }
+            if (txt) { n.textContent = txt; }
+            return n;
+        }
+        function build() {
+            root = el('div', 'uc-tour');
+            root.setAttribute('data-uc-tour', '');
+            var shield = el('div', 'uc-tour-shield');
+            ring = el('div', 'uc-tour-ring');
+            ring.setAttribute('data-uc-tour-ring', '');
+            panel = el('div', 'uc-tour-panel');
+            panel.setAttribute('data-uc-tour-panel', '');
+            panel.setAttribute('role', 'dialog');
+            panel.setAttribute('aria-modal', 'true');
+            panel.setAttribute('aria-labelledby', 'uc-tour-name');
+            panel.setAttribute('aria-describedby', 'uc-tour-text');
+            panel.tabIndex = -1;
+            var said = el('div', 'uc-tour-said');
+            said.setAttribute('aria-live', 'polite');
+            countEl = el('p', 'uc-tour-count');
+            countEl.setAttribute('data-uc-tour-count', '');
+            nameEl = el('h2', 'uc-tour-name');
+            nameEl.id = 'uc-tour-name';
+            textEl = el('p', 'uc-tour-text');
+            textEl.id = 'uc-tour-text';
+            said.appendChild(countEl);
+            said.appendChild(nameEl);
+            said.appendChild(textEl);
+            var actions = el('div', 'uc-tour-actions');
+            backBtn = el('button', 'uc-btn uc-btn-sm', 'Back');
+            nextBtn = el('button', 'uc-btn uc-btn-sm', 'Next');
+            doneBtn = el('button', 'uc-btn uc-btn-sm uc-tour-done', 'Done');
+            [backBtn, nextBtn, doneBtn].forEach(function (b) { b.type = 'button'; actions.appendChild(b); });
+            backBtn.setAttribute('data-uc-tour-back', '');
+            nextBtn.setAttribute('data-uc-tour-next', '');
+            doneBtn.setAttribute('data-uc-tour-done', '');
+            panel.appendChild(said);
+            panel.appendChild(actions);
+            root.appendChild(shield);
+            root.appendChild(ring);
+            root.appendChild(panel);
+            backBtn.addEventListener('click', function () { go(at - 1); });
+            nextBtn.addEventListener('click', function () { go(at + 1); });
+            doneBtn.addEventListener('click', close);
+        }
+
+        /* Where the ring and the panel go, from where the card is now. */
+        function place() {
+            frame = 0;
+            if (!root) { return; }
+            var card = cardOf(steps[at]);
+            if (!card) { return; }
+            var r = card.getBoundingClientRect(), pad = 6, gap = 12, m = 12;
+            ring.style.top = (r.top - pad) + 'px';
+            ring.style.left = (r.left - pad) + 'px';
+            ring.style.width = (r.width + pad * 2) + 'px';
+            ring.style.height = (r.height + pad * 2) + 'px';
+
+            var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+            var pw = panel.offsetWidth, ph = panel.offsetHeight;
+            var wide = vw >= 720, top, left;
+            if (wide && r.right + pad + gap + pw + m <= vw) {
+                left = r.right + pad + gap; top = r.top;
+            } else if (wide && r.left - pad - gap - pw >= m) {
+                left = r.left - pad - gap - pw; top = r.top;
+            } else if (r.bottom + pad + gap + ph + m <= vh) {
+                top = r.bottom + pad + gap; left = r.left;
+            } else if (r.top - pad - gap - ph >= m) {
+                top = r.top - pad - gap - ph; left = r.left;
+            } else {
+                /* A card taller than the window: the panel holds at its foot. */
+                top = vh - ph - m; left = r.left;
+            }
+            top = Math.max(m, Math.min(top, vh - ph - m));
+            left = Math.max(m, Math.min(left, vw - pw - m));
+            panel.style.top = Math.round(top) + 'px';
+            panel.style.left = Math.round(left) + 'px';
+        }
+        function later() { if (!frame) { frame = window.requestAnimationFrame(place); } }
+
+        function go(n) {
+            if (n < 0 || n >= steps.length) { return; }
+            at = n;
+            var step = steps[at];
+            countEl.textContent = (at + 1) + ' of ' + steps.length;
+            nameEl.textContent = step.name;
+            textEl.textContent = step.text;
+            backBtn.disabled = (at === 0);
+            nextBtn.disabled = (at === steps.length - 1);
+            if (document.activeElement && document.activeElement.disabled) { doneBtn.focus(); }
+
+            /* The bar is stuck to the window's foot already; every card is
+               brought to the top of the window, clear of the phone's top bar. */
+            var card = cardOf(step);
+            if (card && step.card !== 'actions') {
+                window.scrollTo(0, Math.max(0, window.pageYOffset + card.getBoundingClientRect().top - 80));
+            }
+            place();
+        }
+
+        function focusables() {
+            return [backBtn, nextBtn, doneBtn].filter(function (b) { return !b.disabled; });
+        }
+        function onKey(e) {
+            if (!root) { return; }
+            if (e.key === 'Escape' || e.key === 'Esc') { e.preventDefault(); close(); return; }
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); go(at + 1); return; }
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); go(at - 1); return; }
+            if (e.key === 'Tab') {
+                var list = focusables(), i = list.indexOf(document.activeElement);
+                e.preventDefault();
+                if (!list.length) { return; }
+                if (i === -1) { list[0].focus(); return; }
+                list[(i + (e.shiftKey ? list.length - 1 : 1)) % list.length].focus();
+            }
+        }
+
+        function open() {
+            steps = present();
+            if (!steps.length || root) { return; }
+            build();
+            held = [];
+            Array.prototype.forEach.call(document.body.children, function (child) {
+                if (child.tagName === 'SCRIPT' || child.tagName === 'STYLE') { return; }
+                held.push([child, child.hasAttribute('inert')]);
+                child.setAttribute('inert', '');
+            });
+            document.body.appendChild(root);
+            document.body.classList.add('uc-tour-open');
+            document.addEventListener('keydown', onKey, true);
+            window.addEventListener('scroll', later, true);
+            window.addEventListener('resize', later);
+            go(0);
+            (steps.length > 1 ? nextBtn : doneBtn).focus();
+        }
+        function close() {
+            if (!root) { return; }
+            document.removeEventListener('keydown', onKey, true);
+            window.removeEventListener('scroll', later, true);
+            window.removeEventListener('resize', later);
+            if (frame) { window.cancelAnimationFrame(frame); frame = 0; }
+            held.forEach(function (h) { if (!h[1]) { h[0].removeAttribute('inert'); } });
+            held = [];
+            root.parentNode.removeChild(root);
+            root = null;
+            document.body.classList.remove('uc-tour-open');
+            link.focus();
+        }
+
+        link.addEventListener('click', open);
+    }
 
 
     /* ---------------------------------------------------------------------
