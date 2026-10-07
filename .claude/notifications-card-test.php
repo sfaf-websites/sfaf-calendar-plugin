@@ -130,7 +130,8 @@ function nc_controls( $html, $skip_attr, $skip_saves = false ) {
         if ( $skip ) { continue; }
         $tag  = strtolower( $n->nodeName );
         $type = $n->getAttribute( 'type' );
-        if ( $skip_saves && 'save_mode' === $n->getAttribute( 'name' ) ) { continue; }
+        // The save buttons, and the schedule beside Publish (3.110.0), follow the event's status.
+        if ( $skip_saves && ( 'save_mode' === $n->getAttribute( 'name' ) || 0 === strpos( $n->getAttribute( 'name' ), 'schedule_' ) ) ) { continue; }
         if ( in_array( $tag, array( 'input', 'select', 'textarea' ), true ) ) {
             $key = $tag . '[' . $type . '] ' . $n->getAttribute( 'name' ) . ( in_array( $type, array( 'radio', 'checkbox' ), true ) ? '=' . $n->getAttribute( 'value' ) : '' );
         } else {

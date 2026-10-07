@@ -2429,6 +2429,40 @@ class SFAF_Portal {
         return $missing;
     }
 
+    /**
+     * "Schedule for a later date", as posted (3.110.0).
+     *
+     * present: the control was on the form. on: it was ticked. at: the local
+     * date and time it asks for, 'Y-m-d H:i:s', or '' when ticked with no
+     * usable time or with one that has already passed (a minute's grace, so a
+     * time picked for "now" is not refused for the seconds the save took).
+     * The time pair is folded into schedule_time by sfaf_normalize_time_post().
+     *
+     * @return array
+     */
+    private function schedule_from_post() {
+        $out = array(
+            'present' => isset( $_POST['schedule_present'] ),
+            'on'      => ! empty( $_POST['schedule_on'] ),
+            'at'      => '',
+        );
+        if ( ! $out['on'] ) {
+            return $out;
+        }
+        $date = sanitize_text_field( wp_unslash( $_POST['schedule_date'] ?? '' ) );
+        $time = sanitize_text_field( wp_unslash( $_POST['schedule_time'] ?? '' ) );
+        if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) || ! preg_match( '/^\d{2}:\d{2}$/', $time ) ) {
+            return $out;
+        }
+        $at = $date . ' ' . $time . ':00';
+        $ts = strtotime( get_gmt_from_date( $at ) . ' UTC' );
+        if ( ! $ts || $ts <= time() + 60 ) {
+            return $out;
+        }
+        $out['at'] = $at;
+        return $out;
+    }
+
     private function save_event_from_post( $user ) {
         $event_id = isset( $_POST['event_id'] ) ? intval( $_POST['event_id'] ) : 0;
         $is_new   = ! $event_id;
@@ -2480,6 +2514,39 @@ class SFAF_Portal {
         } else {
             $existing = $event_id ? get_post_status( $event_id ) : '';
             $status   = $existing ? $existing : 'draft';
+        }
+
+        /*
+         * SCHEDULED PUBLISH (3.110.0). "Schedule for a later date" beside
+         * Publish posts schedule_on with a date and a time. A schedule is a
+         * publish that waits, so it is judged as a publish: while the rules
+         * below run, a scheduled save is 'publish', and only a save they let
+         * through to 'publish' becomes 'future' with that date. WordPress's own
+         * cron then publishes it at that time, so nothing here runs at go-live
+         * and no rule is asked twice.
+         *
+         * A scheduled event saved with the tick still on keeps its schedule,
+         * and is judged again, since a new time is a new scheduling. Saved
+         * with the tick cleared it is a draft. A time that has already passed
+         * schedules nothing: the event is kept as a draft and the flash says
+         * why.
+         */
+        $was_future = ( ! $is_new && 'future' === get_post_status( $event_id ) );
+        $sched      = $this->schedule_from_post();
+        $sched_at   = '';
+        $sched_past = false;
+        if ( $sched['present'] && $sched['on'] && ( 'publish' === $save_mode || ( 'keep' === $save_mode && $was_future ) ) ) {
+            if ( '' !== $sched['at'] ) {
+                $sched_at = $sched['at'];
+                if ( 'keep' === $save_mode ) {
+                    $status = in_array( $role, array( 'admin', 'editor' ), true ) ? 'publish' : $this->contributor_status( $user );
+                }
+            } else {
+                $sched_past = true;
+                $status     = $was_future ? 'future' : 'draft';
+            }
+        } elseif ( $sched['present'] && ! $sched['on'] && $was_future && 'keep' === $save_mode ) {
+            $status = 'draft';
         }
 
         /*
@@ -2594,10 +2661,26 @@ class SFAF_Portal {
             $status = ( $existing_status && 'publish' !== $existing_status ) ? $existing_status : 'draft';
         }
 
+        /* The rules above let it through as a publish; it waits until $sched_at. */
+        $scheduled = ( '' !== $sched_at && 'publish' === $status );
+        if ( $scheduled ) {
+            $status = 'future';
+        }
         $postarr = array(
             'post_type'   => 'uc_event',
             'post_status' => $status,
         );
+        if ( $scheduled ) {
+            $postarr['post_date']     = $sched_at;
+            $postarr['post_date_gmt'] = get_gmt_from_date( $sched_at );
+            $postarr['edit_date']     = true;
+        } elseif ( $was_future && 'publish' === $status ) {
+            /* Published now: a future date left on the post would make
+               WordPress schedule it again. */
+            $postarr['post_date']     = current_time( 'mysql' );
+            $postarr['post_date_gmt'] = current_time( 'mysql', true );
+            $postarr['edit_date']     = true;
+        }
         // Locked means locked in both directions: a submitted value for a
         // locked field is ignored rather than trusted, so tampering with the
         // form achieves nothing that the next fetch would not undo anyway.
@@ -3205,6 +3288,10 @@ class SFAF_Portal {
          */
         if ( $org_held ) {
             $msg = 'publish_needs';
+        } elseif ( $sched_past ) {
+            $msg = 'schedule_past';
+        } elseif ( $scheduled ) {
+            $msg = 'scheduled';
         } elseif ( $generated ) {
             $msg = 'generated_' . $generated;
         } elseif ( 'all_upcoming' === $scope ) {
@@ -4232,6 +4319,8 @@ class SFAF_Portal {
         }
         $map = array(
             'saved'          => 'Event saved.',
+            'scheduled'      => 'Event scheduled. It goes live at the date and time beside Schedule.',
+            'schedule_past'  => 'That date and time has passed, so nothing was scheduled. Choose a later time and press Schedule again.',
             'trashed'        => 'Event removed.',
             'bulk_cat_none'  => 'Nothing was changed. Tick the events you want the category added to, then press the button.',
             'bulk_cat_failed' => 'That category could not be applied. Choose one from the list and try again.',
@@ -5299,7 +5388,7 @@ class SFAF_Portal {
                             echo (int) $rsvp_n;
                         }
                     ?></td>
-                    <td><span class="uc-pill uc-pill-<?php echo esc_attr( $st ); ?>"><?php echo esc_html( sfaf_status_label( $st ) ); ?></span></td>
+                    <td><span class="uc-pill uc-pill-<?php echo esc_attr( $st ); ?>"><?php echo esc_html( sfaf_event_status_label( $id ) ); ?></span></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
@@ -6279,7 +6368,7 @@ class SFAF_Portal {
                     ?></td>
                     <td><?php echo ( $cats && ! is_wp_error( $cats ) ) ? esc_html( implode( ', ', $cats ) ) : '<span class="uc-muted">None</span>'; ?></td>
                     <td><?php echo ( $orgs && ! is_wp_error( $orgs ) ) ? esc_html( implode( ', ', $orgs ) ) : '<span class="uc-muted">None</span>'; ?></td>
-                    <td><span class="uc-pill uc-pill-<?php echo esc_attr( $st ); ?>"><?php echo esc_html( sfaf_status_label( $st ) ); ?></span></td>
+                    <td><span class="uc-pill uc-pill-<?php echo esc_attr( $st ); ?>"><?php echo esc_html( sfaf_event_status_label( $id ) ); ?></span></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
@@ -6789,7 +6878,7 @@ class SFAF_Portal {
                         }
                     ?></td>
                     <td>
-                        <span class="uc-pill uc-pill-<?php echo esc_attr( $st ); ?>"><?php echo esc_html( sfaf_status_label( $st ) ); ?></span>
+                        <span class="uc-pill uc-pill-<?php echo esc_attr( $st ); ?>"><?php echo esc_html( sfaf_event_status_label( $id ) ); ?></span>
                         <?php
                         /*
                          * "REMOVED AT SOURCE" IS NOT "PAST", AND MUST NOT READ
@@ -13905,7 +13994,8 @@ class SFAF_Portal {
              */
             $can_decide  = ( $is_pending && $is_sub && $this->is_admin_role( $user ) );
             $held        = ( $is_pending && $is_sub && ! $this->is_admin_role( $user ) );
-            $show_publish = ( ! $keep_status ) || ( $is_pending && ! $is_sub );
+            // A scheduled event keeps Publish, labelled Schedule, beside its schedule (3.110.0).
+            $show_publish = ( ! $keep_status ) || ( $is_pending && ! $is_sub ) || ( 'future' === $live );
             $ask_id      = 'uc-approve-' . (int) $event_id;
             $reject_id   = 'uc-reject-' . (int) $event_id;
             ?>
@@ -14095,9 +14185,34 @@ class SFAF_Portal {
                     <?php if ( $role === 'contributor' && $this->contributor_status( $user ) === 'pending' ) : ?>
                         <button type="submit" form="<?php echo esc_attr( $form_id ); ?>" name="save_mode" value="review" class="uc-btn uc-btn-primary">Submit for Review</button>
                     <?php else : ?>
-                        <button type="submit" form="<?php echo esc_attr( $form_id ); ?>" name="save_mode" value="publish" class="uc-btn uc-btn-go uc-editor-publish"
+                        <?php
+                        /*
+                         * SCHEDULE FOR A LATER DATE (3.110.0), beside Publish.
+                         * Ticked, the date and time show and Publish reads
+                         * Schedule; portal.js swaps the word, and with no
+                         * script the date and time show anyway. Every field
+                         * names the form, because this row is outside it.
+                         */
+                        $sched_on   = ( 'future' === $live );
+                        $sched_post = $sched_on ? get_post( $event_id ) : null;
+                        $sched_date = $sched_post ? substr( (string) $sched_post->post_date, 0, 10 ) : '';
+                        $sched_time = $sched_post ? substr( (string) $sched_post->post_date, 11, 5 ) : '';
+                        ?>
+                        <span class="uc-schedule" data-uc-schedule>
+                            <input type="hidden" name="schedule_present" value="1" form="<?php echo esc_attr( $form_id ); ?>" />
+                            <label class="uc-check uc-schedule-tick">
+                                <input type="checkbox" name="schedule_on" value="1" form="<?php echo esc_attr( $form_id ); ?>" data-uc-schedule-on <?php checked( $sched_on ); ?> />
+                                Schedule for a later date
+                            </label>
+                            <span class="uc-schedule-when" data-uc-schedule-when>
+                                <label class="uc-visually-hidden" for="uc-schedule-date">Date it goes live</label>
+                                <input type="date" id="uc-schedule-date" name="schedule_date" form="<?php echo esc_attr( $form_id ); ?>" value="<?php echo esc_attr( $sched_date ); ?>" />
+                                <?php echo sfaf_time_field( 'schedule_time', $sched_time, array( 'label' => 'Time it goes live', 'form' => $form_id ) ); ?>
+                            </span>
+                        </span>
+                        <button type="submit" form="<?php echo esc_attr( $form_id ); ?>" name="save_mode" value="publish" class="uc-btn uc-btn-go uc-editor-publish" data-uc-publish-btn
                                 <?php echo ! empty( $watched ) ? ' data-uc-confirm-template="' . esc_attr( $confirm_tpl ) . '"' : ''; ?>
-                                <?php echo $confirm ? ' data-uc-confirm="' . esc_attr( $confirm ) . '"' : ''; ?>>Publish</button>
+                                <?php echo $confirm ? ' data-uc-confirm="' . esc_attr( $confirm ) . '"' : ''; ?>><?php echo $sched_on ? 'Schedule' : 'Publish'; ?></button>
                     <?php endif; ?>
                 <?php endif; ?>
                 <?php

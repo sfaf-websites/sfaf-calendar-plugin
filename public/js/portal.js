@@ -141,7 +141,30 @@ function ucDismissOnBackdrop(dialog) {
         run('videoPreview', initVideoPreview);
         run('editorTour', initEditorTour);
         run('copyButtons', initCopyButtons);
+        run('schedule', initSchedule);
     });
+
+    /* ---------------------------------------------------------------------
+     * SCHEDULE FOR A LATER DATE (3.110.0). The tick shows the date and time
+     * beside it and turns Publish into Schedule; unticked, both go and the
+     * button says Publish again. The server decides what the press does,
+     * from the tick, so this only keeps the words true.
+     * ------------------------------------------------------------------ */
+    function initSchedule() {
+        document.querySelectorAll('[data-uc-schedule]').forEach(function (box) {
+            var tick = box.querySelector('[data-uc-schedule-on]');
+            var when = box.querySelector('[data-uc-schedule-when]');
+            var bar = box.closest('[data-uc-editor-bar]') || document;
+            var btn = bar.querySelector('[data-uc-publish-btn]');
+            if (!tick || !when) { return; }
+            function apply() {
+                when.hidden = !tick.checked;
+                if (btn) { btn.textContent = tick.checked ? 'Schedule' : 'Publish'; }
+            }
+            tick.addEventListener('change', apply);
+            apply();
+        });
+    }
 
     /* ---------------------------------------------------------------------
      * COPY (3.110.0). A button naming a read-only box by id copies the box's

@@ -586,6 +586,7 @@ $files = array_merge(
 
 $queries   = 0;
 $excluded  = 0;
+$public_status_checked = 0;
 $listed    = 0;
 $not_query = 0;
 
@@ -665,9 +666,23 @@ foreach ( $files as $file ) {
             $fn_end = strlen( $code );
         }
         $body = substr( $code, $fn_start, $fn_end - $fn_start );
+        $fn_label = preg_match( '/function\s+(\w+)/', $body, $fl ) ? $fl[1] : '?';
 
         if ( false !== strpos( $body, 'SFAF_Privacy::exclude' ) ) {
             $excluded++;
+            /*
+             * THE SECOND HIDDEN STATE (3.110.0): A SCHEDULED EVENT. A query
+             * that keeps private events out is a public one, and a public one
+             * must not ask for 'future' or 'any', or a scheduled event is on
+             * the calendar before it goes live. Read off the args array that
+             * starts at this post_type, up to the call it is passed to.
+             */
+            $args_end  = strpos( $code, ')', $pos + 1 );
+            $args_text = substr( $code, $pos, min( 900, ( false === $args_end ? 900 : $args_end - $pos + 400 ) ) );
+            if ( preg_match( "/'post_status'\s*=>\s*(array\s*\([^)]*\)|'[^']*')/", $args_text, $sm ) && preg_match( "/'(future|any)'/", $sm[1] ) ) {
+                $fails[] = "PLANT G.2: $name::$fn_label builds a public query that asks for scheduled events: " . preg_replace( '/\s+/', ' ', $sm[1] );
+            }
+            $public_status_checked++;
             continue;
         }
 
@@ -687,6 +702,7 @@ foreach ( $files as $file ) {
 }
 
 check( $queries > 15, "only $queries uc_event queries were found, so the sweep is not reaching the source" );
+check( $public_status_checked === $excluded && $excluded >= 5, "$public_status_checked of $excluded public queries had their status read, so the scheduled check is not reaching them" );
 
 echo "Private events\n";
 echo "behaviour:  the meta clause, exclude() against all three meta_query shapes, is_private,\n";
@@ -696,6 +712,7 @@ echo "            sitemap filters and the core REST filter\n";
 printf( "coverage:   %d uc_event queries found. %d exclude private events, %d are whitelisted with a\n", $queries, $excluded, $listed );
 printf( "            stated reason, 0 unaccounted for. %d further post_type mentions were rejected\n", $not_query );
 echo "            as not queries (admin URLs, a sort filter's comparison).\n";
+printf( "scheduled:  %d public queries read for their status; none asks for 'future' or 'any' (3.110.0).\n", $public_status_checked );
 echo "not proven here: that Yoast honours the noindex meta or the exclusion filter, that a\n";
 echo "            crawler obeys the robots tag, or that WordPress routes a token slug. Live site.\n\n";
 

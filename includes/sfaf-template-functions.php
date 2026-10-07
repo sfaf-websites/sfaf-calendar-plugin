@@ -553,6 +553,25 @@ function sfaf_icon( $name, $args = array() ) {
  * @param string $status Raw status slug.
  * @return string
  */
+/**
+ * An event's status as caladmin's lists say it (3.110.0): the status word,
+ * except a scheduled event, which says when it goes live, "Goes live Nov. 20,
+ * 2026, 6 pm", through the one date formatter.
+ *
+ * @param int $event_id
+ * @return string
+ */
+function sfaf_event_status_label( $event_id ) {
+    $status = (string) get_post_status( (int) $event_id );
+    if ( 'future' === $status ) {
+        $post = get_post( (int) $event_id );
+        if ( $post && '' !== (string) $post->post_date ) {
+            return 'Goes live ' . sfaf_ap_datetime( $post->post_date );
+        }
+    }
+    return sfaf_status_label( $status );
+}
+
 function sfaf_status_label( $status ) {
     $status = (string) $status;
 
@@ -3246,11 +3265,13 @@ function sfaf_time_field( $name, $value, $args = array() ) {
         'required' => false,
         'disabled' => '',
         'id'       => '',
+        // The id of the form the pair posts with, for a control outside it (3.110.0).
+        'form'     => '',
     ), (array) $args );
 
     $parts = sfaf_time_parts( $value );
     $req   = $args['required'] ? ' required' : '';
-    $dis   = (string) $args['disabled'];
+    $dis   = (string) $args['disabled'] . ( '' !== $args['form'] ? ' form="' . esc_attr( $args['form'] ) . '"' : '' );
 
     /*
      * THE STORED MINUTE JOINS THE LIST WHEN IT IS NOT ON THE GRID. Twelve
@@ -3332,7 +3353,8 @@ function sfaf_time_field( $name, $value, $args = array() ) {
  */
 function sfaf_normalize_time_post( $names = null ) {
     if ( ! is_array( $names ) || empty( $names ) ) {
-        $names = array( 'start_time', 'end_time', 'uc_start_time', 'uc_end_time' );
+        // schedule_time: the editor's "Schedule for a later date" (3.110.0).
+        $names = array( 'start_time', 'end_time', 'uc_start_time', 'uc_end_time', 'schedule_time' );
     }
     foreach ( $names as $name ) {
         if ( ! isset( $_POST[ $name . '_h' ] ) ) {

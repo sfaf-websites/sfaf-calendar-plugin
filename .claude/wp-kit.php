@@ -174,6 +174,8 @@ function wp_update_term( $id, $tax, $a = array() ) { if ( isset( $a['description
 function wp_redirect( $u ) { $GLOBALS['kit_redirect'] = $u; return true; }
 
 /* ---- Time. ---- */
+/* The site's zone is UTC in the kit, so local and GMT are the same instant (3.110.0). */
+function get_gmt_from_date( $d, $f = 'Y-m-d H:i:s' ) { $t = strtotime( (string) $d . ' UTC' ); return false === $t ? '' : gmdate( $f, $t ); }
 function current_time( $t = 'mysql', $g = 0 ) {
     if ( 'timestamp' === $t ) { return time(); }
     $machine = ( 'mysql' === $t ) ? 'Y-m-d H:i:s' : $t; // storage and comparison, never shown
