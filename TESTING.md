@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 252 items.** Quick 210, needs real conditions 38, blocked on other
+**Outstanding: 256 items.** Quick 214, needs real conditions 38, blocked on other
 people 4.
 
 ---
@@ -3027,6 +3027,50 @@ box is still there with the URL in it. Change it, approve: the event shows the
 new picture.
 
 **Why it needs a person:** a real submission through a public form.
+
+### 1.214 A private event made on Add event (3.109.0)
+
+On **Add event**, tick **Make this event private** in the Display card and press
+**Publish**. The address shown under the tick is a string of letters and
+numbers, not the title. The event is not on the public calendar, the embed on
+sfaf.org, the event list or the search. Open the address in a private window:
+the event shows. Do the same with **Save draft**, then publish it: same result.
+
+**Why it needs a person:** the real calendar, the real embed and the real
+caches, which the build cannot reach.
+
+### 1.215 Forgot your password, through to a new password (3.109.0)
+
+Sign out. On the caladmin sign-in, press **Forgot your password?**, type your own
+address, send. The page says "If that address has an account, a reset link is
+on its way." The email arrives; its link opens a caladmin page, not a WordPress
+one. Set a new password twice, and you land on the caladmin sign-in, where the
+new password works. Then send for an address with no account: the page says
+the same line and no email arrives.
+
+**Why it needs a person:** real mail through wp_mail and Postmark, and a real
+reset key.
+
+### 1.216 Change password on Preferences (3.109.0)
+
+On **Preferences**, type a wrong current password: one red line, nothing
+changed. Type the right one and two different new ones: one red line. Type them
+the same: "Password changed. You are still signed in." Move to another screen:
+still signed in. Sign out and sign in with the new password. WordPress also
+emails you that the password changed.
+
+**Why it needs a person:** the real sign-in cookie, which is what keeps you
+signed in.
+
+### 1.217 The two logos on the real site (3.109.0)
+
+The sign-in page shows the SFAF logo above the form, centred, on a laptop and a
+phone. Inside caladmin the sidebar shows the stacked logo on a white tile with
+"Calendar Admin" under it; on a phone, open the menu to see it. Both pictures
+load from resources.sfaf.org.
+
+**Why it needs a person:** the live site, with its caching and its own copy of
+the two files.
 
 ## 2. Needs real conditionsWaiting for an unattended job to fire, a real removal at source, or a real event
 with real registrations and real mail.

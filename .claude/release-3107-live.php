@@ -274,7 +274,7 @@ foreach ( array_keys( $pages ) as $t ) {
     /* A and H. */
     $main = $add
         ? array( 'series', 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications' )
-        : array( 'series', 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications', 'other-details' );
+        : array( 'series', 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications' ); // Other details went with the private tick (3.109.0)
     $side = $add ? array( 'links', 'display' ) : array( 'links', 'display', 'access' );
     rv_check( $main === $v( $t, 'main' ), "PLANT A: $t: the main column reads " . json_encode( $v( $t, 'main' ) ) );
     rv_check( $side === $v( $t, 'side' ), "PLANT A: $t: the side column reads " . json_encode( $v( $t, 'side' ) ) );

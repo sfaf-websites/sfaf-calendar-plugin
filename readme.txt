@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.108.1
+Stable tag: 3.109.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,20 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.109.0 =
+
+**Private events on Add event, the same settings on both editors, passwords inside caladmin, and the SFAF logos.**
+
+**PRIVATE EVENTS.** "Make this event private" is in the Display card, under Follow the series, on Add event and Edit event. On Add event it applies at the first save, Save draft or Publish, and the event never has a public address: it is created with a private link and is never on the calendar, the event list, the feed or the embed. The Other details card is gone wherever nothing is left in it; it still holds a submitted event's listing details (cost, age, RSVP link, contact). The tour's Display step says to tick it.
+
+**ADD AND EDIT OFFER THE SAME SETTINGS.** Every setting that shapes an event is on both editors. Edit event keeps only the actions on a saved event: Cancel event, Delete, Edit the schedule, Manage the series, the FAQ set form for browsers without JavaScript, and Who can edit this. Fill these in stays on Add event. A check fails on any other difference.
+
+**PASSWORDS.** **Forgot your password?** under the sign-in form asks for your email address, sends WordPress's standard reset email, and says "If that address has an account, a reset link is on its way." whatever the address was. The email's link opens a caladmin page to set the new password, then the caladmin sign-in. **Preferences** has **Change password**: current password, new password twice, Save. A wrong current password or two different new ones says so on the card; a change keeps you signed in.
+
+**LOGOS.** The SFAF logo sits above the sign-in form, 320px wide on a laptop and the form's width on a phone. The sidebar's yellow mark is replaced by the stacked logo on a white tile, with Calendar Admin under it. Both load from resources.sfaf.org. The Logo setting in WordPress admin no longer changes caladmin.
+
+**CHECKED.** A private event saved from Add event, published and as a draft, carries a private link and the private setting on every write from the first, and the REST events route, the event list and the month grid leave it out while showing a public one. Add event and Edit event (a draft and a published event, in a series, with FAQ sets) compared control by control across the whole page. The forgot page sends for a known address only and redirects the same way for every address; the email's link is rewritten to caladmin; the reset page refuses two different passwords and an expired link; Change password refuses a wrong current password, an empty one and a mismatch. In Chrome at 1280px and 390px: the private tick's place, the three sign-in pages' shared layout, the logo's width and centring, the sidebar tile, and the Change password card. Planted and caught: a private event public for its first write, the tick out of the Display card, the tick on Edit event only, Cancel event unmarked, a setting marked as a saved-event action, the page after Send depending on the address, and a wrong current password accepted.
 
 = 3.108.1 =
 

@@ -2492,6 +2492,28 @@ stable name for a later guided tour; `DESIGN.md` 4 lists them.
 - **One inline notice** (3.108.1): `.uc-notice`, the Green family's tint and ink,
   is what the prefill, the FAQ set and Insert image say after they act.
 
+### Add event and Edit event offer the same settings (3.109.0)
+
+The rule is CLAUDE.md 7's: every setting that shapes the event is on both
+editors, applying at the first save where it needs the event to exist. Actions
+on a saved event may be Edit-only, and each carries `data-uc-saved-action` in
+the markup naming which: `cancel` (the Cancel event disclosure, and the card a
+cancelled event shows), `delete`, `access` (Who can edit this),
+`manage-series` (the series banner's link), `edit-schedule`, `faq-form` (the
+no-JavaScript FAQ set form, which posts to the saved event) and `rsvp-list`,
+which nothing carries because no editor has an RSVP list link. The series
+prefill carries `data-uc-add-only="series-prefill"`.
+
+`.claude/notifications-card-test.php` renders Add event, an existing draft and
+a published event, in a series, with FAQ sets: every control outside a marked
+action must be on both, keyed by its card and its kind, name and value or its
+words, and a marker outside those names fails too. Against the published event
+the save buttons are left out, because Save changes stands in for Save draft
+and Publish there. **The listing details** of a submitted event (cost, age,
+RSVP link, contact) are drawn only when the event has them and are still in
+Other details, the only thing left there; no event made on Add event can have
+them.
+
 ### Descriptions are rich text, with a deliberately short toolbar
 
 Event descriptions are `post_content` and have been plain text until 3.38.0.
@@ -4046,6 +4068,19 @@ private series is every event in it marked private.
 **The URL is the credential, so it has to be unguessable.** Making an event
 private replaces its slug with 32 hex characters from `random_bytes()`. The
 previous slug is kept so making it public again restores the old address.
+
+**Both editors offer it, in the Display card (3.109.0).** On Add event it
+applies at the first save, Save draft or Publish alike, and **an event made
+private there never has a public address**: `save_event_from_post()` merges
+`SFAF_Privacy::born_private_args()` into the insert, so the token slug and the
+private meta (with the noindex flag and the readable slug remembered for later)
+are written by `wp_insert_post()` itself, before any status hook, cache flush
+or feed can see the post. `SFAF_Privacy::set()` then finds it already private
+and changes nothing. Generated occurrences of a private seed are inserted the
+same way. Until 3.109.0 the tick was Edit-only, because there was no post to
+re-slug before the first save. `.claude/private-first-save-test.php` records
+every write of the new event and runs the REST events route, the card list and
+the month grid over it.
 
 **WordPress keeps old slugs alive, and that cuts both ways.** Core hooks
 `wp_check_for_changed_slugs()` to `post_updated`: when a published,
@@ -6044,6 +6079,30 @@ than the day somebody remembers to add it.
 ---
 
 ## 5. Permissions
+
+### Passwords are WordPress's, in caladmin's own pages (3.109.0)
+
+**Forgot your password?** under the sign-in form opens `/caladmin/forgot`,
+which asks for an email address. `process_forgot_password()` calls
+`retrieve_password()` for an address with an account, which makes the key and
+sends WordPress's standard email through `wp_mail()`, and **the page that
+follows is the same redirect whatever the address was**, so it cannot tell
+anybody who has an account. A `retrieve_password_message` filter, added for
+that one call and removed after it, rewrites the email's `wp-login.php` link to
+`/caladmin/reset`, where `check_password_reset_key()` reads the key back and
+`reset_password()` sets the new password, then back to the caladmin sign-in.
+**Change password** on Preferences checks the current password with
+`wp_check_password()` and sets the new one with `wp_update_user()`, which
+re-issues the person's cookie so they stay signed in. The plugin stores
+nothing. **Nothing in caladmin links to the WordPress login or profile**;
+`.claude/password-pages-test.php` sweeps the source for it.
+
+### The logos come from SFAF's own site (3.109.0)
+
+The sign-in pages show the wide logo and the sidebar the stacked one,
+`SFAF_Portal::LOGO_WIDE` and `LOGO_STACKED`, both from resources.sfaf.org and
+never copied into the plugin. **The `brand_logo` setting in wp-admin is no
+longer read by caladmin**, which was its only reader.
 
 ### Two concepts, deliberately separate
 

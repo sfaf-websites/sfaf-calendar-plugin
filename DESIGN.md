@@ -1020,7 +1020,7 @@ Retaken for 3.107.1 with the series card first in the main column.
 | | FAQs | `faqs` |
 | | Classification | `classification` |
 | | Notifications (native events) | `notifications` |
-| | Other details (the catch-all, when anything is left) | `other-details` |
+| | Other details (the catch-all: since 3.109.0 only the listing details of a submitted event, and drawn only then) | `other-details` |
 | Side | Links | `links` |
 | | Display | `display` |
 | | Who can edit this (Edit event only) | `access` |
@@ -1154,6 +1154,48 @@ width, 1px `--p-border`, 10px radius, the label left at 14px/600 with 11px 14px
 padding, the chevron right, and the same 12px 14px 14px panel. It keeps its
 sentence, "Emails for this event: all 6 are on", as the label. It is the first
 thing in its own section of the card, so the space above it is the section's.
+
+### Private in the Display card, the sign-in pages and the logos (3.109.0)
+
+Measured in Chrome by `.claude/release-3109-live.php` at 1280px and 390px.
+Screenshots in `.claude/screens/`, each `-desktop.png` and `-phone.png`:
+`caladmin-3109-signin`, `caladmin-3109-forgot`, `caladmin-3109-prefs` (with the
+wrong-password line) and `caladmin-3109-edit` (the sidebar tile and the Display
+card).
+
+**Make this event private** is the last tick in the Display card, straight
+after Follow the series, on Add event and Edit event: a standard `.uc-check`,
+the "?" help beside its label, and one hint under it. The pending queue keeps
+it as a headed field, "Who can find this event", in its panel.
+
+**The sign-in, forgotten-password and reset pages are one layout**: the dark
+wrap, `--sfaf-black` to `--sfaf-darkgray` at 135deg; the card on `--p-panel`,
+400px, 40px padding, 16px radius, `--p-shadow-raised`; the logo; a 22px heading
+and a `--p-muted` line; the form; a quiet link under it, 13px/600
+`--uc-accent-text` ("Forgot your password?", "Back to sign in", "Ask for a new
+link"). A failure is `--p-error-ink` on `--p-error-tint`; the sent line and
+"Your password is set" are the `.uc-notice` from 3.108.1.
+
+**The wide logo above the form** is `sfaf-logo.webp` from resources.sfaf.org,
+348 x 91 natural, the Yellow + Black logo with the Gray wordmark, which the
+logo guide puts on white. **It is as wide as the form and never wider than
+320px**: 320 x 84 at 1280px, and the form's whole width at 390px (262px).
+Centred. The logo guide (v2, March 2026) sets no clear space or minimum size,
+so the card's 40px is its space on three sides and 24px separates it from the
+heading.
+
+**The sidebar's stacked logo** is
+`SFAF-heritage-logo_stacked-Yellow-15Gray-preview.webp`, 1470 x 901 natural,
+on a white tile: `--p-panel`, the cards' 12px radius, 12px padding, as wide as
+the sidebar's content (200px), so the logo is 176px wide. "Calendar Admin" sits
+10px under the tile, as before. At 390px the same, in the opened menu. **Its
+wordmark is the file's 15% gray**, light on the white tile; the wide logo's
+wordmark is darker.
+
+**Change password** is a second card on Preferences: Current password, New
+password, New password again, then Save. A refusal is one `.uc-field-error`
+line at the top of the card; success is the page's flash, "Password changed.
+You are still signed in."
 
 ---
 

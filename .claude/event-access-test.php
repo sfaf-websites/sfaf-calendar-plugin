@@ -477,6 +477,7 @@ $ALLOWED = array(
      * decided by the event gate when it is sent.
      */
     'POST:save_preferences'       => array( 'access' ),
+    'POST:change_password'        => array( 'access' ),   // 3.109.0: a calendar role, then the person's own current password
     // Reached only past handle()'s get_role() check, and draws the caller's own.
     'GET:preferences'             => array( 'none' ),
 
