@@ -1086,7 +1086,7 @@ and the same four for `edit`.
 | The dim | the ring's own box-shadow, so the card stays undimmed | `--p-scrim`, the confirm dialog's backdrop value, now a token |
 | The ring | 6px outside the card on every side, so the page between ring and card is undimmed and the ring reads against `--p-bg` (4.95:1) | 3px `--uc-accent-text`, 16px radius |
 | The panel | the standard card, a modal dialog | `--p-panel`, 1px `--p-border`, 12px radius, 16px padding, `--p-shadow-raised`; 320px or the window less 24px |
-| Count, name, caption | "3 of 12", the card's name, Mark's caption | 12px/600 `--p-muted`; 16px/700 `--p-text`; 14px/400 `--p-text` at 1.5 |
+| Count, name, caption | "3 of 12", the card's name, Mark's caption | Helper, 12px/400 `--p-muted`; Subhead, 16px/600 `--p-text`; Body, 14px/400 `--p-text` at 1.5 |
 | Buttons | Back, Next, Done, the standard small button; Done pushed right | `.uc-btn .uc-btn-sm`; a disabled one keeps `.uc-btn[disabled]`'s .65 opacity |
 
 **Where the panel goes.** 720px and wider: beside the card, to the right when
