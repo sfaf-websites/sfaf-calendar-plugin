@@ -3354,7 +3354,7 @@ class SFAF_Portal {
         if ( $org_held ) {
             $msg = 'publish_needs';
         } elseif ( $sched_past ) {
-            $msg = 'schedule_past';
+            $msg = 'schedule_time_past';
         } elseif ( $scheduled ) {
             $msg = 'scheduled';
         } elseif ( $generated ) {
@@ -4385,7 +4385,7 @@ class SFAF_Portal {
         $map = array(
             'saved'          => 'Event saved.',
             'scheduled'      => 'Event scheduled. It goes live at the date and time beside Schedule.',
-            'schedule_past'  => 'That date and time has passed, so nothing was scheduled. Choose a later time and press Schedule again.',
+            'schedule_time_past' => 'That date and time has passed, so nothing was scheduled. Choose a later time and press Schedule again.',
             'trashed'        => 'Event removed.',
             'bulk_cat_none'  => 'Nothing was changed. Tick the events you want the category added to, then press the button.',
             'bulk_cat_failed' => 'That category could not be applied. Choose one from the list and try again.',

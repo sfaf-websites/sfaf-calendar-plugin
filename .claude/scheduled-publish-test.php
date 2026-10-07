@@ -73,8 +73,20 @@ sp( 'future' !== get_post_status( (int) $r2['id'] ) && 'publish_needs' === $r2['
 
 /* 3 */
 $r3 = sp_save( 0, 'publish', $on( $past ) );
-sp( 'draft' === get_post_status( (int) $r3['id'] ) && 'schedule_past' === $r3['msg'],
+sp( 'draft' === get_post_status( (int) $r3['id'] ) && 'schedule_time_past' === $r3['msg'],
     'G.1: a time that has passed did something other than say so: ' . json_encode( array( get_post_status( (int) $r3['id'] ), $r3['msg'] ) ) );
+
+/* 3, the words: the flash map is one array literal, so a key written twice
+   keeps only its last line. 'schedule_past' was the series screen's before it
+   was this one's, and the past-time message never showed. */
+$src = file_get_contents( dirname( __DIR__ ) . '/includes/class-sfaf-portal.php' );
+$fs  = strpos( $src, '    private function flash() {' );
+$map = substr( $src, $fs, strpos( $src, "
+        );", $fs ) - $fs );
+preg_match_all( "/^\s*'([a-z_]+)'\s*=>/m", $map, $keys );
+$dups = array_keys( array_filter( array_count_values( $keys[1] ), function ( $n ) { return $n > 1; } ) );
+sp( count( $keys[1] ) > 20 && array() === $dups, 'G.1: the flash map names a key twice, so the first line never shows: ' . json_encode( $dups ) );
+sp( false !== strpos( $map, "'schedule_time_past' => 'That date and time has passed" ), 'G.1: the past-time message is not the one the flash map shows' );
 
 /* 4 */
 $r4 = sp_save( $id, 'keep', $on( $later ) );

@@ -1163,10 +1163,8 @@ Screenshots in `.claude/screens/`, each `-desktop.png` and `-phone.png`:
 wrong-password line) and `caladmin-3109-edit` (the sidebar tile and the Display
 card).
 
-**Make this event private** is the last tick in the Display card, straight
-after Follow the series, on Add event and Edit event: a standard `.uc-check`,
-the "?" help beside its label, and one hint under it. The pending queue keeps
-it as a headed field, "Who can find this event", in its panel.
+**Make this event private** was the last tick in the Display card in 3.109.0;
+since 3.110.0 it is a card of its own, below.
 
 **The sign-in, forgotten-password and reset pages are one layout**: the dark
 wrap, `--sfaf-black` to `--sfaf-darkgray` at 135deg; the card on `--p-panel`,
@@ -1185,17 +1183,83 @@ so the card's 40px is its space on three sides and 24px separates it from the
 heading.
 
 **The sidebar's stacked logo** is
-`SFAF-heritage-logo_stacked-Yellow-15Gray-preview.webp`, 1470 x 901 natural,
-on a white tile: `--p-panel`, the cards' 12px radius, 12px padding, as wide as
-the sidebar's content (200px), so the logo is 176px wide. "Calendar Admin" sits
-10px under the tile, as before. At 390px the same, in the opened menu. **Its
-wordmark is the file's 15% gray**, light on the white tile; the wide logo's
-wordmark is darker.
+`SFAF-heritage-logo_stacked-Yellow-15Gray-preview.webp`, 1470 x 901 natural.
+**Since 3.110.0 there is no tile**: the file is transparent and sits straight on
+`--p-sidebar`, in a box with no fill and no radius and 12px of padding on every
+side, as wide as the sidebar's content (200px), so the logo is 176px wide.
+"Calendar Admin" sits under it, as before. At 390px the same, in the opened
+menu. **Its wordmark is the file's 15% gray**, which reads light on the dark
+sidebar; the logo guide shows the logo on white and on black only, so this
+placement is Mark's call, made in the 3.110.0 brief.
 
 **Change password** is a second card on Preferences: Current password, New
 password, New password again, then Save. A refusal is one `.uc-field-error`
 line at the top of the card; success is the page's flash, "Password changed.
 You are still signed in."
+
+### Who can find this event, the agreement, the RSVP list and the phone pass (3.110.0)
+
+Measured in Chrome by `.claude/release-3110-live.php` at 1280px, 390px and
+430px. Screenshots in `.claude/screens/`: `caladmin-3110-private-desktop` (the
+card with its link), `caladmin-3110-add-phone`, `caladmin-3110-rsvps-desktop`
+and `-phone`, and `caladmin-3110-public-desktop`, `-phone` and `-wide` (the
+event page with the agreement dialog open).
+
+**Who can find this event** is its own `.uc-bento-card`, straight after
+Display, on Add event and Edit event: the card heading with its "?" help, the
+"Make this event private" tick, and one hint. Once the event is saved private
+the card adds the link in a read-only field with a Copy button beside it, the
+standard `.uc-btn`; pressed, the button reads "Copied" for two seconds. Before
+that save there is no link row at all. The pending queue keeps the headed field
+in its panel.
+
+**The agreement dialog** is a second modal `<dialog>` over the RSVP form, in
+the form's own panel: the heading, the agreement in a box with a 1px
+`--uc-border` edge, 10px radius, 12px 14px padding, 15px/1.5 `--uc-text`, its
+paragraphs 10px apart and at most 40vh tall before it scrolls; the tick in the
+form's tick style; then Confirm RSVP over Cancel, the form's own two buttons at
+full width. Confirm RSVP wears the form's disabled state until the tick is on.
+Nothing new is coloured.
+
+**The RSVP list for one event** opens with a counts line (registered, checked
+in or attended, waitlisted, and "want texts" when anybody does), then the
+check-in choice as the segmented control, Check in by name or Enter a count,
+then Find by name. Email registrants is a closed `.uc-picker` disclosure; the
+log of what was sent is a card under it. A row that opted in to texts carries
+a small "Texts" mark beside the phone: 12px/400 `--p-muted` on `--p-bg`, 1px
+`--p-border`, 99px radius. Check in is a `.uc-btn uc-btn-sm`; checked in, it
+reads "Checked in [time]" in `--uc-accent-text` on `--uc-band` with an accent
+edge, `aria-pressed="true"`.
+
+**On a phone (600px and under) the RSVP list is one column.** A row is the
+name and Check in on one line, the name taking what the button leaves and
+breaking anywhere if it has to; then email, phone and status in 13px
+`--p-muted`; then Remove and Details. The header row, Updates and Registered go.
+The waitlist table stacks the same way, losing Joined. Every button in a row is
+44px tall.
+
+**The phone pass.** Add event, Edit event, the RSVP list and the event page
+with the dialog open were measured at 390px and 430px: no element past the
+right edge, no sideways scroll, and every button, field, select, summary and
+tick-box label at least 44px tall. Where the pass found less, a block at the
+end of `portal.css` and of `calendar.css` raises it under `@media (pointer:
+coarse), (max-width: 600px)`: a finger, as the calendar already decides it, or
+a narrow window, which is what the pass measures.
+
+- caladmin: fields and selects (40px), `.uc-btn` (32 to 42px), the picker tabs,
+  token chips, link buttons, the tour link, the questions' icon buttons (also
+  44px wide), the image summary, the segmented options (36px) and every
+  `.uc-check` and `.uc-radio-row` label (22px) take `min-height: 44px`. A tick
+  label centres its box, which the baseline had set to `align-self:
+  flex-start`, and drops its 8px bottom margin, the 44px being its own air.
+- The "?" help glyph stays a 16px circle. Its target is a `::after` 14px
+  outside it on every side, 44 by 44, which is what the pass measures for it.
+- The RSVP form: the fields (42px), the tick labels (19 to 38px), Cancel (38px)
+  and the event page's Join the waitlist (34px).
+- What the pass found running past the edge: the RSVP list's waitlist table
+  (692px wide in 390px) and, inside a closed disclosure, nothing; the cancel
+  options it first reported were in Cancel event's closed `<details>`, which the
+  probe now skips as unseen.
 
 ---
 

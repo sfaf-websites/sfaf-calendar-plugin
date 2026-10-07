@@ -67,6 +67,8 @@ for f in .claude/*.php; do
     plant-31081.php) continue ;;       # a fault planter for the 3.108.1 checks, not a check
     release-3109-live.php) continue ;;  # run below with --run
     plant-3109.php) continue ;;        # a fault planter for the 3.109.0 checks, not a check
+    release-3110-live.php) continue ;;  # run below with --run
+    plant-3110.php) continue ;;        # a fault planter for the 3.110.0 checks, not a check
     login-check.php) continue ;;       # run last, after every capture is rewritten
     byline-live.php) continue ;;       # run below with --run; --live checks the site itself
   esac
@@ -306,6 +308,8 @@ run "release-3108-live --run" php .claude/release-3108-live.php --run
 run "release-31081-live --run" php .claude/release-31081-live.php --run
 # Private in the Display card, the password pages and the two logos (3.109.0).
 run "release-3109-live --run" php .claude/release-3109-live.php --run
+# Who can find this event, the agreement dialog, check-in and the phone pass (3.110.0).
+run "release-3110-live --run" php .claude/release-3110-live.php --run
 
 echo
 # No real name or login in a tracked file (3.106.2). Last, because the browser
