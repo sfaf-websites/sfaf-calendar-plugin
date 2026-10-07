@@ -334,13 +334,14 @@ body.uc-portal {
 .uc-portal-layout { display: flex; min-height: 100vh; }
 .uc-portal-sidebar { width: 240px; background: var(--p-sidebar); color: var(--p-sidebar-text);
     display: flex; flex-direction: column; flex-shrink: 0; position: sticky; top: 0; height: 100vh; }
-/* THE STACKED LOGO ON A WHITE TILE (3.109.0): the card radius, 12px of white
-   all round, as wide as the sidebar's 200px of content, "Calendar Admin" 10px
-   under it. The logo guide puts this variant on white, not on the dark. */
+/* THE STACKED LOGO, STRAIGHT ON THE SIDEBAR (3.110.0). The file is
+   transparent, so it sits on --p-sidebar with 12px of padding all round, as
+   wide as the sidebar's 200px of content, and "Calendar Admin" 10px under it.
+   3.109.0 put it on a white tile, which Mark took away. */
 .uc-portal-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 20px;
     border-bottom: 1px solid rgba(255,255,255,0.10); }
-.uc-portal-logo-tile { display: block; box-sizing: border-box; width: 100%; padding: 12px; border-radius: 12px; background: var(--p-panel); }
-.uc-portal-logo-tile .uc-portal-logo { display: block; width: 100%; height: auto; }
+.uc-portal-logo-wrap { display: block; box-sizing: border-box; width: 100%; padding: 12px; }
+.uc-portal-logo-wrap .uc-portal-logo { display: block; width: 100%; height: auto; }
 .uc-portal-brandtext { font-weight: 700; color: #fff; font-size: 15px; letter-spacing: -0.01em; }
 
 .uc-portal-nav { padding: 12px 10px; flex: 1; min-height: 0; overflow-y: auto; }
@@ -5081,3 +5082,16 @@ body.uc-modal-open { overflow: hidden; }
 }
 .uc-notice.uc-notice-error { background: var(--p-error-tint); color: var(--p-error-ink); }
 .uc-notice[hidden] { display: none; }
+
+/* ---------------------------------------------------------------------------
+   WHO CAN FIND THIS EVENT (3.110.0)
+
+   Its own card under Display. Once the event is saved and private, its link
+   sits in a read-only box with Copy beside it: the box takes the row, the
+   button keeps its width, and below 420px of card the button takes its own
+   line under the box. The box is the standard text field, read-only, on the
+   page tint so it reads as a value rather than something to type in.
+   ------------------------------------------------------------------------ */
+.uc-private-field .uc-private-link-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+.uc-private-field .uc-private-link-box { flex: 1 1 200px; min-width: 0; background-color: var(--p-bg); color: var(--p-text); }
+.uc-private-field .uc-private-link-row .uc-btn { flex: 0 0 auto; }

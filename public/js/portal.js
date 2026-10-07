@@ -140,7 +140,48 @@ function ucDismissOnBackdrop(dialog) {
         run('descImages', initDescImages);
         run('videoPreview', initVideoPreview);
         run('editorTour', initEditorTour);
+        run('copyButtons', initCopyButtons);
     });
+
+    /* ---------------------------------------------------------------------
+     * COPY (3.110.0). A button naming a read-only box by id copies the box's
+     * text, says "Copied" on itself and in a status region for a screen
+     * reader, and goes back to "Copy" after two seconds. The clipboard API
+     * where the page is allowed it, selecting the text and execCommand where
+     * it is not; either way the box's text is left selected, so a refusal
+     * still leaves it one keystroke from copied.
+     * ------------------------------------------------------------------ */
+    function initCopyButtons() {
+        document.querySelectorAll('[data-uc-copy]').forEach(function (btn) {
+            var box = document.getElementById(btn.getAttribute('data-uc-copy'));
+            if (!box) { return; }
+            var said = btn.parentNode ? btn.parentNode.querySelector('[data-uc-copy-said]') : null;
+            var label = btn.textContent;
+            var timer = 0;
+            function done() {
+                btn.textContent = 'Copied';
+                btn.setAttribute('data-uc-copied', '');
+                if (said) { said.textContent = 'Copied'; }
+                if (timer) { window.clearTimeout(timer); }
+                timer = window.setTimeout(function () {
+                    btn.textContent = label;
+                    btn.removeAttribute('data-uc-copied');
+                    if (said) { said.textContent = ''; }
+                }, 2000);
+            }
+            btn.addEventListener('click', function () {
+                box.focus();
+                box.select();
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(box.value).then(done, function () {
+                        try { if (document.execCommand('copy')) { done(); } } catch (e) { /* the text stays selected */ }
+                    });
+                    return;
+                }
+                try { if (document.execCommand('copy')) { done(); } } catch (e) { /* the text stays selected */ }
+            });
+        });
+    }
 
     /* =====================================================================
      * THE EVENT EDITOR'S TOUR (3.108.0)

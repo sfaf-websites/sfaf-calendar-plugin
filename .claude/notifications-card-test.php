@@ -107,7 +107,7 @@ nc( (string) get_post_meta( $new, '_uc_email_replyto', true ), 'events@example.o
  * required instead. Both events are in a series and FAQ sets exist, so every
  * conditional control that the page can draw is drawn.
  * ======================================================================== */
-$SAVED_ACTIONS = array( 'manage-series', 'edit-schedule', 'cancel', 'delete', 'faq-form', 'access', 'rsvp-list' );
+$SAVED_ACTIONS = array( 'manage-series', 'edit-schedule', 'cancel', 'delete', 'faq-form', 'access', 'rsvp-list', 'private-link' );
 $ADD_ONLY      = array( 'series-prefill' );
 
 function nc_controls( $html, $skip_attr, $skip_saves = false ) {

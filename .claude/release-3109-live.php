@@ -110,6 +110,8 @@ window.addEventListener('load', function () { setTimeout(function () {
       var ticks = qa('.uc-check', display).map(function (l) { return text(l).replace(/\s*\?$/, ''); });
       out.displayTicks = ticks;
       out.privateIn = !!q('input[name="uc_private"][type="checkbox"]', display);
+      var priv = q('[data-uc-card="privacy"]');
+      out.privateCard = !!priv && !!q('input[name="uc_private"][type="checkbox"]', priv) && display.nextElementSibling === priv;
       out.privateCount = qa('input[name="uc_private"][type="checkbox"]').length;
     }
     var other = q('[data-uc-card="other-details"]');
@@ -178,8 +180,9 @@ foreach ( array( 'desktop', 'phone' ) as $wn ) {
     foreach ( array( 'add', 'edit', 'prefs' ) as $screen ) {
         $t = "$screen-$wn";
         $s = (array) $v( $t, 'side' );
-        rn_check( $s && true === $s['loaded'] && $ALT === $s['alt'] && $P_PANEL === $s['bg'] && '12px' === $s['radius'] && array( '12px', '12px', '12px', '12px' ) === $s['pad'],
-            "D.2: $t: the sidebar logo is not on a white 12px tile: " . json_encode( $s ) );
+        /* 3.110.0: no tile. The logo sits on the sidebar, transparent, with 12px of padding. */
+        rn_check( $s && true === $s['loaded'] && $ALT === $s['alt'] && 'rgba(0, 0, 0, 0)' === $s['bg'] && '0px' === $s['radius'] && array( '12px', '12px', '12px', '12px' ) === $s['pad'],
+            "PLANT A.5: $t: the sidebar logo is not straight on the sidebar with 12px of padding: " . json_encode( $s ) );
         if ( $s ) {
             rn_check( $s['img']['w'] === $s['tile']['w'] - 24, "D.2: $t: the logo is not the tile's inner width: " . json_encode( array( $s['img'], $s['tile'] ) ) );
             rn_check( 'Calendar Admin' === $s['labelText'] && $s['label']['top'] >= $s['tile']['bottom'], "D.2: $t: \"Calendar Admin\" is not under the tile" );
@@ -193,8 +196,9 @@ foreach ( array( 'desktop', 'phone' ) as $wn ) {
         $t = "$screen-$wn";
         $ticks = (array) $v( $t, 'displayTicks' );
         $at = array_search( 'Follow the series', $ticks, true );
-        rn_check( true === $v( $t, 'privateIn' ) && 1 === $v( $t, 'privateCount' ) && false !== $at && isset( $ticks[ $at + 1 ] ) && 0 === strpos( $ticks[ $at + 1 ], 'Make this event private' ),
-            "PLANT A: $t: Make this event private is not in the Display card right after Follow the series: " . json_encode( array( $ticks, $v( $t, 'privateCount' ) ) ) );
+        /* 3.110.0: its own card, straight after Display, rather than the last tick in it. */
+        rn_check( false === $v( $t, 'privateIn' ) && 1 === $v( $t, 'privateCount' ) && true === $v( $t, 'privateCard' ) && 'Follow the series' === end( $ticks ),
+            "PLANT A: $t: Make this event private is not in its own card right after Display: " . json_encode( array( $ticks, $v( $t, 'privateCount' ), $v( $t, 'privateCard' ) ) ) );
         rn_check( null === $v( $t, 'other' ), "A.3: $t: Other details is drawn with " . json_encode( $v( $t, 'other' ) ) );
     }
 

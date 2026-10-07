@@ -4059,9 +4059,9 @@ class SFAF_Portal {
         ?>
         <div class="uc-portal-layout">
             <aside class="uc-portal-sidebar" id="uc-sidebar">
-                <?php // The stacked logo on a white tile, "Calendar Admin" under it (3.109.0). ?>
+                <?php // The stacked logo on the sidebar itself, "Calendar Admin" under it (3.110.0). ?>
                 <div class="uc-portal-brand">
-                    <span class="uc-portal-logo-tile" data-uc-sidebar-logo>
+                    <span class="uc-portal-logo-wrap" data-uc-sidebar-logo>
                         <img src="<?php echo esc_url( self::LOGO_STACKED ); ?>" alt="<?php echo esc_attr( self::LOGO_ALT ); ?>"
                              class="uc-portal-logo" width="1470" height="901" />
                     </span>
@@ -7198,6 +7198,119 @@ class SFAF_Portal {
      * @param string $state
      */
     /**
+     * "Make this event private" (3.29.0; one renderer since 3.109.0; its own
+     * card on the editors since 3.110.0).
+     *
+     * 'card' is the editors' "Who can find this event" card, under Display on
+     * Add event and Edit event: the tick, the 3.68.0 copy (the third sentence,
+     * about links already shared, only once the event exists), and, once the
+     * event is saved and private, its link in a read-only box with Copy.
+     * 'queue' is the pending queue's headed field. On Add event the tick
+     * applies at the first save: save_event_from_post() inserts the event with
+     * its token address and the private meta already set, and the save lands
+     * on Edit event, where this card then shows the link.
+     *
+     * @param int    $event_id 0 on Add event.
+     * @param bool   $imported Whether a source owns the event.
+     * @param string $mode     'card' or 'queue'.
+     */
+    private function render_private_control( $event_id, $imported, $mode ) {
+        $event_id   = (int) $event_id;
+        $is_private = $event_id ? SFAF_Privacy::is_private( $event_id ) : false;
+        $card       = ( 'card' === $mode );
+        $help       = sfaf_help(
+            'uc-help-private-' . $event_id,
+            'The link is the whole of the protection: anybody who has it can open the event and can pass it on. There is no list of who has looked and no way to take the link back except making a new one.',
+            'private events'
+        );
+        ?>
+        <?php if ( $card ) : ?>
+        <section class="uc-bento-card" data-uc-card="privacy">
+            <h2 class="uc-bento-title">Who can find this event <?php echo $help; ?></h2>
+        <?php endif; ?>
+        <div class="uc-field uc-private-field" data-uc-private>
+            <?php if ( ! $card ) : ?>
+                <span class="uc-field-label">Who can find this event <?php echo $help; ?></span>
+            <?php endif; ?>
+            <?php // Hidden 0 first: an absent checkbox has to mean off rather than "not submitted". ?>
+            <input type="hidden" name="uc_private" value="0" />
+            <label class="uc-check">
+                <input type="checkbox" name="uc_private" value="1" <?php checked( $is_private ); ?> />
+                Make this event private
+            </label>
+            <?php if ( $event_id ) : ?>
+                <p class="uc-hint">
+                    The event will not appear anywhere on the site. Only people you send the link to can
+                    find it. Turning this on gives the event a new link, so any link you have already
+                    shared will stop working.
+                </p>
+            <?php else : ?>
+                <p class="uc-hint">The event will not appear anywhere on the site. Only people you send the link to can find it.</p>
+            <?php endif; ?>
+            <?php if ( $is_private && $card ) : ?>
+                <?php $link_id = 'uc-private-link-' . $event_id; ?>
+                <div class="uc-private-link-row" data-uc-private-link-row data-uc-saved-action="private-link">
+                    <label class="uc-visually-hidden" for="<?php echo esc_attr( $link_id ); ?>">The event's private link</label>
+                    <input type="text" id="<?php echo esc_attr( $link_id ); ?>" class="uc-private-link-box" readonly
+                           value="<?php echo esc_attr( get_permalink( $event_id ) ); ?>" data-uc-private-link />
+                    <button type="button" class="uc-btn uc-btn-sm" data-uc-copy="<?php echo esc_attr( $link_id ); ?>">Copy</button>
+                    <span class="uc-visually-hidden" role="status" data-uc-copy-said></span>
+                </div>
+            <?php elseif ( $is_private ) : ?>
+                <p class="uc-hint uc-private-link">
+                    Send this address:
+                    <code><?php echo esc_html( get_permalink( $event_id ) ); ?></code>
+                </p>
+            <?php endif; ?>
+            <?php if ( $imported ) : ?>
+                <p class="uc-hint">This choice is yours permanently. A fetch never changes it.</p>
+            <?php endif; ?>
+        </div>
+        <?php if ( $card ) : ?>
+        </section>
+        <?php endif; ?>
+        <?php
+    }
+
+    /**
+     * The event editor's tour, in page order (3.108.0).
+     *
+     * One entry per data-uc-card name, with the name the panel shows and the
+     * caption Mark wrote, word for word. Who can edit this is listed on both
+     * screens: the script skips any step whose card is not on the page, which
+     * is the rule that also drops Notifications from an imported event. The
+     * action bar is the one step whose caption depends on the screen.
+     *
+     * @param bool $is_edit
+     * @return array[] Each array( 'card' => ..., 'name' => ..., 'text' => ... ).
+     */
+    private function editor_tour_steps( $is_edit ) {
+        $steps = array(
+            array( 'series', 'Series and language', 'Choose the series first. The event takes its description, picture and defaults from it, and the picture list narrows to that series. Choose Spanish if registrants should receive their emails in Spanish.' ),
+            array( 'title', 'Title', 'Give the event the name people will see on the calendar. Keep it short; the description carries the detail.' ),
+            array( 'schedule', 'Schedule', 'Pick the date and the start and end times. For an event that repeats, choose how often and the plugin creates every date for you.' ),
+            array( 'location', 'Location', 'Pick a venue from the list, or choose A different location and type an address. Tick online for a video event, or hybrid when people can come in person or join online.' ),
+            array( 'registration', 'Registration', 'Tick Accept RSVPs to let people register. Set a capacity if places are limited, leave it empty for no limit, or type 0 to send everyone to the waitlist. Add questions if you need to ask registrants something before the event.' ),
+            array( 'details', 'Event details', 'Write the description. Use Insert image to put a picture inside it. For the featured picture, choose one from the calendar folder; upload new pictures on the Images screen first.' ),
+            array( 'faqs', 'FAQs', 'Add questions and answers for this event, or apply a saved set and edit it. To make a set you can reuse, create it on the FAQ Sets screen.' ),
+            array( 'classification', 'Classification', 'Add at least one category and one organizer. A category is the kind of event, such as a support group or a fundraiser, and drives the calendar filters. An organizer is the SFAF program or team hosting the event, and its events are listed together on the calendar.' ),
+            array( 'notifications', 'Notifications', 'Choose who is told when people register or cancel, and who gets the reminder copies. Set the reply address for the reminder email.' ),
+            array( 'links', 'Links', 'Choose which donation link goes in the emails, and paste a volunteer page if there is one.' ),
+            array( 'display', 'Display', 'Choose which buttons appear on the public event page.' ),
+            array( 'privacy', 'Who can find this event', 'Tick Make this event private to keep it off the calendar. Only people you send the link to can open it. Copy the link here once the event is saved.' ),
+            array( 'access', 'Who can edit this', 'Add the people who may change this event besides its creator.' ),
+            array( 'actions', 'Action bar', $is_edit
+                ? 'Save changes updates the event. Cancel event keeps it on the calendar marked cancelled and tells registrants. Delete removes it for good.'
+                : 'Save draft keeps the event private until you are ready. Publish puts it on the calendar.' ),
+        );
+        $out = array();
+        foreach ( $steps as $s ) {
+            $out[] = array( 'card' => $s[0], 'name' => $s[1], 'text' => $s[2] );
+        }
+        return $out;
+    }
+
+    /**
      * The series picker, at the top of a new event, with its prefill offer.
      *
      * NOTHING POSTS. The whole control is a select, a panel of checkboxes and a
@@ -7251,98 +7364,6 @@ class SFAF_Portal {
      * @param int       $event_id 0 on a new event, which is what decides
      *                            whether the prefill offer is drawn at all.
      */
-    /**
-     * "Make this event private" (3.29.0; one renderer since 3.109.0).
-     *
-     * The Display card draws it on Add event and Edit event, under Follow the
-     * series; the pending queue draws it in its manager panel. On Add event it
-     * applies at the first save: save_event_from_post() inserts the event with
-     * a token address and the private meta already set. SFAF_Privacy::set() is
-     * the one writer after that.
-     *
-     * @param int  $event_id 0 on Add event.
-     * @param bool $imported Whether a source owns the event.
-     * @param bool $headed   The queue's panel heads it as a field; the Display
-     *                       card is a list of ticks and does not.
-     */
-    private function render_private_control( $event_id, $imported, $headed ) {
-        $event_id   = (int) $event_id;
-        $is_private = $event_id ? SFAF_Privacy::is_private( $event_id ) : false;
-        $help       = sfaf_help(
-            'uc-help-private-' . $event_id,
-            'The link is the whole of the protection: anybody who has it can open the event and can pass it on. There is no list of who has looked and no way to take the link back except making a new one.',
-            'private events'
-        );
-        ?>
-        <div class="uc-field uc-private-field" data-uc-private>
-            <?php if ( $headed ) : ?>
-                <span class="uc-field-label">Who can find this event <?php echo $help; ?></span>
-            <?php endif; ?>
-            <?php // Hidden 0 first: an absent checkbox has to mean off rather than "not submitted". ?>
-            <input type="hidden" name="uc_private" value="0" />
-            <label class="uc-check">
-                <input type="checkbox" name="uc_private" value="1" <?php checked( $is_private ); ?> />
-                Make this event private
-                <?php echo $headed ? '' : $help; ?>
-            </label>
-            <?php if ( $event_id ) : ?>
-                <p class="uc-hint">
-                    The event will not appear anywhere on the site. Only people you send the link to can
-                    find it. Turning this on gives the event a new link, so any link you have already
-                    shared will stop working.
-                </p>
-            <?php else : ?>
-                <p class="uc-hint">The event will not appear anywhere on the site. Only people you send the link to can find it.</p>
-            <?php endif; ?>
-            <?php if ( $is_private ) : ?>
-                <p class="uc-hint uc-private-link">
-                    Send this address:
-                    <code><?php echo esc_html( get_permalink( $event_id ) ); ?></code>
-                </p>
-            <?php endif; ?>
-            <?php if ( $imported ) : ?>
-                <p class="uc-hint">This choice is yours permanently. A fetch never changes it.</p>
-            <?php endif; ?>
-        </div>
-        <?php
-    }
-    /**
-     * The event editor's tour, in page order (3.108.0).
-     *
-     * One entry per data-uc-card name, with the name the panel shows and the
-     * caption Mark wrote, word for word. Who can edit this is listed on both
-     * screens: the script skips any step whose card is not on the page, which
-     * is the rule that also drops Notifications from an imported event. The
-     * action bar is the one step whose caption depends on the screen.
-     *
-     * @param bool $is_edit
-     * @return array[] Each array( 'card' => ..., 'name' => ..., 'text' => ... ).
-     */
-    private function editor_tour_steps( $is_edit ) {
-        $steps = array(
-            array( 'series', 'Series and language', 'Choose the series first. The event takes its description, picture and defaults from it, and the picture list narrows to that series. Choose Spanish if registrants should receive their emails in Spanish.' ),
-            array( 'title', 'Title', 'Give the event the name people will see on the calendar. Keep it short; the description carries the detail.' ),
-            array( 'schedule', 'Schedule', 'Pick the date and the start and end times. For an event that repeats, choose how often and the plugin creates every date for you.' ),
-            array( 'location', 'Location', 'Pick a venue from the list, or choose A different location and type an address. Tick online for a video event, or hybrid when people can come in person or join online.' ),
-            array( 'registration', 'Registration', 'Tick Accept RSVPs to let people register. Set a capacity if places are limited, leave it empty for no limit, or type 0 to send everyone to the waitlist. Add questions if you need to ask registrants something before the event.' ),
-            array( 'details', 'Event details', 'Write the description. Use Insert image to put a picture inside it. For the featured picture, choose one from the calendar folder; upload new pictures on the Images screen first.' ),
-            array( 'faqs', 'FAQs', 'Add questions and answers for this event, or apply a saved set and edit it. To make a set you can reuse, create it on the FAQ Sets screen.' ),
-            array( 'classification', 'Classification', 'Add at least one category and one organizer. A category is the kind of event, such as a support group or a fundraiser, and drives the calendar filters. An organizer is the SFAF program or team hosting the event, and its events are listed together on the calendar.' ),
-            array( 'notifications', 'Notifications', 'Choose who is told when people register or cancel, and who gets the reminder copies. Set the reply address for the reminder email.' ),
-            array( 'links', 'Links', 'Choose which donation link goes in the emails, and paste a volunteer page if there is one.' ),
-            array( 'display', 'Display', 'Choose which buttons appear on the public event page, and tick Make this event private to keep it off the public calendar.' ),
-            array( 'access', 'Who can edit this', 'Add the people who may change this event besides its creator.' ),
-            array( 'actions', 'Action bar', $is_edit
-                ? 'Save changes updates the event. Cancel event keeps it on the calendar marked cancelled and tells registrants. Delete removes it for good.'
-                : 'Save draft keeps the event private until you are ready. Publish puts it on the calendar.' ),
-        );
-        $out = array();
-        foreach ( $steps as $s ) {
-            $out[] = array( 'card' => $s[0], 'name' => $s[1], 'text' => $s[2] );
-        }
-        return $out;
-    }
-
     private function render_series_prefill( $all_series, $cur_series, $event_id = 0 ) {
         if ( empty( $all_series ) ) {
             // No series, no choice to make, and no card saying so.
@@ -9017,7 +9038,7 @@ class SFAF_Portal {
 
             case 'private':
                 // The pending queue's copy; both editors draw it in the Display card (3.109.0).
-                $this->render_private_control( $event_id, '' !== $ctx['prov']['source'], true );
+                $this->render_private_control( $event_id, '' !== $ctx['prov']['source'], 'queue' );
                 break;
         }
     }
@@ -13541,9 +13562,10 @@ class SFAF_Portal {
                             </p>
                         <?php endif; ?>
                     <?php endforeach; ?>
-                    <?php // Private, under Follow the series, on both editors (3.109.0). ?>
-                    <?php $this->render_private_control( (int) $event_id, '' !== $prov['source'], false ); ?>
                 </section>
+
+                <?php // Who can find this event: its own card, under Display, on both editors (3.110.0). ?>
+                <?php $this->render_private_control( (int) $event_id, '' !== $prov['source'], 'card' ); ?>
 
                 <?php $this->render_access_card( $user, $event_id ); ?>
             <?php

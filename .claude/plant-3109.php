@@ -28,8 +28,8 @@ $plants = array(
     'A.2: the insert is public, made private a moment later' => array( $first, 'PLANT A.2', array(
         array( $php, "                \$postarr = array_merge( \$postarr, SFAF_Privacy::born_private_args(", "                \$postarr = array_merge( \$postarr, array() ); // SFAF_Privacy::born_private_args(" ),
     ) ),
-    'A: the tick is not in the Display card' => array( $live, 'PLANT A', array(
-        array( $php, "                    <?php \$this->render_private_control( (int) \$event_id, '' !== \$prov['source'], false ); ?>", '' ),
+    'A: the Who can find this event card is not drawn' => array( $live, 'PLANT A', array(
+        array( $php, "                <?php \$this->render_private_control( (int) \$event_id, '' !== \$prov['source'], 'card' ); ?>", '' ),
     ) ),
     'B.3: the tick on Edit event only' => array( $parity, 'PLANT B.3', array(
         array( $php, "        \$is_private = \$event_id ? SFAF_Privacy::is_private( \$event_id ) : false;", "        \$is_private = \$event_id ? SFAF_Privacy::is_private( \$event_id ) : false;\n        if ( ! \$event_id ) { return; }" ),

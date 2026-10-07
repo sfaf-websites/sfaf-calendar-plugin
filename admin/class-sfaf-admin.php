@@ -1260,7 +1260,6 @@ class SFAF_Admin {
             'webhook_url',
             'pardot_default_campaign',
             'route_sheet_url',
-            'brand_logo',
             'email_rsvp_subject', 'email_reminder_subject',
             // Morning-of reminder + the provider-neutral sender identity.
             // These are settings rather than constants precisely so an email
@@ -1916,24 +1915,11 @@ class SFAF_Admin {
                         <span class="uc-panel-icon"><?php echo sfaf_icon( 'palette', array( 'size' => '20px' ) ); ?></span>
                         <div class="uc-panel-info">
                             <h2>Branding</h2>
-                            <p>Logo, colors, and card style for the public calendar</p>
+                            <p>Colors and card style for the public calendar</p>
                         </div>
                         <span class="uc-panel-toggle">&#9660;</span>
                     </div>
                     <div class="uc-panel-body">
-                        <div class="uc-field-row">
-                            <label>Logo</label>
-                            <div class="uc-logo-control">
-                                <input type="text" name="uc_settings[brand_logo]" id="uc_brand_logo" value="<?php echo esc_attr( $s( 'brand_logo' ) ); ?>" class="uc-input uc-monospace" placeholder="No logo selected" />
-                                <button type="button" class="button uc-upload-logo">Upload Logo</button>
-                                <button type="button" class="button uc-remove-logo">Remove</button>
-                                <div class="uc-logo-preview">
-                                    <?php if ( $s( 'brand_logo' ) ) : ?>
-                                        <img src="<?php echo esc_url( $s( 'brand_logo' ) ); ?>" alt="" />
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
                         <div class="uc-field-row">
                             <label>Primary Color</label>
                             <input type="text" name="uc_settings[brand_primary_color]" value="<?php echo esc_attr( $s( 'brand_primary_color', '#FFD900' ) ); ?>" class="uc-color-field" data-default-color="#FFD900" />

@@ -6,7 +6,6 @@
 
     $(document).ready(function() {
         initColorPickers();
-        initLogoUploader();
         initRepeaters();
         initFaqSetPicker();
         initGofundmeAutofill();
@@ -57,40 +56,8 @@
         }
     }
 
-    /**
-     * WP media uploader for the logo (Branding)
-     */
-    function initLogoUploader() {
-        var frame;
-
-        $(document).on('click', '.uc-upload-logo', function(e) {
-            e.preventDefault();
-            if (typeof wp === 'undefined' || !wp.media) {
-                return;
-            }
-            if (frame) {
-                frame.open();
-                return;
-            }
-            frame = wp.media({
-                title: 'Select or Upload Logo',
-                button: { text: 'Use this logo' },
-                multiple: false
-            });
-            frame.on('select', function() {
-                var attachment = frame.state().get('selection').first().toJSON();
-                $('#uc_brand_logo').val(attachment.url);
-                $('.uc-logo-preview').html('<img src="' + attachment.url + '" alt="" />');
-            });
-            frame.open();
-        });
-
-        $(document).on('click', '.uc-remove-logo', function(e) {
-            e.preventDefault();
-            $('#uc_brand_logo').val('');
-            $('.uc-logo-preview').empty();
-        });
-    }
+    /* initLogoUploader() REMOVED IN 3.110.0 with the Logo setting: caladmin's
+     * logos come from SFAF's own site and nothing else read the setting. */
 
     /*
      * initSeriesImage() REMOVED IN 3.28.0.
