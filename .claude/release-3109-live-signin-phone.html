@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html >
+<head>
+    <meta charset="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Sign In - SFAF Calendar</title>
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.108.1" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.108.1" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.108.1" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.108.1" />
+    <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
+        <script>
+    (function (d) {
+        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        d.setAttribute('data-uc-motion', reduced ? 'reduced' : 'on');
+        if (reduced) { return; }
+        d.className += ' uc-anim';
+        // The nav stagger is once per session, not once per navigation: every
+        // screen here is a full page load. A storage failure means it simply
+        // runs again, which is the harmless outcome.
+        try {
+            if (window.sessionStorage.getItem('ucNavIntro') !== '1') {
+                window.sessionStorage.setItem('ucNavIntro', '1');
+                d.className += ' uc-anim-nav';
+            }
+        } catch (e) {
+            d.className += ' uc-anim-nav';
+        }
+    })(document.documentElement);
+    </script>
+    </head>
+<body class="uc-portal">        <div class="uc-login-wrap">
+            <div class="uc-login-card">
+                <div class="uc-login-brand">
+                    <img src="https://resources.sfaf.org/wp-content/uploads/logos/sfaf-logo.webp" alt="San Francisco AIDS Foundation"
+                         class="uc-login-logo" width="348" height="91" data-uc-login-logo />
+                </div>
+                <h1>SFAF Calendar Admin</h1>
+                                    <p class="uc-login-sub">Sign in to manage events</p>
+                                        
+                <form method="post" action="https://resources.sfaf.org/caladmin" class="uc-login-form">
+                    <input type="hidden" name="uc_action" value="login" />
+                    <input type="hidden" name="uc_nonce" value="nonce" />                    <label>Username or Email
+                        <input type="text" name="log" autocomplete="username" required autofocus />
+                    </label>
+                    <label>Password
+                        <input type="password" name="pwd" autocomplete="current-password" required />
+                    </label>
+                    <label class="uc-login-remember">
+                        <input type="checkbox" name="rememberme" value="1" /> Remember me
+                    </label>
+                    <button type="submit" class="uc-btn uc-btn-primary uc-btn-block">Sign In</button>
+                </form>
+                <p class="uc-login-aside"><a href="https://resources.sfaf.org/caladmin/forgot" data-uc-forgot-link>Forgot your password?</a></p>
+                    </div>
+        </div>
+        <script src="../public/js/sfaf-email.js?ver=3.108.1"></script>
+<script src="../public/js/portal.js?ver=3.108.1"></script>
+<script>window.RV_PAGE="signin-phone";(function () {
+var P = window.RV_PAGE, out = { page: P, errors: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function q(s, r) { return (r || document).querySelector(s); }
+function qa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function text(el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }
+function seen(el) { return !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden'; }
+function rect(el) { if (!el) { return null; } var r = el.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom), w: Math.round(r.width), h: Math.round(r.height) }; }
+function finish() { out.pageWidth = document.documentElement.scrollWidth; window.parent.postMessage(JSON.stringify(out), '*'); }
+window.addEventListener('load', function () { setTimeout(function () {
+  /* C and D.1: the sign-in layout. */
+  var card = q('.uc-login-card');
+  if (card) {
+    var logo = q('[data-uc-login-logo]'), form = q('.uc-login-form'), h1 = q('.uc-login-card h1');
+    out.card = rect(card); out.form = rect(form); out.h1 = rect(h1);
+    out.logo = logo ? { box: rect(logo), alt: logo.getAttribute('alt'), loaded: logo.complete && logo.naturalWidth > 0, src: logo.getAttribute('src') } : null;
+    out.forgot = seen(q('[data-uc-forgot-link]')) ? { box: rect(q('[data-uc-forgot-link]')), text: text(q('[data-uc-forgot-link]')) } : null;
+    out.sent = text(q('[data-uc-forgot-sent]'));
+    out.boxes = qa('.uc-login-form input:not([type="hidden"])').map(function (i) { return i.name; });
+    finish(); return;
+  }
+  /* D.2: the sidebar. */
+  function sidebar() {
+    var tile = q('[data-uc-sidebar-logo]'), img = tile ? q('img', tile) : null, cs = tile ? getComputedStyle(tile) : null;
+    return tile ? { tile: rect(tile), img: rect(img), alt: img.getAttribute('alt'), loaded: img.complete && img.naturalWidth > 0,
+      bg: cs.backgroundColor, radius: cs.borderTopLeftRadius, pad: [cs.paddingTop, cs.paddingRight, cs.paddingBottom, cs.paddingLeft],
+      label: rect(q('.uc-portal-brandtext')), labelText: text(q('.uc-portal-brandtext')), sidebar: rect(q('#uc-sidebar')) } : null;
+  }
+  var menu = document.getElementById('uc-menu-btn');
+  var phone = window.innerWidth < 721;
+  if (phone && menu) { menu.click(); }
+  setTimeout(function () {
+    out.side = sidebar();
+    out.brandmark = !!q('.uc-portal-brandmark');
+    /* A: the Display card. */
+    var display = q('[data-uc-card="display"]');
+    if (display) {
+      var ticks = qa('.uc-check', display).map(function (l) { return text(l).replace(/\s*\?$/, ''); });
+      out.displayTicks = ticks;
+      out.privateIn = !!q('input[name="uc_private"][type="checkbox"]', display);
+      out.privateCount = qa('input[name="uc_private"][type="checkbox"]').length;
+    }
+    var other = q('[data-uc-card="other-details"]');
+    out.other = other ? qa('input[name], select[name], textarea[name]', other).map(function (i) { return i.name; }).filter(function (n, i, a) { return a.indexOf(n) === i; }) : null;
+    /* C.2 */
+    var pwf = q('[data-uc-password-form]');
+    out.password = pwf ? { boxes: qa('input[type="password"]', pwf).map(function (i) { return i.name; }), save: text(q('button[type="submit"]', pwf)),
+      error: text(q('[data-uc-password-error]', pwf)), title: text(q('h2', pwf)) } : null;
+    finish();
+  }, phone ? 400 : 0);
+}, 600); });
+})();</script></body></html>

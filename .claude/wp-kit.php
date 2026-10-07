@@ -52,7 +52,7 @@ kit_reset();
 
 class WP_Error { public $m; public $c; function __construct( $c = '', $m = '' ) { $this->c = $c; $this->m = $m; } function get_error_message() { return $this->m; } function get_error_code() { return $this->c; } }
 class WP_Post { public $ID = 0; public $post_title = ''; public $post_type = 'uc_event'; public $post_status = 'draft'; public $post_content = ''; public $post_author = 0; public $post_name = ''; public $post_parent = 0; public $post_date = '2026-09-01 00:00:00'; }
-class WP_User { public $ID = 1; public $user_email = 'admin@sfaf.org'; public $display_name = 'Admin'; public $roles = array( 'administrator' ); function has_cap( $c ) { return true; } function exists() { return true; } }
+class WP_User { public $ID = 1; public $user_login = 'admin'; public $user_pass = '$P$kit'; public $user_email = 'admin@sfaf.org'; public $display_name = 'Admin'; public $roles = array( 'administrator' ); function has_cap( $c ) { return true; } function exists() { return true; } }
 class WP_Term { public $term_id; public $name; public $slug; public $taxonomy; public $count = 0; public $description = ''; public $parent = 0; public $term_taxonomy_id; }
 class WP_Query { public $posts = array(); public $found_posts = 0; public $max_num_pages = 0; function __construct( $a = array() ) { if ( ! empty( $GLOBALS['kit_query'] ) ) { $this->posts = (array) call_user_func( $GLOBALS['kit_query'], $a ); $this->found_posts = count( $this->posts ); } } function have_posts() { return false; } }
 class wpdb {

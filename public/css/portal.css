@@ -259,10 +259,15 @@ body.uc-portal {
 }
 
 /* ---------- Login ---------- */
-.uc-login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background: linear-gradient(135deg, #000000, #373433); }
-.uc-login-card { background: #fff; border-radius: 16px; padding: 40px; width: 400px; max-width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.25); text-align: center; }
-.uc-login-brand { margin-bottom: 16px; }
-.uc-login-logo { max-height: 56px; width: auto; }
+/* ON TOKENS SINCE 3.109.0, and the layout the forgotten-password and reset
+   pages share. THE LOGO is the wide one, as wide as the form and never wider
+   than 320px: 320px at desktop, the form's whole width on a phone. The logo
+   guide sets no clear space, so it is the card's 40px on three sides and 24px
+   under it, above the heading. */
+.uc-login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background: linear-gradient(135deg, var(--sfaf-black), var(--sfaf-darkgray)); }
+.uc-login-card { background: var(--p-panel); border-radius: 16px; padding: 40px; width: 400px; max-width: 100%; box-sizing: border-box; box-shadow: var(--p-shadow-raised); text-align: center; }
+.uc-login-brand { margin: 0 0 24px; }
+.uc-login-brand .uc-login-logo { display: block; width: 100%; max-width: 320px; height: auto; margin: 0 auto; }
 .uc-login-card h1 { font-size: 22px; margin-bottom: 4px; }
 .uc-login-sub { color: var(--p-muted); margin: 0 0 24px; }
 .uc-login-form { display: flex; flex-direction: column; gap: 14px; text-align: left; }
@@ -273,8 +278,10 @@ body.uc-portal {
    fainter than every field behind it. */
 .uc-login-form input[type=text], .uc-login-form input[type=password] { width: 100%; }
 .uc-login-remember { flex-direction: row !important; align-items: flex-start; gap: 8px; font-weight: 500 !important; }
-.uc-login-error { background: #fee2e2; color: #991b1b; padding: 10px 14px; border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
-.uc-portal-brandmark { display: inline-block; background: var(--sfaf-yellow); color: #000; font-weight: 800; padding: 8px 12px; border-radius: 8px; letter-spacing: 1px; }
+.uc-login-error { background: var(--p-error-tint); color: var(--p-error-ink); padding: 10px 14px; border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
+.uc-login-card .uc-login-notice { margin: 0 0 16px; text-align: left; }
+.uc-login-aside { margin: 16px 0 0; font-size: 13px; }
+.uc-login-aside a { color: var(--uc-accent-text); font-weight: 600; }
 
 /* ---------------------------------------------------------------------------
    THE SIDEBAR. DARK, AND MEASURED ON THE DARK.
@@ -327,9 +334,13 @@ body.uc-portal {
 .uc-portal-layout { display: flex; min-height: 100vh; }
 .uc-portal-sidebar { width: 240px; background: var(--p-sidebar); color: var(--p-sidebar-text);
     display: flex; flex-direction: column; flex-shrink: 0; position: sticky; top: 0; height: 100vh; }
-.uc-portal-brand { display: flex; align-items: center; gap: 10px; padding: 20px;
+/* THE STACKED LOGO ON A WHITE TILE (3.109.0): the card radius, 12px of white
+   all round, as wide as the sidebar's 200px of content, "Calendar Admin" 10px
+   under it. The logo guide puts this variant on white, not on the dark. */
+.uc-portal-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 20px;
     border-bottom: 1px solid rgba(255,255,255,0.10); }
-.uc-portal-logo { max-height: 32px; width: auto; }
+.uc-portal-logo-tile { display: block; box-sizing: border-box; width: 100%; padding: 12px; border-radius: 12px; background: var(--p-panel); }
+.uc-portal-logo-tile .uc-portal-logo { display: block; width: 100%; height: auto; }
 .uc-portal-brandtext { font-weight: 700; color: #fff; font-size: 15px; letter-spacing: -0.01em; }
 
 .uc-portal-nav { padding: 12px 10px; flex: 1; min-height: 0; overflow-y: auto; }

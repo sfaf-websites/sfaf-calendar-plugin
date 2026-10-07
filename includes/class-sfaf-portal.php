@@ -11,6 +11,16 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 class SFAF_Portal {
 
     /**
+     * THE TWO LOGOS (3.109.0), served from SFAF's own site and never copied
+     * into the plugin: the wide one above the sign-in form, the stacked one at
+     * the top of the sidebar on a white tile. Both are the Yellow + Black,
+     * Gray wordmark variant, which the logo guide puts on white.
+     */
+    const LOGO_WIDE    = 'https://resources.sfaf.org/wp-content/uploads/logos/sfaf-logo.webp';
+    const LOGO_STACKED = 'https://resources.sfaf.org/wp-content/uploads/SFAF-heritage-logo_stacked-Yellow-15Gray-preview.webp';
+    const LOGO_ALT     = 'San Francisco AIDS Foundation';
+
+    /**
      * Post meta: the URL a person typed into the image box, stored as typed
      * (3.104.0). The folder rule exempts `_uc_image_url` only while it equals
      * this. See sfaf_event_own_image_url().
@@ -626,7 +636,16 @@ class SFAF_Portal {
         }
 
         if ( ! is_user_logged_in() ) {
-            $this->render_login();
+            /* FORGOTTEN PASSWORDS IN CALADMIN'S OWN PAGES (3.109.0): asking
+               for the email, and the page the reset email's link opens. */
+            $front = isset( $segments[0] ) ? $segments[0] : '';
+            if ( 'forgot' === $front ) {
+                $this->render_forgot();
+            } elseif ( 'reset' === $front ) {
+                $this->render_reset();
+            } else {
+                $this->render_login();
+            }
             return;
         }
 
@@ -689,6 +708,10 @@ class SFAF_Portal {
         if ( ! is_user_logged_in() ) {
             if ( $action === 'login' ) {
                 $this->process_login();
+            } elseif ( 'forgot_password' === $action ) {
+                $this->process_forgot_password();
+            } elseif ( 'reset_password' === $action ) {
+                $this->process_reset_password();
             }
             return;
         }
@@ -1939,6 +1962,32 @@ class SFAF_Portal {
                 $this->redirect( 'preferences', array( 'msg' => 'prefs_saved' ) );
                 break;
 
+            /*
+             * CHANGE PASSWORD (3.109.0). The current password is checked by
+             * WordPress against the stored hash before anything is written;
+             * wp_update_user() then sets the new one and re-issues this
+             * person's sign-in cookie, so they stay signed in. The passwords
+             * are read raw: sanitize_text_field() would change one.
+             */
+            case 'change_password':
+                if ( '' === self::get_role( $user->ID ) ) { wp_die( 'Denied' ); }
+                $pw_now  = (string) wp_unslash( $_POST['current_password'] ?? '' );
+                $pw_new  = (string) wp_unslash( $_POST['new_password'] ?? '' );
+                $pw_same = (string) wp_unslash( $_POST['confirm_password'] ?? '' );
+                $stored  = get_userdata( $user->ID );
+                if ( ! $stored || ! wp_check_password( $pw_now, $stored->user_pass, $user->ID ) ) {
+                    $this->redirect( 'preferences', array( 'pw' => 'wrong' ) );
+                }
+                if ( '' === $pw_new ) {
+                    $this->redirect( 'preferences', array( 'pw' => 'empty' ) );
+                }
+                if ( $pw_new !== $pw_same ) {
+                    $this->redirect( 'preferences', array( 'pw' => 'mismatch' ) );
+                }
+                wp_update_user( array( 'ID' => $user->ID, 'user_pass' => $pw_new ) );
+                $this->redirect( 'preferences', array( 'msg' => 'password_changed' ) );
+                break;
+
             case 'save_rsvp_settings':
                 $event_id = intval( $_POST['event_id'] );
                 $post     = get_post( $event_id );
@@ -2105,6 +2154,76 @@ class SFAF_Portal {
         }
         wp_set_current_user( $user->ID );
         $this->redirect();
+    }
+
+    /* =====================================================================
+     * Passwords, in caladmin's own pages (3.109.0)
+     *
+     * WordPress does all of it: retrieve_password() makes the key and sends
+     * the standard email through wp_mail(), check_password_reset_key() reads
+     * it back, reset_password() and wp_update_user() set the password. The
+     * plugin stores nothing. The one thing changed is where the email's link
+     * goes: caladmin's reset page rather than wp-login.php.
+     * ================================================================== */
+
+    /** The caladmin page a reset email's link opens. */
+    private function reset_link( $key, $login ) {
+        return add_query_arg( array( 'key' => $key, 'login' => rawurlencode( $login ) ), $this->url( 'reset' ) );
+    }
+
+    /**
+     * Send the reset email, or not, and say the same thing either way.
+     *
+     * THE ANSWER NEVER DEPENDS ON THE ADDRESS. Whether it belongs to an
+     * account, whether the email could be sent: the page that follows is the
+     * same, so this cannot be used to find out who has an account.
+     */
+    private function process_forgot_password() {
+        $nonce = isset( $_POST['uc_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['uc_nonce'] ) ) : '';
+        if ( ! wp_verify_nonce( $nonce, 'uc_portal_forgot_password' ) ) {
+            $this->login_error = 'Security check failed. Please try again.';
+            return;
+        }
+        $email = sanitize_email( wp_unslash( $_POST['user_email'] ?? '' ) );
+        $found = ( '' !== $email && is_email( $email ) ) ? get_user_by( 'email', $email ) : false;
+        if ( $found ) {
+            $point = function ( $message, $key, $login ) {
+                $core = network_site_url( 'wp-login.php?action=rp&key=' . $key . '&login=' . rawurlencode( $login ), 'login' );
+                return str_replace( $core, $this->reset_link( $key, $login ), $message );
+            };
+            add_filter( 'retrieve_password_message', $point, 10, 3 );
+            retrieve_password( $found->user_login );
+            remove_filter( 'retrieve_password_message', $point, 10 );
+        }
+        $this->redirect( 'forgot', array( 'sent' => 1 ) );
+    }
+
+    /** Set the new password from the reset page, then back to the sign-in. */
+    private function process_reset_password() {
+        $nonce = isset( $_POST['uc_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['uc_nonce'] ) ) : '';
+        if ( ! wp_verify_nonce( $nonce, 'uc_portal_reset_password' ) ) {
+            $this->login_error = 'Security check failed. Please try again.';
+            return;
+        }
+        $key   = sanitize_text_field( wp_unslash( $_POST['rp_key'] ?? '' ) );
+        $login = sanitize_user( wp_unslash( $_POST['rp_login'] ?? '' ) );
+        $user  = check_password_reset_key( $key, $login );
+        if ( ! $user || is_wp_error( $user ) ) {
+            // The page renders the expired state from the same key.
+            return;
+        }
+        $new     = (string) wp_unslash( $_POST['pass1'] ?? '' );
+        $confirm = (string) wp_unslash( $_POST['pass2'] ?? '' );
+        if ( '' === $new ) {
+            $this->login_error = 'Type a new password.';
+            return;
+        }
+        if ( $new !== $confirm ) {
+            $this->login_error = 'The two passwords do not match. Type the same one twice.';
+            return;
+        }
+        reset_password( $user, $new );
+        $this->redirect( '', array( 'reset' => 1 ) );
     }
 
     /**
@@ -3851,7 +3970,6 @@ class SFAF_Portal {
     private function chrome_open( $user, $active ) {
         $this->head( ucfirst( $active ) );
         $role     = self::get_role( $user->ID );
-        $logo     = $this->brand( 'brand_logo' );
         $is_admin = $this->is_admin_role( $user );
 
         // Third value is an SFAF icon name (see sfaf_icon()).
@@ -3941,12 +4059,12 @@ class SFAF_Portal {
         ?>
         <div class="uc-portal-layout">
             <aside class="uc-portal-sidebar" id="uc-sidebar">
+                <?php // The stacked logo on a white tile, "Calendar Admin" under it (3.109.0). ?>
                 <div class="uc-portal-brand">
-                    <?php if ( $logo ) : ?>
-                        <img src="<?php echo esc_url( $logo ); ?>" alt="" class="uc-portal-logo" />
-                    <?php else : ?>
-                        <span class="uc-portal-brandmark">SFAF</span>
-                    <?php endif; ?>
+                    <span class="uc-portal-logo-tile" data-uc-sidebar-logo>
+                        <img src="<?php echo esc_url( self::LOGO_STACKED ); ?>" alt="<?php echo esc_attr( self::LOGO_ALT ); ?>"
+                             class="uc-portal-logo" width="1470" height="901" />
+                    </span>
                     <span class="uc-portal-brandtext">Calendar Admin</span>
                 </div>
                 <nav class="uc-portal-nav" aria-label="Calendar admin">
@@ -4197,6 +4315,7 @@ class SFAF_Portal {
 
             // Preferences (3.102.0).
             'prefs_saved'   => 'Preferences saved.',
+            'password_changed' => 'Password changed. You are still signed in.',
         );
         $key = sanitize_key( $_GET['msg'] );
 
@@ -4615,25 +4734,42 @@ class SFAF_Portal {
      * Rendering — login & denied
      * ================================================================== */
 
-    private function render_login() {
-        status_header( 200 );
-        $logo = $this->brand( 'brand_logo' );
-        $this->head( 'Sign In' );
+    /**
+     * The sign-in card's top: the wide logo, then the page's heading and line
+     * (3.109.0). Shared by the sign-in, forgotten-password and reset pages so
+     * the three are one layout.
+     */
+    private function login_card_open( $title, $sub ) {
         ?>
         <div class="uc-login-wrap">
             <div class="uc-login-card">
                 <div class="uc-login-brand">
-                    <?php if ( $logo ) : ?>
-                        <img src="<?php echo esc_url( $logo ); ?>" alt="" class="uc-login-logo" />
-                    <?php else : ?>
-                        <span class="uc-portal-brandmark">SFAF</span>
-                    <?php endif; ?>
+                    <img src="<?php echo esc_url( self::LOGO_WIDE ); ?>" alt="<?php echo esc_attr( self::LOGO_ALT ); ?>"
+                         class="uc-login-logo" width="348" height="91" data-uc-login-logo />
                 </div>
-                <h1>SFAF Calendar Admin</h1>
-                <p class="uc-login-sub">Sign in to manage events</p>
+                <h1><?php echo esc_html( $title ); ?></h1>
+                <?php if ( '' !== $sub ) : ?>
+                    <p class="uc-login-sub"><?php echo esc_html( $sub ); ?></p>
+                <?php endif; ?>
+        <?php
+    }
 
+    private function login_card_close() {
+        ?>
+            </div>
+        </div>
+        <?php
+    }
+
+    private function render_login() {
+        status_header( 200 );
+        $this->head( 'Sign In' );
+        $this->login_card_open( 'SFAF Calendar Admin', 'Sign in to manage events' );
+        ?>
                 <?php if ( $this->login_error ) : ?>
-                    <div class="uc-login-error"><?php echo esc_html( $this->login_error ); ?></div>
+                    <div class="uc-login-error" role="alert"><?php echo esc_html( $this->login_error ); ?></div>
+                <?php elseif ( ! empty( $_GET['reset'] ) ) : ?>
+                    <p class="uc-notice uc-login-notice" role="status">Your password is set. Sign in with it.</p>
                 <?php endif; ?>
 
                 <form method="post" action="<?php echo esc_url( $this->url() ); ?>" class="uc-login-form">
@@ -4650,9 +4786,78 @@ class SFAF_Portal {
                     </label>
                     <button type="submit" class="uc-btn uc-btn-primary uc-btn-block">Sign In</button>
                 </form>
-            </div>
-        </div>
+                <p class="uc-login-aside"><a href="<?php echo esc_url( $this->url( 'forgot' ) ); ?>" data-uc-forgot-link>Forgot your password?</a></p>
         <?php
+        $this->login_card_close();
+        $this->foot();
+    }
+
+    /**
+     * Forgotten password: ask for the email (3.109.0). After a send the page
+     * says the same line whatever the address was. See
+     * process_forgot_password().
+     */
+    private function render_forgot() {
+        status_header( 200 );
+        $this->head( 'Forgot Your Password' );
+        $this->login_card_open( 'Forgot your password?', 'Type the email address on your account.' );
+        ?>
+                <?php if ( $this->login_error ) : ?>
+                    <div class="uc-login-error" role="alert"><?php echo esc_html( $this->login_error ); ?></div>
+                <?php endif; ?>
+                <?php if ( ! empty( $_GET['sent'] ) ) : ?>
+                    <p class="uc-notice uc-login-notice" role="status" data-uc-forgot-sent>If that address has an account, a reset link is on its way.</p>
+                <?php endif; ?>
+                <form method="post" action="<?php echo esc_url( $this->url( 'forgot' ) ); ?>" class="uc-login-form">
+                    <input type="hidden" name="uc_action" value="forgot_password" />
+                    <?php wp_nonce_field( 'uc_portal_forgot_password', 'uc_nonce' ); ?>
+                    <label>Email
+                        <input type="email" name="user_email" autocomplete="email" required autofocus />
+                    </label>
+                    <button type="submit" class="uc-btn uc-btn-primary uc-btn-block">Send the reset link</button>
+                </form>
+                <p class="uc-login-aside"><a href="<?php echo esc_url( $this->url() ); ?>">Back to sign in</a></p>
+        <?php
+        $this->login_card_close();
+        $this->foot();
+    }
+
+    /**
+     * Set a new password from the reset email's link (3.109.0). A key that
+     * WordPress no longer accepts gets one line and the way to ask again.
+     */
+    private function render_reset() {
+        status_header( 200 );
+        $key   = sanitize_text_field( wp_unslash( $_GET['key'] ?? ( $_POST['rp_key'] ?? '' ) ) );
+        $login = sanitize_user( wp_unslash( $_GET['login'] ?? ( $_POST['rp_login'] ?? '' ) ) );
+        $user  = ( '' !== $key && '' !== $login ) ? check_password_reset_key( $key, $login ) : false;
+        $ok    = $user && ! is_wp_error( $user );
+        $this->head( 'Set a New Password' );
+        $this->login_card_open( 'Set a new password', $ok ? 'Type it twice.' : '' );
+        ?>
+                <?php if ( ! $ok ) : ?>
+                    <div class="uc-login-error" role="alert" data-uc-reset-expired>This link has expired or has already been used.</div>
+                    <p class="uc-login-aside"><a href="<?php echo esc_url( $this->url( 'forgot' ) ); ?>">Ask for a new link</a></p>
+                <?php else : ?>
+                    <?php if ( $this->login_error ) : ?>
+                        <div class="uc-login-error" role="alert"><?php echo esc_html( $this->login_error ); ?></div>
+                    <?php endif; ?>
+                    <form method="post" action="<?php echo esc_url( $this->reset_link( $key, $login ) ); ?>" class="uc-login-form">
+                        <input type="hidden" name="uc_action" value="reset_password" />
+                        <input type="hidden" name="rp_key" value="<?php echo esc_attr( $key ); ?>" />
+                        <input type="hidden" name="rp_login" value="<?php echo esc_attr( $login ); ?>" />
+                        <?php wp_nonce_field( 'uc_portal_reset_password', 'uc_nonce' ); ?>
+                        <label>New password
+                            <input type="password" name="pass1" autocomplete="new-password" required autofocus />
+                        </label>
+                        <label>New password again
+                            <input type="password" name="pass2" autocomplete="new-password" required />
+                        </label>
+                        <button type="submit" class="uc-btn uc-btn-primary uc-btn-block">Set password</button>
+                    </form>
+                <?php endif; ?>
+        <?php
+        $this->login_card_close();
         $this->foot();
     }
 
@@ -19496,6 +19701,40 @@ class SFAF_Portal {
 
             <div class="uc-form-actions">
                 <button type="submit" class="uc-btn uc-btn-primary">Save preferences</button>
+            </div>
+        </form>
+
+        <?php
+        /* CHANGE PASSWORD (3.109.0). Its own form, so it never posts with the
+           digest choices. A refusal comes back as ?pw= and is said here. */
+        $pw_says = array(
+            'wrong'    => 'That is not your current password.',
+            'empty'    => 'Type a new password.',
+            'mismatch' => 'The new passwords do not match. Type the same one twice.',
+        );
+        $pw_code = isset( $_GET['pw'] ) ? sanitize_key( wp_unslash( $_GET['pw'] ) ) : '';
+        ?>
+        <form method="post" action="<?php echo esc_url( $this->url( 'preferences' ) ); ?>" class="uc-card uc-prefs uc-password-card" id="uc-password" data-uc-password-form>
+            <input type="hidden" name="uc_action" value="change_password" />
+            <?php wp_nonce_field( 'uc_portal_change_password', 'uc_nonce' ); ?>
+            <div class="uc-card-head"><h2>Change password</h2></div>
+            <?php if ( isset( $pw_says[ $pw_code ] ) ) : ?>
+                <p class="uc-field-error" role="alert" data-uc-password-error><?php echo esc_html( $pw_says[ $pw_code ] ); ?></p>
+            <?php endif; ?>
+            <label class="uc-field">
+                <span class="uc-field-label">Current password</span>
+                <input type="password" name="current_password" autocomplete="current-password" required />
+            </label>
+            <label class="uc-field">
+                <span class="uc-field-label">New password</span>
+                <input type="password" name="new_password" autocomplete="new-password" required />
+            </label>
+            <label class="uc-field">
+                <span class="uc-field-label">New password again</span>
+                <input type="password" name="confirm_password" autocomplete="new-password" required />
+            </label>
+            <div class="uc-form-actions">
+                <button type="submit" class="uc-btn uc-btn-primary">Save</button>
             </div>
         </form>
         <?php
