@@ -5230,3 +5230,25 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
 }
 /* (0,4,1), equal to the text-field rule above and later, so it wins on order. */
 .uc-rsvp-modal-overlay .uc-rsvp-form .uc-rsvp-q-more input[type="text"] { padding: 6px 10px; font-size: 13px; }
+
+/* ---------------------------------------------------------------------------
+   THE REGISTRATION AGREEMENT (3.110.0)
+
+   A second modal over the RSVP form, wearing its overlay and its panel: the
+   heading at the form's 20px/700, the agreement as the event wrote it in body
+   type in a box that scrolls on its own when it is long, then the tick, then
+   Confirm RSVP over Cancel, the form's own two buttons. The text opt-in under
+   the phone is the form's tick style.
+   ------------------------------------------------------------------------ */
+.uc-agree-dialog .uc-agree { display: flex; flex-direction: column; gap: 16px; }
+.uc-agree-dialog .uc-agree h3 { margin: 0; }
+.uc-agree-dialog .uc-agree-text {
+    max-height: 40vh; overflow-y: auto; padding: 12px 14px;
+    border: 1px solid var(--uc-border); border-radius: 10px;
+    font-size: 15px; line-height: 1.5; color: var(--uc-text);
+}
+.uc-agree-dialog .uc-agree-text > :first-child { margin-top: 0; }
+.uc-agree-dialog .uc-agree-text > :last-child { margin-bottom: 0; }
+.uc-agree-dialog .uc-rsvp-optin { display: flex; align-items: flex-start; gap: 8px; margin: 0; font-size: 15px; line-height: 1.45; color: var(--uc-text); cursor: pointer; }
+.uc-agree-dialog .uc-agree-actions { display: flex; flex-direction: column; gap: 8px; }
+.uc-rsvp-form .uc-rsvp-texts[hidden] { display: none; }

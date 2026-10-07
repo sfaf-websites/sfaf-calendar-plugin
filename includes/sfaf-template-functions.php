@@ -1300,6 +1300,10 @@ function sfaf_rsvp_block( $post_id ) {
                 // Questions for registrants and their two labels in the
                 // event's language, '' when it asks none (3.106.2).
                 'data-uc-questions' => ( $qd = SFAF_Questions::form_data( $post_id ) ) ? wp_json_encode( $qd ) : '',
+                // The registration agreement's dialog, '' when the event does not ask (3.110.0).
+                'data-uc-agreement' => ( $ad = SFAF_Agreement::form_data( $post_id ) ) ? wp_json_encode( $ad ) : '',
+                // "Text me about this event", in the event's language (3.110.0).
+                'data-uc-text-label' => SFAF_Agreement::line( 'text_opt_in', sfaf_event_language( $post_id ) ),
                 'data-uc-full'    => implode( ',', array_values( array_filter(
                     sfaf_event_formats( $post_id ),
                     function ( $f ) use ( $post_id ) {

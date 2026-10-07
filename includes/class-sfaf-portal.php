@@ -2083,6 +2083,84 @@ class SFAF_Portal {
                 $this->redirect( 'rsvps', $back );
                 break;
 
+            /* ---- Check-in (3.110.0). See SFAF_Checkin. -------------------- */
+            case 'checkin_mode':
+                $event_id = isset( $_POST['event_id'] ) ? (int) $_POST['event_id'] : 0;
+                $post     = $event_id ? get_post( $event_id ) : null;
+                if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
+                    wp_die( 'Denied' );
+                }
+                SFAF_Checkin::set_mode( $event_id, sanitize_key( wp_unslash( $_POST['checkin_mode'] ?? 'name' ) ) );
+                $this->redirect( 'rsvps', array( 'event_id' => $event_id ) );
+                break;
+
+            case 'checkin_toggle':
+                $rsvp_id = isset( $_POST['rsvp_id'] ) ? (int) $_POST['rsvp_id'] : 0;
+                $row     = $rsvp_id ? SFAF_RSVP::row( $rsvp_id ) : null;
+                $post    = $row ? get_post( (int) $row->event_id ) : null;
+                if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
+                    wp_die( 'Denied' );
+                }
+                $done = SFAF_Checkin::toggle( $rsvp_id );
+                if ( ! empty( $_POST['uc_ajax'] ) ) {
+                    if ( ! $done ) {
+                        wp_send_json_error( array( 'message' => 'Only somebody registered can be checked in.' ) );
+                    }
+                    wp_send_json_success( array(
+                        'checked' => $done['checked'],
+                        'label'   => $done['checked'] ? 'Checked in ' . sfaf_ap_time( substr( $done['at'], 11, 5 ) ) : 'Check in',
+                        'count'   => $done['count'],
+                    ) );
+                }
+                $this->redirect( 'rsvps', array( 'event_id' => (int) $row->event_id ) );
+                break;
+
+            case 'attendance_save':
+                $event_id = isset( $_POST['event_id'] ) ? (int) $_POST['event_id'] : 0;
+                $post     = $event_id ? get_post( $event_id ) : null;
+                if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
+                    wp_die( 'Denied' );
+                }
+                SFAF_Checkin::set_count( $event_id, isset( $_POST['attendance'] ) ? (int) $_POST['attendance'] : 0 );
+                $this->redirect( 'rsvps', array( 'event_id' => $event_id, 'msg' => 'attendance_saved' ) );
+                break;
+
+            /* ---- Email registrants (3.110.0). See SFAF_Registrant_Mail. --- */
+            case 'registrant_mail_preview':
+            case 'registrant_mail_send':
+                $event_id = isset( $_POST['event_id'] ) ? (int) $_POST['event_id'] : 0;
+                $post     = $event_id ? get_post( $event_id ) : null;
+                if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
+                    wp_die( 'Denied' );
+                }
+                $rm_subject = trim( sanitize_text_field( wp_unslash( $_POST['rm_subject'] ?? '' ) ) );
+                $rm_body    = trim( sanitize_textarea_field( wp_unslash( $_POST['rm_body'] ?? '' ) ) );
+                $rm_wait    = ! empty( $_POST['rm_waitlist'] );
+                $rm_bad     = SFAF_Registrant_Mail::unknown_tokens( $rm_subject . ' ' . $rm_body );
+                $rm_error   = '';
+                if ( '' === $rm_subject || '' === $rm_body ) {
+                    $rm_error = 'Write a subject and a message first.';
+                } elseif ( $rm_bad ) {
+                    $rm_error = 'Remove {' . implode( '}, {', $rm_bad ) . '}: the message cannot fill it.';
+                }
+                if ( 'registrant_mail_preview' === $action ) {
+                    if ( '' !== $rm_error ) {
+                        wp_send_json_error( array( 'message' => $rm_error ) );
+                    }
+                    $pv = SFAF_Registrant_Mail::preview( $event_id, $rm_subject, $rm_body, $rm_wait );
+                    if ( ! $pv ) {
+                        wp_send_json_error( array( 'message' => 'Nobody on this list has an email address to send to.' ) );
+                    }
+                    wp_send_json_success( array( 'subject' => $pv['subject'], 'html' => $pv['html'], 'to' => $pv['to'] ) );
+                }
+                if ( '' !== $rm_error ) {
+                    set_transient( 'sfaf_rm_said_' . $user->ID, array( 'error' => $rm_error ), 5 * MINUTE_IN_SECONDS );
+                    $this->redirect( 'rsvps', array( 'event_id' => $event_id ) );
+                }
+                set_transient( 'sfaf_rm_said_' . $user->ID, SFAF_Registrant_Mail::send( $event_id, $rm_subject, $rm_body, $rm_wait, (int) $user->ID ), 5 * MINUTE_IN_SECONDS );
+                $this->redirect( 'rsvps', array( 'event_id' => $event_id ) );
+                break;
+
             /* ---- Teams. A name and a set of users, and nothing else. ------ */
             case 'save_team':
                 if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
@@ -2990,6 +3068,10 @@ class SFAF_Portal {
         // and where replies go. Shared with the registrations page, written
         // once. See save_rsvp_settings_from_post().
         $this->save_rsvp_settings_from_post( $user, $event_id, $is_locked );
+        // The registration agreement (3.110.0): only where the section was drawn.
+        if ( '' === $src_slug ) {
+            SFAF_Agreement::save_from_post( $event_id, $_POST );
+        }
 
         $toggles = array(
             // 'notify_organizer' is not here, and is not written anywhere any
@@ -4404,6 +4486,7 @@ class SFAF_Portal {
 
             // Preferences (3.102.0).
             'prefs_saved'   => 'Preferences saved.',
+            'attendance_saved' => 'Attendance saved.',
             'password_changed' => 'Password changed. You are still signed in.',
         );
         $key = sanitize_key( $_GET['msg'] );
@@ -9431,6 +9514,7 @@ class SFAF_Portal {
                 return 0;
             }
             $this->tag_series_image( $term_id, (int) $args['image_id'] );
+            $this->save_series_agreement( $term_id );
             return $term_id;
         }
 
@@ -9439,7 +9523,25 @@ class SFAF_Portal {
             return 0;
         }
         $this->tag_series_image( (int) $created, (int) $args['image_id'] );
+        $this->save_series_agreement( (int) $created );
         return (int) $created;
+    }
+
+    /**
+     * The series' default registration agreement (3.110.0), under its own
+     * presence check. Events in the series that have no text of their own
+     * use it. See SFAF_Agreement.
+     */
+    private function save_series_agreement( $term_id ) {
+        if ( ! $term_id || ! isset( $_POST['series_agreement'] ) ) {
+            return;
+        }
+        $text = SFAF_Agreement::clean( wp_unslash( $_POST['series_agreement'] ) );
+        if ( '' === $text ) {
+            delete_term_meta( (int) $term_id, SFAF_Agreement::SERIES_META );
+        } else {
+            update_term_meta( (int) $term_id, SFAF_Agreement::SERIES_META, $text );
+        }
     }
 
     /**
@@ -10084,6 +10186,14 @@ class SFAF_Portal {
                            placeholder="https://donate.sfaf.org/&hellip;" />
                     <span class="uc-hint">Goes in the confirmation and reminder emails of every event in this series set to Series link. Leave empty to use the SFAF default.</span>
                 </label>
+
+                <?php /* THE DEFAULT REGISTRATION AGREEMENT (3.110.0). An event that asks
+                   registrants to agree uses this unless it has text of its own. */ ?>
+                <div class="uc-field">
+                    <span class="uc-field-label" id="uc-series-agreement-label">Default registration agreement</span>
+                    <?php SFAF_Rich_Text::render( 'uc-series-agreement', 'series_agreement', SFAF_Agreement::series_text( (int) $term_id ), array( 'rows' => 6, 'aria_label' => 'Default registration agreement' ) ); ?>
+                    <span class="uc-hint">Used by events in this series that ask registrants to agree and have no text of their own.</span>
+                </div>
 
                 <?php
                 /*
@@ -13804,6 +13914,8 @@ class SFAF_Portal {
                                 );
                                 ?>
                             </div>
+                            <?php // Registration agreement (3.110.0), where the event takes its registrations here. ?>
+                            <?php SFAF_Agreement::render_section( (int) $event_id, (int) $cur_series ); ?>
                         <?php endif; ?>
                     </div>
                 </section>
@@ -17448,11 +17560,55 @@ class SFAF_Portal {
                 return in_array( (string) $r->status, SFAF_Waitlist::waiting_statuses(), true );
             } ) );
             ?>
+            <?php
+            /* CHECK-IN, TEXTS AND THE COUNTS STRIP (3.110.0). */
+            $ck_mode  = SFAF_Checkin::mode( $event_id );
+            $ck_n     = SFAF_Checkin::checked_in_count( $event_id );
+            $ck_edit  = $this->can_edit_event( $user, $event );
+            $texts_n  = count( array_filter( $rsvps, function ( $r ) { return 'confirmed' === (string) $r->status && ! empty( $r->text_opt_in ); } ) );
+            $attended = SFAF_Checkin::attendance( $event_id );
+            ?>
             <p class="uc-rsvp-counts" data-uc-rsvp-counts>
-                <strong><?php echo (int) sfaf_get_rsvp_count( $event_id ); ?></strong> registered
+                <span><strong><?php echo (int) sfaf_get_rsvp_count( $event_id ); ?></strong> registered</span>
                 <span aria-hidden="true">&middot;</span>
-                <strong><?php echo (int) $waiting_n; ?></strong> waitlisted
+                <span><strong data-uc-checked-count><?php echo (int) ( 'count' === $ck_mode ? (int) $attended : $ck_n ); ?></strong> <?php echo 'count' === $ck_mode ? 'attended' : 'checked in'; ?></span>
+                <span aria-hidden="true">&middot;</span>
+                <span><strong><?php echo (int) $waiting_n; ?></strong> waitlisted</span>
+                <?php if ( $texts_n ) : ?>
+                    <span aria-hidden="true">&middot;</span>
+                    <span data-uc-texts-count><strong><?php echo (int) $texts_n; ?></strong> want texts</span>
+                <?php endif; ?>
             </p>
+            <?php if ( $ck_edit ) : ?>
+                <div class="uc-checkin-bar" data-uc-checkin-bar>
+                    <form method="post" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>" class="uc-checkin-mode" aria-label="How to record who came">
+                        <input type="hidden" name="uc_action" value="checkin_mode" />
+                        <?php wp_nonce_field( 'uc_portal_checkin_mode', 'uc_nonce' ); ?>
+                        <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
+                        <span class="uc-seg">
+                            <button type="submit" name="checkin_mode" value="name" class="uc-seg-opt-btn" aria-pressed="<?php echo 'name' === $ck_mode ? 'true' : 'false'; ?>">Check in by name</button>
+                            <button type="submit" name="checkin_mode" value="count" class="uc-seg-opt-btn" aria-pressed="<?php echo 'count' === $ck_mode ? 'true' : 'false'; ?>">Enter a count</button>
+                        </span>
+                    </form>
+                    <?php if ( 'count' === $ck_mode ) : ?>
+                        <form method="post" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>" class="uc-attendance-form" data-uc-attendance-form>
+                            <input type="hidden" name="uc_action" value="attendance_save" />
+                            <?php wp_nonce_field( 'uc_portal_attendance_save', 'uc_nonce' ); ?>
+                            <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
+                            <label class="uc-field uc-attendance-field">
+                                <span class="uc-field-label">People attended</span>
+                                <input type="number" name="attendance" min="0" step="1" inputmode="numeric" value="<?php echo null === $attended ? '' : (int) $attended; ?>" />
+                            </label>
+                            <button type="submit" class="uc-btn uc-btn-primary">Save</button>
+                        </form>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+            <label class="uc-field uc-rsvp-search">
+                <span class="uc-visually-hidden">Find a registrant by name</span>
+                <input type="search" placeholder="Find by name" autocomplete="off" data-uc-rsvp-filter />
+            </label>
+            <?php if ( $ck_edit ) { $this->render_registrant_mail( $user, $event_id ); } ?>
             <?php
             /*
              * THE ANSWERS, IN TOTAL (3.106.2), one line per current question,
@@ -17533,11 +17689,13 @@ class SFAF_Portal {
                 $answers = SFAF_Questions::answers_for_rows( array_map( function ( $r ) { return (int) $r->id; }, $rsvps ) );
                 $columns = $event ? 8 : 9;
                 ?>
-                <table class="uc-table">
+                <table class="uc-table<?php echo $event ? ' uc-rsvp-table' : ''; ?>">
                     <thead><tr><?php if ( ! $event ) : ?><th>Event</th><?php endif; ?><th>First name</th><th>Last name</th><th>Email</th><th>Phone</th><th>Updates</th><th>Status</th><th>Registered</th><th><span class="uc-visually-hidden">Actions</span></th></tr></thead>
                     <tbody>
-                    <?php foreach ( $rsvps as $r ) : ?>
-                        <tr>
+                    <?php foreach ( $rsvps as $r ) :
+                        $has_details = ! empty( $answers[ (int) $r->id ] ) || ! empty( $r->agreed_at );
+                        ?>
+                        <tr data-uc-rsvp-row data-uc-rsvp-name="<?php echo esc_attr( strtolower( trim( $r->first_name . ' ' . $r->last_name ) ) ); ?>">
                             <?php if ( ! $event ) : ?>
                                 <td><?php
                                     // Linked when the event still exists, plain
@@ -17570,7 +17728,7 @@ class SFAF_Portal {
                                 echo '' !== $last ? esc_html( $last ) : '<span class="uc-muted">&ndash;</span>';
                             ?></td>
                             <td><?php echo '' !== (string) $r->email ? esc_html( $r->email ) : '<span class="uc-muted">&ndash;</span>'; ?></td>
-                            <td><?php echo esc_html( $r->phone ); ?></td>
+                            <td><?php echo esc_html( $r->phone ); ?><?php if ( ! empty( $r->text_opt_in ) ) : ?> <span class="uc-texts-mark" data-uc-texts-mark title="Ticked &quot;Text me about this event&quot;">Texts</span><?php endif; ?></td>
                             <td><?php
                                 $opted = isset( $consented[ strtolower( trim( (string) $r->email ) ) . '|' . (int) $r->event_id ] );
                                 if ( $opted ) {
@@ -17611,17 +17769,35 @@ class SFAF_Portal {
                                                 data-uc-confirm="<?php echo esc_attr( 'Remove ' . $who . '\'s registration? Their place is released, and nothing puts it back.' ); ?>">Remove</button>
                                     </form>
                                 <?php endif; ?>
-                                <?php if ( ! empty( $answers[ (int) $r->id ] ) ) : ?>
+                                <?php if ( $has_details ) : ?>
                                     <button type="button" class="uc-link-btn uc-btn-sm" data-uc-rsvp-details
                                             aria-expanded="false" aria-controls="uc-rsvp-details-<?php echo (int) $r->id; ?>">Details</button>
                                 <?php endif; ?>
+                                <?php
+                                /* CHECK IN BY NAME (3.110.0): a registered row, a press each way. */
+                                if ( $event && ! empty( $ck_edit ) && 'name' === $ck_mode && 'confirmed' === $r->status ) :
+                                    $in = ! empty( $r->checked_in_at );
+                                    ?>
+                                    <form method="post" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>" class="uc-checkin-form" data-uc-checkin-form>
+                                        <input type="hidden" name="uc_action" value="checkin_toggle" />
+                                        <?php wp_nonce_field( 'uc_portal_checkin_toggle', 'uc_nonce' ); ?>
+                                        <input type="hidden" name="rsvp_id" value="<?php echo (int) $r->id; ?>" />
+                                        <button type="submit" class="uc-btn uc-btn-sm uc-checkin-btn" aria-pressed="<?php echo $in ? 'true' : 'false'; ?>" data-uc-checkin><?php
+                                            echo esc_html( $in ? 'Checked in ' . sfaf_ap_time( substr( (string) $r->checked_in_at, 11, 5 ) ) : 'Check in' );
+                                        ?></button>
+                                    </form>
+                                <?php endif; ?>
                             </td>
                         </tr>
-                        <?php if ( ! empty( $answers[ (int) $r->id ] ) ) : ?>
+                        <?php if ( $has_details ) : ?>
                             <tr class="uc-rsvp-details" id="uc-rsvp-details-<?php echo (int) $r->id; ?>" hidden>
                                 <td colspan="<?php echo (int) $columns; ?>">
                                     <dl class="uc-rsvp-answers">
-                                        <?php foreach ( $answers[ (int) $r->id ] as $q => $picked ) : ?>
+                                        <?php if ( ! empty( $r->agreed_at ) ) : ?>
+                                            <dt>Agreement</dt>
+                                            <dd data-uc-agreed>Agreed <?php echo esc_html( sfaf_ap_datetime( $r->agreed_at ) ); ?></dd>
+                                        <?php endif; ?>
+                                        <?php foreach ( isset( $answers[ (int) $r->id ] ) ? $answers[ (int) $r->id ] : array() as $q => $picked ) : ?>
                                             <dt><?php echo esc_html( $q ); ?></dt>
                                             <?php foreach ( $picked as $a ) : ?>
                                                 <dd><?php echo esc_html( $a[0] ); ?><?php if ( '' !== $a[1] ) : ?><span class="uc-rsvp-answer-more"><?php echo esc_html( $a[1] ); ?></span><?php endif; ?></dd>
@@ -17654,6 +17830,110 @@ class SFAF_Portal {
      * (3.110.0), so there is no offer column any more.
      * Both are the event gate's, asked again at the route.
      */
+    /**
+     * EMAIL REGISTRANTS (3.110.0): a closed section on one event's RSVP list,
+     * for whoever may edit the event, and the log of what was sent under it.
+     * The editor is the Email Templates one, its six token chips the only
+     * tokens. See SFAF_Registrant_Mail.
+     */
+    private function render_registrant_mail( $user, $event_id ) {
+        $said = get_transient( 'sfaf_rm_said_' . $user->ID );
+        if ( false !== $said ) {
+            delete_transient( 'sfaf_rm_said_' . $user->ID );
+        }
+        $to_reg  = count( SFAF_Registrant_Mail::recipients( $event_id, false )['to'] );
+        $to_all  = count( SFAF_Registrant_Mail::recipients( $event_id, true )['to'] );
+        $labels  = SFAF_Messages::tokens();
+        $tokens  = array();
+        foreach ( SFAF_Registrant_Mail::tokens() as $tk ) {
+            $tokens[ $tk ] = isset( $labels[ $tk ] ) ? $labels[ $tk ] : $tk;
+        }
+        $log = SFAF_Registrant_Mail::log( $event_id );
+        ?>
+        <details class="uc-picker uc-registrant-mail" data-uc-registrant-mail<?php echo is_array( $said ) ? ' open' : ''; ?>>
+            <summary class="uc-picker-toggle">
+                <span class="uc-picker-label">Email registrants</span>
+                <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
+            </summary>
+            <div class="uc-picker-panel">
+                <?php if ( is_array( $said ) && ! empty( $said['error'] ) ) : ?>
+                    <p class="uc-notice uc-notice-error" role="alert"><?php echo esc_html( $said['error'] ); ?></p>
+                <?php elseif ( is_array( $said ) ) : ?>
+                    <p class="uc-notice" role="status" data-uc-rm-said><?php
+                        echo esc_html( sprintf( 'Sent to %d %s.', (int) $said['sent'], 1 === (int) $said['sent'] ? 'person' : 'people' ) );
+                        if ( ! empty( $said['unreachable'] ) ) {
+                            echo ' ' . esc_html( sprintf(
+                                '%d had no email and could not be reached: %s.',
+                                count( $said['unreachable'] ),
+                                implode( ', ', $said['unreachable'] )
+                            ) );
+                        }
+                    ?></p>
+                <?php endif; ?>
+                <form method="post" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>" class="uc-registrant-mail-form" data-uc-rm-form
+                      data-uc-rm-to="<?php echo (int) $to_reg; ?>" data-uc-rm-to-wait="<?php echo (int) $to_all; ?>"
+                      data-uc-rm-url="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>"
+                      data-uc-rm-preview-nonce="<?php echo esc_attr( wp_create_nonce( 'uc_portal_registrant_mail_preview' ) ); ?>"
+                      data-uc-rm-tokens="<?php echo esc_attr( wp_json_encode( $tokens ) ); ?>">
+                    <input type="hidden" name="uc_action" value="registrant_mail_send" />
+                    <?php wp_nonce_field( 'uc_portal_registrant_mail_send', 'uc_nonce' ); ?>
+                    <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
+                    <div class="uc-tpl-tokens" role="group" aria-label="Insert a token">
+                        <span class="uc-field-label">Insert</span>
+                        <?php foreach ( $tokens as $tk => $tlabel ) : ?>
+                            <button type="button" class="uc-tpl-token" data-uc-tpl-token="<?php echo esc_attr( $tk ); ?>"><?php echo esc_html( $tlabel ); ?></button>
+                        <?php endforeach; ?>
+                    </div>
+                    <label class="uc-field">
+                        <span class="uc-field-label">Subject</span>
+                        <textarea name="rm_subject" rows="1" data-uc-tpl-text="subject"></textarea>
+                    </label>
+                    <label class="uc-field">
+                        <span class="uc-field-label">Message</span>
+                        <textarea name="rm_body" rows="7" data-uc-tpl-text="intro"></textarea>
+                        <span class="uc-hint">The first paragraph is the heading. Leave a blank line between paragraphs.</span>
+                    </label>
+                    <label class="uc-check">
+                        <input type="checkbox" name="rm_waitlist" value="1" data-uc-rm-waitlist />
+                        Include the waitlist
+                    </label>
+                    <div class="uc-form-actions">
+                        <button type="button" class="uc-btn" data-uc-rm-preview>Preview</button>
+                        <button type="submit" class="uc-btn uc-btn-primary" data-uc-rm-send
+                                data-uc-confirm="<?php echo esc_attr( sprintf( 'Send to %d %s?', $to_reg, 1 === $to_reg ? 'person' : 'people' ) ); ?>">Send</button>
+                    </div>
+                    <p class="uc-notice uc-notice-error" role="alert" data-uc-rm-error hidden></p>
+                    <div class="uc-rm-preview" data-uc-rm-preview-box hidden>
+                        <p class="uc-hint" data-uc-rm-preview-to></p>
+                        <p class="uc-rm-preview-subject"><strong data-uc-rm-preview-subject></strong></p>
+                        <iframe class="uc-rm-preview-frame" title="Preview of the message" data-uc-rm-preview-frame></iframe>
+                    </div>
+                </form>
+            </div>
+        </details>
+        <?php if ( $log ) : ?>
+            <div class="uc-card uc-registrant-mail-log" data-uc-rm-log>
+                <div class="uc-card-head"><h2>Emails sent from this list</h2></div>
+                <table class="uc-table">
+                    <thead><tr><th>Sent by</th><th>When</th><th>Subject</th><th>Recipients</th></tr></thead>
+                    <tbody>
+                    <?php foreach ( $log as $entry ) :
+                        $who = get_userdata( (int) $entry['by'] );
+                        ?>
+                        <tr>
+                            <td><?php echo esc_html( $who && '' !== (string) $who->display_name ? $who->display_name : 'A former user' ); ?></td>
+                            <td><?php echo esc_html( sfaf_ap_datetime( (string) $entry['at'] ) ); ?></td>
+                            <td><?php echo esc_html( (string) $entry['subject'] ); ?></td>
+                            <td><?php echo (int) $entry['count']; ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
+        <?php
+    }
+
     private function render_waitlist_section( $user, $event_id ) {
         $rows = SFAF_Waitlist::rows_for_list( $event_id );
         if ( empty( $rows ) ) {

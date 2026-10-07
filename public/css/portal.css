@@ -5095,3 +5095,89 @@ body.uc-modal-open { overflow: hidden; }
 .uc-private-field .uc-private-link-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
 .uc-private-field .uc-private-link-box { flex: 1 1 200px; min-width: 0; background-color: var(--p-bg); color: var(--p-text); }
 .uc-private-field .uc-private-link-row .uc-btn { flex: 0 0 auto; }
+
+/* ---------------------------------------------------------------------------
+   THE REGISTRATION AGREEMENT IN THE EDITOR (3.110.0)
+
+   A section of the Registration card, as the questions are: the 16px subhead
+   with one --p-border hairline above it, the tick, and the text box under it
+   while the tick is on.
+   ------------------------------------------------------------------------ */
+.uc-registration-card .uc-agreement { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--p-border); }
+.uc-registration-card .uc-agreement-title { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.3; color: var(--p-text); }
+.uc-registration-card .uc-agreement-text[hidden] { display: none; }
+
+/* ---------------------------------------------------------------------------
+   ONE EVENT'S RSVP LIST: COUNTS, CHECK-IN, FIND, EMAIL (3.110.0)
+
+   The counts are one strip, Body type, the figures bold. Under it the check-in
+   choice, the segmented control drawn with buttons because each press saves
+   it; "Enter a count" adds its one number box and Save. Then Find by name,
+   then Email registrants, the same full-width row as the Notifications card's.
+   A row's Check in is the standard small button; checked in, it wears the
+   accent: --uc-accent-text edge and ink on --uc-band. "Texts" is a small
+   neutral mark after the phone number.
+   ------------------------------------------------------------------------ */
+.uc-rsvp-counts { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: 14px; font-weight: 400; color: var(--p-text); }
+.uc-checkin-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 20px; margin: 0 0 16px; }
+.uc-checkin-bar .uc-checkin-mode { margin: 0; }
+.uc-checkin-bar .uc-seg-opt-btn {
+    display: block; margin: 0; padding: 8px 16px; border: 0; border-left: 1px solid var(--p-border); border-radius: 0;
+    background: var(--p-control-face); color: var(--p-text); font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1.4; cursor: pointer;
+}
+.uc-checkin-bar .uc-seg-opt-btn:first-child { border-left: 0; }
+.uc-checkin-bar .uc-seg-opt-btn:hover { background: var(--uc-band); }
+.uc-checkin-bar .uc-seg-opt-btn[aria-pressed="true"] { background: var(--uc-accent-text); color: var(--p-panel); }
+.uc-checkin-bar .uc-seg-opt-btn:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: -2px; }
+.uc-checkin-bar .uc-attendance-form { display: flex; align-items: flex-end; gap: 8px; margin: 0; }
+.uc-checkin-bar .uc-attendance-field { margin: 0; }
+.uc-checkin-bar .uc-attendance-field input { width: 120px; }
+.uc-rsvp-search { margin: 0 0 16px; max-width: 360px; }
+.uc-registrant-mail { margin: 0 0 16px; }
+.uc-registrant-mail .uc-registrant-mail-form { display: flex; flex-direction: column; gap: 12px; }
+.uc-registrant-mail .uc-rm-preview-frame { display: block; width: 100%; height: 640px; border: 1px solid var(--p-border); border-radius: 8px; background: var(--p-panel); }
+.uc-registrant-mail .uc-rm-preview-subject { margin: 0; }
+.uc-registrant-mail .uc-rm-preview[hidden] { display: none; }
+.uc-rsvp-table .uc-checkin-form { display: inline; margin: 0; }
+.uc-rsvp-table .uc-checkin-btn[aria-pressed="true"] { border-color: var(--uc-accent-text); color: var(--uc-accent-text); background: var(--uc-band); }
+.uc-texts-mark {
+    display: inline-block; margin-left: 6px; padding: 0 6px; border: 1px solid var(--p-border); border-radius: 99px;
+    font-size: 12px; font-weight: 400; line-height: 1.5; color: var(--p-muted); background: var(--p-bg);
+}
+.uc-rsvp-table tr[hidden] { display: none; }
+
+/* ---------------------------------------------------------------------------
+   THE RSVP LIST ON A PHONE (3.110.0)
+
+   One column. A row is the name and its buttons on one line, the name taking
+   what the buttons leave, then email, phone and status on a small line under
+   it. Every button is at least 44px tall. The header row goes; Updates and
+   Registered go, being the desk's columns.
+   ------------------------------------------------------------------------ */
+@media (max-width: 600px) {
+    .uc-rsvp-table thead { display: none; }
+    .uc-rsvp-table, .uc-rsvp-table tbody { display: block; width: 100%; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px;
+        padding: 12px 0; border-bottom: 1px solid var(--p-border);
+    }
+    .uc-rsvp-table tr[data-uc-rsvp-row] > td { display: block; padding: 0; border: 0; min-width: 0; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(1) { order: 1; font-size: 16px; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(2) { order: 2; flex: 1 1 0; font-size: 16px; font-weight: 600; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(8) { order: 3; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(3),
+    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(4),
+    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(6) { order: 4; font-size: 13px; color: var(--p-muted); overflow-wrap: anywhere; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(3) { flex: 1 1 100%; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(5),
+    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(7) { display: none; }
+    .uc-rsvp-table td:nth-child(2) .uc-muted { display: none; }
+    .uc-rsvp-table .uc-rsvp-actions .uc-btn,
+    .uc-rsvp-table .uc-rsvp-actions button { min-height: 44px; display: inline-flex; align-items: center; }
+    .uc-rsvp-table tr.uc-rsvp-details { display: block; }
+    .uc-rsvp-table tr.uc-rsvp-details[hidden] { display: none; }
+    .uc-rsvp-table tr.uc-rsvp-details > td { display: block; padding: 8px 0 12px; }
+    .uc-rsvp-search { max-width: none; }
+    .uc-checkin-bar .uc-seg-opt-btn { min-height: 44px; }
+    .uc-checkin-bar .uc-attendance-form .uc-btn { min-height: 44px; }
+}

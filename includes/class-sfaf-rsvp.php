@@ -140,6 +140,10 @@ class SFAF_RSVP {
             // additional info. submit() checks them against the event.
             'answers'      => isset( $_POST['answers'] ) ? json_decode( wp_unslash( (string) $_POST['answers'] ), true ) : array(),
             'answers_more' => isset( $_POST['answers_more'] ) ? json_decode( wp_unslash( (string) $_POST['answers_more'] ), true ) : array(),
+            // The agreement dialog's tick (3.110.0): '1' only from Confirm RSVP.
+            'agreed'       => isset( $_POST['agreed'] ) && '1' === (string) wp_unslash( $_POST['agreed'] ),
+            // "Text me about this event" under the phone (3.110.0).
+            'text_opt_in'  => ! empty( $_POST['text_opt_in'] ),
         ) );
 
         wp_send_json( $result );
@@ -361,8 +365,24 @@ class SFAF_RSVP {
             return array( 'success' => false, 'message' => $checked['error'] );
         }
 
+        /*
+         * THE AGREEMENT (3.110.0). An event that asks is refused a registration
+         * that did not agree, on the server, whatever the form did; a waitlist
+         * join is a registration here. When it did agree, the row says when.
+         */
+        if ( class_exists( 'SFAF_Agreement' ) && SFAF_Agreement::is_on( $data['event_id'] ) ) {
+            if ( empty( $data['agreed'] ) ) {
+                return array( 'success' => false, 'message' => 'Agree to the event conditions to register.' );
+            }
+            $data['agreed_at'] = current_time( 'mysql' );
+        } else {
+            $data['agreed_at'] = '';
+        }
+
         $data['phone'] = self::format_phone( $data['phone'] ?? '' );
         $data['name']  = trim( $data['first_name'] . ' ' . $data['last_name'] );
+        // A text opt-in means nothing without a number to text (3.110.0).
+        $data['text_opt_in'] = ( ! empty( $data['text_opt_in'] ) && '' !== $data['phone'] ) ? 1 : 0;
 
         if ( sfaf_format_full( $data['event_id'], $hybrid ? $format : '' ) ) {
             /*
@@ -411,7 +431,10 @@ class SFAF_RSVP {
             'created_at' => current_time( 'mysql' ),
             // '' on every event that never asked. See the column's note.
             'format'     => $data['format'],
-        ), array( '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ) );
+            // Schema 13 (3.110.0): when they agreed, and whether they want texts.
+            'agreed_at'   => '' !== $data['agreed_at'] ? $data['agreed_at'] : null,
+            'text_opt_in' => (int) $data['text_opt_in'],
+        ), array( '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d' ) );
 
         if ( $inserted ) {
             /*

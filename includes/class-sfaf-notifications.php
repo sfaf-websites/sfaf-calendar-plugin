@@ -233,6 +233,9 @@ class SFAF_Notifications {
             /* THE WAITLIST (3.106.0). See SFAF_Waitlist. */
             case 'waitlist':
                 return self::build_waitlist( $event_id, $person, $context );
+            /* EMAIL REGISTRANTS, FROM THE RSVP LIST (3.110.0). See SFAF_Registrant_Mail. */
+            case 'registrant_message':
+                return self::build_registrant_message( $event_id, $person, $context );
             /* THE WAITLIST, TOLD THE EVENT IS OFF (3.106.1). See SFAF_Announce. */
             case 'waitlist_cancelled':
                 return self::build_waitlist_cancelled( $event_id, $person, $context );
@@ -855,6 +858,30 @@ class SFAF_Notifications {
      *
      * @param array $context position: int.
      */
+    /**
+     * (l) A MESSAGE FROM THE RSVP LIST (3.110.0): the subject and body
+     * somebody wrote for this one send, with the six tokens filled for this
+     * person, in the standard wrapper with the event's details, in the event's
+     * language. No cancel link and no donate line: it is a note, not a
+     * registration message.
+     *
+     * @param array $context subject: string; body: string, paragraphs and {tokens}.
+     */
+    private static function build_registrant_message( $event_id, $person, $context = array() ) {
+        $lang   = self::lang_for( $event_id, $context );
+        $f      = self::facts( $event_id, self::person_format( $person ), $lang, $context );
+        $values = self::values( $event_id, $f, $person );
+        return SFAF_Messages::compose( 'registrant_message', 'default', $lang, $values, array(
+            'text'      => array(
+                'subject' => isset( $context['subject'] ) ? (string) $context['subject'] : '',
+                'intro'   => isset( $context['body'] ) ? (string) $context['body'] : '',
+            ),
+            'details'   => self::detail_rows( $f ),
+            'event_url' => $f['url'],
+            'preheader' => $f['title'],
+        ) );
+    }
+
     private static function build_waitlist( $event_id, $person, $context = array() ) {
         $lang   = self::lang_for( $event_id, $context );
         $f      = self::facts( $event_id, self::person_format( $person ), $lang, $context );

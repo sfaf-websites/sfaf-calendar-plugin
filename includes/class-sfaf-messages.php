@@ -111,6 +111,13 @@ class SFAF_Messages {
                 'tokens' => array( 'series', 'days', 'confirm_link', 'stop_link' ), 'links' => array( 'confirm_link' => 'follow_yes' ) ),
             'donate_line'    => array( 'label' => 'Donate line', 'kind' => 'line', 'variants' => array( 'default' => '' ),
                 'tokens' => array( 'donate_link' ) ),
+            // The registration agreement's dialog, on the RSVP form (3.110.0).
+            'agreement_heading' => array( 'label' => 'Agreement: heading', 'kind' => 'line', 'variants' => array( 'default' => '' ), 'tokens' => array() ),
+            'agreement_tick'    => array( 'label' => 'Agreement: the tick', 'kind' => 'line', 'variants' => array( 'default' => '' ), 'tokens' => array() ),
+            'agreement_confirm' => array( 'label' => 'Agreement: confirm button', 'kind' => 'line', 'variants' => array( 'default' => '' ), 'tokens' => array() ),
+            'agreement_cancel'  => array( 'label' => 'Agreement: cancel button', 'kind' => 'line', 'variants' => array( 'default' => '' ), 'tokens' => array() ),
+            // Under the phone field on the RSVP form (3.110.0).
+            'text_opt_in'       => array( 'label' => 'Text opt-in', 'kind' => 'line', 'variants' => array( 'default' => '' ), 'tokens' => array() ),
             'cancel_page'    => array( 'label' => 'Cancel your place page', 'kind' => 'page',
                 'variants' => array( 'ask' => 'Asking', 'done' => 'Released', 'leave' => 'Leaving the waitlist', 'left' => 'Left the waitlist', 'nothing' => 'Nothing to cancel' ),
                 'tokens' => array( 'title', 'date', 'time' ) ),
@@ -272,6 +279,27 @@ class SFAF_Messages {
         $d['waitlist_added_line'] = array( 'default' => array(
             'en' => array( 'subject' => '', 'intro' => 'You were on the waitlist and a place has opened up.', 'closing' => '' ),
             'es' => array( 'subject' => '', 'intro' => 'Estaba en la lista de espera y se liberó un lugar.', 'closing' => '' ),
+        ) );
+
+        $d['agreement_heading'] = array( 'default' => array(
+            'en' => array( 'subject' => '', 'intro' => 'Before you register', 'closing' => '' ),
+            'es' => array( 'subject' => '', 'intro' => 'Antes de inscribirse', 'closing' => '' ),
+        ) );
+        $d['agreement_tick'] = array( 'default' => array(
+            'en' => array( 'subject' => '', 'intro' => 'I have read and agree to the event conditions', 'closing' => '' ),
+            'es' => array( 'subject' => '', 'intro' => 'He leído y acepto las condiciones del evento', 'closing' => '' ),
+        ) );
+        $d['agreement_confirm'] = array( 'default' => array(
+            'en' => array( 'subject' => '', 'intro' => 'Confirm RSVP', 'closing' => '' ),
+            'es' => array( 'subject' => '', 'intro' => 'Confirmar inscripción', 'closing' => '' ),
+        ) );
+        $d['agreement_cancel'] = array( 'default' => array(
+            'en' => array( 'subject' => '', 'intro' => 'Cancel', 'closing' => '' ),
+            'es' => array( 'subject' => '', 'intro' => 'Cancelar', 'closing' => '' ),
+        ) );
+        $d['text_opt_in'] = array( 'default' => array(
+            'en' => array( 'subject' => '', 'intro' => 'Text me about this event', 'closing' => '' ),
+            'es' => array( 'subject' => '', 'intro' => 'Envíenme mensajes de texto sobre este evento', 'closing' => '' ),
         ) );
 
         $d['donate_line'] = array( 'default' => array(
@@ -627,7 +655,8 @@ class SFAF_Messages {
      */
     public static function compose( $key, $variant, $lang, $values, $parts ) {
         $lang  = self::lang( $lang );
-        $t     = self::get( $key, $variant, $lang );
+        // A message written for one send, the registrant email from the RSVP list (3.110.0), brings its own text.
+        $t     = isset( $parts['text'] ) ? array_merge( array( 'subject' => '', 'intro' => '', 'closing' => '' ), (array) $parts['text'] ) : self::get( $key, $variant, $lang );
         $intro = self::paragraphs( $t['intro'], $values );
         $head  = $intro ? array_shift( $intro ) : '';
         if ( ! empty( $parts['heading'] ) ) {
@@ -876,10 +905,11 @@ class SFAF_Messages {
             $text = trim( wp_strip_all_tags( preg_replace( '#</(p|button)>#', "\$0\n\n", $p['html'] ) ) );
             return array( 'subject' => $p['title'], 'html' => sfaf_notice_page_html( $p['title'], $p['html'] ), 'text' => $text );
         }
+        // Each line previews its own text; until 3.110.0 every line previewed the donate line.
         if ( 'line' === $kind ) {
-            $line = self::get( 'donate_line', 'default', $lang );
-            $html = self::para_html( self::fill_html( 'donate_line', $line['intro'], $s, $lang ) );
-            return array( 'subject' => '', 'html' => SFAF_Email::shell( '', $html ), 'text' => self::fill_text( 'donate_line', $line['intro'], $s, $lang ) );
+            $line = self::get( $key, 'default', $lang );
+            $html = self::para_html( self::fill_html( $key, $line['intro'], $s, $lang ) );
+            return array( 'subject' => '', 'html' => SFAF_Email::shell( '', $html ), 'text' => self::fill_text( $key, $line['intro'], $s, $lang ) );
         }
         if ( 'several' === $variant ) {
             $person = (object) array( 'first_name' => $s['first_name'], 'name' => $s['first_name'], 'token' => 'SAMPLE' );

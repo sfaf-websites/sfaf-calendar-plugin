@@ -24,7 +24,7 @@ define( 'SFAF_VERSION', '3.109.0' );
  * hook — still gets its new tables, instead of throwing "table doesn't exist"
  * the first time the runner looks for one.
  */
-define( 'SFAF_DB_VERSION', '12' );
+define( 'SFAF_DB_VERSION', '13' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -131,6 +131,9 @@ $sfaf_includes = array(
     'includes/class-sfaf-messages.php',
     // The waitlist (3.106.0). After the mail layer it sends through.
     'includes/class-sfaf-waitlist.php',
+    'includes/class-sfaf-agreement.php',
+    'includes/class-sfaf-checkin.php',
+    'includes/class-sfaf-registrant-mail.php',
     'includes/class-sfaf-notifications.php',
     'includes/class-sfaf-announce.php',
     'includes/class-sfaf-reminders.php',
@@ -966,6 +969,12 @@ function sfaf_install_tables() {
     // that already has this table, dbDelta does not drop columns, and an insert
     // that omitted it would fail under strict mode. Reads go through
     // SFAF_RSVP::display_name(), which builds from the pair.
+    /*
+     * SCHEMA 13 (3.110.0): agreed_at, when somebody agreed to the event's
+     * registration agreement; text_opt_in, "Text me about this event"; and
+     * checked_in_at, when they were checked in at the door. NULL and 0 are
+     * "not" for every row before.
+     */
     $sql[] = "CREATE TABLE $rsvps (
         id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
         event_id bigint(20) unsigned NOT NULL,
@@ -984,6 +993,9 @@ function sfaf_install_tables() {
         offered_at datetime NULL,
         offer_expires datetime NULL,
         format varchar(20) NOT NULL DEFAULT '',
+        agreed_at datetime NULL,
+        text_opt_in tinyint(1) NOT NULL DEFAULT 0,
+        checked_in_at datetime NULL,
         PRIMARY KEY (id),
         KEY event_id (event_id),
         KEY email (email),
