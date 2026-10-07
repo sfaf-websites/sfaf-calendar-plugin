@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Pending - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.108.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.108.0" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.108.0" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.108.1" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.108.1" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.108.1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.108.0" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.108.1" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -334,27 +334,33 @@
                                             <div class="uc-field uc-image-field"
                       data-uc-media-folder="calendar" data-uc-media-flag="uc_calendar_media" data-uc-media-series="0" data-uc-media-upload="1" data-uc-media-folder-empty="1"                     >
                     <span class="uc-field-label">Featured Image
-                                                <span class="uc-img-source-tag" data-uc-img-source-tag
-                              data-uc-img-source-own="Event-specific">Placeholder</span>
                                             </span>
-                                                        <div class="uc-image-preview" id="uc-image-preview-e503"
-             data-uc-image-preview style="display:none;">
-            <img src="" alt="" data-uc-image-preview-img />
-        </div>
-
+                                                                    <div class="uc-image-block" data-uc-image-block
+             data-uc-series-pictures="{}"
+             data-uc-image-start="none"
+             data-uc-image-start-name="">
+            <div class="uc-image-preview uc-image-preview-empty" id="uc-image-preview-e503"
+                 data-uc-image-preview>
+                <img src="" alt="" data-uc-image-preview-img hidden />
+                <span class="uc-image-pill" data-uc-img-source-tag
+                      data-uc-img-source-own="Event-specific"
+                      data-uc-img-source-series="From series"
+                      data-uc-img-source-none="Placeholder">Placeholder</span>
+                                    <button type="button" class="uc-image-remove" data-uc-image-remove hidden>Remove</button>
+                            </div>
+                                            <input type="hidden" name="reset_series_image" value="1" data-uc-image-reset disabled />
+                    
         
                                 <p class="uc-hint uc-image-outside" data-uc-image-outside hidden>Not in this series. It stays chosen until you pick another.</p>
-            <div class="uc-image-buttons">
-                <button type="button" class="uc-btn uc-btn-sm uc-link-danger uc-remove-image" style="display:none;">Remove</button>
-            </div>
-                        <label class="uc-field uc-image-url-field">
+        </div>
+                                <label class="uc-field uc-image-url-field">
             <span class="uc-field-label">Or an image URL                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-imgurl-e503" aria-label="More about the image URL">?</button><span class="uc-help-body" id="uc-help-imgurl-e503" data-uc-help-body>Used only when no picture is chosen above.</span>            </span>
             <input type="url" name="image_url"
                    id="uc-image-url-e503"
                    data-uc-image-url value=""
                    placeholder="https://…/image.jpg" />
         </label>
-                        <p class="uc-hint uc-hint-spec"><strong>1200 x 675 pixels, 16:9 landscape.</strong></p>
+                                <p class="uc-hint uc-hint-spec"><strong>1200 x 675 pixels, 16:9 landscape.</strong></p>
                             <p class="uc-field-note uc-field-note-attention"><svg class="uc-state-icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path fill="currentColor" d="M4 17.2V20h2.8L17 9.8 14.2 7zm14.8-9.6a.75.75 0 0 0 0-1.06l-1.74-1.74a.75.75 0 0 0-1.06 0L14.6 6.2 17.4 9z"/></svg><span>The calendar folder has no images in it yet, so Choose Image will look empty. Uploading one here puts it in the folder. If you expected pictures to be there, check that the folder is still <code>uploads/calendar</code>.</span></p>
                                 </div>
                                 <div class="uc-field">
@@ -373,7 +379,7 @@
                            accept="image/jpeg,image/png,image/gif,image/webp" />
                     <span class="uc-hint">JPEG, PNG, GIF or WebP, up to 10MB.</span>
                 </label>
-                <p class="uc-desc-images-status" data-uc-desc-status role="status" hidden></p>
+                <p class="uc-desc-images-status uc-notice" data-uc-desc-status role="status" hidden></p>
 
                             </div>
         </details>
@@ -458,8 +464,8 @@
                                 </main>
             </div>
         </div>
-        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.108.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.108.0"></script>
-<script src="../public/js/portal.js?ver=3.108.0"></script>
+        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.108.1"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.108.1"></script>
+<script src="../public/js/portal.js?ver=3.108.1"></script>
 <script>window.CL_PAGE="pending";window.CL_CASE={"set":[],"press":"","answer":""};window.CL_SERIES="11";(function () {
 var P = window.CL_PAGE, C = window.CL_CASE || {}, out = { page: P, errors: [], posted: null, dialogs: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });

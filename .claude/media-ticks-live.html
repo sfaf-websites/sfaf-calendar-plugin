@@ -94,6 +94,8 @@ function ucDismissOnBackdrop(dialog) {
         run('sidebar', initSidebar);
         run('repeaters', initRepeaters);
         run('faqSetPicker', initFaqSetPicker);
+        // After repeaters, whose add button has to append its row first.
+        run('faqFold', initFaqFold);
         run('seriesPrefill', initSeriesPrefill);
         run('donateChoice', initDonateChoice);
         run('eventLanguage', initEventLanguage);
@@ -136,6 +138,7 @@ function ucDismissOnBackdrop(dialog) {
         // After filterLists, which is what actually narrows this one's list.
         // This adds only what a <details> and a radio cannot do on their own.
         run('imageChoice', initImageChoice);
+        run('imageBlock', initImageBlock);
         // After imageChoice, which is what makes the picker live and is where
         // the trigger renderer this one reuses is bound.
         run('requestSeriesImage', initRequestSeriesImage);
@@ -523,6 +526,7 @@ function ucDismissOnBackdrop(dialog) {
             status.textContent = message;
             status.hidden = !message;
             status.classList.toggle('is-error', !!isError);
+            status.classList.toggle('uc-notice-error', !!isError);
         }
 
         /*
@@ -2499,18 +2503,122 @@ function ucDismissOnBackdrop(dialog) {
         if (removeBtn) { removeBtn.style.display = 'none'; }
     }
 
-    /*
-     * THE TAG BESIDE "Featured Image" SAYS WHERE THE PICTURE CAME FROM, and a
-     * picture written onto this event came from this event. The words are the
-     * server's, carried on the tag itself, so renaming the label renames it
-     * here too.
-     */
-    function markImageAsOwn(field) {
-        if (!field) { return; }
-        var tag = field.querySelector('[data-uc-img-source-tag]');
-        if (!tag) { return; }
-        var own = tag.getAttribute('data-uc-img-source-own');
-        if (own) { tag.textContent = own; }
+    /* ---------------------------------------------------------------------
+     * THE FEATURED IMAGE, ONE BLOCK AND ONE STATE (3.108.1)
+     *
+     * The event editor's picture is a preview with a pill on it saying where
+     * the picture comes from, Remove on its corner while the picture is the
+     * event's own, and "Choose a picture" under it naming the picture.
+     *
+     *   event    a picture chosen in the picker, or one the event holds only
+     *            as a stored URL, which stays until Remove
+     *   series   nothing of its own, and the series in the dropdown has a
+     *            picture: that picture, named
+     *   none     neither: the empty tile and "Placeholder"
+     *
+     * REMOVE chooses "The series picture" row and enables the hidden
+     * reset_series_image, so the save clears the thumbnail and any stored URL.
+     * Choosing a picture disables it again. The pill's words are the server's,
+     * carried on the pill. A block the server drew for an imported picture
+     * ("From source", "Synced") is left as drawn until somebody chooses.
+     * ------------------------------------------------------------------ */
+    function initImageBlock() {
+        document.querySelectorAll('[data-uc-image-block]').forEach(function (block) {
+            var preview = block.querySelector('[data-uc-image-preview]');
+            var img = block.querySelector('[data-uc-image-preview-img]');
+            var pill = block.querySelector('[data-uc-img-source-tag]');
+            var remove = block.querySelector('[data-uc-image-remove]');
+            var reset = block.querySelector('[data-uc-image-reset]');
+            var picker = block.querySelector('[data-uc-image-picker]');
+            var current = picker ? picker.querySelector('[data-uc-image-current]') : null;
+            if (!preview || !img || !pill || !reset || !picker) { return; }
+
+            var field = block.closest('.uc-image-field') || block;
+            var form = block.closest('form');
+            var seriesSelect = (form && form.querySelector('[data-uc-series-select]')) || document.querySelector('[data-uc-series-select]');
+            var pics = {};
+            try { pics = JSON.parse(block.getAttribute('data-uc-series-pictures') || '{}') || {}; } catch (e) { pics = {}; }
+
+            var start = block.getAttribute('data-uc-image-start') || 'none';
+            var known = (start === 'event' || start === 'series' || start === 'none');
+            var keptSrc = start === 'event' ? (img.getAttribute('src') || '') : '';
+            var keptName = start === 'event' ? (block.getAttribute('data-uc-image-start-name') || '') : '';
+
+            function chosen() {
+                var r = picker.querySelector('[data-uc-image-option]:checked');
+                return (r && r.value !== '0') ? r : null;
+            }
+            /* A stored picture that is not a row in the picker (a URL, or a
+               picture outside the folder) is the event's own until Remove. */
+            var kept = start === 'event' && !chosen();
+
+            function seriesId() {
+                return seriesSelect ? String(seriesSelect.value) : String(field.getAttribute('data-uc-media-series') || '0');
+            }
+            function nameIt(text) {
+                if (!current) { return; }
+                current.textContent = '';
+                var span = document.createElement('span');
+                span.className = 'uc-image-current-name';
+                span.textContent = text || 'No picture chosen';
+                current.appendChild(span);
+            }
+
+            function render() {
+                var r = chosen(), state, src = '', name = '';
+                if (r) {
+                    state = 'event';
+                    src = r.getAttribute('data-uc-image-full') || r.getAttribute('data-uc-image-thumb') || '';
+                } else if (kept) {
+                    state = 'event'; src = keptSrc; name = keptName;
+                } else if (pics[seriesId()] && pics[seriesId()].src) {
+                    state = 'series'; src = pics[seriesId()].src; name = pics[seriesId()].name;
+                } else {
+                    state = 'none';
+                }
+                if (src) { img.src = src; img.hidden = false; } else { img.removeAttribute('src'); img.hidden = true; }
+                preview.classList.toggle('uc-image-preview-empty', !src);
+                pill.textContent = pill.getAttribute(
+                    state === 'event' ? 'data-uc-img-source-own' : (state === 'series' ? 'data-uc-img-source-series' : 'data-uc-img-source-none')
+                ) || pill.textContent;
+                block.setAttribute('data-uc-image-state', state);
+                if (remove) { remove.hidden = (state !== 'event'); }
+                if (!r) { nameIt(name); }
+            }
+
+            picker.addEventListener('change', function (e) {
+                var t = e.target;
+                if (!t || !t.hasAttribute || !t.hasAttribute('data-uc-image-option') || !t.checked) { return; }
+                known = true;
+                kept = false;
+                reset.disabled = (t.value !== '0');
+                render();
+            });
+
+            if (remove) {
+                remove.addEventListener('click', function () {
+                    var none = picker.querySelector('[data-uc-image-option][value="0"]');
+                    known = true;
+                    kept = false;
+                    reset.disabled = false;
+                    if (none) {
+                        none.checked = true;
+                        none.dispatchEvent(new Event('change', { bubbles: true }));
+                    } else {
+                        render();
+                    }
+                    var summary = picker.querySelector('summary');
+                    if (summary) { summary.focus(); }
+                });
+            }
+
+            if (seriesSelect) {
+                seriesSelect.addEventListener('change', function () { if (known) { render(); } });
+            }
+
+            block.setAttribute('data-uc-image-state', start);
+            if (known) { render(); }
+        });
     }
 
     function bindImageField(field) {
@@ -2818,6 +2926,99 @@ function ucDismissOnBackdrop(dialog) {
      * resolves to nothing, a throw — returns true from the content check, so the
      * worst case is a dialog on an empty row rather than a silent loss.
      */
+    /* ---------------------------------------------------------------------
+     * THE EDITORS' FAQs, FOLDED (3.108.1)
+     *
+     * Each FAQ is a head (its question, or "New question", then Edit and the
+     * remove icon) over the question and answer boxes. The body is in the
+     * markup and folded here, so with no script every FAQ is open and posts.
+     *
+     * ONE OPEN AT A TIME: opening one closes the rest in the same list.
+     * "+ Add FAQ" appends its row open, with the cursor in the question; rows
+     * that arrive any other way, which is a saved set being applied, arrive
+     * shut. The head follows the question box as it is typed.
+     *
+     * A ROW IS SET UP ONCE. The observer sees every row that is added, and the
+     * add button's own handler sets its row up first and opens it, so the
+     * observer finding it later leaves it open.
+     * ------------------------------------------------------------------ */
+    function initFaqFold() {
+        document.querySelectorAll('.uc-repeater').forEach(function (rep) {
+            var rows = rep.querySelector('.uc-repeater-rows');
+            if (!rows) { return; }
+            var tpl = rep.querySelector('.uc-repeater-tpl');
+            var folds = rows.querySelector('[data-uc-faq-fold]') || (tpl && /data-uc-faq-fold/.test(tpl.innerHTML));
+            if (!folds) { return; }
+
+            function headText(row) {
+                var q = row.querySelector('[data-uc-faq-body] input[type="text"]');
+                var head = row.querySelector('[data-uc-faq-head]');
+                if (!head) { return; }
+                var text = q ? q.value.replace(/\s+/g, ' ').trim() : '';
+                head.textContent = text || 'New question';
+                head.classList.toggle('uc-faq-head-new', !text);
+            }
+            function shut(row) {
+                var body = row.querySelector('[data-uc-faq-body]');
+                var toggle = row.querySelector('[data-uc-faq-toggle]');
+                if (body) { body.hidden = true; }
+                if (toggle) { toggle.setAttribute('aria-expanded', 'false'); toggle.textContent = 'Edit'; }
+                row.classList.remove('is-open');
+            }
+            function open(row) {
+                Array.prototype.forEach.call(rows.querySelectorAll('[data-uc-faq-fold]'), function (other) {
+                    if (other !== row) { shut(other); }
+                });
+                var body = row.querySelector('[data-uc-faq-body]');
+                var toggle = row.querySelector('[data-uc-faq-toggle]');
+                if (body) { body.hidden = false; }
+                if (toggle) { toggle.setAttribute('aria-expanded', 'true'); toggle.textContent = 'Close'; }
+                row.classList.add('is-open');
+            }
+            function setUp(row) {
+                if (!row || !row.hasAttribute || !row.hasAttribute('data-uc-faq-fold') || row.hasAttribute('data-uc-faq-ready')) { return; }
+                row.setAttribute('data-uc-faq-ready', '');
+                var toggle = row.querySelector('[data-uc-faq-toggle]');
+                if (toggle) { toggle.hidden = false; }
+                headText(row);
+                shut(row);
+            }
+
+            Array.prototype.forEach.call(rows.querySelectorAll('[data-uc-faq-fold]'), setUp);
+
+            rows.addEventListener('click', function (e) {
+                var toggle = e.target.closest ? e.target.closest('[data-uc-faq-toggle]') : null;
+                if (!toggle || !rows.contains(toggle)) { return; }
+                var row = toggle.closest('[data-uc-faq-fold]');
+                if (!row) { return; }
+                if ('true' === toggle.getAttribute('aria-expanded')) { shut(row); } else { open(row); }
+            });
+            rows.addEventListener('input', function (e) {
+                var row = e.target.closest ? e.target.closest('[data-uc-faq-fold]') : null;
+                if (row && e.target.matches('input[type="text"]')) { headText(row); }
+            });
+
+            if (window.MutationObserver) {
+                new MutationObserver(function (list) {
+                    list.forEach(function (m) { Array.prototype.forEach.call(m.addedNodes, setUp); });
+                }).observe(rows, { childList: true });
+            }
+
+            var add = rep.querySelector('.uc-repeater-add');
+            if (add) {
+                add.addEventListener('click', function () {
+                    var all = rows.querySelectorAll('[data-uc-faq-fold]');
+                    var row = all.length ? all[all.length - 1] : null;
+                    if (!row) { return; }
+                    setUp(row);
+                    open(row);
+                    var q = row.querySelector('[data-uc-faq-body] input[type="text"]');
+                    if (q) { q.focus(); }
+                });
+            }
+        });
+    }
+
     function rowHasContent(row) {
         var q = row.querySelector('input[type=text]');
         if (q && q.value.trim() !== '') { return true; }
@@ -5394,33 +5595,25 @@ function ucDismissOnBackdrop(dialog) {
                     return img;
                 },
                 filled: function () {
-                    var url = form.querySelector('[data-uc-image-url]');
-                    var id = form.querySelector('[data-uc-image-id]');
-                    return (url && url.value.trim() !== '') || (id && id.value && id.value !== '0');
+                    var block = form.querySelector('[data-uc-image-block]');
+                    return !!block && 'event' === block.getAttribute('data-uc-image-state');
                 },
+                /*
+                 * THE PICKER IS THE ONLY WAY IN (3.108.1). With no URL box to
+                 * copy a picture into, this chooses the last event's own
+                 * picture when the picker lists it, and otherwise "The series
+                 * picture", which the event then inherits and the pill says so.
+                 * initImageBlock() hears the change and redraws the preview.
+                 */
                 write: function (d) {
-                    var url = form.querySelector('[data-uc-image-url]');
-                    if (url && d.image_url) { url.value = d.image_url; }
-                    var id = form.querySelector('[data-uc-image-id]');
-                    if (id && d.image_id) { id.value = String(d.image_id); }
-
-                    /*
-                     * AND THE SCREEN HAS TO SHOW IT (3.64.2). Writing the two
-                     * hidden values left the preview empty and the tag reading
-                     * "Placeholder", so the button reported filling six things
-                     * in and the picture was the one thing that could not be
-                     * seen. It is COPIED onto this event, exactly as the
-                     * location and the times are, so it reads as the event's
-                     * own image and not as an inherited one.
-                     */
-                    var anchor = url || id;
-                    var field = anchor && anchor.closest ? anchor.closest('.uc-image-field') : null;
-                    if (field) {
-                        showImagePreview(field, d.image_preview || d.image_url);
-                        markImageAsOwn(field);
+                    var block = form.querySelector('[data-uc-image-block]');
+                    if (!block) { return; }
+                    var radio = d.image_id ? block.querySelector('[data-uc-image-option][value="' + String(d.image_id) + '"]') : null;
+                    var target = radio || block.querySelector('[data-uc-image-option][value="0"]');
+                    if (target) {
+                        target.checked = true;
+                        target.dispatchEvent(new Event('change', { bubbles: true }));
                     }
-                    // Setting .value in script fires neither input nor change,
-                    // so the completeness meter has to be told by hand.
                     if (window.sfafRefreshCompleteness) { window.sfafRefreshCompleteness(); }
                 }
             },
@@ -5532,7 +5725,7 @@ function ucDismissOnBackdrop(dialog) {
         function say(msg, bad) {
             if (!said) { return; }
             said.textContent = msg || '';
-            said.className = 'uc-flash uc-prefill-said' + (bad ? ' uc-flash-error' : '');
+            said.className = 'uc-notice' + (bad ? ' uc-notice-error' : '');
             if (msg) { said.removeAttribute('hidden'); } else { said.setAttribute('hidden', 'hidden'); }
         }
 
