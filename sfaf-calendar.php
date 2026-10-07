@@ -1752,18 +1752,16 @@ function sfaf_format_full( $event_id, $format ) {
         ? sfaf_get_rsvp_count_by_format( $event_id, $format )
         : sfaf_get_rsvp_count( $event_id );
     /*
-     * A PLACE ON OFFER IS TAKEN, AND A QUEUE MEANS FULL (3.106.0). The count
-     * above still asks only for 'confirmed', as every count does; what makes a
-     * format full also counts the places held for somebody on the waitlist,
-     * and anybody still waiting, so a newcomer joins the queue behind them
-     * rather than taking a place that is being offered. See SFAF_Waitlist.
+     * A QUEUE MEANS FULL (3.106.0). The count above still asks only for
+     * 'confirmed', as every count does; anybody still waiting makes the format
+     * full, so a newcomer joins the queue behind them. See SFAF_Waitlist.
      */
     if ( class_exists( 'SFAF_Waitlist' ) ) {
         $fmt = SFAF_Online::is_hybrid( $event_id ) ? $format : '';
         if ( SFAF_Waitlist::waiting( $event_id, $fmt ) > 0 ) {
             return true;
         }
-        $taken += SFAF_Waitlist::held( $event_id, $fmt );
+        // No places are held on offer since 3.110.0: a place goes straight to the next person.
     }
     return ( $taken >= $capacity );
 }

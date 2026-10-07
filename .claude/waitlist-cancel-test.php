@@ -170,53 +170,9 @@ SFAF_Announce::cancelled( array( $es ) );
 $mia = wc_mail( 'mia@example.org' );
 wc( 'Spanish: the event\'s language', isset( $mia[0] ) && false !== strpos( $mia[0]['text'], 'usted estaba en la lista de espera' ) && false !== strpos( $mia[0]['text'], "Próximas fechas\n" ) && 'Cancelado: Grupo de apoyo' === $mia[0]['subject'], true );
 
-/* ---- 3.106.2 B. An offer's link on an event that is off. ---------------- */
-class WC_Page extends Exception { public $title; public $html; public $lang; }
-function sfaf_notice_page( $title, $html, $lang = '' ) { $e = new WC_Page( $title ); $e->title = $title; $e->html = $html; $e->lang = $lang; throw $e; }
-function wc_offer_page( $token, $post = false ) {
-    $_GET = array( SFAF_Waitlist::ARG => $token );
-    $_POST = $post ? array( 'uc_offer_token' => $token ) : array();
-    $_SERVER['REQUEST_METHOD'] = $post ? 'POST' : 'GET';
-    try { SFAF_Waitlist::maybe_handle_offer(); } catch ( WC_Page $e ) { return $e; }
-    return null;
-}
-function wc_offered( $event_id, $first ) {
-    $id = mk_rsvp( $event_id, $first, strtolower( $first ) . '@example.org', 'offered' );
-    $GLOBALS['mk_db']['wp_uc_rsvps'][ $id ]['offer_token'] = 'tok' . $first;
-    $GLOBALS['mk_db']['wp_uc_rsvps'][ $id ]['offer_expires'] = date( 'Y-m-d H:i:s', strtotime( '+5 hours' ) );
-    return $id;
-}
-mk_reset();
-$OFF = wc_event( 'Support group', '+10', 0, array( '_uc_language' => 'es' ) );
-$nid = wc_offered( $OFF, 'Nia' );
-SFAF_Cancellation::set( $OFF, true );
-$GLOBALS['mk_mail'] = array();
-$pg = wc_offer_page( 'tokNia' );
-wc( 'PLANT B: the link on a cancelled event says so, in the event\'s language', $pg ? array( $pg->title, false !== strpos( $pg->html, 'se canceló' ) ) : null, array( 'Este evento se canceló', true ) );
-wc( 'and offers no button to press', $pg && false === strpos( $pg->html, '<form' ), true );
-$pg = wc_offer_page( 'tokNia', true );
-wc( 'a POST to it takes no action either', $pg ? $pg->title : null, 'Este evento se canceló' );
-wc( 'the row is not changed', array( $GLOBALS['mk_db']['wp_uc_rsvps'][ $nid ]['status'], $GLOBALS['mk_db']['wp_uc_rsvps'][ $nid ]['offer_token'] ), array( 'offered', 'tokNia' ) );
-wc( 'accept() refuses too, and says why', SFAF_Waitlist::accept( 'tokNia' ), 'cancelled' );
-wc( 'nothing is sent', count( $GLOBALS['mk_mail'] ), 0 );
-$GLOBALS['mk_db']['wp_uc_rsvps'][ $nid ]['offer_expires'] = date( 'Y-m-d H:i:s', strtotime( '-1 hour' ) );
-SFAF_Waitlist::run_expiry();
-wc( 'an offer run out on a cancelled event is left as it is, and nobody is told it passed', array( $GLOBALS['mk_db']['wp_uc_rsvps'][ $nid ]['status'], count( $GLOBALS['mk_mail'] ) ), array( 'offered', 0 ) );
-foreach ( array( 'in the bin' => array( 'post_status', 'trash' ), 'a draft again' => array( 'post_status', 'draft' ), 'private' => array( 'meta', SFAF_Privacy::META ), 'deleted' => array( 'gone', '' ) ) as $why => $how ) {
-    $ev = wc_event( 'Support group', '+10' );
-    $rid = wc_offered( $ev, 'Oz' . count( $GLOBALS['mk_db']['wp_uc_rsvps'] ) );
-    $tok = $GLOBALS['mk_db']['wp_uc_rsvps'][ $rid ]['offer_token'];
-    if ( 'post_status' === $how[0] ) { $GLOBALS['mk_posts'][ $ev ]->post_status = $how[1]; }
-    if ( 'meta' === $how[0] ) { update_post_meta( $ev, $how[1], '1' ); }
-    if ( 'gone' === $how[0] ) { unset( $GLOBALS['mk_posts'][ $ev ] ); }
-    $pg = wc_offer_page( $tok, true );
-    wc( "an event $why: the page says it is no longer available, in English", $pg ? $pg->title : null, 'This event is no longer available' );
-    wc( "an event $why: the row is not changed", $GLOBALS['mk_db']['wp_uc_rsvps'][ $rid ]['status'], 'offered' );
-}
-$LIVE = wc_event( 'Support group', '+10' );
-wc_offered( $LIVE, 'Pia' );
-$pg = wc_offer_page( 'tokPia' );
-wc( 'a live event still asks to confirm', $pg && false !== strpos( $pg->html, 'uc_offer_token' ), true );
+/* ---- 3.106.2 B, GONE IN 3.110.0. There is no offer, so no offer link, no
+   confirm page and no page for an offer on an event that is off. ---------- */
+wc( 'the offer link, its page and its expiry are gone', array( method_exists( 'SFAF_Waitlist', 'maybe_handle_offer' ), method_exists( 'SFAF_Waitlist', 'accept' ), method_exists( 'SFAF_Waitlist', 'run_expiry' ), defined( 'SFAF_Waitlist::ARG' ) ), array( false, false, false, false ) );
 
 /* ---- 3.106.2 C. The cancel dialog counts the waitlist apart. ------------ */
 mk_reset();

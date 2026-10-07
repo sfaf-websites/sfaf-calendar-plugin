@@ -439,8 +439,12 @@ if ( in_array( '--run', array_slice( $argv, 1 ), true ) ) {
             rl_check( is_numeric( $r['pill']['contrast'] ) && $r['pill']['contrast'] >= 4.5, "$t: " . $r['name'] . '\'s pill measures ' . json_encode( $r['pill']['contrast'] ) );
         }
         $by = array_column( $rows, 'pill', 'name' );
-        rl_check( isset( $by['Cam Chen'] ) && 'Offered' === $by['Cam Chen']['text'] && $TEAL_INK === $by['Cam Chen']['color'] && $BAND === $by['Cam Chen']['bg'], "$t: the Offered pill is not --uc-accent-text on --uc-band: " . json_encode( isset( $by['Cam Chen'] ) ? $by['Cam Chen'] : null ) );
-        rl_check( isset( $by['Dee Diaz'] ) && 'Needs a call' === $by['Dee Diaz']['text'] && $AMBER === $by['Dee Diaz']['color'] && $AMBER_BG === $by['Dee Diaz']['bg'], "$t: the Needs a call pill is not the system amber: " . json_encode( isset( $by['Dee Diaz'] ) ? $by['Dee Diaz'] : null ) );
+        /* 3.110.0: no offers any more. A row left mid-offer by an older release reads
+           Waiting and wears the waiting pill until the first cron run puts it back in the queue. */
+        foreach ( array( 'Cam Chen', 'Dee Diaz' ) as $legacy ) {
+            rl_check( isset( $by[ $legacy ], $by['Eve Evans'] ) && 'Waiting' === $by[ $legacy ]['text'] && $by['Eve Evans']['color'] === $by[ $legacy ]['color'] && $by['Eve Evans']['bg'] === $by[ $legacy ]['bg'],
+                "$t: $legacy, left mid-offer, does not read Waiting with the waiting pill: " . json_encode( array( isset( $by[ $legacy ] ) ? $by[ $legacy ] : null, isset( $by['Eve Evans'] ) ? $by['Eve Evans'] : null ) ) );
+        }
     }
 }
 

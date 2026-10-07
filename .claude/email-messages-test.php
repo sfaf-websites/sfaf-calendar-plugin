@@ -56,7 +56,10 @@ foreach ( SFAF_Messages::catalog() as $key => $m ) {
         }
     }
 }
-em( 'every message and variant rendered in both languages', $count >= 50, true );
+// Every variant in the catalog, in both languages: the four offer messages went in 3.110.0.
+$expect = 0;
+foreach ( SFAF_Messages::catalog() as $m ) { $expect += 2 * count( $m['variants'] ); }
+em( 'every message and variant rendered in both languages', array( $count, $count >= 40 ), array( $expect, true ) );
 
 /* The shipped text uses only the tokens its message can fill. */
 $cat = SFAF_Messages::catalog();
@@ -79,7 +82,7 @@ $msgs = (string) file_get_contents( $root . '/includes/class-sfaf-messages.php' 
 $wait = (string) file_get_contents( $root . '/includes/class-sfaf-waitlist.php' );
 em( 'the Templates screen renders through render_sample()', false !== strpos( $port, 'SFAF_Messages::render_sample( $key, $variant, $lang )' ), true );
 em( 'render_sample() renders an email through the builder that sends it', false !== strpos( $msgs, "return SFAF_Notifications::build( \$key, 0, \$person, array( 'sample' => \$s, 'variant' => \$variant ) );" ), true );
-em( 'the offer that goes out is that builder\'s', false !== strpos( $wait, "SFAF_Notifications::build( 'offer', \$event_id, \$row," ), true );
+em( 'somebody added from the waitlist is sent the confirmation that builder makes', false !== strpos( $wait, 'SFAF_Notifications::send_confirmation( (int) $row->event_id, $person );' ) && false !== strpos( $wait, "'from_waitlist' => (bool) \$opened" ), true );
 
 /* ---- C: the language, and what speaks it. ------------------------------- */
 function em_event( $meta = array(), $series = 0 ) {
@@ -135,7 +138,7 @@ em( 'PLANT F: a series link is used over the default', false !== strpos( SFAF_No
 $none = em_event( array( '_uc_donate_choice' => 'none' ) );
 em( 'PLANT F: None leaves the line out of the confirmation', false === strpos( SFAF_Notifications::build( 'confirmation', $none, $person )['text'], $line_en ), true );
 em( 'and out of the reminder', false === strpos( SFAF_Notifications::build( 'reminder', $none, $person )['text'], $line_en ), true );
-foreach ( array( 'waitlist', 'offer', 'offer_passed', 'cancelled', 'changed', 'reinstated' ) as $k ) {
+foreach ( array( 'waitlist', 'cancelled', 'changed', 'reinstated' ) as $k ) {
     em( "PLANT F: the $k message has no donate line", false === strpos( (string) SFAF_Notifications::build( $k, $ev, $person, array() )['text'], $line_en ), true );
 }
 $conf_es = SFAF_Notifications::build( 'confirmation', em_event( array( '_uc_language' => 'es' ) ), $person );

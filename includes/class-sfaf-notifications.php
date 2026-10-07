@@ -233,10 +233,6 @@ class SFAF_Notifications {
             /* THE WAITLIST (3.106.0). See SFAF_Waitlist. */
             case 'waitlist':
                 return self::build_waitlist( $event_id, $person, $context );
-            case 'offer':
-                return self::build_offer( $event_id, $person, $context );
-            case 'offer_passed':
-                return self::build_offer_passed( $event_id, $person, $context );
             /* THE WAITLIST, TOLD THE EVENT IS OFF (3.106.1). See SFAF_Announce. */
             case 'waitlist_cancelled':
                 return self::build_waitlist_cancelled( $event_id, $person, $context );
@@ -450,6 +446,8 @@ class SFAF_Notifications {
             'event_url'      => $f['url'],
             'donate'         => $donate,
             'preheader'      => sprintf( '%s, %s', $f['date'], $f['time'] ? $f['time'] : SFAF_Messages::label( 'tbc', $lang ) ),
+            // A place opened and they were next on the waitlist (3.110.0).
+            'waitlist_added' => ( $person && ! empty( $person->from_waitlist ) ),
         ) );
         if ( ! $x ) {
             $out['subject'] = self::subject( $event_id, 'confirmation', $out['subject'] );
@@ -866,36 +864,6 @@ class SFAF_Notifications {
             'details'   => self::detail_rows( $f ),
             'event_url' => $f['url'],
             'preheader' => sprintf( SFAF_Messages::label( 'pre_waitlist', $lang ), $f['date'] ),
-        ) );
-    }
-
-    /**
-     * (i) A PLACE IS OPEN (3.106.0). The confirm link and when it runs out.
-     *
-     * @param array $context confirm_url: string; expires: 'Y-m-d H:i:s', the site's clock.
-     */
-    private static function build_offer( $event_id, $person, $context = array() ) {
-        $lang   = self::lang_for( $event_id, $context );
-        $f      = self::facts( $event_id, self::person_format( $person ), $lang, $context );
-        $x      = $f['sample'];
-        $values = self::values( $event_id, $f, $person );
-        $values['confirm_link'] = $x ? $x['confirm_link'] : (string) ( isset( $context['confirm_url'] ) ? $context['confirm_url'] : '' );
-        // The site's wall-clock time the offer runs out, as stored on the row.
-        $values['expiry']       = $x ? $x['expiry'] : sfaf_ap_datetime( (string) ( isset( $context['expires'] ) ? $context['expires'] : '' ), 'full', $lang, true );
-        return SFAF_Messages::compose( 'offer', 'default', $lang, $values, array(
-            'details'   => self::detail_rows( $f ),
-            'event_url' => $f['url'],
-            'preheader' => sprintf( SFAF_Messages::label( 'pre_offer', $lang ), $values['expiry'] ),
-        ) );
-    }
-
-    /** (j) THE OFFER HAS PASSED (3.106.0). */
-    private static function build_offer_passed( $event_id, $person, $context = array() ) {
-        $lang = self::lang_for( $event_id, $context );
-        $f    = self::facts( $event_id, self::person_format( $person ), $lang, $context );
-        return SFAF_Messages::compose( 'offer_passed', 'default', $lang, self::values( $event_id, $f, $person ), array(
-            'details'   => self::detail_rows( $f ),
-            'preheader' => $f['title'],
         ) );
     }
 

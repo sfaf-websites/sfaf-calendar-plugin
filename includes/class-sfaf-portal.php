@@ -15474,7 +15474,7 @@ class SFAF_Portal {
         /*
          * CAPACITY RAISED IS A PLACE OPENED (3.106.0): the waitlist is offered
          * the new places. Either number, any raise, and a limit taken off (the
-         * box emptied), which offers a place to everybody waiting (3.107.0).
+         * box emptied), which gives a place to everybody waiting (3.107.0; straight in since 3.110.0).
          */
         $caps_after = array( $limit_of( '_uc_capacity' ), $limit_of( '_uc_capacity_online' ) );
         $opened     = false;
@@ -17649,8 +17649,9 @@ class SFAF_Portal {
      * nobody has waited for.
      *
      * Confirm moves somebody in whatever the count says, with or without an
-     * email, and sends the confirmation when there is an address. It is how
-     * staff admit the person a no-email offer was about. Remove takes them off.
+     * email, and sends the confirmation when there is an address. Remove
+     * takes them off. A place that opens goes to the next person by itself
+     * (3.110.0), so there is no offer column any more.
      * Both are the event gate's, asked again at the route.
      */
     private function render_waitlist_section( $user, $event_id ) {
@@ -17663,8 +17664,9 @@ class SFAF_Portal {
         $names   = array( SFAF_Online::MODE_IN_PERSON => 'in person', SFAF_Online::MODE_ONLINE => 'online' );
         $status  = array(
             SFAF_Waitlist::WAITING => 'Waiting',
-            SFAF_Waitlist::OFFERED => 'Offered',
-            SFAF_Waitlist::MANUAL  => 'Needs a call',
+            // From before 3.110.0, until the first cron run puts them back in the queue.
+            SFAF_Waitlist::OFFERED => 'Waiting',
+            SFAF_Waitlist::MANUAL  => 'Waiting',
             SFAF_Waitlist::EXPIRED => 'Offer passed',
         );
         foreach ( $formats as $format ) {
@@ -17679,7 +17681,7 @@ class SFAF_Portal {
             <div class="uc-card uc-waitlist" data-uc-waitlist="<?php echo esc_attr( $format ); ?>">
                 <div class="uc-card-head"><h2><?php echo esc_html( $hybrid ? 'Waitlist, ' . $names[ $format ] : 'Waitlist' ); ?></h2></div>
                 <table class="uc-table">
-                    <thead><tr><th>Position</th><th>Name</th><th>Email</th><th>Joined</th><th>Offer</th><th>Expires</th><th><span class="uc-visually-hidden">Actions</span></th></tr></thead>
+                    <thead><tr><th>Position</th><th>Name</th><th>Email</th><th>Joined</th><th>Status</th><th><span class="uc-visually-hidden">Actions</span></th></tr></thead>
                     <tbody>
                     <?php foreach ( $mine as $r ) :
                         $waiting = in_array( (string) $r->status, SFAF_Waitlist::waiting_statuses(), true );
@@ -17691,8 +17693,7 @@ class SFAF_Portal {
                             <td><strong><?php echo esc_html( SFAF_RSVP::display_name( $r ) ); ?></strong></td>
                             <td><?php echo '' !== (string) $r->email ? esc_html( $r->email ) : '<span class="uc-muted">No email</span>'; ?></td>
                             <td><?php echo esc_html( sfaf_ap_datetime( $r->created_at ) ); ?></td>
-                            <td><span class="uc-pill uc-pill-<?php echo esc_attr( $r->status ); ?>"><?php echo esc_html( $status[ (string) $r->status ] ); ?></span></td>
-                            <td><?php echo ( SFAF_Waitlist::OFFERED === (string) $r->status && ! empty( $r->offer_expires ) ) ? esc_html( sfaf_ap_datetime( $r->offer_expires ) ) : '<span class="uc-muted">&ndash;</span>'; ?></td>
+                            <td><span class="uc-pill uc-pill-<?php echo esc_attr( $waiting ? SFAF_Waitlist::WAITING : (string) $r->status ); ?>"><?php echo esc_html( $status[ (string) $r->status ] ); ?></span></td>
                             <td class="uc-rsvp-actions">
                                 <form method="post" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>">
                                     <input type="hidden" name="uc_action" value="confirm_waitlist" />

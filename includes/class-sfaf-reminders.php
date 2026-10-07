@@ -895,9 +895,6 @@ class SFAF_Reminders {
                 $parts += array( 'button' => 'leave_button', 'field' => array( 'uc_cancel_token', $token ) );
             }
         }
-        if ( 'offer_page' === $key && 'ask' === $variant ) {
-            $parts += array( 'button' => 'confirm_button', 'field' => array( 'uc_offer_token', $token ) );
-        }
         return SFAF_Messages::page( $key, $variant, $lang, $values, $parts );
     }
 

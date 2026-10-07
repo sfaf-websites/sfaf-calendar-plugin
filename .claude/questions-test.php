@@ -131,7 +131,7 @@ qt( 'PLANT E.5: the totals count confirmed registrants only', array( $t[0]['answ
 qt( 'the line reads as the brief writes it', SFAF_Questions::total_line( $t[0] ), 'Dietary needs: 1 of 1 answered. Vegan 0, None 1' );
 $GLOBALS['mk_mail'] = array();
 SFAF_Reminders::cancel_rsvp( $W, 'ana@example.org' );
-SFAF_Waitlist::accept( qt_row( 'Cam' )['offer_token'] );
+// Since 3.110.0 the released place goes straight to Cam: no offer to accept.
 qt( 'Cam is confirmed on the same row', qt_row( 'Cam' )['status'], 'confirmed' );
 $alert = array_values( array_filter( mk_mail_to( 'staff@sfaf.org' ), function ( $m ) { return false !== strpos( $m['subject'], 'New registration' ); } ) );
 qt( 'the alert for Cam carries the answers he gave when he joined', isset( $alert[0] ) && false !== strpos( $alert[0]['text'], 'Dietary needs: Vegan' ), true );

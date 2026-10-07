@@ -36,21 +36,13 @@ Words in a message that come from the event, such as its title, location and org
 | | English | Spanish |
 |---|---|---|
 | Subject | You are on the waitlist for Coffee and Conversation | Está en la lista de espera de Coffee and Conversation |
-| Text | You are on the waitlist, Alex.<br><br>Coffee and Conversation is full. You are number 3 on the waitlist. If a place opens, we will email you an offer, and you will have a set time to confirm it.<br><br>Event: Coffee and Conversation<br>Date: Thursday, November 12, 2026<br>Time: 6–7:30 pm PT<br>Location: SFAF Main Office, 1035 Market St, San Francisco, CA 94103<br><br>See the event page: https://resources.sfaf.org/collections/events/coffee-and-conversation/<br><br>No longer interested? Leave the waitlist (https://resources.sfaf.org/?uc_rsvp_cancel=SAMPLE).<br><br>San Francisco AIDS Foundation, 940 Howard Street, San Francisco, CA 94103 | Está en la lista de espera, Alex.<br><br>Coffee and Conversation ya no tiene lugares disponibles. Usted es el número 3 de la lista de espera. Si se libera un lugar, le enviaremos una oferta por correo electrónico y tendrá un plazo para confirmarla.<br><br>Evento: Coffee and Conversation<br>Fecha: jueves, 12 de noviembre de 2026<br>Hora: 6–7:30 p. m., hora del Pacífico<br>Lugar: SFAF Main Office, 1035 Market St, San Francisco, CA 94103<br><br>Ver la página del evento: https://resources.sfaf.org/collections/events/coffee-and-conversation/<br><br>¿Ya no le interesa? Salga de la lista de espera (https://resources.sfaf.org/?uc_rsvp_cancel=SAMPLE).<br><br>San Francisco AIDS Foundation, 940 Howard Street, San Francisco, CA 94103 |
+| Text | You are on the waitlist, Alex.<br><br>Coffee and Conversation is full. You are number 3 on the waitlist. If a place opens, we will register you and email your confirmation.<br><br>Event: Coffee and Conversation<br>Date: Thursday, November 12, 2026<br>Time: 6–7:30 pm PT<br>Location: SFAF Main Office, 1035 Market St, San Francisco, CA 94103<br><br>See the event page: https://resources.sfaf.org/collections/events/coffee-and-conversation/<br><br>No longer interested? Leave the waitlist (https://resources.sfaf.org/?uc_rsvp_cancel=SAMPLE).<br><br>San Francisco AIDS Foundation, 940 Howard Street, San Francisco, CA 94103 | Está en la lista de espera, Alex.<br><br>Coffee and Conversation ya no tiene lugares disponibles. Usted es el número 3 de la lista de espera. Si se libera un lugar, lo inscribiremos y le enviaremos la confirmación por correo electrónico.<br><br>Evento: Coffee and Conversation<br>Fecha: jueves, 12 de noviembre de 2026<br>Hora: 6–7:30 p. m., hora del Pacífico<br>Lugar: SFAF Main Office, 1035 Market St, San Francisco, CA 94103<br><br>Ver la página del evento: https://resources.sfaf.org/collections/events/coffee-and-conversation/<br><br>¿Ya no le interesa? Salga de la lista de espera (https://resources.sfaf.org/?uc_rsvp_cancel=SAMPLE).<br><br>San Francisco AIDS Foundation, 940 Howard Street, San Francisco, CA 94103 |
 
-## Waitlist offer
-
-| | English | Spanish |
-|---|---|---|
-| Subject | A place is open for Coffee and Conversation | Hay un lugar disponible en Coffee and Conversation |
-| Text | A place is open, Alex.<br><br>A place has opened for Coffee and Conversation, and it is yours if you confirm it by Wednesday, November 11, 2026 at 6 pm PT. After that it goes to the next person on the waitlist.<br><br>Confirm my place: https://resources.sfaf.org/?uc_rsvp_offer=SAMPLE<br><br>Event: Coffee and Conversation<br>Date: Thursday, November 12, 2026<br>Time: 6–7:30 pm PT<br>Location: SFAF Main Office, 1035 Market St, San Francisco, CA 94103<br><br>See the event page: https://resources.sfaf.org/collections/events/coffee-and-conversation/<br><br>No longer interested? Do nothing, and the place will go to the next person.<br><br>San Francisco AIDS Foundation, 940 Howard Street, San Francisco, CA 94103 | Hay un lugar disponible, Alex.<br><br>Se liberó un lugar en Coffee and Conversation y es suyo si lo confirma a más tardar el miércoles, 11 de noviembre de 2026 a las 6 p. m., hora del Pacífico. Después, pasará a la siguiente persona de la lista de espera.<br><br>Confirmar mi lugar: https://resources.sfaf.org/?uc_rsvp_offer=SAMPLE<br><br>Evento: Coffee and Conversation<br>Fecha: jueves, 12 de noviembre de 2026<br>Hora: 6–7:30 p. m., hora del Pacífico<br>Lugar: SFAF Main Office, 1035 Market St, San Francisco, CA 94103<br><br>Ver la página del evento: https://resources.sfaf.org/collections/events/coffee-and-conversation/<br><br>¿Ya no le interesa? No haga nada y el lugar pasará a la siguiente persona.<br><br>San Francisco AIDS Foundation, 940 Howard Street, San Francisco, CA 94103 |
-
-## Offer passed
+## Added from the waitlist line
 
 | | English | Spanish |
 |---|---|---|
-| Subject | The offer for Coffee and Conversation has passed | La oferta para Coffee and Conversation ha vencido |
-| Text | The offer has passed, Alex.<br><br>The place we offered you for Coffee and Conversation was not confirmed in time, so it has gone to the next person on the waitlist. You are no longer on the waitlist for this event.<br><br>Event: Coffee and Conversation<br>Date: Thursday, November 12, 2026<br>Time: 6–7:30 pm PT<br>Location: SFAF Main Office, 1035 Market St, San Francisco, CA 94103<br><br><br>San Francisco AIDS Foundation, 940 Howard Street, San Francisco, CA 94103 | La oferta ha vencido, Alex.<br><br>El lugar que le ofrecimos en Coffee and Conversation no se confirmó a tiempo, así que pasó a la siguiente persona de la lista de espera. Ya no está en la lista de espera de este evento.<br><br>Evento: Coffee and Conversation<br>Fecha: jueves, 12 de noviembre de 2026<br>Hora: 6–7:30 p. m., hora del Pacífico<br>Lugar: SFAF Main Office, 1035 Market St, San Francisco, CA 94103<br><br><br>San Francisco AIDS Foundation, 940 Howard Street, San Francisco, CA 94103 |
+| Text | Support this work: donate to SFAF (https://donate.sfaf.org/campaign/773029/donate). | Apoye este trabajo: done a SFAF (https://donate.sfaf.org/campaign/773029/donate). |
 
 ## Event cancelled, waitlist
 
@@ -196,45 +188,6 @@ Words in a message that come from the event, such as its title, location and org
 | Title | Nothing to cancel | No hay nada que cancelar |
 | Page | We could not find an active registration for Coffee and Conversation against this address. It may already have been canceled. | No encontramos una inscripción activa en Coffee and Conversation para esta dirección. Es posible que ya se haya cancelado. |
 
-## Confirm your place page
-
-### Asking
-
-| | English | Spanish |
-|---|---|---|
-| Title | Your place is waiting | Su lugar lo espera |
-| Page | Confirm your place at Coffee and Conversation?<br><br>Thursday, November 12, 2026 6–7:30 pm PT<br><br>This offer lasts until Wednesday, November 11, 2026 at 6 pm PT.<br><br>Yes, confirm my place | ¿Desea confirmar su lugar en Coffee and Conversation?<br><br>jueves, 12 de noviembre de 2026 6–7:30 p. m., hora del Pacífico<br><br>Esta oferta es válida hasta el miércoles, 11 de noviembre de 2026 a las 6 p. m., hora del Pacífico.<br><br>Sí, confirmar mi lugar |
-
-### Confirmed
-
-| | English | Spanish |
-|---|---|---|
-| Title | You are registered | Su inscripción está confirmada |
-| Page | Your place at Coffee and Conversation is confirmed. Your confirmation is on its way by email.<br><br>Thursday, November 12, 2026 6–7:30 pm PT | Su lugar en Coffee and Conversation está confirmado. Le enviamos la confirmación por correo electrónico.<br><br>jueves, 12 de noviembre de 2026 6–7:30 p. m., hora del Pacífico |
-
-### Offer passed
-
-| | English | Spanish |
-|---|---|---|
-| Title | This offer has passed | Esta oferta ha vencido |
-| Page | The place offered for Coffee and Conversation has gone to the next person on the waitlist. | El lugar que se ofreció en Coffee and Conversation pasó a la siguiente persona de la lista de espera. |
-
-## Offer link, event off
-
-### Cancelled
-
-| | English | Spanish |
-|---|---|---|
-| Title | This event has been cancelled | Este evento se canceló |
-| Page | Coffee and Conversation has been cancelled, so the place we offered you is no longer available. You do not need to do anything.<br><br>Thursday, November 12, 2026 6–7:30 pm PT | Coffee and Conversation se canceló, así que el lugar que le ofrecimos ya no está disponible. No necesita hacer nada.<br><br>jueves, 12 de noviembre de 2026 6–7:30 p. m., hora del Pacífico |
-
-### Deleted, private or unpublished
-
-| | English | Spanish |
-|---|---|---|
-| Title | This event is no longer available | Este evento ya no está disponible |
-| Page | This event is no longer available, so the place we offered you cannot be confirmed. You do not need to do anything. | Este evento ya no está disponible, así que no se puede confirmar el lugar que le ofrecimos. No necesita hacer nada. |
-
 ## The fixed words around the text
 
 Labels, buttons and the calendar file's words. These are not edited on the Templates screen.
@@ -267,20 +220,17 @@ Labels, buttons and the calendar file's words. These are not edited on the Templ
 | time to be confirmed | hora por confirmar |
 | Cancel your registration | Cancele su inscripción |
 | Leave the waitlist | Salga de la lista de espera |
-| Confirm my place | Confirmar mi lugar |
 | Yes, follow this series | Sí, seguir esta serie |
 | stop these emails | dejar de recibir estos correos |
 | See the event page | Ver la página del evento |
 | donate to SFAF | done a SFAF |
 | Yes, cancel my registration | Sí, cancelar mi inscripción |
 | Yes, leave the waitlist | Sí, salir de la lista de espera |
-| Yes, confirm my place | Sí, confirmar mi lugar |
 | Today, %s | Hoy, %s |
 | Cancelled, %s | Cancelado, %s |
 | Now %s | Ahora %s |
 | Back on, %s | Se reanuda, %s |
 | Waitlist, %s | Lista de espera, %s |
-| Confirm by %s | Confirme a más tardar el %s |
 | Join | Participar |
 | Join the event | Participar en el evento |
 | In person and online | En persona y en línea |

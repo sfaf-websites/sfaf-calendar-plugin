@@ -62,7 +62,6 @@ class SFAF_Messages {
             'confirm_link' => 'Confirm link',
             'event_link'   => 'Event page link',
             'position'     => 'Waitlist position',
-            'expiry'       => 'Offer expiry',
             'series'       => 'Series name',
             'days'         => 'Days the link works',
             'stop_link'    => 'Stop link',
@@ -95,10 +94,9 @@ class SFAF_Messages {
                 'tokens' => array_merge( $event, array( 'last_name', 'organizer', 'meeting_link', 'cancel_link' ) ) ),
             'waitlist'       => array( 'label' => 'Waitlist confirmation', 'kind' => 'email', 'variants' => array( 'default' => '' ),
                 'tokens' => array_merge( $event, array( 'position', 'cancel_link' ) ), 'links' => array( 'cancel_link' => 'leave_waitlist' ) ),
-            'offer'          => array( 'label' => 'Waitlist offer', 'kind' => 'email', 'variants' => array( 'default' => '' ),
-                'tokens' => array_merge( $event, array( 'expiry', 'confirm_link' ) ) ),
-            'offer_passed'   => array( 'label' => 'Offer passed', 'kind' => 'email', 'variants' => array( 'default' => '' ),
-                'tokens' => $event ),
+            // The line a confirmation opens with when a place opened for somebody waiting (3.110.0).
+            'waitlist_added_line' => array( 'label' => 'Added from the waitlist line', 'kind' => 'line', 'variants' => array( 'default' => '' ),
+                'tokens' => array() ),
             'waitlist_cancelled' => array( 'label' => 'Event cancelled, waitlist', 'kind' => 'email', 'variants' => array( 'dates' => 'With dates', 'no_dates' => 'Without dates' ),
                 'tokens' => array_merge( $event, array( 'series' ) ) ),
             'reminder'       => array( 'label' => 'Morning-of reminder', 'kind' => 'email', 'variants' => $three,
@@ -115,12 +113,6 @@ class SFAF_Messages {
                 'tokens' => array( 'donate_link' ) ),
             'cancel_page'    => array( 'label' => 'Cancel your place page', 'kind' => 'page',
                 'variants' => array( 'ask' => 'Asking', 'done' => 'Released', 'leave' => 'Leaving the waitlist', 'left' => 'Left the waitlist', 'nothing' => 'Nothing to cancel' ),
-                'tokens' => array( 'title', 'date', 'time' ) ),
-            'offer_page'     => array( 'label' => 'Confirm your place page', 'kind' => 'page',
-                'variants' => array( 'ask' => 'Asking', 'done' => 'Confirmed', 'gone' => 'Offer passed' ),
-                'tokens' => array( 'title', 'date', 'time', 'expiry' ) ),
-            'offer_off_page' => array( 'label' => 'Offer link, event off', 'kind' => 'page',
-                'variants' => array( 'cancelled' => 'Cancelled', 'unavailable' => 'Deleted, private or unpublished' ),
                 'tokens' => array( 'title', 'date', 'time' ) ),
         );
     }
@@ -155,29 +147,11 @@ class SFAF_Messages {
 
         $d['waitlist'] = array( 'default' => array(
             'en' => array( 'subject' => 'You are on the waitlist for {title}',
-                'intro' => "You are on the waitlist, {first_name}.\n\n{title} is full. You are number {position} on the waitlist. If a place opens, we will email you an offer, and you will have a set time to confirm it.",
+                'intro' => "You are on the waitlist, {first_name}.\n\n{title} is full. You are number {position} on the waitlist. If a place opens, we will register you and email your confirmation.",
                 'closing' => 'No longer interested? {cancel_link}.' ),
             'es' => array( 'subject' => 'Está en la lista de espera de {title}',
-                'intro' => "Está en la lista de espera, {first_name}.\n\n{title} ya no tiene lugares disponibles. Usted es el número {position} de la lista de espera. Si se libera un lugar, le enviaremos una oferta por correo electrónico y tendrá un plazo para confirmarla.",
+                'intro' => "Está en la lista de espera, {first_name}.\n\n{title} ya no tiene lugares disponibles. Usted es el número {position} de la lista de espera. Si se libera un lugar, lo inscribiremos y le enviaremos la confirmación por correo electrónico.",
                 'closing' => '¿Ya no le interesa? {cancel_link}.' ),
-        ) );
-
-        $d['offer'] = array( 'default' => array(
-            'en' => array( 'subject' => 'A place is open for {title}',
-                'intro' => "A place is open, {first_name}.\n\nA place has opened for {title}, and it is yours if you confirm it by {expiry}. After that it goes to the next person on the waitlist.\n\n{confirm_link}",
-                'closing' => 'No longer interested? Do nothing, and the place will go to the next person.' ),
-            'es' => array( 'subject' => 'Hay un lugar disponible en {title}',
-                'intro' => "Hay un lugar disponible, {first_name}.\n\nSe liberó un lugar en {title} y es suyo si lo confirma a más tardar el {expiry}. Después, pasará a la siguiente persona de la lista de espera.\n\n{confirm_link}",
-                'closing' => '¿Ya no le interesa? No haga nada y el lugar pasará a la siguiente persona.' ),
-        ) );
-
-        $d['offer_passed'] = array( 'default' => array(
-            'en' => array( 'subject' => 'The offer for {title} has passed',
-                'intro' => "The offer has passed, {first_name}.\n\nThe place we offered you for {title} was not confirmed in time, so it has gone to the next person on the waitlist. You are no longer on the waitlist for this event.",
-                'closing' => '' ),
-            'es' => array( 'subject' => 'La oferta para {title} ha vencido',
-                'intro' => "La oferta ha vencido, {first_name}.\n\nEl lugar que le ofrecimos en {title} no se confirmó a tiempo, así que pasó a la siguiente persona de la lista de espera. Ya no está en la lista de espera de este evento.",
-                'closing' => '' ),
         ) );
 
         /*
@@ -295,6 +269,11 @@ class SFAF_Messages {
                 'closing' => '¿No lo solicitó? Ignore este mensaje y no pasará nada. Puede {stop_link} en cualquier momento.' ),
         ) );
 
+        $d['waitlist_added_line'] = array( 'default' => array(
+            'en' => array( 'subject' => '', 'intro' => 'You were on the waitlist and a place has opened up.', 'closing' => '' ),
+            'es' => array( 'subject' => '', 'intro' => 'Estaba en la lista de espera y se liberó un lugar.', 'closing' => '' ),
+        ) );
+
         $d['donate_line'] = array( 'default' => array(
             'en' => array( 'subject' => '', 'intro' => 'Support this work: {donate_link}.', 'closing' => '' ),
             'es' => array( 'subject' => '', 'intro' => 'Apoye este trabajo: {donate_link}.', 'closing' => '' ),
@@ -320,37 +299,6 @@ class SFAF_Messages {
             'nothing' => array(
                 'en' => array( 'subject' => 'Nothing to cancel', 'intro' => 'We could not find an active registration for {title} against this address. It may already have been canceled.', 'closing' => '' ),
                 'es' => array( 'subject' => 'No hay nada que cancelar', 'intro' => 'No encontramos una inscripción activa en {title} para esta dirección. Es posible que ya se haya cancelado.', 'closing' => '' ),
-            ),
-        );
-
-        $d['offer_page'] = array(
-            'ask' => array(
-                'en' => array( 'subject' => 'Your place is waiting', 'intro' => "Confirm your place at {title}?\n\nThis offer lasts until {expiry}.", 'closing' => '' ),
-                'es' => array( 'subject' => 'Su lugar lo espera', 'intro' => "¿Desea confirmar su lugar en {title}?\n\nEsta oferta es válida hasta el {expiry}.", 'closing' => '' ),
-            ),
-            'done' => array(
-                'en' => array( 'subject' => 'You are registered', 'intro' => 'Your place at {title} is confirmed. Your confirmation is on its way by email.', 'closing' => '' ),
-                'es' => array( 'subject' => 'Su inscripción está confirmada', 'intro' => 'Su lugar en {title} está confirmado. Le enviamos la confirmación por correo electrónico.', 'closing' => '' ),
-            ),
-            'gone' => array(
-                'en' => array( 'subject' => 'This offer has passed', 'intro' => 'The place offered for {title} has gone to the next person on the waitlist.', 'closing' => '' ),
-                'es' => array( 'subject' => 'Esta oferta ha vencido', 'intro' => 'El lugar que se ofreció en {title} pasó a la siguiente persona de la lista de espera.', 'closing' => '' ),
-            ),
-        );
-
-        /*
-         * AN OFFER'S LINK ON AN EVENT THAT IS OFF (3.106.2). The page takes no
-         * action. A deleted event may have no title left, so that variant names
-         * none.
-         */
-        $d['offer_off_page'] = array(
-            'cancelled' => array(
-                'en' => array( 'subject' => 'This event has been cancelled', 'intro' => '{title} has been cancelled, so the place we offered you is no longer available. You do not need to do anything.', 'closing' => '' ),
-                'es' => array( 'subject' => 'Este evento se canceló', 'intro' => '{title} se canceló, así que el lugar que le ofrecimos ya no está disponible. No necesita hacer nada.', 'closing' => '' ),
-            ),
-            'unavailable' => array(
-                'en' => array( 'subject' => 'This event is no longer available', 'intro' => 'This event is no longer available, so the place we offered you cannot be confirmed. You do not need to do anything.', 'closing' => '' ),
-                'es' => array( 'subject' => 'Este evento ya no está disponible', 'intro' => 'Este evento ya no está disponible, así que no se puede confirmar el lugar que le ofrecimos. No necesita hacer nada.', 'closing' => '' ),
             ),
         );
 
@@ -409,20 +357,17 @@ class SFAF_Messages {
                 'tbc'              => array( 'time to be confirmed', 'hora por confirmar' ),
                 'cancel_link'      => array( 'Cancel your registration', 'Cancele su inscripción' ),
                 'leave_waitlist'   => array( 'Leave the waitlist', 'Salga de la lista de espera' ),
-                'confirm_link'     => array( 'Confirm my place', 'Confirmar mi lugar' ),
                 'follow_yes'       => array( 'Yes, follow this series', 'Sí, seguir esta serie' ),
                 'stop_link'        => array( 'stop these emails', 'dejar de recibir estos correos' ),
                 'event_link'       => array( 'See the event page', 'Ver la página del evento' ),
                 'donate_link'      => array( 'donate to SFAF', 'done a SFAF' ),
                 'cancel_button'    => array( 'Yes, cancel my registration', 'Sí, cancelar mi inscripción' ),
                 'leave_button'     => array( 'Yes, leave the waitlist', 'Sí, salir de la lista de espera' ),
-                'confirm_button'   => array( 'Yes, confirm my place', 'Sí, confirmar mi lugar' ),
                 'pre_today'        => array( 'Today, %s', 'Hoy, %s' ),
                 'pre_cancelled'    => array( 'Cancelled, %s', 'Cancelado, %s' ),
                 'pre_now'          => array( 'Now %s', 'Ahora %s' ),
                 'pre_back'         => array( 'Back on, %s', 'Se reanuda, %s' ),
                 'pre_waitlist'     => array( 'Waitlist, %s', 'Lista de espera, %s' ),
-                'pre_offer'        => array( 'Confirm by %s', 'Confirme a más tardar el %s' ),
                 'ics_join'         => array( 'Join', 'Participar' ),
                 'ics_join_event'   => array( 'Join the event', 'Participar en el evento' ),
                 'in_person_online' => array( 'In person and online', 'En persona y en línea' ),
@@ -699,6 +644,13 @@ class SFAF_Messages {
         $html = '' !== $head ? SFAF_Email::heading( self::fill_text( $key, $head, $values, $lang ) ) : '';
         $text = '' !== $head ? self::fill_text( $key, $head, $values, $lang ) . "\n\n" : '';
 
+        /* ADDED FROM THE WAITLIST (3.110.0): one line under the heading. */
+        if ( ! empty( $parts['waitlist_added'] ) ) {
+            $wl    = self::get( 'waitlist_added_line', 'default', $lang );
+            $html .= self::para_html( self::fill_html( 'waitlist_added_line', $wl['intro'], array(), $lang ) );
+            $text .= self::fill_text( 'waitlist_added_line', $wl['intro'], array(), $lang ) . "\n\n";
+        }
+
         foreach ( $intro as $p ) {
             if ( $raw_override ) {
                 foreach ( preg_split( "/\n\s*\n/", trim( $p ) ) as $q ) {
@@ -888,10 +840,9 @@ class SFAF_Messages {
             'organizer'    => 'Community Programs',
             'meeting_link' => 'https://zoom.us/j/123456789',
             'cancel_link'  => 'https://resources.sfaf.org/?uc_rsvp_cancel=SAMPLE',
-            'confirm_link' => 'https://resources.sfaf.org/?uc_rsvp_offer=SAMPLE',
+            'confirm_link' => 'https://resources.sfaf.org/?uc_follow_confirm=SAMPLE',
             'event_link'   => 'https://resources.sfaf.org/collections/events/coffee-and-conversation/',
             'position'     => '3',
-            'expiry'       => sfaf_ap_datetime( '2026-11-11 18:00:00', 'full', $lang, true ),
             'series'       => 'Coffee and Conversation',
             'days'         => '7',
             'stop_link'    => 'https://resources.sfaf.org/?uc_follow_stop=SAMPLE',

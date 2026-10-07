@@ -427,14 +427,15 @@ class SFAF_Cron {
                 'off'      => '',
             ),
             /*
-             * THE WAITLIST'S OFFERS (3.106.0), on this schedule rather than one
-             * of their own. The confirm page refuses a late acceptance itself,
-             * so a quarter hour between runs costs nobody a place.
+             * THE WAITLIST (3.110.0). Places go to the next person the moment
+             * they open, so the only scheduled work is the one-time pass that
+             * turns the offers left from before 3.110.0 back into the queue.
+             * It does nothing after its first run.
              */
             'waitlist'  => array(
-                'label'    => 'Waitlist offers',
-                'plain'    => 'Passes an unanswered waitlist offer to the next person once its time runs out, and tells the person it passed.',
-                'callback' => array( 'SFAF_Waitlist', 'run_expiry' ),
+                'label'    => 'Waitlist offers from before 3.110.0',
+                'plain'    => 'Once, after the update: puts anybody who was holding a waitlist offer back in the queue and gives open places to the next people waiting.',
+                'callback' => array( 'SFAF_Waitlist', 'migrate' ),
                 'on'       => '__return_true',
                 'off'      => '',
             ),
