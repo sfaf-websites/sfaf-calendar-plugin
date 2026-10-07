@@ -777,6 +777,10 @@ class SFAF_Media {
              * with no save. See initFixedSeriesImageFilter().
              */
             'series_follow' => false,
+            /* What the summary names when no row is chosen (3.108.1): the
+               event editor passes the inherited series picture's name, or a
+               picture held only as a URL. Empty is "No picture chosen". */
+            'current_name' => '',
         ), $args );
 
         $chosen = (int) $args['chosen'];
@@ -866,7 +870,7 @@ class SFAF_Media {
         ?>>
             <summary class="uc-picker-toggle">
                 <span class="uc-picker-label"><?php echo esc_html( $args['label'] ); ?></span>
-                <?php self::summary_row( $current ); ?>
+                <?php self::summary_row( $current, (string) $args['current_name'] ); ?>
                 <span class="uc-disclosure-chevron" aria-hidden="true"><?php
                     echo sfaf_icon( 'chevron', array( 'size' => '16px' ) );
                 ?></span>
@@ -1027,7 +1031,7 @@ class SFAF_Media {
      *
      * @param array|null $row A row from row(), or null.
      */
-    public static function summary_row( $row ) {
+    public static function summary_row( $row, $fallback_name = '' ) {
         ?>
         <span class="uc-picker-count uc-image-current" data-uc-image-current>
             <?php if ( $row ) : ?>
@@ -1036,7 +1040,7 @@ class SFAF_Media {
                     echo esc_html( '' !== $row['title'] ? $row['title'] : $row['file'] );
                 ?></span>
             <?php else : ?>
-                <span class="uc-image-current-name">No picture chosen</span>
+                <span class="uc-image-current-name"><?php echo esc_html( '' !== (string) $fallback_name ? (string) $fallback_name : 'No picture chosen' ); ?></span>
             <?php endif; ?>
         </span>
         <?php

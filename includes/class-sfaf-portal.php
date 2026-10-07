@@ -7055,9 +7055,9 @@ class SFAF_Portal {
             array( 'schedule', 'Schedule', 'Pick the date and the start and end times. For an event that repeats, choose how often and the plugin creates every date for you.' ),
             array( 'location', 'Location', 'Pick a venue from the list, or choose A different location and type an address. Tick online for a video event, or hybrid when people can come in person or join online.' ),
             array( 'registration', 'Registration', 'Tick Accept RSVPs to let people register. Set a capacity if places are limited, leave it empty for no limit, or type 0 to send everyone to the waitlist. Add questions if you need to ask registrants something before the event.' ),
-            array( 'details', 'Event details', 'Write the description, add a featured picture from the calendar folder or paste an image link, and add a YouTube or Vimeo link if there is a video.' ),
-            array( 'faqs', 'FAQs', 'Add questions and answers for this event, or apply a saved set and edit it.' ),
-            array( 'classification', 'Classification', 'Add at least one category and one organizer. These decide where the event appears in the calendar filters.' ),
+            array( 'details', 'Event details', 'Write the description. Use Insert image to put a picture inside it. For the featured picture, choose one from the calendar folder; upload new pictures on the Images screen first.' ),
+            array( 'faqs', 'FAQs', 'Add questions and answers for this event, or apply a saved set and edit it. To make a set you can reuse, create it on the FAQ Sets screen.' ),
+            array( 'classification', 'Classification', 'Add at least one category and one organizer. A category is the kind of event, such as a support group or a fundraiser, and drives the calendar filters. An organizer is the SFAF program or team hosting the event, and its events are listed together on the calendar.' ),
             array( 'notifications', 'Notifications', 'Choose who is told when people register or cancel, and who gets the reminder copies. Set the reply address for the reminder email.' ),
             array( 'links', 'Links', 'Choose which donation link goes in the emails, and paste a volunteer page if there is one.' ),
             array( 'display', 'Display', 'Choose which buttons appear on the public event page.' ),
@@ -7166,7 +7166,7 @@ class SFAF_Portal {
                     <button type="button" class="uc-btn uc-btn-sm uc-btn-primary" data-uc-prefill-apply>Fill these in</button>
                     <button type="button" class="uc-btn uc-btn-sm" data-uc-prefill-none>Start from scratch</button>
                 </div>
-                <p class="uc-flash uc-prefill-said" data-uc-prefill-said role="status" hidden></p>
+                <p class="uc-notice" data-uc-prefill-said role="status" hidden></p>
                 <p class="uc-hint">
                     The date is never filled in.
                 </p>
@@ -7297,7 +7297,7 @@ class SFAF_Portal {
                            accept="image/jpeg,image/png,image/gif,image/webp" />
                     <span class="uc-hint">JPEG, PNG, GIF or WebP, up to <?php echo (int) round( SFAF_Uploads::MAX_BYTES / 1048576 ); ?>MB.</span>
                 </label>
-                <p class="uc-desc-images-status" data-uc-desc-status role="status" hidden></p>
+                <p class="uc-desc-images-status uc-notice" data-uc-desc-status role="status" hidden></p>
 
                 <?php if ( ! empty( $library ) ) : ?>
                     <div class="uc-field">
@@ -7394,7 +7394,7 @@ class SFAF_Portal {
                 ?>
                 <a class="uc-action-link uc-faq-manage" href="<?php echo esc_url( $this->url( 'faq-sets' ) ); ?>">Manage sets</a>
             </div>
-            <p class="uc-flash uc-faq-picker-said" data-uc-faq-said role="status" hidden></p>
+            <p class="uc-notice" data-uc-faq-said role="status" hidden></p>
             <p class="uc-hint">Editing the set later does not change this event.</p>
             <script type="application/json" data-uc-faq-sets><?php
                 echo wp_json_encode( $payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT );
@@ -7424,7 +7424,7 @@ class SFAF_Portal {
      * @param array   $source array{locked:bool,label:string,url:string} — the
      *                        platform that owns the imported rows, if any.
      */
-    private function faq_repeater( $name, $faqs, $source = array() ) {
+    private function faq_repeater( $name, $faqs, $source = array(), $fold = false ) {
         $locked = ! empty( $source['locked'] );
         $label  = isset( $source['label'] ) ? (string) $source['label'] : 'the source';
 
@@ -7519,12 +7519,13 @@ class SFAF_Portal {
                         'index'    => (int) $i,
                         'question' => $f['question'],
                         'answer'   => $f['answer'],
+                        'fold'     => $fold,
                     ) ); ?>
                 <?php endforeach; ?>
             </div>
             <button type="button" class="uc-btn uc-btn-sm uc-repeater-add">+ Add FAQ</button>
             <template class="uc-repeater-tpl">
-                <?php sfaf_faq_row( array( 'name' => $name ) ); ?>
+                <?php sfaf_faq_row( array( 'name' => $name, 'fold' => $fold ) ); ?>
             </template>
             <?php if ( $locked ) : ?>
                 <input type="hidden" name="uc_faq_has_manual" value="1" />
@@ -8027,6 +8028,15 @@ class SFAF_Portal {
              */
             'inline' => false,
             'inline_series' => 0,
+            /* THE EVENT EDITOR'S BLOCK (3.108.1), inline only: no URL box,
+               the source pill and Remove on the preview, and the picker's
+               summary naming the picture. */
+            'show_url'        => true,
+            'pill'            => '',
+            'pill_labels'     => array(),
+            'series_pictures' => array(),
+            'current_name'    => '',
+            'source'          => 'none',
         ), $args );
 
         $inline = ! empty( $a['inline'] );
@@ -8035,13 +8045,38 @@ class SFAF_Portal {
         <input type="hidden" name="<?php echo esc_attr( $a['id_name'] ); ?>"
                id="uc-featured-image-id-<?php echo esc_attr( $a['uid'] ); ?>"
                data-uc-image-id value="<?php echo (int) $a['id_value']; ?>" />
-        <?php endif; ?>
         <div class="uc-image-preview" id="uc-image-preview-<?php echo esc_attr( $a['uid'] ); ?>"
              data-uc-image-preview<?php echo $a['preview'] ? '' : ' style="display:none;"'; ?>>
             <img src="<?php echo esc_url( $a['preview'] ); ?>" alt="" data-uc-image-preview-img />
         </div>
+        <?php else : ?>
+            <?php
+            $labels = $a['pill_labels'];
+            $own    = $a['show_remove'];
+            ?>
+        <div class="uc-image-block" data-uc-image-block
+             data-uc-series-pictures="<?php echo esc_attr( wp_json_encode( (object) $a['series_pictures'] ) ); ?>"
+             data-uc-image-start="<?php echo esc_attr( in_array( $a['source'], array( 'event', 'series', 'none' ), true ) ? $a['source'] : 'other' ); ?>"
+             data-uc-image-start-name="<?php echo esc_attr( $a['current_name'] ); ?>">
+            <div class="uc-image-preview<?php echo '' === $a['preview'] ? ' uc-image-preview-empty' : ''; ?>" id="uc-image-preview-<?php echo esc_attr( $a['uid'] ); ?>"
+                 data-uc-image-preview>
+                <img src="<?php echo esc_url( $a['preview'] ); ?>" alt="" data-uc-image-preview-img<?php echo '' === $a['preview'] ? ' hidden' : ''; ?> />
+                <span class="uc-image-pill" data-uc-img-source-tag
+                      data-uc-img-source-own="<?php echo esc_attr( isset( $labels['event'] ) ? $labels['event'] : '' ); ?>"
+                      data-uc-img-source-series="<?php echo esc_attr( isset( $labels['series'] ) ? $labels['series'] : '' ); ?>"
+                      data-uc-img-source-none="<?php echo esc_attr( isset( $labels['none'] ) ? $labels['none'] : '' ); ?>"><?php echo esc_html( $a['pill'] ); ?></span>
+                <?php if ( '' === $a['locked_note'] ) : ?>
+                    <button type="button" class="uc-image-remove" data-uc-image-remove<?php echo $own ? '' : ' hidden'; ?>>Remove</button>
+                <?php endif; ?>
+            </div>
+            <?php if ( '' === $a['locked_note'] ) : ?>
+                <?php // Enabled by Remove and disabled again by a choice; the save then clears the thumbnail and any stored URL. ?>
+                <input type="hidden" name="reset_series_image" value="1" data-uc-image-reset disabled />
+            <?php endif; ?>
+        <?php endif; ?>
 
         <?php if ( '' !== $a['locked_note'] ) : ?>
+            <?php if ( $inline ) : ?></div><?php endif; ?>
             <p class="uc-hint"><?php echo esc_html( $a['locked_note'] ); ?></p>
             <?php return; ?>
         <?php endif; ?>
@@ -8084,6 +8119,7 @@ class SFAF_Portal {
                 'series_follow' => true,
                 'show_all'     => true,
                 'label'        => 'Choose a picture',
+                'current_name' => (string) $a['current_name'],
             ) );
             /*
              * A CHOSEN PICTURE OUTSIDE THE SERIES STAYS CHOSEN (3.107.0), and
@@ -8095,9 +8131,7 @@ class SFAF_Portal {
                 && ! has_term( (int) $a['inline_series'], SFAF_Media::TAXONOMY, (int) $a['id_value'] );
             ?>
             <p class="uc-hint uc-image-outside" data-uc-image-outside<?php echo $outside ? '' : ' hidden'; ?>>Not in this series. It stays chosen until you pick another.</p>
-            <div class="uc-image-buttons">
-                <button type="button" class="uc-btn uc-btn-sm uc-link-danger uc-remove-image"<?php echo $a['show_remove'] ? '' : ' style="display:none;"'; ?>>Remove</button>
-            </div>
+        </div>
         <?php else : ?>
 
         <div class="uc-image-buttons">
@@ -8136,6 +8170,7 @@ class SFAF_Portal {
         </div>
         <?php endif; ?>
         <?php echo $a['after_buttons']; // Already-built markup from the caller. ?>
+        <?php if ( $a['show_url'] ) : ?>
         <label class="uc-field uc-image-url-field">
             <span class="uc-field-label"><?php echo esc_html( $a['url_label'] ); ?>
                 <?php echo $a['url_help']; // sfaf_help() output. ?>
@@ -8145,6 +8180,7 @@ class SFAF_Portal {
                    data-uc-image-url value="<?php echo esc_attr( $a['url_value'] ); ?>"
                    placeholder="https://…/image.jpg" />
         </label>
+        <?php endif; ?>
         <?php if ( '' !== $a['extra_hint'] ) : ?>
             <p class="uc-hint"><?php echo esc_html( $a['extra_hint'] ); ?></p>
         <?php endif; ?>
@@ -8215,6 +8251,27 @@ class SFAF_Portal {
      * @param int    $event_id
      * @param string $field 'category' or 'organizer'.
      */
+    /**
+     * The name a picture is shown under (3.108.1): an attachment's name as the
+     * picker lists it, its title where it has a real one and otherwise its
+     * file, or the file name at the end of a URL.
+     *
+     * @param int    $att_id
+     * @param string $url
+     * @return string
+     */
+    private function picture_name( $att_id, $url ) {
+        $att_id = (int) $att_id;
+        if ( $att_id ) {
+            $row = SFAF_Media::row( $att_id );
+            if ( $row ) {
+                return '' !== $row['title'] ? (string) $row['title'] : (string) $row['file'];
+            }
+        }
+        $path = (string) wp_parse_url( (string) $url, PHP_URL_PATH );
+        return '' !== $path ? rawurldecode( basename( $path ) ) : '';
+    }
+
     private function series_filled_note( $event_id, $field ) {
         $name = $event_id ? SFAF_Series::filled_from( (int) $event_id, $field ) : '';
         if ( '' === $name ) {
@@ -8251,7 +8308,6 @@ class SFAF_Portal {
                 $img_source = $event_id ? sfaf_event_image_source( $event_id ) : 'none';
                 $preview    = $event_id ? sfaf_event_image_url( $event_id ) : '';
                 $src_labels = array( 'event' => 'Event-specific', 'source' => 'From source', 'series' => 'From series', 'remote' => 'Synced', 'none' => 'Placeholder' );
-                $in_series  = $event_id && SFAF_Series::id_for_event( $event_id ) > 0;
                 ?>
                 <?php
                 /*
@@ -8280,21 +8336,6 @@ class SFAF_Portal {
                      <?php echo $this->image_picker_atts( $folder_has_any, $picker_tag ); ?>
                      <?php echo $this->field_watch_attr( 'image', $state ); ?>>
                     <span class="uc-field-label">Featured Image
-                        <?php
-                        /*
-                         * THE TAG IS WRITTEN BY THE SCRIPT TOO, so it carries
-                         * the label rather than the script carrying a copy of
-                         * it. Filling a new event in from a series COPIES the
-                         * picture onto the event, so the tag has to stop saying
-                         * "Placeholder" the moment the button runs; a second
-                         * spelling of "Event-specific" in portal.js would be a
-                         * second place for it to be renamed and missed.
-                         */
-                        ?>
-                        <span class="uc-img-source-tag" data-uc-img-source-tag
-                              data-uc-img-source-own="<?php echo esc_attr( $src_labels['event'] ); ?>"><?php
-                            echo esc_html( isset( $src_labels[ $img_source ] ) ? $src_labels[ $img_source ] : $img_source );
-                        ?></span>
                         <?php echo $this->field_badge( $state, $label ); ?>
                     </span>
                     <?php /*
@@ -8311,28 +8352,52 @@ class SFAF_Portal {
                       * the same sentence every time and belongs in one place.
                       */ ?>
                     <?php
-                    $reset_box = ( 'event' === $img_source && $in_series )
-                        ? '<label class="uc-check"><input type="checkbox" name="reset_series_image" value="1" /> Reset to series image</label>'
-                        : '';
+                    /*
+                     * ONE BLOCK, ONE STATE (3.108.1). The preview carries the
+                     * pill saying where the picture comes from and, when it is
+                     * the event's own, Remove on its corner; "Choose a picture"
+                     * under it names the picture, inherited ones included.
+                     *
+                     * NO IMAGE URL BOX ANY MORE. _uc_image_url stays stored and
+                     * still renders for the events that have one; nothing posts
+                     * image_url, so the save leaves it alone. Remove posts
+                     * reset_series_image, which clears it with the thumbnail.
+                     */
+                    $series_pics = array();
+                    foreach ( SFAF_Series::all() as $s_term ) {
+                        $s_src = (string) SFAF_Series::image_url( $s_term->term_id );
+                        if ( '' !== $s_src ) {
+                            $series_pics[ (string) $s_term->term_id ] = array(
+                                'src'  => $s_src,
+                                'name' => $this->picture_name( SFAF_Series::image_id( $s_term->term_id ), $s_src ),
+                            );
+                        }
+                    }
+                    $current_name = '';
+                    if ( ! $thumb_id ) {
+                        if ( 'event' === $img_source && '' !== (string) $own_url ) {
+                            $current_name = $this->picture_name( 0, (string) $own_url );
+                        } elseif ( 'series' === $img_source && isset( $series_pics[ (string) $picker_tag ] ) ) {
+                            $current_name = $series_pics[ (string) $picker_tag ]['name'];
+                        }
+                    }
                     $this->render_image_picker( array(
                         'inline'        => true,
                         'inline_series' => $picker_tag,
                         'uid'         => $uid,
                         'id_name'     => 'featured_image_id',
-                        'url_name'    => 'image_url',
                         'id_value'    => $thumb_id,
-                        'url_value'   => $own_url,
                         'preview'     => $preview,
                         'show_remove' => ( 'event' === $img_source ),
                         'locked_note' => ( 'locked' === $state )
                             ? $label . ' supplies this image and refreshes it on every fetch. Change it there and it follows through on the next fetch.'
                             : '',
-                        'after_buttons' => $reset_box,
-                        'url_help'    => sfaf_help(
-                            'uc-help-imgurl-' . $uid,
-                            'Used only when no picture is chosen above.',
-                            'the image URL'
-                        ),
+                        'show_url'    => false,
+                        'pill'        => isset( $src_labels[ $img_source ] ) ? $src_labels[ $img_source ] : $img_source,
+                        'pill_labels' => $src_labels,
+                        'series_pictures' => $series_pics,
+                        'current_name' => $current_name,
+                        'source'       => $img_source,
                         'folder_has_any' => $folder_has_any,
                     ) );
                     ?>
@@ -13440,7 +13505,8 @@ class SFAF_Portal {
                         <h2 class="uc-bento-title">FAQs</h2>
                     </div>
                     <?php $this->faq_set_picker(); ?>
-                    <?php $this->faq_repeater( 'uc_faqs', $event_id ? sfaf_get_faqs( $event_id ) : array(), $faq_source ); ?>
+                    <?php // Folded, one open at a time (3.108.1). ?>
+                    <?php $this->faq_repeater( 'uc_faqs', $event_id ? sfaf_get_faqs( $event_id ) : array(), $faq_source, true ); ?>
                 </section>
 
                 <?php // ---- Classification: how it is found. --------------- ?>
@@ -16103,10 +16169,10 @@ class SFAF_Portal {
             <div class="uc-notify-section">
                 <?php // The same disclosure the team picker uses: a real <summary>,
                       // so click, tap, Enter and Space all work with no script. ?>
-                <details class="uc-notify-kinds" data-uc-disclosure <?php echo $off_count ? 'open' : ''; ?>>
-                    <summary class="uc-team-add-toggle" aria-expanded="<?php echo $off_count ? 'true' : 'false'; ?>">
-                        <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
-                        <span>
+                <?php // The same full-width row as "Choose who else gets it" (3.108.1). ?>
+                <details class="uc-picker uc-notify-kinds" data-uc-disclosure <?php echo $off_count ? 'open' : ''; ?>>
+                    <summary class="uc-picker-toggle" aria-expanded="<?php echo $off_count ? 'true' : 'false'; ?>">
+                        <span class="uc-picker-label">
                             <?php $kinds_n = count( SFAF_Notifications::kinds() ); ?>
                             <?php if ( ! $off_count ) : ?>
                                 Emails for this event: all <?php echo (int) $kinds_n; ?> are on
@@ -16114,8 +16180,9 @@ class SFAF_Portal {
                                 Emails for this event: <?php echo (int) $off_count; ?> of <?php echo (int) $kinds_n; ?> switched off
                             <?php endif; ?>
                         </span>
+                        <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
                     </summary>
-                    <div class="uc-team-add-body">
+                    <div class="uc-picker-panel">
                         <p class="uc-hint">Untick one to stop it for this event only.</p>
                         <input type="hidden" name="uc_notify_kinds_present" value="1" />
                         <?php foreach ( SFAF_Notifications::kinds() as $key => $kind ) : ?>

@@ -5,7 +5,7 @@
  *     php .claude/plant-31071.php [part of a plant name]
  *
  * The series card is the first card of the main column on Add and Edit, as wide
- * as that column, 16px above Title, and its thumbnail is 56x32. Each plant moves
+ * as that column, 16px above Title, and its thumbnail is 160x90. Each plant moves
  * it somewhere else or changes one of those, and the check must say so.
  *
  * A plant is one or more replacements, each written into the real file; the
@@ -54,7 +54,7 @@ $plants = array(
         array( 'public/js/portal.js', "                    img.className = 'uc-prefill-thumb';", "                    img.className = 'uc-prefill-thumb'; src = 'broken:' + src;" ),
     ) ),
     'A.4: the thumbnail shrinks' => array( $live, 'PLANT A.4', array(
-        array( $css, ".uc-prefill-thumb { display: block; width: 56px; height: 32px;", ".uc-prefill-thumb { display: block; width: 40px; height: 24px;" ),
+        array( $css, ".uc-prefill-thumb { display: block; width: 160px; height: 90px;", ".uc-prefill-thumb { display: block; width: 56px; height: 32px;" ),
     ) ),
 );
 

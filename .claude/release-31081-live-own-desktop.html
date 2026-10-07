@@ -102,7 +102,7 @@
                            >
                             <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-clock" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>
                             <span class="uc-nav-label">Pending</span>
-                                                            <span class="uc-nav-badge">4<span class="uc-visually-hidden"> waiting for review</span></span>
+                                                            <span class="uc-nav-badge">8<span class="uc-visually-hidden"> waiting for review</span></span>
                                                     </a>
                                                                     <a href="https://resources.sfaf.org/caladmin/users"
                            class="uc-nav-item"
@@ -157,6 +157,27 @@
         
         
         
+                        <div class="uc-faq-set-panel" data-uc-faq-fallback-block>
+
+            
+            <div class="uc-faq-set-actions">
+                                                        <form method="post" action="https://resources.sfaf.org/caladmin/events/edit/501" class="uc-inline-form" data-uc-faq-apply-fallback>
+                        <input type="hidden" name="uc_action" value="faq_set_apply" />
+                        <input type="hidden" name="event_id" value="501" />
+                        <input type="hidden" name="uc_nonce" value="nonce" />                        <label class="uc-field uc-field-inline">
+                            <span class="uc-field-label">Apply a saved set</span>
+                            <select name="faq_set_id">
+                                                                    <option value="setalpha">Alpha basics (2)</option>
+                                                            </select>
+                        </label>
+                        <label class="uc-check"><input type="radio" name="faq_set_mode" value="append" checked /> Add to the questions already here</label>
+                        <label class="uc-check"><input type="radio" name="faq_set_mode" value="replace" /> Replace my own questions with the set</label>
+                        <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary">Apply</button>
+                        <p class="uc-hint">Rows are copied. Editing the set later does not change this event, and deleting the set never touches it. Questions imported from a platform are left exactly where they are either way.</p>
+                    </form>
+                
+                            </div>
+        </div>
         
                 <form method="post" id="uc-event-form-501" action="https://resources.sfaf.org/caladmin/events/edit/501" class="uc-form">
             <input type="hidden" name="uc_action" value="save_event" />
@@ -570,28 +591,27 @@
                                 <div class="uc-venue-grid uc-location-grid">
                                                             <label class="uc-field uc-venue-street">
                         <span class="uc-visually-hidden">Place name</span>
-                        <input type="text" name="location_name" value="The Hall" placeholder="Place name" maxlength="120" />
+                        <input type="text" name="location_name" value="" placeholder="Place name" maxlength="120" />
                         <span class="uc-hint">This event only; it does not become a venue.</span>
                     </label>
                     <label class="uc-field uc-venue-street">
                         <span class="uc-visually-hidden">Street</span>
-                        <input type="text" name="location_street" value="470 Castro St" placeholder="Street" />
+                        <input type="text" name="location_street" value="" placeholder="Street" />
                     </label>
                     <label class="uc-field uc-venue-city">
                         <span class="uc-visually-hidden">City</span>
-                        <input type="text" name="location_city" value="San Francisco" placeholder="City" />
+                        <input type="text" name="location_city" value="" placeholder="City" />
                     </label>
                     <label class="uc-field uc-venue-state">
                         <span class="uc-visually-hidden">State</span>
-                        <input type="text" name="location_state" value="CA" placeholder="State" maxlength="20" />
+                        <input type="text" name="location_state" value="" placeholder="State" maxlength="20" />
                     </label>
                     <label class="uc-field uc-venue-zip">
                         <span class="uc-visually-hidden">ZIP</span>
-                        <input type="text" name="location_zip" value="94114" placeholder="ZIP" maxlength="10" />
+                        <input type="text" name="location_zip" value="" placeholder="ZIP" maxlength="10" />
                     </label>
                 </div>
-                                                    <p class="uc-hint">Shows as: <strong>The Hall, 470 Castro St, San Francisco, CA 94114</strong></p>
-                            </div>
+                                            </div>
             </div>                    </div>
                         </section>
 
@@ -601,7 +621,7 @@
                 <label class="uc-check"
                        data-uc-rsvp-accept-check>
                     <input type="checkbox" name="rsvp_enabled" value="1"
-                            checked="checked"                            />
+                                                       />
                     Accept RSVPs
                 </label>
                                                 <span class="uc-hint uc-hint-spec" data-uc-rsvp-hybrid-note hidden>
@@ -790,17 +810,17 @@
                     <span class="uc-field-label">Featured Image
                                             </span>
                                                                     <div class="uc-image-block" data-uc-image-block
-             data-uc-series-pictures="{&quot;11&quot;:{&quot;src&quot;:&quot;data:image\/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+&quot;,&quot;name&quot;:&quot;Picture 601&quot;},&quot;12&quot;:{&quot;src&quot;:&quot;data:image\/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+&quot;,&quot;name&quot;:&quot;Picture 602&quot;}}"
-             data-uc-image-start="series"
-             data-uc-image-start-name="Picture 601">
+             data-uc-series-pictures="{&quot;11&quot;:{&quot;src&quot;:&quot;data:image\/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+&quot;,&quot;name&quot;:&quot;Picture 601&quot;},&quot;12&quot;:{&quot;src&quot;:&quot;data:image\/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjQTMwQzMzIi8+PC9zdmc+&quot;,&quot;name&quot;:&quot;Picture 602&quot;}}"
+             data-uc-image-start="event"
+             data-uc-image-start-name="">
             <div class="uc-image-preview" id="uc-image-preview-e501"
                  data-uc-image-preview>
-                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+" alt="" data-uc-image-preview-img />
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjOEQ1NEEyIi8+PC9zdmc+" alt="" data-uc-image-preview-img />
                 <span class="uc-image-pill" data-uc-img-source-tag
                       data-uc-img-source-own="Event-specific"
                       data-uc-img-source-series="From series"
-                      data-uc-img-source-none="Placeholder">From series</span>
-                                    <button type="button" class="uc-image-remove" data-uc-image-remove hidden>Remove</button>
+                      data-uc-img-source-none="Placeholder">Event-specific</span>
+                                    <button type="button" class="uc-image-remove" data-uc-image-remove>Remove</button>
                             </div>
                                             <input type="hidden" name="reset_series_image" value="1" data-uc-image-reset disabled />
                     
@@ -809,7 +829,8 @@
             <summary class="uc-picker-toggle">
                 <span class="uc-picker-label">Choose a picture</span>
                         <span class="uc-picker-count uc-image-current" data-uc-image-current>
-                            <span class="uc-image-current-name">Picture 601</span>
+                            <img class="uc-image-current-thumb" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjOEQ1NEEyIi8+PC9zdmc+" alt="" />
+                <span class="uc-image-current-name">Picture 603</span>
                     </span>
                         <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
             </summary>
@@ -824,7 +845,7 @@
                 <div class="uc-picker-options uc-image-options" data-uc-filter-list>
                                         <label class="uc-check uc-picker-option uc-image-option" data-uc-filter-text="no picture"
                            data-uc-image-default>
-                        <input type="radio" name="featured_image_id" value="0"  checked="checked"                               data-uc-image-option data-uc-image-name="The series picture" />
+                        <input type="radio" name="featured_image_id" value="0"                                data-uc-image-option data-uc-image-name="The series picture" />
                                                                                 <span class="uc-image-option-thumb uc-image-option-thumb-series" aria-hidden="true"
                                   style="background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+');"></span>
                             <span class="uc-image-option-text">
@@ -850,10 +871,10 @@
                                                               data-uc-image-series=" 12 ">
                             <input type="radio" name="featured_image_id" value="602"
                                                                       data-uc-image-option
-                                   data-uc-image-thumb="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
-                                   data-uc-image-full="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
+                                   data-uc-image-thumb="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjQTMwQzMzIi8+PC9zdmc+"
+                                   data-uc-image-full="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjQTMwQzMzIi8+PC9zdmc+"
                                    data-uc-image-name="Picture 602" />
-                            <img class="uc-image-option-thumb" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+" alt="" loading="lazy" />
+                            <img class="uc-image-option-thumb" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjQTMwQzMzIi8+PC9zdmc+" alt="" loading="lazy" />
                             <span class="uc-image-option-text">
                                 <span class="uc-image-option-name">Picture 602</span>
                             </span>
@@ -862,11 +883,11 @@
                                data-uc-filter-text="pic-603.jpg picture 603"
                                                               data-uc-image-series="">
                             <input type="radio" name="featured_image_id" value="603"
-                                                                      data-uc-image-option
-                                   data-uc-image-thumb="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
-                                   data-uc-image-full="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
+                                    checked="checked"                                   data-uc-image-option
+                                   data-uc-image-thumb="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjOEQ1NEEyIi8+PC9zdmc+"
+                                   data-uc-image-full="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjOEQ1NEEyIi8+PC9zdmc+"
                                    data-uc-image-name="Picture 603" />
-                            <img class="uc-image-option-thumb" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+" alt="" loading="lazy" />
+                            <img class="uc-image-option-thumb" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjOEQ1NEEyIi8+PC9zdmc+" alt="" loading="lazy" />
                             <span class="uc-image-option-text">
                                 <span class="uc-image-option-name">Picture 603</span>
                             </span>
@@ -879,7 +900,7 @@
                                                         <button type="button" class="uc-btn uc-btn-sm uc-picker-show-all" data-uc-image-show-all>All calendar images</button>
                             </div>
         </details>
-                    <p class="uc-hint uc-image-outside" data-uc-image-outside hidden>Not in this series. It stays chosen until you pick another.</p>
+                    <p class="uc-hint uc-image-outside" data-uc-image-outside>Not in this series. It stays chosen until you pick another.</p>
         </div>
                                                 <p class="uc-hint uc-hint-spec"><strong>1200 x 675 pixels, 16:9 landscape.</strong></p>
                             <p class="uc-field-note uc-field-note-attention"><svg class="uc-state-icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path fill="currentColor" d="M4 17.2V20h2.8L17 9.8 14.2 7zm14.8-9.6a.75.75 0 0 0 0-1.06l-1.74-1.74a.75.75 0 0 0-1.06 0L14.6 6.2 17.4 9z"/></svg><span>The calendar folder has no images in it yet, so Choose Image will look empty. Uploading one here puts it in the folder. If you expected pictures to be there, check that the folder is still <code>uploads/calendar</code>.</span></p>
@@ -916,10 +937,74 @@
                     <div class="uc-bento-head">
                         <h2 class="uc-bento-title">FAQs</h2>
                     </div>
-                                                            
+                            <div class="uc-faq-picker" data-uc-faq-picker hidden>
+                        <div class="uc-faq-picker-row">
+                <label class="uc-faq-picker-label">
+                    <span class="uc-field-label">Apply a saved FAQ set</span>
+                                        <select data-uc-faq-set>
+                        <option value="">Choose a set</option>
+                                                    <option value="setalpha" data-uc-faq-set-name="Alpha basics">Alpha basics (2)</option>
+                                            </select>
+                </label>
+                <button type="button" class="uc-btn uc-btn-sm" data-uc-faq-apply>Add these questions</button>
+                                <a class="uc-action-link uc-faq-manage" href="https://resources.sfaf.org/caladmin/faq-sets">Manage sets</a>
+            </div>
+            <p class="uc-notice" data-uc-faq-said role="status" hidden></p>
+            <p class="uc-hint">Editing the set later does not change this event.</p>
+            <script type="application/json" data-uc-faq-sets>{"setalpha":{"name":"Alpha basics","rows":[{"question":"Is it free?","answer":"Yes."},{"question":"Is there food?","answer":"Yes."}]}}</script>
+        </div>
+                                                
         <div class="uc-repeater" data-repeater>
             <div class="uc-repeater-rows">
-                            </div>
+                                        <div class="uc-repeater-row uc-faq-row uc-faq-fold" data-uc-faq-fold>
+        <div class="uc-faq-head">
+            <span class="uc-faq-head-q" data-uc-faq-head>Where do I park?</span>
+            <button type="button" class="uc-faq-toggle" data-uc-faq-toggle aria-expanded="true"
+                    aria-controls="uc-faq-body-uc_faqs-0" hidden>Close</button>
+            <button type="button" class="uc-faq-x uc-repeater-remove uc-faq-remove" aria-label="Remove this question"><svg class="sfaf-icon sfaf-icon-x" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></svg></button>
+        </div>
+        <div class="uc-faq-body" id="uc-faq-body-uc_faqs-0" data-uc-faq-body>
+            <input type="text" name="uc_faqs[0][question]"                   value="Where do I park?"
+                   placeholder="Question" aria-label="Question" />
+            <textarea name="uc_faqs[0][answer]" rows="8" placeholder="Answer" data-uc-rich>On the street.</textarea>        </div>
+    </div>
+                                            <div class="uc-repeater-row uc-faq-row uc-faq-fold" data-uc-faq-fold>
+        <div class="uc-faq-head">
+            <span class="uc-faq-head-q" data-uc-faq-head>Is it wheelchair accessible?</span>
+            <button type="button" class="uc-faq-toggle" data-uc-faq-toggle aria-expanded="true"
+                    aria-controls="uc-faq-body-uc_faqs-1" hidden>Close</button>
+            <button type="button" class="uc-faq-x uc-repeater-remove uc-faq-remove" aria-label="Remove this question"><svg class="sfaf-icon sfaf-icon-x" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></svg></button>
+        </div>
+        <div class="uc-faq-body" id="uc-faq-body-uc_faqs-1" data-uc-faq-body>
+            <input type="text" name="uc_faqs[1][question]"                   value="Is it wheelchair accessible?"
+                   placeholder="Question" aria-label="Question" />
+            <textarea name="uc_faqs[1][answer]" rows="8" placeholder="Answer" data-uc-rich>Yes.</textarea>        </div>
+    </div>
+                                            <div class="uc-repeater-row uc-faq-row uc-faq-fold" data-uc-faq-fold>
+        <div class="uc-faq-head">
+            <span class="uc-faq-head-q" data-uc-faq-head>New question</span>
+            <button type="button" class="uc-faq-toggle" data-uc-faq-toggle aria-expanded="true"
+                    aria-controls="uc-faq-body-uc_faqs-2" hidden>Close</button>
+            <button type="button" class="uc-faq-x uc-repeater-remove uc-faq-remove" aria-label="Remove this question"><svg class="sfaf-icon sfaf-icon-x" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></svg></button>
+        </div>
+        <div class="uc-faq-body" id="uc-faq-body-uc_faqs-2" data-uc-faq-body>
+            <input type="text" name="uc_faqs[2][question]"                   value=""
+                   placeholder="Question" aria-label="Question" />
+            <textarea name="uc_faqs[2][answer]" rows="8" placeholder="Answer" data-uc-rich>An answer still waiting for its question.</textarea>        </div>
+    </div>
+                                            <div class="uc-repeater-row uc-faq-row uc-faq-fold" data-uc-faq-fold>
+        <div class="uc-faq-head">
+            <span class="uc-faq-head-q" data-uc-faq-head>Can I bring a friend?</span>
+            <button type="button" class="uc-faq-toggle" data-uc-faq-toggle aria-expanded="true"
+                    aria-controls="uc-faq-body-uc_faqs-3" hidden>Close</button>
+            <button type="button" class="uc-faq-x uc-repeater-remove uc-faq-remove" aria-label="Remove this question"><svg class="sfaf-icon sfaf-icon-x" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></svg></button>
+        </div>
+        <div class="uc-faq-body" id="uc-faq-body-uc_faqs-3" data-uc-faq-body>
+            <input type="text" name="uc_faqs[3][question]"                   value="Can I bring a friend?"
+                   placeholder="Question" aria-label="Question" />
+            <textarea name="uc_faqs[3][answer]" rows="8" placeholder="Answer" data-uc-rich>Yes.</textarea>        </div>
+    </div>
+                                </div>
             <button type="button" class="uc-btn uc-btn-sm uc-repeater-add">+ Add FAQ</button>
             <template class="uc-repeater-tpl">
                     <div class="uc-repeater-row uc-faq-row uc-faq-fold" data-uc-faq-fold>
@@ -982,7 +1067,7 @@
                     <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
                                                     <label class="uc-check" data-uc-chip-label="Alpha">
                                 <input type="checkbox" name="organizer[]" value="11"
-                                        checked="checked" />
+                                        />
                                 Alpha                            </label>
                                                     <label class="uc-check" data-uc-chip-label="Beta">
                                 <input type="checkbox" name="organizer[]" value="12"
@@ -1178,19 +1263,19 @@
 
                                 <section class="uc-bento-card" data-uc-card="display">
                     <h2 class="uc-bento-title">Display</h2>
-                                            <label class="uc-check" data-uc-rsvp-show-check>
-                            <input type="checkbox" name="show_rsvp" value="1"  checked="checked" />
+                                            <label class="uc-check uc-check-locked" data-uc-rsvp-show-check>
+                            <input type="checkbox" name="show_rsvp" value="1"  checked="checked" disabled />
                             RSVP                        </label>
-                                                                                <p class="uc-hint uc-rsvp-show-note" data-uc-rsvp-show-note hidden>
+                                                                                <p class="uc-hint uc-rsvp-show-note" data-uc-rsvp-show-note>
                                 Greyed because <strong>Accept RSVPs</strong> is off in Registration.
                             </p>
                             <p class="uc-hint uc-rsvp-show-note" data-uc-rsvp-hybrid-show-note hidden>
                                 Always on for a hybrid event.
                             </p>
-                                                                                            <label class="uc-check uc-check-locked" data-uc-calendar-check>
-                            <input type="checkbox" name="show_calendar" value="1"  checked="checked" disabled />
+                                                                                            <label class="uc-check" data-uc-calendar-check>
+                            <input type="checkbox" name="show_calendar" value="1"  checked="checked" />
                             Add to calendar                        </label>
-                                                                            <p class="uc-hint uc-calendar-note" data-uc-calendar-note>
+                                                                            <p class="uc-hint uc-calendar-note" data-uc-calendar-note hidden>
                                 The calendar link goes out with the RSVP confirmation instead.
                             </p>
                                                                     <label class="uc-check">
@@ -1292,7 +1377,7 @@
         </div>
         <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.108.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.108.0"></script>
 <script src="../public/js/portal.js?ver=3.108.0"></script>
-<script>window.RV_PAGE="edit-desktop";(function () {
+<script>window.RV_PAGE="own-desktop";(function () {
 var P = window.RV_PAGE, out = { page: P, errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
 function q(s, r) { return (r || document).querySelector(s); }
@@ -1300,111 +1385,117 @@ function qa(s, r) { return Array.prototype.slice.call((r || document).querySelec
 function text(el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }
 function seen(el) { return !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden'; }
 function rect(el) { if (!el) { return null; } var r = el.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom), w: Math.round(r.width), h: Math.round(r.height) }; }
-function which(el) { if (!el) { return 'none'; } if (el.hasAttribute('data-uc-tour-back')) { return 'back'; } if (el.hasAttribute('data-uc-tour-next')) { return 'next'; } if (el.hasAttribute('data-uc-tour-done')) { return 'done'; } if (el.hasAttribute('data-uc-tour-start')) { return 'link'; } return el.tagName + '.' + el.className; }
-function key(k, shift) { (document.activeElement || document.body).dispatchEvent(new KeyboardEvent('keydown', { key: k, shiftKey: !!shift, bubbles: true, cancelable: true })); }
-function store() { var a = '', b = ''; try { a = JSON.stringify(localStorage); } catch (e) { a = 'x'; } try { b = JSON.stringify(sessionStorage); } catch (e) { b = 'x'; } return a + '|' + b + '|' + document.cookie; }
+function css(el, props) { if (!el) { return null; } var s = getComputedStyle(el), o = {}; props.forEach(function (p) { o[p] = s[p]; }); return o; }
 function finish() { out.pageWidth = document.documentElement.scrollWidth; window.parent.postMessage(JSON.stringify(out), '*'); }
-var storeAtLoad = store();
+
+/* The block's state as the screen shows it. */
+function block() {
+  var b = q('[data-uc-image-block]'); if (!b) { return null; }
+  var pv = q('[data-uc-image-preview]', b), img = q('[data-uc-image-preview-img]', b), pill = q('[data-uc-img-source-tag]', b), rm = q('[data-uc-image-remove]', b);
+  return { state: b.getAttribute('data-uc-image-state'), pill: text(pill), removeSeen: seen(rm), imgSeen: seen(img), src: img && !img.hidden ? (img.getAttribute('src') || '').slice(0, 60) : '',
+    name: text(q('[data-uc-image-current] .uc-image-current-name', b)), reset: q('[data-uc-image-reset]', b) ? q('[data-uc-image-reset]', b).disabled : null,
+    preview: rect(pv), pillBox: rect(pill), removeBox: seen(rm) ? rect(rm) : null, empty: pv ? pv.classList.contains('uc-image-preview-empty') : null,
+    pillCss: css(pill, ['fontSize', 'fontWeight', 'color', 'backgroundColor', 'borderTopColor']),
+    removeCss: seen(rm) ? css(rm, ['fontSize', 'fontWeight', 'color', 'backgroundColor', 'borderTopColor']) : null,
+    previewCss: css(pv, ['backgroundColor', 'borderTopColor', 'borderTopWidth', 'borderLeftWidth']), thumbInSummary: seen(q('.uc-image-current-thumb', b)) };
+}
+function notice(el) { return el ? css(el, ['backgroundColor', 'color', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'fontSize', 'fontWeight', 'lineHeight', 'borderTopLeftRadius', 'marginTop']) : null; }
+function faqs() {
+  return qa('[data-uc-card="faqs"] [data-uc-faq-fold]').map(function (r) {
+    var t = q('[data-uc-faq-toggle]', r);
+    return { head: text(q('[data-uc-faq-head]', r)), open: seen(q('[data-uc-faq-body]', r)), toggle: t ? text(t) : '', exp: t ? t.getAttribute('aria-expanded') : '',
+      x: rect(q('.uc-faq-x', r)), xLabel: (q('.uc-faq-x', r) || { getAttribute: function () { return ''; } }).getAttribute('aria-label'), box: rect(r) };
+  });
+}
 
 window.addEventListener('load', function () { setTimeout(function () {
-  /* A: what the location opens on. */
-  var mode = q('[data-uc-location-mode]:checked');
-  out.mode = mode ? mode.value : null;
-  out.venueShown = seen(q('[data-uc-location-panel="venue"]')) && seen(q('select[name="venue"]'));
-  out.customShown = seen(q('[data-uc-location-panel="custom"]'));
-  out.venueValue = (q('select[name="venue"]') || {}).value || null;
+  /* B.1: every input on the page. */
+  out.urlInputs = qa('input').filter(function (i) {
+    var n = (i.name || '') + ' ' + (i.id || '') + ' ' + (i.placeholder || '');
+    return i.hasAttribute('data-uc-image-url') || /image_?url|image\.jpg/i.test(n) || (i.type === 'url' && /image|picture/i.test(n));
+  }).map(function (i) { return i.name || i.id; });
 
-  if (P.indexOf('prefill') === 0) {
+  out.block = block();
+  out.faqStart = faqs();
+  out.faqHeadCss = css(q('[data-uc-faq-head]'), ['fontSize', 'fontWeight', 'color']);
+  out.faqToggleCss = css(q('[data-uc-faq-toggle]'), ['fontSize', 'fontWeight', 'color']);
+
+  /* E: the two Notifications rows. */
+  var kinds = q('.uc-notify-kinds'), pick = q('[data-uc-notify-picker] .uc-picker');
+  function row(d) {
+    if (!d) { return null; }
+    var s = q(':scope > summary', d), ch = s ? q('.uc-disclosure-chevron', s) : null, lb = s ? q('.uc-picker-label', s) : null;
+    return { box: rect(d), summary: rect(s), chevron: rect(ch), label: rect(lb), labelText: text(lb),
+      css: css(d, ['borderTopColor', 'borderTopWidth', 'borderTopLeftRadius', 'backgroundColor']),
+      scss: css(s, ['paddingTop', 'paddingLeft', 'paddingRight', 'fontSize', 'fontWeight', 'color']) };
+  }
+  out.kinds = row(kinds); out.pick = row(pick);
+  function panelPad(d) { var pn = d ? q(':scope > .uc-picker-panel', d) : null; return pn ? css(pn, ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft']) : null; }
+  out.kindsPanel = panelPad(kinds); out.pickPanel = panelPad(pick);
+
+  /* D: the description's notice, shown as the editor would show it. */
+  var ds = q('[data-uc-desc-status]');
+  if (ds) { ds.textContent = 'Added to the description.'; ds.hidden = false; out.noticeDesc = notice(ds); out.noticeDescClass = ds.className; ds.hidden = true; }
+
+  if (P.indexOf('add') === 0) {
+    /* A, and D for the prefill. */
     var s = q('[data-uc-series-select]');
-    s.value = P.indexOf('prefilladdr') === 0 ? '11' : '12';
-    s.dispatchEvent(new Event('change', { bubbles: true }));
-    var apply = q('[data-uc-prefill-apply]');
-    out.prefillOffered = seen(apply);
-    if (apply) { apply.click(); }
-    var m2 = q('[data-uc-location-mode]:checked');
-    out.afterMode = m2 ? m2.value : null;
-    out.afterVenue = (q('select[name="venue"]') || {}).value || null;
-    out.afterStreet = (q('input[name="location_street"]') || {}).value || '';
-    out.afterName = (q('input[name="location_name"]') || {}).value || '';
-    out.afterCustomShown = seen(q('[data-uc-location-panel="custom"]'));
-    out.afterVenueShown = seen(q('[data-uc-location-panel="venue"]'));
-    finish();
+    s.value = '11'; s.dispatchEvent(new Event('change', { bubbles: true }));
+    var th = q('[data-uc-card="series"] .uc-prefill-thumb'), card = q('[data-uc-card="series"]');
+    out.thumbEl = !!th;
+    setTimeout(function () {
+      out.thumb = th && th.complete && th.naturalWidth > 0 ? { box: rect(th), radius: getComputedStyle(th).borderTopLeftRadius } : null;
+      out.seriesCard = rect(card);
+      out.blockAfterSeries = block();
+      var apply = q('[data-uc-prefill-apply]'); if (apply) { apply.click(); }
+      var said = q('[data-uc-prefill-said]');
+      out.noticePrefill = seen(said) ? notice(said) : null; out.noticePrefillText = text(said);
+      /* + Add FAQ on a new event. */
+      var addBtn = q('[data-uc-card="faqs"] .uc-repeater-add'); if (addBtn) { addBtn.click(); }
+      out.faqAfterAdd = faqs();
+      out.faqAddFocus = document.activeElement && document.activeElement.matches('[data-uc-faq-body] input[type="text"]');
+      finish();
+    }, 400);
     return;
   }
-  if (P.indexOf('editvenue') === 0) { finish(); return; }
 
-  /* B.1: the button, where it sits, and that nothing started. */
-  var link = q('[data-uc-tour-start]');
-  out.link = link ? { tag: link.tagName, text: text(link), box: rect(link), color: getComputedStyle(link).color, deco: getComputedStyle(link).textDecorationLine } : null;
-  out.h1 = rect(q('.uc-page-head h1'));
-  out.back = rect(q('.uc-page-head a.uc-btn'));
-  out.startedAlone = !!q('[data-uc-tour]');
-  if (!link) { finish(); return; }
-
-  var TOUR = ['series', 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications', 'links', 'display', 'access', 'actions'];
-  out.present = TOUR.filter(function (c) { var e = q('[data-uc-card="' + c + '"]'); return !!e && e.getClientRects().length > 0; });
-
-  link.focus(); link.click();
-  var root = q('[data-uc-tour]'), panel = q('[data-uc-tour-panel]'), ring = q('[data-uc-tour-ring]');
-  out.opened = !!root && !!panel && !!ring;
-  if (!out.opened) { finish(); return; }
-  out.dialog = { role: panel.getAttribute('role'), modal: panel.getAttribute('aria-modal'),
-    label: text(document.getElementById(panel.getAttribute('aria-labelledby') || 'x')),
-    desc: text(document.getElementById(panel.getAttribute('aria-describedby') || 'x')) };
-  out.focusAtOpen = which(document.activeElement);
-  out.ringBorder = getComputedStyle(ring).borderTopColor + ' ' + getComputedStyle(ring).borderTopWidth;
-
-  /* B.2: everything behind is inert and refuses focus. */
-  var bg = qa('a[href], button, input:not([type="hidden"]), select, textarea, summary, [tabindex]').filter(function (e) { return !root.contains(e) && !e.disabled; });
-  out.bgCount = bg.length;
-  out.bgNotInert = bg.filter(function (e) { return !e.closest('[inert]'); }).map(function (e) { return e.tagName + '.' + e.className + '[' + (e.name || '') + ']'; }).slice(0, 5);
-  var took = 0;
-  bg.slice(0, 60).forEach(function (e) { e.focus(); if (document.activeElement === e) { took++; } });
-  out.bgTookFocus = took;
-
-  /* B.2: Tab and Shift+Tab cycle inside the panel. On step one Back is off. */
-  q('[data-uc-tour-next]').focus();
-  key('Tab'); out.tab1 = which(document.activeElement);
-  key('Tab'); out.tab2 = which(document.activeElement);
-  key('Tab', true); out.stab1 = which(document.activeElement);
-  key('Tab', true); out.stab2 = which(document.activeElement);
-
-  /* B.3 and B.5: every step. */
-  out.steps = [];
-  var vw = document.documentElement.clientWidth, vh = window.innerHeight;
-  out.vw = vw; out.vh = vh;
-  for (var n = 0; n < 20; n++) {
-    var cardName = out.present[n];
-    var card = cardName ? q('[data-uc-card="' + cardName + '"]') : null;
-    out.steps.push({ count: text(q('[data-uc-tour-count]')), name: text(q('.uc-tour-name')), text: text(q('.uc-tour-text')),
-      card: cardName || null, cardBox: rect(card), ring: rect(ring), panel: rect(panel) });
-    var next = q('[data-uc-tour-next]');
-    if (next.disabled) { break; }
-    next.click();
+  if (P.indexOf('own') === 0) {
+    /* C: one open at a time. */
+    var toggles = qa('[data-uc-card="faqs"] [data-uc-faq-toggle]');
+    if (toggles[1]) { toggles[1].click(); } out.faqOpen2 = faqs();
+    if (toggles[2]) { toggles[2].click(); } out.faqOpen3 = faqs();
+    if (toggles[2]) { toggles[2].click(); } out.faqClosedAgain = faqs();
+    /* typing changes the head */
+    if (toggles[0]) { toggles[0].click(); var qi = q('[data-uc-card="faqs"] [data-uc-faq-fold] [data-uc-faq-body] input[type="text"]'); qi.value = 'Where can I park nearby?'; qi.dispatchEvent(new Event('input', { bubbles: true })); out.faqTyped = faqs()[0].head; toggles[0].click(); }
+    /* a set's rows arrive shut, and say so */
+    var set = q('[data-uc-faq-set]'); if (set) { set.value = 'setalpha'; set.dispatchEvent(new Event('change', { bubbles: true })); }
+    var ap = q('[data-uc-faq-apply]'); if (ap) { ap.click(); }
+    setTimeout(function () {
+    out.faqAfterSet = faqs();
+    var fsaid = q('[data-uc-faq-said]'); out.noticeFaq = seen(fsaid) ? notice(fsaid) : null; out.noticeFaqText = text(fsaid);
+    /* B.2: Remove falls back to the series picture. */
+    var rm = q('[data-uc-image-remove]'); if (rm) { rm.click(); }
+    out.blockAfterRemove = block();
+    out.focusAfterRemove = document.activeElement ? document.activeElement.tagName : '';
+    /* and choosing again makes it the event's own */
+    var r603 = q('[data-uc-image-block] input[data-uc-image-option][value="603"]'); if (r603) { r603.checked = true; r603.dispatchEvent(new Event('change', { bubbles: true })); }
+    out.blockAfterChoose = block();
+    finish();
+    }, 50);
+    return;
   }
-  out.lastFocus = which(document.activeElement);
-
-  /* Arrows. */
-  key('ArrowLeft'); out.afterLeft = text(q('[data-uc-tour-count]'));
-  key('ArrowUp'); out.afterUp = text(q('[data-uc-tour-count]'));
-  key('ArrowRight'); out.afterRight = text(q('[data-uc-tour-count]'));
-  key('ArrowDown'); out.afterDown = text(q('[data-uc-tour-count]'));
-
-  /* Esc closes and hands focus back. */
-  key('Escape');
-  out.escClosed = !q('[data-uc-tour]');
-  out.escFocus = which(document.activeElement);
-  out.inertLeft = qa('[inert]').length;
-
-  /* It runs again, and Done closes it. */
-  link.click();
-  out.againCount = text(q('[data-uc-tour-count]'));
-  var done = q('[data-uc-tour-done]');
-  if (done) { done.click(); }
-  out.doneClosed = !q('[data-uc-tour]');
-  out.doneFocus = which(document.activeElement);
-  out.inertAfterDone = qa('[inert]').length;
-  out.stored = store() !== storeAtLoad;
+  if (P.indexOf('series') === 0) {
+    var r602 = q('[data-uc-image-block] input[data-uc-image-option][value="602"]'); if (r602) { r602.checked = true; r602.dispatchEvent(new Event('change', { bubbles: true })); }
+    out.blockAfterChoose = block();
+    var s2 = q('[data-uc-series-select]'); if (s2) { s2.value = '12'; s2.dispatchEvent(new Event('change', { bubbles: true })); }
+    out.blockOwnAfterSeries = block();
+    finish(); return;
+  }
+  if (P.indexOf('none') === 0) {
+    var rm2 = q('[data-uc-image-remove]'); if (rm2) { rm2.click(); }
+    out.blockAfterRemove = block();
+    finish(); return;
+  }
   finish();
 }, 600); });
 })();</script></body></html>

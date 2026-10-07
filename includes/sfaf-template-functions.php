@@ -4338,7 +4338,15 @@ function sfaf_faq_row( $args = array() ) {
         'maxlength'    => 0,
         'remove_class' => 'uc-btn uc-btn-sm',
         'rows'         => 8,
+        /* THE EVENT EDITORS' FOLDED ROW (3.108.1): a head with the question,
+           Edit and the remove icon, and the editor under it, shut. */
+        'fold'         => false,
     ), $args );
+
+    if ( $args['fold'] ) {
+        sfaf_faq_row_folded( $args );
+        return;
+    }
 
     // The index is a real integer or a template token, and both go into a
     // field name, so neither may be escaped as if it were prose.
@@ -4365,6 +4373,54 @@ function sfaf_faq_row( $args = array() ) {
         ?>
         <div class="uc-faq-row-actions">
             <button type="button" class="<?php echo esc_attr( $args['remove_class'] ); ?> uc-repeater-remove uc-faq-remove">Remove this question</button>
+        </div>
+    </div>
+    <?php
+}
+
+/**
+ * One FAQ on the event editors, folded (3.108.1).
+ *
+ * A head with the question, "Edit" and the remove icon, and the question and
+ * answer under it. The body is in the markup and portal.js folds it, so with no
+ * script every FAQ is still open and still posts. The same field names as the
+ * open row, so the save is unchanged.
+ *
+ * @param array $args sfaf_faq_row()'s, already merged.
+ */
+function sfaf_faq_row_folded( $args ) {
+    $field = $args['name'] . '[' . $args['index'] . '][%s]';
+    $q     = sprintf( $field, 'question' );
+    $a     = sprintf( $field, 'answer' );
+    $max   = (int) $args['maxlength'] > 0 ? ' maxlength="' . (int) $args['maxlength'] . '"' : '';
+    $body  = 'uc-faq-body-' . sanitize_html_class( $args['name'] ) . '-' . $args['index'];
+    $label = '' !== trim( (string) $args['question'] ) ? (string) $args['question'] : 'New question';
+    ?>
+    <div class="uc-repeater-row uc-faq-row uc-faq-fold" data-uc-faq-fold>
+        <div class="uc-faq-head">
+            <span class="uc-faq-head-q" data-uc-faq-head><?php echo esc_html( $label ); ?></span>
+            <button type="button" class="uc-faq-toggle" data-uc-faq-toggle aria-expanded="true"
+                    aria-controls="<?php echo esc_attr( $body ); ?>" hidden>Close</button>
+            <button type="button" class="uc-faq-x uc-repeater-remove uc-faq-remove" aria-label="Remove this question"><?php
+                echo sfaf_icon( 'x', array( 'size' => '16px' ) );
+            ?></button>
+        </div>
+        <div class="uc-faq-body" id="<?php echo esc_attr( $body ); ?>" data-uc-faq-body>
+            <input type="text" name="<?php echo esc_attr( $q ); ?>"<?php echo $max; ?>
+                   value="<?php echo esc_attr( (string) $args['question'] ); ?>"
+                   placeholder="Question" aria-label="Question" />
+            <?php
+            if ( $args['rich'] ) {
+                SFAF_Rich_Text::deferred( $a, (string) $args['answer'], array( 'rows' => (int) $args['rows'], 'placeholder' => 'Answer' ) );
+            } else {
+                printf(
+                    '<textarea name="%s" rows="%d" placeholder="Answer" aria-label="Answer">%s</textarea>',
+                    esc_attr( $a ),
+                    (int) $args['rows'],
+                    esc_textarea( (string) $args['answer'] )
+                );
+            }
+            ?>
         </div>
     </div>
     <?php

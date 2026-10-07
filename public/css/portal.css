@@ -52,6 +52,14 @@
     /* The dim behind a modal, the value the confirm and scope dialogs'
        ::backdrop has always used, named for the tour (3.108.0). */
     --p-scrim: rgba(15, 23, 42, 0.55);
+
+    /* The editors' inline notices (3.108.1): the palette's success state is
+       the Green family, its tint and ink 6.08:1; a failure is the Red
+       family's tint and ink, 6.10:1. */
+    --p-ok-tint: #F1F8E9;
+    --p-ok-ink: #46661F;
+    --p-error-tint: #FDE9E7;
+    --p-error-ink: #AD1C0D;
     --p-shadow-raised: 0 24px 60px rgba(0, 0, 0, 0.28);
 
     --p-bg: #F5F6F7;
@@ -2992,7 +3000,6 @@ body.uc-modal-open { overflow: hidden; }
    on their text rather than on their boxes. */
 .uc-faq-picker-row .uc-faq-manage { flex: 0 0 auto; margin-left: auto; padding-bottom: 10px; }
 .uc-faq-picker .uc-hint { margin: 8px 0 0; }
-.uc-faq-picker-said { margin: 10px 0 0; }
 
 /* A locked recurrence fieldset reads as one unit, so the whole box is tinted
  * rather than each control being outlined separately. */
@@ -4402,9 +4409,10 @@ body.uc-modal-open { overflow: hidden; }
 .uc-prefill-opt-text .uc-muted { display: block; font-size: 12px; margin-top: 1px; }
 /* The image row shows the picture (3.64.2). Sized in the stylesheet and cropped
    to the 16:9 the cards use, so a portrait file cannot make this row twice the
-   height of the five around it. */
-.uc-prefill-thumb { display: block; width: 56px; height: 32px; margin-top: 3px;
-    object-fit: cover; border-radius: 4px; border: 1px solid var(--p-border); }
+   height of the five around it. 160 x 90 with the cards' 12px radius since
+   3.108.1; it was 56 x 32 at 4px. */
+.uc-prefill-thumb { display: block; width: 160px; height: 90px; margin-top: 4px;
+    object-fit: cover; border-radius: 12px; border: 1px solid var(--p-border); }
 .uc-prefill-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .uc-prefill-said { margin: 10px 0 0; font-size: 12.5px; }
 
@@ -4976,3 +4984,89 @@ body.uc-modal-open { overflow: hidden; }
 .uc-tour .uc-tour-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .uc-tour .uc-tour-done { margin-left: auto; }
 .uc-tour .uc-btn[disabled] { cursor: default; }
+
+/* ---------------------------------------------------------------------------
+   THE FEATURED IMAGE BLOCK, EVENT EDITOR (3.108.1)
+
+   The preview on top, at most 280px and 16:9, with two things on it: the pill
+   in its top-left corner saying where the picture comes from, and Remove in
+   its top-right corner while the picture is the event's own. "Choose a
+   picture" under it names the picture and draws no second thumbnail, because
+   the preview above is that picture. With no picture at all the preview is an
+   empty 16:9 tile on --p-bg.
+
+   The pill is the Helper step, 12px/400 --p-text on --p-panel (11.80:1);
+   Remove is a small control, 13px/600 --p-text on --p-panel with the control
+   boundary --p-border-strong (3.33:1) and the accent focus ring.
+   ------------------------------------------------------------------------ */
+.uc-image-block .uc-image-preview { position: relative; max-width: 280px; margin: 0 0 10px; }
+.uc-image-block .uc-image-preview img { max-width: 100%; }
+.uc-image-block .uc-image-preview-empty {
+    aspect-ratio: 16 / 9; box-sizing: border-box;
+    background: var(--p-bg); border: 1px solid var(--p-border); border-radius: 10px;
+}
+.uc-image-block .uc-image-pill {
+    position: absolute; top: 8px; left: 8px; padding: 2px 8px;
+    border: 1px solid var(--p-border); border-radius: 99px; background: var(--p-panel);
+    font-size: 12px; font-weight: 400; line-height: 1.4; color: var(--p-text);
+}
+.uc-image-block .uc-image-remove {
+    position: absolute; top: 8px; right: 8px; padding: 3px 10px;
+    border: 1px solid var(--p-border-strong); border-radius: 8px; background: var(--p-panel);
+    font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--p-text); cursor: pointer;
+}
+.uc-image-block .uc-image-remove:hover { background: var(--p-bg); }
+.uc-image-block .uc-image-remove:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; }
+.uc-image-block .uc-image-picker { margin: 0; }
+.uc-image-block .uc-image-current-thumb { display: none; }
+
+/* ---------------------------------------------------------------------------
+   THE EDITORS' FAQs, FOLDED (3.108.1)
+
+   A folded row keeps the FAQ row's ground (--p-bg, --p-border, 10px radius)
+   with tighter padding: the head is the question in Body type, 14px/400
+   --p-text ("New question" in --p-muted), then Edit, a text button in the
+   accent at 13px/600, then the remove icon, the 32px icon button the
+   registration questions use. Open, the question and answer sit under the
+   head 10px apart.
+   ------------------------------------------------------------------------ */
+.uc-faq-row.uc-faq-fold { gap: 0; padding: 6px 6px 6px 14px; }
+.uc-faq-row.uc-faq-fold.is-open { padding-bottom: 14px; padding-right: 14px; }
+.uc-faq-fold .uc-faq-head { display: flex; align-items: center; gap: 8px; min-height: 32px; }
+.uc-faq-fold .uc-faq-head-q {
+    flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 14px; font-weight: 400; line-height: 1.4; color: var(--p-text);
+}
+.uc-faq-fold .uc-faq-head-q.uc-faq-head-new { color: var(--p-muted); }
+.uc-faq-fold .uc-faq-toggle {
+    flex: 0 0 auto; padding: 6px 4px; border: 0; background-color: transparent; cursor: pointer;
+    font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--uc-accent-text);
+}
+.uc-faq-fold .uc-faq-toggle:hover { text-decoration: underline; }
+.uc-faq-fold .uc-faq-toggle:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; border-radius: 4px; }
+.uc-faq-fold .uc-faq-x {
+    flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px;
+    background-color: transparent; color: var(--p-muted); cursor: pointer;
+}
+.uc-faq-fold .uc-faq-x:hover { background-color: var(--p-border); color: var(--p-text); border-color: transparent; }
+.uc-faq-fold .uc-faq-x:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; }
+.uc-faq-fold .uc-faq-body { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.uc-faq-fold .uc-faq-body[hidden] { display: none; }
+
+/* ---------------------------------------------------------------------------
+   ONE INLINE NOTICE ON THE EDITORS (3.108.1)
+
+   What a button just did, said under it: the series prefill's "Filled in 7
+   things...", the FAQ set's "Added 4 questions...", and the description's
+   "Added to the description." One component: --p-ok-ink on --p-ok-tint
+   (6.08:1), 10px 14px, 8px radius, 10px above, Field label type 13px/600.
+   A failure in the same place takes the Red family's pair instead.
+   ------------------------------------------------------------------------ */
+.uc-notice {
+    margin: 10px 0 0; padding: 10px 14px; border-radius: 8px;
+    background: var(--p-ok-tint); color: var(--p-ok-ink);
+    font-size: 13px; font-weight: 600; line-height: 1.45;
+}
+.uc-notice.uc-notice-error { background: var(--p-error-tint); color: var(--p-error-ink); }
+.uc-notice[hidden] { display: none; }

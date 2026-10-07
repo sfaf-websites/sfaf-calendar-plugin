@@ -227,9 +227,10 @@ function get_term_meta( $id, $k = '', $s = false ) { if ( isset( $GLOBALS['kit_t
 function update_term_meta( $id, $k, $v, $p = '' ) { $GLOBALS['kit_term_meta'][ (int) $id ][ $k ] = $v; return true; }
 function delete_term_meta( $id, $k, $v = '' ) { unset( $GLOBALS['kit_term_meta'][ (int) $id ][ $k ] ); return true; }
 function has_post_thumbnail( $id = 0 ) { return false; }
-function get_post_thumbnail_id( $id = 0 ) { return 0; }
-function set_post_thumbnail( $id, $t ) { return true; }
-function delete_post_thumbnail( $id ) { return true; }
+/* A test that sets $GLOBALS['kit_thumbs'] = true gets thumbnails kept in _thumbnail_id (3.108.1); every other test keeps the old answer, none. */
+function get_post_thumbnail_id( $id = 0 ) { return empty( $GLOBALS['kit_thumbs'] ) ? 0 : (int) get_post_meta( (int) $id, '_thumbnail_id', true ); }
+function set_post_thumbnail( $id, $t ) { if ( ! empty( $GLOBALS['kit_thumbs'] ) ) { update_post_meta( (int) $id, '_thumbnail_id', (int) $t ); } return true; }
+function delete_post_thumbnail( $id ) { if ( ! empty( $GLOBALS['kit_thumbs'] ) ) { delete_post_meta( (int) $id, '_thumbnail_id' ); } return true; }
 function wp_get_attachment_image_url( $i, $s = '' ) { return isset( $GLOBALS['kit_images'][ (int) $i ] ) ? $GLOBALS['kit_images'][ (int) $i ] : ''; }
 function wp_get_attachment_url( $i ) { return ''; }
 function get_attached_file( $i ) { return ''; }

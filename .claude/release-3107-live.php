@@ -14,7 +14,7 @@
  *
  *   A   the card order in both columns, by data-uc-card, on Add and on Edit;
  *       from 3.107.1 the series card first in the main column, its width, 16px
- *       above Title, and the series thumbnail at 56x32 on Add
+ *       above Title, and the series thumbnail at 160x90, 12px radius, on Add (3.108.1)
  *   B   Registration: the tick alone while RSVPs are off, the rest on ticking
  *   D   Links holds the donation dropdown and Volunteer; Organizer is chips and
  *       "+ Add organizer"; the address boxes are labelled by placeholders in
@@ -221,7 +221,7 @@ window.addEventListener('load', function () { setTimeout(function () {
   setTimeout(function () {
     var th = q('[data-uc-card="series"] .uc-prefill-thumb');
     out.thumb = th && seen(th) && th.complete && th.naturalWidth > 0
-      ? { w: Math.round(th.getBoundingClientRect().width), h: Math.round(th.getBoundingClientRect().height) } : null;
+      ? { w: Math.round(th.getBoundingClientRect().width), h: Math.round(th.getBoundingClientRect().height), r: getComputedStyle(th).borderTopLeftRadius } : null;
     finish();
   }, 500);
 }, 600); });
@@ -280,7 +280,8 @@ foreach ( array_keys( $pages ) as $t ) {
     rv_check( $side === $v( $t, 'side' ), "PLANT A: $t: the side column reads " . json_encode( $v( $t, 'side' ) ) );
 
     /* A.4 (3.107.1): the series card is the first card on the page, as wide as
-       the main column, 16px above Title, and on Add its thumbnail is 56x32. */
+       the main column, 16px above Title, and on Add its thumbnail is 160x90 at
+       the cards' 12px radius (3.108.1; 56x32 until then). */
     $sb = (array) $v( $t, 'seriesBox' ); $tb = (array) $v( $t, 'titleBox' ); $mb = (array) $v( $t, 'mainBox' );
     rv_check( 1 === $v( $t, 'seriesCount' ), "PLANT A.4: $t: " . (int) $v( $t, 'seriesCount' ) . ' series card(s) on the page' );
     rv_check( $sb && $tb && $mb && $sb['top'] < $tb['top'] && $sb['left'] === $mb['left'] && $sb['w'] === $mb['w'],
@@ -288,7 +289,7 @@ foreach ( array_keys( $pages ) as $t ) {
     rv_check( $sb && $tb && 16 === $tb['top'] - $sb['bottom'], "PLANT A.4: $t: series to Title is " . ( $sb && $tb ? $tb['top'] - $sb['bottom'] : '?' ) . 'px, not 16' );
     rv_check( (int) $v( $t, 'firstCardTop' ) === ( $sb ? $sb['top'] : -1 ), "PLANT A.4: $t: a card sits above the series card at " . $v( $t, 'firstCardTop' ) );
     if ( $add ) {
-        rv_check( array( 'w' => 56, 'h' => 32 ) === $v( $t, 'thumb' ), "PLANT A.4: $t: the series thumbnail is " . json_encode( $v( $t, 'thumb' ) ) . ', not 56x32' );
+        rv_check( array( 'w' => 160, 'h' => 90, 'r' => '12px' ) === $v( $t, 'thumb' ), "PLANT A.4: $t: the series thumbnail is " . json_encode( $v( $t, 'thumb' ) ) . ', not 160x90 at 12px' );
     }
     rv_check( 0 === $v( $t, 'unnamed' ), "PLANT H: $t: " . $v( $t, 'unnamed' ) . ' card(s) carry no data-uc-card' );
     foreach ( (array) $v( $t, 'cardStyles' ) as $cs ) {
@@ -400,4 +401,4 @@ if ( $fails ) {
     echo 'RELEASE 3.107.0 LIVE: ' . count( $fails ) . " FAILURE(S)\n  - " . implode( "\n  - ", $fails ) . "\n";
     exit( 1 );
 }
-echo "3.107.0 live: card order and names with the series card first in the main column and its thumbnail at 56x32, Registration closed and open, Links, the Organizer picker, the address labels, Insert image, one sign-out, one empty line, the FAQ set and the pictures following the series, the weekday following the date, and the sticky bar, on Add and Edit at 1280px and 390px.\n";
+echo "3.107.0 live: card order and names with the series card first in the main column and its thumbnail at 160x90, Registration closed and open, Links, the Organizer picker, the address labels, Insert image, one sign-out, one empty line, the FAQ set and the pictures following the series, the weekday following the date, and the sticky bar, on Add and Edit at 1280px and 390px.\n";
