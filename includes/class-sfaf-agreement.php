@@ -42,6 +42,10 @@ class SFAF_Agreement {
         if ( '1' !== (string) get_post_meta( $event_id, '_uc_rsvp_enabled', true ) ) {
             return false;
         }
+        // Register on another site (3.110.1): nothing is registered here to agree to.
+        if ( class_exists( 'SFAF_Register_Elsewhere' ) && SFAF_Register_Elsewhere::is_on( $event_id ) ) {
+            return false;
+        }
         return ! SFAF_Sources::takes_rsvps_at_source( $event_id );
     }
 

@@ -144,6 +144,7 @@ function ucDismissOnBackdrop(dialog) {
         run('schedule', initSchedule);
         run('agreement', initAgreementSection);
         run('access', initAccessSection);
+        run('reg-where', initRegisterWhere);
         run('registrantMail', initRegistrantMail);
         run('checkin', initCheckin);
         run('rsvpFilter', initRsvpFilter);
@@ -325,6 +326,41 @@ function ucDismissOnBackdrop(dialog) {
                 box.querySelectorAll('input[name="access_teams[]"]').forEach(function (i) { i.checked = d.teams.indexOf(i.value) > -1; });
                 box.querySelectorAll('input[name="access_people[]"]').forEach(function (i) { i.checked = d.people.indexOf(parseInt(i.value, 10)) > -1; });
             });
+        });
+    }
+    /* ---------------------------------------------------------------------
+     * WHERE PEOPLE REGISTER (3.110.1). "Register on another site" shows the
+     * link box and hides everything that only applies here; "Take
+     * registrations here" brings it back as it was. On Add event, until the
+     * choice is touched, it follows the series dropdown's default.
+     * ------------------------------------------------------------------ */
+    function initRegisterWhere() {
+        document.querySelectorAll('[data-uc-reg-choice]').forEach(function (box) {
+            var urlBox = box.querySelector('[data-uc-reg-url]');
+            var card = box.closest('[data-uc-registration]');
+            var here = card ? card.querySelector('[data-uc-reg-here]') : null;
+            var radios = box.querySelectorAll('[data-uc-reg-mode]');
+            var series = {};
+            try { series = JSON.parse(box.getAttribute('data-uc-reg-series') || '{}') || {}; } catch (e) { series = {}; }
+            var own = '1' === box.getAttribute('data-uc-reg-own');
+            function apply() {
+                var away = !!box.querySelector('[data-uc-reg-mode][value="elsewhere"]:checked');
+                if (urlBox) { urlBox.hidden = !away; }
+                if (here) { here.hidden = away; }
+            }
+            radios.forEach(function (r) { r.addEventListener('change', function () { own = true; apply(); }); });
+            var select = box.hasAttribute('data-uc-reg-series') ? document.querySelector('[data-uc-series-select]') : null;
+            if (select) {
+                select.addEventListener('change', function () {
+                    if (own) { return; }
+                    var d = series[String(select.value)] || { mode: 'here', url: '' };
+                    radios.forEach(function (r) { r.checked = (r.value === d.mode); });
+                    var input = urlBox ? urlBox.querySelector('input') : null;
+                    if (input) { input.placeholder = d.url || 'https://'; }
+                    apply();
+                });
+            }
+            apply();
         });
     }
     /* ---------------------------------------------------------------------

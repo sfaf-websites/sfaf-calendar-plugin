@@ -46,7 +46,7 @@ $CAPTIONS = array(
     'title'          => array( 'Title', 'Give the event the name people will see on the calendar. Keep it short; the description carries the detail.' ),
     'schedule'       => array( 'Schedule', 'Pick the date and the start and end times. For an event that repeats, choose how often and the plugin creates every date for you.' ),
     'location'       => array( 'Location', 'Pick a venue from the list, or choose A different location and type an address. Tick online for a video event, or hybrid when people can come in person or join online.' ),
-    'registration'   => array( 'Registration', 'Tick Accept RSVPs to let people register. Set a capacity if places are limited, leave it empty for no limit, or type 0 to send everyone to the waitlist. Add questions if you need to ask registrants something before the event.' ),
+    'registration'   => array( 'Registration', 'Tick Accept RSVPs to let people register here, or choose Register on another site and paste the link. Set a capacity if places are limited, leave it empty for no limit, or type 0 to send everyone to the waitlist. Add questions if you need to ask registrants something before the event.' ),
     'details'        => array( 'Event details', 'Write the description. Use Insert image to put a picture inside it. For the featured picture, choose one from the calendar folder; upload new pictures on the Images screen first.' ),
     'faqs'           => array( 'FAQs', 'Add questions and answers for this event, or apply a saved set and edit it. To make a set you can reuse, create it on the FAQ Sets screen.' ),
     'classification' => array( 'Classification', 'Add at least one category and one organizer. A category is the kind of event, such as a support group or a fundraiser, and drives the calendar filters. An organizer is the SFAF program or team hosting the event, and its events are listed together on the calendar.' ),
@@ -54,7 +54,7 @@ $CAPTIONS = array(
     'links'          => array( 'Links', 'Choose which donation link goes in the emails, and paste a volunteer page if there is one.' ),
     'display'        => array( 'Display', 'Choose which buttons appear on the public event page.' ),
     'privacy'        => array( 'Who can find this event', 'Tick Make this event private to keep it off the calendar. Only people you send the link to can open it. Copy the link here once the event is saved.' ),
-    'access'         => array( 'Who can edit this', 'Add the people who may change this event besides its creator.' ),
+    'access'         => array( 'Team and access', 'Add the people who may change this event besides its creator.' ),
 );
 $BAR_ADD  = 'Save draft keeps the event private until you are ready. Publish puts it on the calendar.';
 $BAR_EDIT = 'Save changes updates the event. Cancel event keeps it on the calendar marked cancelled and tells registrants. Delete removes it for good.';
@@ -338,7 +338,7 @@ foreach ( array( 'add-desktop', 'add-phone', 'edit-desktop', 'edit-phone' ) as $
 
     /* B.3 */
     $want = $is_add
-        ? array( 'series', 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications', 'links', 'display', 'privacy', 'actions' )
+        ? array( 'series', 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications', 'links', 'display', 'privacy', 'access', 'actions' )
         : array( 'series', 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications', 'links', 'display', 'privacy', 'access', 'actions' );
     rt_check( $want === $v( $t, 'present' ), "$t: the cards on the page are " . json_encode( $v( $t, 'present' ) ) );
     $steps = (array) $v( $t, 'steps' );

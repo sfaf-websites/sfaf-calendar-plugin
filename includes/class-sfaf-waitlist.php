@@ -88,6 +88,9 @@ class SFAF_Waitlist {
         if ( '' !== SFAF_Sources::registration_url( $event_id ) ) {
             return false;
         }
+        if ( class_exists( 'SFAF_Register_Elsewhere' ) && SFAF_Register_Elsewhere::is_on( $event_id ) ) {
+            return false;
+        }
         // Any limit, including 0 places (3.107.0); an empty box has none.
         return sfaf_capacity_limited( $event_id, $format );
     }
@@ -100,7 +103,8 @@ class SFAF_Waitlist {
     private static function serves( $event_id ) {
         $event_id = (int) $event_id;
         return '1' === (string) get_post_meta( $event_id, '_uc_rsvp_enabled', true )
-            && '' === SFAF_Sources::registration_url( $event_id );
+            && '' === SFAF_Sources::registration_url( $event_id )
+            && ! ( class_exists( 'SFAF_Register_Elsewhere' ) && SFAF_Register_Elsewhere::is_on( $event_id ) );
     }
 
     /** People still waiting. */

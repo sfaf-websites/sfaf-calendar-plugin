@@ -680,6 +680,10 @@ function sfaf_event_takes_rsvps( $post_id ) {
     if ( class_exists( 'SFAF_Sources' ) && SFAF_Sources::takes_rsvps_at_source( $post_id ) ) {
         return false;
     }
+    // Register on another site (3.110.1): nothing is taken here.
+    if ( class_exists( 'SFAF_Register_Elsewhere' ) && SFAF_Register_Elsewhere::is_on( $post_id ) ) {
+        return false;
+    }
     return '1' === (string) get_post_meta( $post_id, '_uc_rsvp_enabled', true )
         && sfaf_show_feature( $post_id, 'rsvp' );
 }
@@ -1231,6 +1235,22 @@ function sfaf_rsvp_block( $post_id ) {
                  * a form, like a venue website. This is a platform the calendar
                  * deliberately imports from.
                  */
+                'external' => true,
+            ) )
+            . '</div>';
+    }
+
+    /*
+     * REGISTER ON ANOTHER SITE (3.110.1): the event's own choice, in place of
+     * the RSVP button, for the same reason as the source button above. The
+     * same external button, so the new tab, rel and the hidden note come with it.
+     */
+    if ( class_exists( 'SFAF_Register_Elsewhere' ) && SFAF_Register_Elsewhere::is_on( $post_id ) ) {
+        return '<div class="uc-card-rsvp uc-card-rsvp-elsewhere">'
+            . sfaf_action_button( array(
+                'label'    => 'Register',
+                'href'     => SFAF_Register_Elsewhere::url( $post_id ),
+                'variant'  => 'primary',
                 'external' => true,
             ) )
             . '</div>';

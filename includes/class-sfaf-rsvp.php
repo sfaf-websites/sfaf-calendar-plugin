@@ -288,8 +288,9 @@ class SFAF_RSVP {
             return array( 'success' => false, 'message' => 'This event has been cancelled, so registrations are closed.' );
         }
 
-        // Don't accept RSVPs for events that don't have RSVP enabled.
-        if ( get_post_meta( $data['event_id'], '_uc_rsvp_enabled', true ) !== '1' ) {
+        // Don't accept RSVPs for events that don't have RSVP enabled, or that
+        // take their registrations on another site (3.110.1).
+        if ( get_post_meta( $data['event_id'], '_uc_rsvp_enabled', true ) !== '1' || ( class_exists( 'SFAF_Register_Elsewhere' ) && SFAF_Register_Elsewhere::is_on( $data['event_id'] ) ) ) {
             return array( 'success' => false, 'message' => 'RSVP is not available for this event.' );
         }
 

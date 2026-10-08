@@ -3128,10 +3128,14 @@ class SFAF_Portal {
         // The RSVP settings: capacity, whether to accept them, who is notified
         // and where replies go. Shared with the registrations page, written
         // once. See save_rsvp_settings_from_post().
+        // Where people register, first, so the settings below know (3.110.1).
+        SFAF_Register_Elsewhere::save_from_post( $event_id, $_POST );
         $this->save_rsvp_settings_from_post( $user, $event_id, $is_locked );
         // The registration agreement (3.110.0): only where the section was drawn.
         if ( '' === $src_slug ) {
-            SFAF_Agreement::save_from_post( $event_id, $_POST );
+            if ( ! SFAF_Register_Elsewhere::is_on( $event_id ) ) {
+                SFAF_Agreement::save_from_post( $event_id, $_POST );
+            }
         }
 
         $toggles = array(
@@ -7580,7 +7584,7 @@ class SFAF_Portal {
             array( 'title', 'Title', 'Give the event the name people will see on the calendar. Keep it short; the description carries the detail.' ),
             array( 'schedule', 'Schedule', 'Pick the date and the start and end times. For an event that repeats, choose how often and the plugin creates every date for you.' ),
             array( 'location', 'Location', 'Pick a venue from the list, or choose A different location and type an address. Tick online for a video event, or hybrid when people can come in person or join online.' ),
-            array( 'registration', 'Registration', 'Tick Accept RSVPs to let people register. Set a capacity if places are limited, leave it empty for no limit, or type 0 to send everyone to the waitlist. Add questions if you need to ask registrants something before the event.' ),
+            array( 'registration', 'Registration', 'Tick Accept RSVPs to let people register here, or choose Register on another site and paste the link. Set a capacity if places are limited, leave it empty for no limit, or type 0 to send everyone to the waitlist. Add questions if you need to ask registrants something before the event.' ),
             array( 'details', 'Event details', 'Write the description. Use Insert image to put a picture inside it. For the featured picture, choose one from the calendar folder; upload new pictures on the Images screen first.' ),
             array( 'faqs', 'FAQs', 'Add questions and answers for this event, or apply a saved set and edit it. To make a set you can reuse, create it on the FAQ Sets screen.' ),
             array( 'classification', 'Classification', 'Add at least one category and one organizer. A category is the kind of event, such as a support group or a fundraiser, and drives the calendar filters. An organizer is the SFAF program or team hosting the event, and its events are listed together on the calendar.' ),
@@ -9657,6 +9661,9 @@ class SFAF_Portal {
      * every event in the series may change it, since it gives them away.
      */
     private function save_series_access( $user, $term_id ) {
+        // Where the series' events register by default (3.110.1). A setting of
+        // the series itself, so the series level answers it.
+        SFAF_Register_Elsewhere::save_series_from_post( $term_id, $_POST );
         $c = SFAF_Access::from_post( $_POST, 'series_access' );
         if ( ! $term_id || ! $c['present'] || ! $this->can_manage_series_events( $user, $term_id ) ) {
             return;
@@ -10329,6 +10336,11 @@ class SFAF_Portal {
 
                 <?php // The default Team and access its events follow (3.110.1). ?>
                 <?php $this->render_series_access( $user, (int) $term_id ); ?>
+
+                <?php // Where its events' people register, by default (3.110.1). ?>
+                <div class="uc-reg-choice" data-uc-reg-choice>
+                    <?php SFAF_Register_Elsewhere::render_choice( 'series_', SFAF_Register_Elsewhere::series_mode( (int) $term_id ), SFAF_Register_Elsewhere::series_url( (int) $term_id ) ); ?>
+                </div>
 
                 <?php
                 /*
@@ -14035,6 +14047,34 @@ class SFAF_Portal {
                 <section class="uc-bento-card uc-registration-card" data-uc-card="registration" data-uc-registration>
                     <h2 class="uc-bento-title">Registration</h2>
                     <?php
+                    /*
+                     * WHERE PEOPLE REGISTER (3.110.1), above Accept RSVPs, on
+                     * Add and Edit. Not on an imported event, which registers
+                     * at its source. On another site, everything below is
+                     * hidden and the save ignores it, so it waits unchanged.
+                     */
+                    $reg_imported = $event_id && SFAF_Sources::takes_rsvps_at_source( (int) $event_id );
+                    $reg_away     = false;
+                    if ( ! $reg_imported ) {
+                        $reg_series = array();
+                        foreach ( SFAF_Series::all() as $term ) {
+                            $reg_series[ (string) $term->term_id ] = array(
+                                'mode' => SFAF_Register_Elsewhere::series_mode( $term->term_id ),
+                                'url'  => SFAF_Register_Elsewhere::series_url( $term->term_id ),
+                            );
+                        }
+                        $reg_mode = $event_id ? SFAF_Register_Elsewhere::mode( (int) $event_id ) : SFAF_Register_Elsewhere::series_mode( (int) $cur_series );
+                        $reg_own  = $event_id ? SFAF_Register_Elsewhere::clean_url( get_post_meta( (int) $event_id, SFAF_Register_Elsewhere::META_URL, true ) ) : '';
+                        $reg_inh  = $event_id ? SFAF_Register_Elsewhere::series_url( SFAF_Series::id_for_event( (int) $event_id ) ) : SFAF_Register_Elsewhere::series_url( (int) $cur_series );
+                        $reg_away = ( 'elsewhere' === $reg_mode );
+                        echo '<div class="uc-reg-choice" data-uc-reg-choice data-uc-reg-series="' . esc_attr( wp_json_encode( (object) $reg_series ) ) . '" data-uc-reg-own="'
+                            . ( ( $event_id && '' !== (string) get_post_meta( (int) $event_id, SFAF_Register_Elsewhere::META_MODE, true ) ) ? '1' : '0' ) . '">';
+                        SFAF_Register_Elsewhere::render_choice( '', $reg_mode, $reg_own, $reg_inh );
+                        echo '</div>';
+                    }
+                    ?>
+                    <div class="uc-reg-here" data-uc-reg-here<?php echo $reg_away ? ' hidden' : ''; ?>>
+                    <?php
                     $rsvp_placed = array_merge(
                         $rsvp_placed,
                         (array) $this->render_rsvp_settings( $rsvp_ctx, array( 'rsvp_enabled' ), $rsvp_placed )
@@ -14060,6 +14100,7 @@ class SFAF_Portal {
                             <?php // Registration agreement (3.110.0), where the event takes its registrations here. ?>
                             <?php SFAF_Agreement::render_section( (int) $event_id, (int) $cur_series ); ?>
                         <?php endif; ?>
+                    </div>
                     </div>
                 </section>
 
@@ -15692,6 +15733,15 @@ class SFAF_Portal {
      */
     private function save_rsvp_settings_from_post( $user, $event_id, $is_locked ) {
         $event_id = (int) $event_id;
+        /*
+         * REGISTER ON ANOTHER SITE (3.110.1): nothing here is the event's to
+         * change. Accept RSVPs, Email required, Capacity and Questions keep
+         * what they hold, so switching back restores them as they were. Both
+         * screens that post these, the editor and the RSVP list, come here.
+         */
+        if ( SFAF_Register_Elsewhere::is_on( $event_id ) ) {
+            return;
+        }
         $imported = ( '' !== (string) get_post_meta( $event_id, SFAF_Sources::META_SOURCE, true ) );
         // The limits before this save, so a raise can be told apart (3.106.0).
         /*
