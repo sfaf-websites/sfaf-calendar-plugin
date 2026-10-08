@@ -5546,6 +5546,37 @@ message: tables, a plain-text part, one yellow button (Open your events).
 day is not rebuilt every fifteen minutes. Filters can only narrow what the gate
 allows; they never widen it.
 
+### Register on another site (3.110.1)
+
+**The Registration card asks first where people register**: "Take
+registrations here" (the default) or "Register on another site" with a link.
+The series screen has the same choice and link as a default its events follow
+until they set their own (`_uc_reg_mode`, `_uc_reg_url`;
+`_sfaf_series_reg_mode`, `_sfaf_series_reg_url`), `SFAF_Register_Elsewhere`.
+
+- **On another site, nothing about registering here applies.**
+  `SFAF_Register_Elsewhere::is_on()` makes `sfaf_event_takes_rsvps()`,
+  `SFAF_Agreement::is_on()` and `SFAF_Waitlist::applies()` answer no, and
+  `SFAF_RSVP::submit()` refuses. The event page's Register button opens the
+  link in a new tab (`sfaf_action_button()` with `external`, so the rel and the
+  hidden "(opens in a new tab)" come with it).
+- **Hidden, ignored, kept.** Accept RSVPs, Email required, Capacity, Questions
+  and the agreement are hidden in the editor and ignored on save:
+  `save_rsvp_settings_from_post()` returns at its top while the event registers
+  elsewhere, which covers the editor and the RSVP list's settings form alike,
+  and the agreement's save is skipped. Their stored values wait, so switching
+  back finds them as they were. The choice is saved first, so a switch back in
+  the same save takes the settings the form posted.
+- **Another site with no link anywhere is no choice**: the save keeps
+  registrations here.
+- **The RSVP list** says "Registrations are taken on another site" with the
+  link, in place of the settings panel. Anybody who registered here before the
+  switch is still listed under it; with nobody, that line is the page.
+- **An imported event is not this.** One whose source takes its registrations
+  keeps SFAF_Sources' "Register on [platform]" and never shows the choice.
+- `.claude/register-elsewhere-test.php` runs it; plant C.2 saves the settings
+  while another site is chosen.
+
 ### Registering without an email (3.102.0)
 
 **The email field stays required, and a tick box under it is the only way past
@@ -5921,8 +5952,9 @@ consent wording reviewed.
 
 ### Email registrants (3.110.0)
 
-**One event's RSVP list has a closed "Email registrants" section**, for site
-admins and anybody who can edit that event (the routes ask
+**One event's RSVP list has a closed "Email registrants" panel**, under the
+Registration settings panel and built from it (3.110.1), with the log of
+sends inside it, for site admins and anybody who can edit that event (the routes ask
 `user_can_edit_event()`): a subject, a body in the Email Templates editor with
 its protected token chips (first name, event title, date, time, location,
 event page link), "Include the waitlist", Preview and Send.
@@ -5960,8 +5992,8 @@ event (`_uc_checkin_mode`, `name` by default):
 - **Who may**: anybody who can edit the event, contributors included, through
   the event gate on the three routes (`checkin_mode`, `checkin_toggle`,
   `attendance_save`), asserted in `.claude/event-access-test.php`.
-- **On a phone** the list is one column with a search box that filters by name
-  as you type; see `DESIGN.md`.
+- **On a phone** the list is one column; the page's one search box, "Search
+  name or email", filters the rows as you type (3.110.1); see `DESIGN.md`.
 - `.claude/checkin-test.php` runs it; plant F.1 makes the second press not
   revert.
 ### Cancellation tokens
@@ -6199,6 +6231,15 @@ than the day somebody remembers to add it.
 
 ## 5. Permissions
 
+**THE RULE (3.110.1): a team decides which events a person has; their level
+decides what they can do on those events.** A person's events are the ones
+they created and the ones Team and access gives them, by a team they are on or
+by name, the event's own or its series' default. Calendar admins have every
+event. Levels are unchanged: what an editor or a contributor may do, they may
+do on their events, the RSVP list, Details, check-in and Email registrants
+included. **An editor no longer has every event.** `SFAF_Portal::user_can_edit_event()`
+is the only place the rule lives; see "The event gate" below.
+
 ### Passwords are WordPress's, in caladmin's own pages (3.109.0)
 
 **Forgot your password?** under the sign-in form opens `/caladmin/forgot`,
@@ -6253,13 +6294,26 @@ one, which is what a second copy of a rule produces.
 
 It answers in this order, and the order is the design:
 
-1. **`user_can_view_all()`**, calendar admin or editor,, which resolves
-   `manage_options` first. Nothing below can reduce this. (3.7.0)
+1. **A calendar admin**, `get_role()` answering `admin`, which resolves
+   `manage_options` first. Nothing below can reduce this. (3.7.0; until
+   3.110.1 this step was `user_can_view_all()`, admin OR editor, and an editor
+   had every event.)
 2. **The organizer**, which is `post_author` and nothing else. There is no
    second field to keep in step and no snapshot. It never changes implicitly;
    only the reassignment on the Users screen and WordPress itself move it.
-3. **A team that owns the event**, but only after `get_role()` confirms the
+3. **Team and access names them** (`SFAF_Access::names_user()`): a team they
+   are on, or their name, on the event or, when the event keeps nothing of
+   its own, on its series' default. Only after `get_role()` confirms the
    person has calendar access at all.
+
+**`user_can_view_all()` NO LONGER ANSWERS ANYTHING ABOUT AN EVENT (3.110.1).**
+It is the level that may manage the calendar's structure: series, categories,
+venues, organizers, FAQ sets. A screen about the whole calendar's
+registrations, the unscoped RSVP list and its export, Email Opt-ins (whose
+rows name a registrant and their event) and the orphan note, asks
+`is_admin_role()`. `SFAF_Portal::user_event_ids()` lists a person's events by
+asking the gate of each, for My events, the dashboard's counts and recent
+activity, so no list holds a rule of its own.
 
 That third order matters and is not defensive tidiness. A team is a name and a
 set of user ids, and the `$offered` guarantee means it may legitimately hold
@@ -6278,7 +6332,36 @@ narrow the answer.
 
 **Team membership is live.** Nothing is copied onto the event, so joining a team
 grants access to every event that team already owns and leaving removes it, both
-without touching any event. Same resolve-at-read-time rule teams already followed
+without touching any event. The same holds for a person named on an event and
+for a series default: the next page load reads them afresh.
+
+### Team and access (3.110.1; "Who can edit this" until then)
+
+**One card on Add event and Edit event alike**: the organizer, up to two teams
+(`_uc_event_teams`, `SFAF_Teams::MAX_PER_EVENT`) and people by name
+(`_uc_event_people`, anybody with calendar access, up to
+`SFAF_Access::MAX_PEOPLE`), and the tick that also puts the teams on the
+notification list. The series screen has a **Default team and access**
+(`_sfaf_series_access_teams`, `_sfaf_series_access_people`).
+
+- **The series default is inherited, not copied.** An event with nothing of its
+  own follows its series as it stands today. `SFAF_Access::set()` stores
+  nothing when the choice equals the series default, and otherwise marks the
+  event's own with `_uc_access_own`, so an empty choice can be its own too. An
+  event from before 3.110.1 that holds teams with no marker keeps them as its
+  own. On Add event the ticks follow the series dropdown until touched.
+- **Who may change it**: a calendar admin, or an editor on an event they have
+  (`may_assign_access()`). A contributor gets the separate read-only render.
+  A series default gives away every event in the series, so it is changed
+  only by somebody who has them all (`can_manage_series_events()`, which asks
+  the gate of each); the same check guards the series screen's schedule
+  actions and series removal, which write those events.
+- **A team named by a series default cannot be deleted**: the refusal names the
+  series, beside the existing refusal naming events.
+- **Notification teams grant nothing.** `_uc_notify_teams` stays a separate key
+  for the reason below; 3.110.1 was asked to make it grant access and kept it
+  apart on Mark's decision, because it would have handed every team ever chosen
+  for email the RSVP lists of those events on the day of the update. Same resolve-at-read-time rule teams already followed
 for notifications, and the reason a team is a set of ids rather than a snapshot.
 
 **An event may name up to two teams**, in `_uc_event_teams`. That is a
@@ -6295,23 +6378,30 @@ notification list. A team generally wants to log in and read who has registered,
 not receive an email per registration. The organizer is always notified.
 
 **Only somebody who can already give access away may assign a team**, so the
-control is `can_view_all` on both the renderer and the save. A contributor gets a
+control asks `may_assign_access()` on both the renderer and the save: a
+calendar admin, or an editor on an event they have (3.110.1). A contributor gets a
 separate read-only render naming who has access, not a disabled input: a disabled
 input is a control that posts nothing today and posts something the day somebody
 removes the attribute.
 
 **Registrations follow the same gate, scoped.** `/caladmin/rsvps?event_id=N` and
-its CSV export ask the event gate; unscoped, both stay on `can_view_all`, because
-"every registration on this site" is not a question about any event and no team
-owns it. This also widened the scoped view to a contributor reading their own
+its CSV export ask the event gate; unscoped, both are an admin's alone
+(`is_admin_role()`, since 3.110.1; `can_view_all` before, which let an editor
+read every event's registrations), because "every registration on this site"
+is not a question about any event and no team owns it. This also widened the scoped view to a contributor reading their own
 event's registrations, which is deliberate: the alternative is a second rule
 saying team members may read an event's registrations but the person responsible
 for it may not.
 
-**What did not change.** "My events" for an admin or editor is still a literal
-author filter, because it is a label a person reads. The public read-only table
-for other people's events is untouched. Picker visibility still requires a
-calendar record.
+**My events and All events (3.110.1).** My events is a person's events, as the
+gate decides them; for an admin, who has every event, it stays the literal
+author filter. All events lists everything; for anybody but an admin the page
+is split, their own events in the full table and everybody else's in
+`public_events_table()`, whose only link is the event's public page, in a new
+tab, when it is published and not private. A request for the editor, the RSVP
+list or its export of an event that is not theirs is sent to that public page
+(`send_to_public_page()`), or shown nothing when there is none. Picker
+visibility still requires a calendar record.
 
 ### Events with no organizer
 

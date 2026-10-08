@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.110.0
+Stable tag: 3.110.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,22 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.110.1 =
+
+**Team and access: a team decides which events a person has. The RSVP list reordered, and Register on another site.**
+
+**EDITORS NO LONGER HAVE EVERY EVENT.** A person's events are the ones they created and the ones Team and access gives them, by a team they are on or by name. Their level decides what they can do on those events, the RSVP list, Details, check-in and Email registrants included. Calendar admins have every event. An editor opening another event's editor or registrations is sent to its public page. My events lists a person's events; All events lists everything, with other people's events in a public table whose title opens the event page and that shows no count, no Edit and no registrations. Email Opt-ins, every event's registrations and their CSV are now an admin's alone. The registration alert links to the registrations only for somebody who has the event. Being on an event's notification list gives no access.
+
+**TEAM AND ACCESS** replaces "Who can edit this" and is on Add event as well as Edit event: up to two teams and any number of people by name. A series has a default team and people its events follow until they set their own. Adding somebody, or taking them off, applies on their next page load. A team a series default names cannot be deleted. Changing a series' schedule or default, or removing the series, needs every event in it.
+
+**THE RSVP LIST**, top to bottom: the "for this event only" line, Registration settings, Email registrants as a panel of the same kind with its log of sends inside, one search box that narrows the list by name or email as you type, the counts, then the registrations card with Check in by name / Enter a count at its top. The Find by name box is gone.
+
+**REGISTER ON ANOTHER SITE.** The Registration card asks first: Take registrations here, or Register on another site with a link. On another site, the event page's Register opens the link in a new tab; Accept RSVPs, Email required, Capacity, Questions, the agreement, the waitlist and the text opt-in are hidden and ignored on save, and come back as they were on switching back. The RSVP list says registrations are taken on another site, with the link. A series can set this as its default. Imported events keep Register on [platform].
+
+**THE TOUR'S** Registration caption mentions Register on another site, and its access step is named Team and access.
+
+**CHECKED.** An editor on no team, for an event somebody else created: the registrations list, the editor and the CSV export send them to the public page or refuse, the unscoped list and export refuse, All events and the dashboard show no count and no way in, the REST feed refuses without its key, and the alert and the pre-event summary give them the public page; on the event's team, every one of those opens. The gate against editors inside and outside a team, people by name, a series default inherited live and dropped by an event's own choice, older events keeping their teams, and notification teams granting nothing. Register on another site leaving the settings alone, the RSVP list's settings form too, finding them on the way back, refusing a registration, and inheriting the series default. In Chrome at 1280px, 430px and 390px: the RSVP list's order, one search box narrowing by name and by email, Email registrants matching the settings panel, check-in at the card's top left, Team and access on both editors, the another-site choice hiding the settings, and the public Register button. Planted and caught: a second search box, the gate giving editors every event, the unscoped export reopened to editors, the alert linking an editor outside the team, and RSVP settings saved while another site is chosen.
 
 = 3.110.0 =
 

@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 266 items.** Quick 221, needs real conditions 41, blocked on other
+**Outstanding: 273 items.** Quick 226, needs real conditions 43, blocked on other
 people 4.
 
 ---
@@ -3154,6 +3154,69 @@ button, and **Save** still saves the other settings.
 
 **Why it needs a person:** the real wp-admin.
 
+### 1.225 An editor on no team, after the update (3.110.1)
+
+**Do this straight after updating.** Sign in as an editor who is on no team and
+created no event. **My events** is empty. **All events** shows every event in a
+table under **Other events** with no registrations column and no Edit; a
+published event's title opens its public page in a new tab. Type the address
+of another event's editor (`/caladmin/events/edit/N`) and of its registrations
+(`/caladmin/rsvps?event_id=N`): both open the event's public page. **Email
+Opt-ins** is gone from the sidebar, and **All registrations across every
+event** from the registrations page. Then, as an admin, add that editor to the
+event's **Team and access** by name; on the editor's next page load the event
+is in My events and its registrations open. Take the name off: gone again on
+the next load.
+
+**Why it needs a person:** real accounts with real calendar levels, which the
+build has no way to sign in as.
+
+### 1.226 Team and access on Add event, and a series default (3.110.1)
+
+On a series, tick a team and a person under **Default team and access** and
+save. On **Add event**, choose that series: the same team and person are
+ticked; choose another series and they follow it. Save without touching them,
+then change the series default: the event follows. On a second event, untick
+the person and save: it keeps its own and stops following. As a contributor,
+open the card: it names who has the event and offers no control. Try to delete
+the team on **Users & Teams**: refused, naming the series.
+
+**Why it needs a person:** the real editor's series dropdown and the real teams.
+
+### 1.227 The RSVP list's new order, on a desk and a phone (3.110.1)
+
+Open one event's registrations. Top to bottom: the title and buttons, "for this
+event only", **Registration settings**, **Email registrants** (the same look,
+closed), one search box, the counts, then the registrations card with **Check
+in by name / Enter a count** at its top left. Type part of a name, then part of
+an email address: the rows narrow as you type, with no Search button. Open
+Email registrants: the form and the list of past sends are inside it. Repeat on
+a phone.
+
+**Why it needs a person:** the real list with real registrations.
+
+### 1.228 Register on another site (3.110.1)
+
+On a test event that takes registrations here with a capacity and a question,
+choose **Register on another site**, paste a link and save. Accept RSVPs,
+capacity, questions and the agreement are hidden. The event page's **Register**
+opens the link in a new tab, and a screen reader announces that it opens in a
+new tab. Its registrations page says registrations are taken on another site,
+with the link. Choose **Take registrations here** again and save: capacity and
+the question are as they were. On a series, set the default to another site with
+a link; a new event in that series starts on it.
+
+**Why it needs a person:** the real event page and a real screen reader.
+
+### 1.229 Editors who used Email Opt-ins or every event's registrations (3.110.1)
+
+Ask the editors whether they used **Email Opt-ins**, **All registrations across
+every event** or the CSV of all registrations. Since 3.110.1 those are an
+admin's alone. Report who needs them, so an admin can run them or the level
+can be reconsidered.
+
+**Why it needs a person:** it is a question for the people who use the screens.
+
 ## 2. Needs real conditionsWaiting for an unattended job to fire, a real removal at source, or a real event
 with real registrations and real mail.
 
@@ -3796,6 +3859,28 @@ event to Spanish: the dialog's heading, tick and buttons are in Spanish and the
 agreement is as typed.
 
 **Why it needs real conditions:** real registrations on the live site.
+### 2.44 Who loses which events when editors stop having all of them (3.110.1)
+
+**Before updating**, list every calendar editor and the events each works on.
+**After**, for each one, check their **My events** holds those events. Where it
+does not, give them the event through **Team and access**, on the event or on
+its series' default, and note which. Until then they can still see the event
+under All events, read-only, and open its public page.
+
+**Why it needs real conditions:** the live calendar's people and events, and
+somebody who knows who works on what.
+
+### 2.45 An editor on a notification list but not on the event's team (3.110.1)
+
+On a test event, put an editor who is on no team on the notification list, not
+under Team and access. Register somebody: the editor's alert has **Open this
+event**, the public page, and not **See who has registered**. Two hours before
+the event, the pre-event summary gives them the public page too. Add them under
+Team and access: the next alert links to the registrations.
+
+**Why it needs real conditions:** real mail, and a summary that fires on its
+own schedule.
+
 ## 3. Blocked on other peopleNothing here can move until somebody outside the build answers.
 
 | Who | What is needed | Status |

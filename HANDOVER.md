@@ -4,35 +4,33 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-07, at 3.110.0, released.
+**Last updated:** 2026-10-08, at 3.110.1, released.
 
 ---
 
 ## What shipped last
 
-**3.110.0**: a **registration agreement** with a dialog on the public form; a
-**text opt-in** (nothing sends texts); **Email registrants** from the RSVP list;
-**check-in** by name or by count; **Schedule for a later date**; Who can find
-this event as its own card with Copy; the wp-admin Logo setting removed; the
-sidebar logo off its tile; a phone pass to 44px targets (`TESTING.md` 1.218 to
-1.224, 2.41 to 2.43). **Schema 13**: `agreed_at`, `text_opt_in`, `checked_in_at`.
-> **THE WAITLIST NO LONGER OFFERS.** A place goes straight to the next person,
-> with the normal confirmation. Offers, their links, windows and expiry are
-> gone. The first cron run after the update puts any Offered or Needs a call
-> row back in the queue and fills free places: `TESTING.md` **2.37**.
+> **3.110.1: EDITORS NO LONGER HAVE EVERY EVENT.** A team decides which events a
+> person has; their level decides what they can do on them (CLAUDE.md 7,
+> `PROJECT.md` 5). An editor has what they created and what **Team and
+> access** gives them, by team or by name, on the event or its series default.
+> Check every editor's My events first: `TESTING.md` **1.225** and **2.44**.
+> Notification teams still grant nothing, on Mark's decision.
+**3.110.1** also: the RSVP list reordered, one search box, Email registrants as
+a panel; **Register on another site**; Email Opt-ins and every event's
+registrations are an admin's alone (`TESTING.md` 1.226 to 1.229, 2.45).
+**3.110.0**: a registration agreement, a text opt-in (nothing sends texts),
+Email registrants, check-in, Schedule for a later date. **Schema 13**.
+> **THE WAITLIST NO LONGER OFFERS** (3.110.0): a place goes straight to the next
+> person. Old offers go back in the queue on the first cron run: `TESTING.md` **2.37**.
 **3.109.0**: private on Add event, the Add and Edit parity rule, passwords in
 caladmin. **3.108.x**: the tour, FAQs folded. (`readme.txt` has the rest.)
-> **CAPACITY CHANGED MEANING.** An empty box is no limit; **0 is no places, so
-> everybody goes to the waitlist.** Until now 0 meant no limit. **Schema 12**
-> empties every stored 0 once so no live event turns waitlist-only: check it,
-> `TESTING.md` **1.200**. `PROJECT.md` 2.
-> **The editor's button order** (Delete, Save draft, Publish) is new on screen,
-> never having rendered before. `TESTING.md` 1.203.
+> **CAPACITY: an empty box is no limit, 0 is no places** (3.107.0); schema 12
+> emptied every stored 0 once: `TESTING.md` **1.200**, `PROJECT.md` 2.
 **3.106.x**: Questions for registrants (schema 11), a waitlist, Email
 Templates, a Language, no author on public pages (`PROJECT.md` 3).
 > **THE SPANISH HAS NOT BEEN READ BY A SPANISH SPEAKER.** `EMAILS.md` is for that
-> review (`TESTING.md` 3). Nothing is Spanish until an event or series is set to
-> it, so nothing reaches a registrant in it before then.
+> review (`TESTING.md` 3); nothing is Spanish until an event or series is set to it.
 > **A BUILD NEEDS `.claude/fixtures/bylines/people.local.json`**, ignored by git,
 > holding the real name, logins and Windows account; without it the build
 > refuses. `PROJECT.md` 3.
@@ -96,7 +94,8 @@ Earlier releases, and the reasoning for all of it: **`readme.txt` is the changel
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 266 items.** **1.218** first,
+**`TESTING.md` holds the manual testing backlog: 273 items.** **1.225** first,
+that editors have their events, then **1.218**,
 that schema 13 ran, then **2.37**, the old offers moved, then **1.200**, that
 schema 12 ran and no event became waitlist-only, then **1.197**, that
 schema 11 ran, then **1.192**, the byline check on the site, **1.176**, the

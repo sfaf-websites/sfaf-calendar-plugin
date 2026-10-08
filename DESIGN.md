@@ -1023,11 +1023,12 @@ Retaken for 3.107.1 with the series card first in the main column.
 | | Other details (the catch-all: since 3.109.0 only the listing details of a submitted event, and drawn only then) | `other-details` |
 | Side | Links | `links` |
 | | Display | `display` |
-| | Who can edit this (Edit event only) | `access` |
+| | Who can find this event (3.110.0) | `privacy` |
+| | Team and access ("Who can edit this", Edit event only, until 3.110.1; both editors since) | `access` |
 | Foot | The action bar, not a card | `actions` |
 
 **Every card is the standard card**: `--p-border` 1px, 18px padding, 12px
-radius, 16px between cards. The brief placed eleven cards; **Who can edit this
+radius, 16px between cards. The brief placed eleven cards; **Team and access
 was not named and stays last in the side column**, and the catch-all stays last
 in the main one, because it must be the last call that places a field.
 
@@ -1098,8 +1099,8 @@ of the phone's top bar; the action bar is not scrolled, being stuck to the
 window's foot already, so its panel goes above it.
 
 **Steps.** One per `data-uc-card` in the 3.107.1 order (table above) that is
-on the page and drawn, then the action bar: 12 on Add event, 13 on Edit event
-with Who can edit this. The catch-all, Other details, has no step. The bar's
+on the page and drawn, then the action bar: 14 on Add event and on Edit event
+since 3.110.1, with Who can find this event and Team and access on both. The catch-all, Other details, has no step. The bar's
 step is named **Action bar**, the name the brief gave it.
 
 **While it runs** every child of `<body>` but the tour is `inert`, and Tab and
@@ -1262,6 +1263,52 @@ a narrow window, which is what the pass measures.
   (692px wide in 390px) and, inside a closed disclosure, nothing; the cancel
   options it first reported were in Cancel event's closed `<details>`, which the
   probe now skips as unseen.
+
+### The RSVP list's order, Team and access, and Register on another site (3.110.1)
+
+Measured in Chrome by `.claude/release-31101-live.php` at 1280px, 430px and
+390px. Screenshots in `.claude/screens/`: `caladmin-31101-rsvps-desktop`,
+`-wide` and `-phone`, `caladmin-31101-away-desktop` (an event registering
+elsewhere), `caladmin-31101-allevents-desktop` (All events as an editor) and
+`caladmin-31101-edit-desktop`.
+
+**The RSVP list for one event, top to bottom**: the heading and its buttons; the
+"Registrations for this event only" line; the Registration settings panel; the
+Email registrants panel; the one search box; the counts strip; the
+registrations card, whose first row under its heading is the check-in control,
+at the card's left edge, then the table. Nothing runs past the right edge at
+any of the three widths.
+
+- **Email registrants is the Registration settings panel's component**: the
+  same `<details class="uc-card uc-rsvp-settings">`, the same circle chevron,
+  the name in bold over the muted line "Send a message to everyone
+  registered.", the same fill and edge, closed by default, 16px under the
+  settings panel. Its log of sends is inside it, under the form, headed by a
+  `.uc-subhead`.
+- **One search box**, "Search name or email", the page's own GET form, full
+  width. With a script it narrows the rows as you type, by name or by email,
+  and its Search button is hidden (`.uc-filters-bar .uc-btn[hidden]`, because
+  `.uc-btn` sets `display`); with none, the button asks the server.
+
+**Team and access** is a standard side-column card on both editors, last in the
+column: the organizer line, "Calendar admins can open every event.", then two
+fieldsets 12px below it, Teams (up to two ticks, each with its member count in
+`--p-muted`) and People (a list of ticks that scrolls past 260px, on
+`--p-panel` with a 1px `--p-border` and 8px radius), then the notify tick
+under its rule. A contributor sees one muted line naming who else has it.
+
+**Where people register** is the segmented control (`.uc-seg`) above Accept
+RSVPs, "Take registrations here" and "Register on another site", with the
+Registration link box under it only while the second is chosen; everything
+below it in the card is hidden at the same moment. On the RSVP list an event
+registering elsewhere has one `.uc-notice` line with the link. On the event
+page the Register button is the standard primary `.uc-actionbtn`, with the
+external-link treatment the source button already has.
+
+**All events for anybody but an admin** is two tables in one card: their own
+events in the full table, then a Subhead, 16px/600 `--p-text`, "Other events" 20px
+below, and the public table, whose titles are `.uc-tlink` links to the public
+page where there is one. No count column, no action column.
 
 ---
 
