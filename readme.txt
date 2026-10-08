@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.110.1
+Stable tag: 3.110.2
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,24 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.110.2 =
+
+**Email registrants with the team and a copy to the organizer, Users as a table, and the rest of caladmin on a phone.**
+
+**EMAIL REGISTRANTS.** The subject is the message's heading; the message follows as paragraphs, keeping bold, italics and links, then the event's details and See the event page as the button. Bold and Link sit beside the tokens. Include event team sends the same message to everybody Team and access gives the event, team members and people named, once each. The event's organizer always gets one copy, sent with the rest, and no second one when already a recipient. The line after sending counts them apart: "Sent to 12 participants, 5 team members, and a copy to Mark Sapoznikov." The log does the same. Send is the Publish green, with an envelope that slides in on hover and focus, and appears without moving when motion is reduced.
+
+**USERS AND PERMISSIONS.** Calendar users are a table, in last-name order, with a search box: name and email, Role, Approval, their teams as pills, Save and Remove. Save stays off until something in its row changes. Approval and Contributor categories show only for contributors, the only people they apply to; Contributor categories opens under the row. On a phone a person is two lines. In Teams, + Add member is an outlined button and the top paragraph is one sentence.
+
+**A SERIES' DEFAULT TEAM** has "Apply to all upcoming events in this series": upcoming events that set their own Team and access gain the default's teams and people, keeping their own. Events that follow the series already have it.
+
+**THE REST EVENTS FEED** carries no registration count.
+
+**THE TOUR** has its Team and access step after Notifications, with new words.
+
+**ON A PHONE.** The dashboard, events list, pending queue, series list and series, Users and Teams, Images, Venues, Organizers, FAQ Sets, Email Opt-ins, Email Templates, Preferences, the sign-in pages and the tour fit 390px and 430px screens with nothing off the side and every button at least 44px. The events list, the series list, Email Opt-ins and the send logs become one card per row below 600px.
+
+**CHECKED.** The message's heading, paragraphs, bold and link, details and button in that order; the plain-text part giving a link its address; the team's members and named people once each and counted apart; the organizer's single copy, also when on the team or registered. The feed with no count. A series' default team added to upcoming events that set their own, an event following the series untouched, a full event given only the people. In Chrome at 390px and 430px every screen above, and at 1280px the users table: last-name order, every Save off until a change and off again when undone, Approval and categories on contributors only, two lines on a phone, + Add member outlined, and Send green with its envelope, with motion reduced too. Planted and caught: the organizer sent a second copy, a Save on with no change, Contributor categories for an Editor, the count back in the feed, and a table running off a 390px screen.
 
 = 3.110.1 =
 

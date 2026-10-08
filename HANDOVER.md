@@ -4,27 +4,27 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-08, at 3.110.1, released.
+**Last updated:** 2026-10-08, at 3.110.2, released.
 
 ---
 
 ## What shipped last
 
+**3.110.2**: Email registrants with the subject as heading, bold and links, the
+event team and one organizer copy; Users as a table, Approval for contributors
+only; a series' default team applied to upcoming events; no registration count
+in the feed; the rest of caladmin passed on a phone (`TESTING.md` 1.230 to
+1.234, 2.46, 2.47).
 > **3.110.1: EDITORS NO LONGER HAVE EVERY EVENT.** A team decides which events a
 > person has; their level decides what they can do on them (CLAUDE.md 7,
 > `PROJECT.md` 5). An editor has what they created and what **Team and
 > access** gives them, by team or by name, on the event or its series default.
 > Check every editor's My events first: `TESTING.md` **1.225** and **2.44**.
 > Notification teams still grant nothing, on Mark's decision.
-**3.110.1** also: the RSVP list reordered, one search box, Email registrants as
-a panel; **Register on another site**; Email Opt-ins and every event's
-registrations are an admin's alone (`TESTING.md` 1.226 to 1.229, 2.45).
-**3.110.0**: a registration agreement, a text opt-in (nothing sends texts),
-Email registrants, check-in, Schedule for a later date. **Schema 13**.
-> **THE WAITLIST NO LONGER OFFERS** (3.110.0): a place goes straight to the next
-> person. Old offers go back in the queue on the first cron run: `TESTING.md` **2.37**.
-**3.109.0**: private on Add event, the Add and Edit parity rule, passwords in
-caladmin. **3.108.x**: the tour, FAQs folded. (`readme.txt` has the rest.)
+**3.110.1** also: the RSVP list reordered, **Register on another site**, Email
+Opt-ins and every event's registrations an admin's alone.
+**3.110.0**: the agreement, a text opt-in, check-in, scheduling. **Schema 13**.
+> **THE WAITLIST NO LONGER OFFERS** (3.110.0): old offers rejoin the queue, `TESTING.md` **2.37**.
 > **CAPACITY: an empty box is no limit, 0 is no places** (3.107.0); schema 12
 > emptied every stored 0 once: `TESTING.md` **1.200**, `PROJECT.md` 2.
 **3.106.x**: Questions for registrants (schema 11), a waitlist, Email
@@ -94,7 +94,7 @@ Earlier releases, and the reasoning for all of it: **`readme.txt` is the changel
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 273 items.** **1.225** first,
+**`TESTING.md` holds the manual testing backlog: 280 items.** **1.225** first,
 that editors have their events, then **1.218**,
 that schema 13 ran, then **2.37**, the old offers moved, then **1.200**, that
 schema 12 ran and no event became waitlist-only, then **1.197**, that

@@ -5950,30 +5950,43 @@ opted in with "Texts" and counts them at the top. **Nothing sends texts.** The
 column is there for whatever sending is built later, which will also need the
 consent wording reviewed.
 
-### Email registrants (3.110.0)
+### Email registrants (3.110.0; the team and the organizer's copy since 3.110.2)
 
 **One event's RSVP list has a closed "Email registrants" panel**, under the
 Registration settings panel and built from it (3.110.1), with the log of
 sends inside it, for site admins and anybody who can edit that event (the routes ask
 `user_can_edit_event()`): a subject, a body in the Email Templates editor with
 its protected token chips (first name, event title, date, time, location,
-event page link), "Include the waitlist", Preview and Send.
+event page link) and Bold and Link, "Include the waitlist", "Include event
+team", Preview and Send, which is the Publish green.
 
-- **The message is `SFAF_Notifications::build( 'registrant_message' )`**, the
-  standard wrapper and details block in the event's language, the event's
-  Reply-To, through `SFAF_Email::send()`. No images: the body is the
-  paragraphs-and-tokens text the templates use, not rich text.
-- **Who it reaches**: everybody `confirmed` with an email, and everybody waiting
-  when ticked, once per address (`SFAF_Registrant_Mail::recipients()`). A row
-  with no email is sent nothing; the line after Send counts and names them.
+- **The message is `SFAF_Notifications::build( 'registrant_message' )`**: the
+  subject is the heading, the body's paragraphs follow in the body type keeping
+  their bold, italics and links (`rich_intro`, `SFAF_Messages::fill_rich_html()`),
+  then the details block and See the event page as the primary button, in the
+  standard wrapper, in the event's language, with the event's Reply-To, through
+  `SFAF_Email::send()`. **The body keeps `<strong>`, `<em>` and `<a href>` and
+  nothing else** (`SFAF_Registrant_Mail::clean_body()`, `wp_kses`); those tags
+  are rebuilt from scratch for the email, the rest escaped. No images.
+- **Who it reaches, each address once** (`SFAF_Registrant_Mail::plan()`):
+  participants, everybody `confirmed` with an email and everybody waiting when
+  ticked; with "Include event team", every person Team and access gives the
+  event, its teams' members and the people named, with an email and not
+  already a participant; and **the organizer, `post_author`, always, one copy
+  sent with the batch**, not a Cc, and none when they are already one of the
+  above. A row with no email is sent nothing and is named.
+- **The line after Send** counts them apart: "Sent to 12 participants, 5 team
+  members, and a copy to Mark Sapoznikov." (`SFAF_Registrant_Mail::said()`).
 - **Preview** renders the first recipient's message and sends nothing. **Send**
-  asks "Send to N people?" once. A token the message cannot fill is refused
+  asks "Send to N people?" once, N counting every message the two ticks make,
+  the organizer's copy included. A token the message cannot fill is refused
   before either.
 - **The log** is post meta on the event (`_uc_registrant_mail_log`), newest
-  first: who sent, when, the subject and how many it went to, shown in a card
-  under the section.
+  first: who sent, when, the subject, and participants, team members and the
+  organizer's copy apart (a row from 3.110.0 holds only its total).
 - `.claude/registrant-mail-test.php` runs it; plant D.2 takes a row with no
-  email as a recipient.
+  email as a recipient, and plant A.4 (3.110.2) sends the organizer a second
+  copy.
 
 ### Check-in and attendance (3.110.0)
 
@@ -6267,6 +6280,21 @@ its only reader and stopped reading it in 3.109.0. A value already stored in
 `uc_settings` goes the next time Settings is saved, since that option is
 rebuilt wholesale.
 
+### Calendar users, and what Approval is (3.110.2)
+
+**Users and Permissions is a table**, one row a person, alphabetical by last
+name, searched by name or email as you type: Role, Approval, their teams as
+pills, Save and Remove. Each row's controls post to a form of their own by the
+`form` attribute. Save stays off until something in its row changes.
+
+**Approval and Contributor categories apply to contributors and nobody else.**
+`contributor_status()` is asked only for a contributor (an admin's or editor's
+event is published as they save it), and `allowed_categories()` only narrows a
+contributor's choices. So a contributor's row shows both, and anybody else's
+draws them hidden and disabled: they post nothing, and `save_user_role()`
+writes each only when it arrives, so a value set while somebody was a
+contributor waits, unchanged, for them to be one again.
+
 ### Two concepts, deliberately separate
 
 **ACCESS** derives from `manage_options`, asked first, in
@@ -6356,6 +6384,14 @@ notification list. The series screen has a **Default team and access**
   only by somebody who has them all (`can_manage_series_events()`, which asks
   the gate of each); the same check guards the series screen's schedule
   actions and series removal, which write those events.
+- **Apply to all upcoming events in this series** (3.110.2), a tick under the
+  series default: the series' upcoming events that keep their own Team and
+  access gain the default's people and as many of its teams as fit under the
+  two-team limit, keeping what they had (`SFAF_Access::apply_series_to_upcoming()`).
+  An event that follows the series has the default already and is not
+  touched. No other series default has ever offered this: categories,
+  organizers and the FAQ set are copied once on joining and reach only events
+  that join afterwards.
 - **A team named by a series default cannot be deleted**: the refusal names the
   series, beside the existing refusal naming events.
 - **Notification teams grant nothing.** `_uc_notify_teams` stays a separate key
@@ -6546,7 +6582,10 @@ second user, no QA pass, and no automated coverage of the portal.
 
 **Dormant on purpose, not dead:** the satellite REST feed. With no key it
 returns 403, and that reversal is what makes clearing the key a safe way to turn
-it off.
+it off. **It carries no registration count since 3.110.2**: `SFAF_Sync::event_to_array()`
+had `rsvp_count`, nothing read it, and a count is registration data that has
+no business leaving the site. `.claude/team-access-test.php` asserts the payload
+has none (plant C).
 
 What *is* actually proven: the PHP linter and the callable audit run on every
 build (see `CLAUDE.md` §2), and the committed test scripts in `.claude/`: the

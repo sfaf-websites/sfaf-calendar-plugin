@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 273 items.** Quick 226, needs real conditions 43, blocked on other
+**Outstanding: 280 items.** Quick 231, needs real conditions 45, blocked on other
 people 4.
 
 ---
@@ -3217,6 +3217,62 @@ can be reconsidered.
 
 **Why it needs a person:** it is a question for the people who use the screens.
 
+### 1.230 The Users table (3.110.2)
+
+On **Users & Teams**: people are in last-name order and the search box narrows
+them by name or email as you type. Every **Save** is off. Change one person's
+Role: their Save comes on; change it back: off again. A contributor's row shows
+**Approval** and a **Contributor categories** link that opens the ticks under
+the row; an editor's and an admin's row shows neither. Change an editor to
+Contributor: both appear. Save a contributor with Auto-publish, make them an
+Editor and save, then a Contributor again: Auto-publish is still chosen. On a
+phone each person is two lines, name and email, then the controls, with
+nothing cut off. In a team, **+ Add member** is an outlined button.
+
+**Why it needs a person:** real accounts and a real phone.
+
+### 1.231 Email registrants' new panel (3.110.2)
+
+On an event's registrations, open **Email registrants**. Select a word in the
+message and press **B**: it turns bold. Press **Link** and give an address: it
+becomes a link. Tick **Include event team**: the number Send asks about grows.
+**Send** is green; hover it, or Tab to it, and an envelope slides in from the
+left of the word. With the operating system set to reduce motion, the envelope
+appears without sliding.
+
+**Why it needs a person:** a real browser's selection, keyboard focus and
+motion setting.
+
+### 1.232 The tour's Team and access step (3.110.2)
+
+On **Add event** and on **Edit event**, run **Take the tour**. The step after
+Notifications is **Team and access**, reading "Choose the team and any
+individuals who should have access to this event. What they can do depends on
+their level.", and its ring is on the Team and access card in the side column.
+
+**Why it needs a person:** the real editor, which the build draws without
+WordPress.
+
+### 1.233 The rest of caladmin on a real phone (3.110.2)
+
+On a phone, open the dashboard, the events list, Pending, the series list and
+one series, Users & Teams, Images, Venues, Organizers, FAQ Sets, Email Opt-ins,
+Email Templates, Preferences, and sign out to see the sign-in, forgot and reset
+pages. Nothing scrolls sideways. The events list, the series list and Email
+Opt-ins show one card per row, each value under its column's name. Every button
+and summary is easy to press.
+
+**Why it needs a person:** a real phone, with its own font sizes and zoom.
+
+### 1.234 No satellite site reads the feed's registration count (3.110.2)
+
+The REST events feed no longer carries `rsvp_count`. The search that settled
+nothing reads it covered this plugin only. If any other site has ever been set
+up as a satellite with the feed's key, say which, so its copy can be checked
+for the field.
+
+**Why it needs a person:** knowledge of sites outside this repository.
+
 ## 2. Needs real conditionsWaiting for an unattended job to fire, a real removal at source, or a real event
 with real registrations and real mail.
 
@@ -3880,6 +3936,33 @@ Team and access: the next alert links to the registrations.
 
 **Why it needs real conditions:** real mail, and a summary that fires on its
 own schedule.
+
+### 2.46 Email registrants with the team and the organizer's copy, in real inboxes (3.110.2)
+
+On a test event you created, with two registrations at addresses you read and a
+team under Team and access holding a third address you read, write a subject,
+a message with one bold word and one link, tick **Include event team** and
+Send. Each address gets one message: the subject as the heading, the message's
+paragraphs with the bold and the link, the event's details, then **See the
+event page** as a button. You, as the organizer, get one copy, and the line
+after Send says "Sent to 2 participants, 1 team member, and a copy to" your
+name. Register yourself for the event and send again: you get one message, not
+two. Read one in Outlook on Windows and one in Gmail on a phone.
+
+**Why it needs real conditions:** real mail, which cannot be recalled. Use
+addresses you own.
+
+### 2.47 Apply a series' default team to its upcoming events (3.110.2)
+
+In a test series, give one upcoming event a team of its own under Team and
+access. On the series, set a **Default team and access** to a different team,
+tick **Apply to all upcoming events in this series** and save. The notice
+counts the events it added to. The event that had its own team now has both;
+an event that followed the series has the default and was not counted; a past
+event is unchanged.
+
+**Why it needs real conditions:** a real series with real dates either side of
+today.
 
 ## 3. Blocked on other peopleNothing here can move until somebody outside the build answers.
 

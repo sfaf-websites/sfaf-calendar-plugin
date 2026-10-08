@@ -1310,6 +1310,67 @@ events in the full table, then a Subhead, 16px/600 `--p-text`, "Other events" 20
 below, and the public table, whose titles are `.uc-tlink` links to the public
 page where there is one. No count column, no action column.
 
+### The rest of caladmin on a phone, the users table and Send (3.110.2)
+
+Measured in Chrome by `.claude/release-31102-live.php` at 390px and 430px (and
+1280px for the users table and the RSVP list). Every screen below has no
+element past the right edge, no sideways scroll and no tap target under 44px
+at both widths. Screenshots in `.claude/screens/`, each
+`caladmin-31102-<screen>-phone.png` at 390px:
+
+| Screen | Screenshot | What the pass changed |
+|---|---|---|
+| Dashboard | `dashboard-phone` | Get a form link reaches 44px; the next events table is cards |
+| Events list | `events-phone` | the table is cards; the row icons (Duplicate, Remove) and the tick-all reach 44px |
+| Pending queue | `pending-phone` | Publish, Dismiss and Restore reach 44px; the fields summary too |
+| Series list | `serieslist-phone` | the table is cards |
+| A series | `series-phone` | its Copy summary reaches 44px |
+| Users and Teams | `users-phone`, `users-desktop` | the new table; What each access level can do reaches 44px |
+| Images | `images-phone` | nothing needed |
+| Venues | `venues-phone` | Add a venue reaches 44px |
+| Organizers | `organizers-phone` | Add an organizer and each Edit reach 44px |
+| FAQ Sets | `faqsets-phone` | Create a set reaches 44px |
+| Email Opt-ins | `optins-phone` | the table is cards |
+| Email Templates | `templates-phone` | every message and variant in the picker reaches 44px |
+| Preferences | `prefs-phone` | nothing needed |
+| Sign-in, forgot, reset | `signin-phone`, `forgot-phone`, `reset-phone` | Remember me reaches 44px |
+| The RSVP list | `rsvps-phone` | the send log is cards |
+| The tour on Add event | `tour-phone` | the panel inside the screen, its buttons 44px |
+
+There is no Settings screen in caladmin: the plugin's settings are in
+WordPress admin, which WordPress styles.
+
+**Tables as cards.** A table marked `.uc-table-cards` is one card a row below
+600px: no heading row, each value on its own line after its column's name in
+Helper type, `--p-muted`, 96px wide (`data-label`, set by portal.js from the
+heading row), the first cell as the card's title at 16px, a 1px `--p-border`
+between cards. The RSVP list, its waitlist and the users table have layouts of
+their own and are not marked.
+
+**44px, the rest.** Every `summary` in caladmin, `.uc-icon-action` (44 by 44),
+`.uc-link-ok`, `.uc-action-link`, `.uc-tpl-pick`, the events list's tick-all and
+the sign-in's Remember me, under the same `(pointer: coarse), (max-width:
+600px)` query as 3.110.0's block.
+
+**The users table.** One row a person: name over email in Helper `--p-muted`,
+and, on a contributor's row only, a Contributor categories link under them
+that opens a row of category ticks on `--p-bg` below; Role and Approval as the
+standard select; teams as pills at Helper size on `--p-bg` with a 1px
+`--p-border`; Save (`.uc-btn-sm .uc-btn-primary`, at half opacity while off)
+and Remove at the right. A search box, 420px at most, sits above the table.
+Below 600px a row is two lines: who, then the controls, wrapping, nothing cut
+off. **+ Add member** in a team is the outlined control, `.uc-outline-btn`.
+
+**Send in Email registrants** is `.uc-btn-go`, the Publish green. On hover and
+on keyboard focus an envelope (`sfaf_icon( 'mail' )`, 16px) opens in front of
+the label: width 0 to 16px, an 8px gap, opacity 0 to 1 and an 8px slide from
+the left, over 150ms. With `prefers-reduced-motion: reduce` it appears with no
+transition and no slide. Bold and Link sit at the end of the token buttons in
+the same chip style.
+
+**The tour's Team and access step** comes after Notifications on both editors,
+though the card is in the side column.
+
 ---
 
 ## 5. CSS discipline
