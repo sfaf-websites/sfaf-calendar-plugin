@@ -180,6 +180,47 @@ class SFAF_Access {
     }
 
     /**
+     * Give the series default to the series' upcoming events that keep their
+     * own Team and access (3.110.2), so a team added today reaches events made
+     * before it. An event that follows the series already has it and is not
+     * touched. Additive: an event keeps what it had, and gains the default's
+     * people and as many of its teams as fit under MAX_PER_EVENT.
+     *
+     * @return array{updated:int,full:int} full: events with no room for a team.
+     */
+    public static function apply_series_to_upcoming( $series_id ) {
+        $series_id = (int) $series_id;
+        $teams     = self::series_teams( $series_id );
+        $people    = self::series_people( $series_id );
+        $out       = array( 'updated' => 0, 'full' => 0 );
+        if ( ! $series_id || ( ! $teams && ! $people ) ) {
+            return $out;
+        }
+        $ids = SFAF_Series::events( $series_id, array( 'status' => SFAF_Series::editable_statuses(), 'limit' => -1, 'upcoming' => true ) );
+        foreach ( (array) $ids as $id ) {
+            $id = (int) ( is_object( $id ) ? $id->ID : $id );
+            if ( ! self::has_own( $id ) ) {
+                continue;
+            }
+            $own_t = SFAF_Teams::access_for_event( $id );
+            $own_p = self::people( $id );
+            $want_t = array_values( array_unique( array_merge( $own_t, $teams ) ) );
+            $new_t  = array_slice( $want_t, 0, SFAF_Teams::MAX_PER_EVENT );
+            if ( count( $want_t ) > count( $new_t ) ) {
+                $out['full']++;
+            }
+            $new_p = array_values( array_unique( array_merge( $own_p, $people ) ) );
+            sort( $new_p );
+            if ( $new_t === $own_t && $new_p === $own_p ) {
+                continue;
+            }
+            self::set( $id, $new_t, $new_p );
+            $out['updated']++;
+        }
+        return $out;
+    }
+
+    /**
      * The series whose default names this team, for refusing to delete a team
      * that is still giving people events.
      *

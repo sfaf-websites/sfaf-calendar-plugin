@@ -9673,6 +9673,9 @@ class SFAF_Portal {
             return;
         }
         SFAF_Access::set_series( $term_id, $c['teams'], $c['people'] );
+        if ( ! empty( $_POST['series_access_apply'] ) ) {
+            set_transient( 'sfaf_series_access_applied_' . $user->ID, SFAF_Access::apply_series_to_upcoming( $term_id ), 5 * MINUTE_IN_SECONDS );
+        }
     }
 
     private function save_series_agreement( $term_id ) {
@@ -16666,6 +16669,18 @@ class SFAF_Portal {
             <input type="hidden" name="series_access_present" value="1" />
             <span class="uc-field-label">Default team and access</span>
             <p class="uc-hint">Events in this series get these teams and people until an event sets its own.</p>
+            <?php
+            $applied = get_transient( 'sfaf_series_access_applied_' . $user->ID );
+            if ( is_array( $applied ) ) :
+                delete_transient( 'sfaf_series_access_applied_' . $user->ID );
+                ?>
+                <p class="uc-notice" role="status" data-uc-series-access-applied><?php
+                    echo esc_html( sprintf( 'Added to %d upcoming %s that set their own.', (int) $applied['updated'], 1 === (int) $applied['updated'] ? 'event' : 'events' ) );
+                    if ( ! empty( $applied['full'] ) ) {
+                        echo ' ' . esc_html( sprintf( '%d already %s two teams, so only the people were added there.', (int) $applied['full'], 1 === (int) $applied['full'] ? 'has' : 'have' ) );
+                    }
+                ?></p>
+            <?php endif; ?>
             <?php if ( $teams ) : ?>
                 <div class="uc-access-teams" data-uc-access-teams data-uc-access-max="<?php echo (int) SFAF_Teams::MAX_PER_EVENT; ?>">
                     <?php foreach ( $teams as $team ) : ?>
@@ -16686,6 +16701,12 @@ class SFAF_Portal {
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
+            <?php // Upcoming events that set their own get the default too (3.110.2). ?>
+            <label class="uc-check uc-series-access-apply">
+                <input type="checkbox" name="series_access_apply" value="1" data-uc-series-access-apply />
+                Apply to all upcoming events in this series
+            </label>
+            <span class="uc-hint">Events that set their own keep it and gain these teams and people.</span>
         </div>
         <?php
     }

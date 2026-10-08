@@ -102,6 +102,8 @@ function wp_unslash( $v ) { return $v; }
 class SFAF_Series {
     public static function id_for_event( $id ) { return isset( $GLOBALS['series_of'][ (int) $id ] ) ? (int) $GLOBALS['series_of'][ (int) $id ] : 0; }
     public static function all() { return array(); }
+    public static function editable_statuses() { return array( 'publish', 'draft', 'pending', 'future' ); }
+    public static function events( $id, $args = array() ) { return isset( $GLOBALS['series_events'][ (int) $id ] ) ? $GLOBALS['series_events'][ (int) $id ] : array(); }
 }
 
 require_once $root . '/includes/class-sfaf-teams.php';
@@ -359,6 +361,25 @@ $GLOBALS['series_of'][401] = 50;
 update_post_meta( 401, SFAF_Teams::ACCESS_META, array( 'beta' ) );
 expect( 'an older event keeps its own teams over the series default', may( OTHER_TEAM, 401 ), true );
 expect( 'and does not take the series default',                       may( TEAMMATE, 401 ),   false );
+
+/* --- Apply to all upcoming events (3.110.2). ------------------------------ */
+echo "Apply the series default to upcoming events\n";
+make_team( 'gamma', 'Outreach', array( OUTSIDER ) );
+make_event( 600, ORGANIZER ); make_event( 601, ORGANIZER ); make_event( 602, ORGANIZER );
+$GLOBALS['series_of'][600] = 70; $GLOBALS['series_of'][601] = 70; $GLOBALS['series_of'][602] = 70;
+$GLOBALS['series_events'][70] = array( 600, 601, 602 );
+update_post_meta( 600, SFAF_Teams::ACCESS_META, array( 'alpha' ) );           // its own, from before
+SFAF_Access::set( 602, array( 'alpha', 'gamma' ), array() );                    // its own, two teams already
+SFAF_Access::set_series( 70, array( 'beta' ), array( EDITOR ) );
+$res = SFAF_Access::apply_series_to_upcoming( 70 );
+expect( 'D: an event keeping its own gains the default team',         may( OTHER_TEAM, 600 ), true );
+expect( 'D: and keeps its own',                                       may( TEAMMATE, 600 ),   true );
+expect( 'D: and gains the default person',                            may( EDITOR, 600 ),     true );
+expect( 'D: an event following the series has the default anyway',   may( OTHER_TEAM, 601 ), true );
+if ( SFAF_Access::has_own( 601 ) ) { $fails[] = 'D: an event following the series was given a copy instead of following'; }
+expect( 'D: an event with two teams gains the person',                may( EDITOR, 602 ),     true );
+expect( 'D: but no third team',                                       may( OTHER_TEAM, 602 ), false );
+if ( array( 'updated' => 2, 'full' => 1 ) !== $res ) { $fails[] = 'D: apply reported ' . json_encode( $res ) . ', wanted 2 updated and 1 full'; }
 
 /* --- Notification teams grant nothing. ----------------------------------- */
 SFAF_Teams::set_for_event( 200, array( 'alpha' ) );
