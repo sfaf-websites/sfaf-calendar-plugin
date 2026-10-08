@@ -34,6 +34,8 @@
     var currentEventId = null;
     var currentFormats = '';   // the opened button's data-uc-formats (3.102.0)
     var currentEmailRequired = false; // the opened button's data-uc-email-required (3.106.0)
+    var currentAgreement = null;      // the opened button's data-uc-agreement, parsed (3.110.0)
+    var agreedNow = false;            // Confirm RSVP pressed for this submit (3.110.0)
     var currentFull = [];      // the formats with no place left: the waitlist (3.106.0)
 
     /**
@@ -1598,7 +1600,14 @@
                         // and an international number, a country code or an
                         // extension is kept exactly as entered.
                         '<div><label for="uc-rsvp-phone">Phone (optional)</label>' +
-                            '<input type="tel" id="uc-rsvp-phone" autocomplete="tel" placeholder="(555) 000-0000" /></div>' +
+                            '<input type="tel" id="uc-rsvp-phone" autocomplete="tel" placeholder="(555) 000-0000" />' +
+                            // TEXT ME ABOUT THIS EVENT (3.110.0): off, and only once a
+                            // number is typed. Its words are the event's language,
+                            // from the button. Nothing sends texts yet.
+                            '<label class="uc-rsvp-optin uc-rsvp-texts" id="uc-rsvp-text-wrap" hidden>' +
+                                '<input type="checkbox" id="uc-rsvp-text" value="1" />' +
+                                '<span id="uc-rsvp-text-label">Text me about this event</span>' +
+                            '</label></div>' +
                         // SEPARATE FROM THE RSVP, AND NEVER PRE-TICKED.
                         // Registering for an event is not consent to a mailing
                         // list, so this is its own decision and it starts off.
@@ -1678,6 +1687,12 @@
             currentFormats = ($(this).attr('data-uc-formats') || '');
             currentEmailRequired = ($(this).attr('data-uc-email-required') === '1');
             currentFull = ($(this).attr('data-uc-full') || '').split(',').filter(Boolean);
+            currentAgreement = null;
+            agreedNow = false;
+            try { currentAgreement = JSON.parse($(this).attr('data-uc-agreement') || 'null'); } catch (err) { currentAgreement = null; }
+            $('#uc-rsvp-text-label').text($(this).attr('data-uc-text-label') || 'Text me about this event');
+            $('#uc-rsvp-text').prop('checked', false);
+            $('#uc-rsvp-text-wrap').attr('hidden', 'hidden');
 
             // Reset form. The opt-in is cleared with everything else: it must
             // never carry a previous visitor's tick into a fresh form.
@@ -1711,8 +1726,20 @@
             closeModal();
         });
         $(document).on('keydown', function(e) {
-            if (e.key === 'Escape') closeModal();
+            if (e.key === 'Escape' && !agreementOpen()) closeModal();
         });
+
+        // The text opt-in shows once a number is typed, and goes, unticked, when it is cleared.
+        $(document).on('input', '#uc-rsvp-phone', function () {
+            if ($(this).val().trim()) {
+                $('#uc-rsvp-text-wrap').removeAttr('hidden');
+            } else {
+                $('#uc-rsvp-text').prop('checked', false);
+                $('#uc-rsvp-text-wrap').attr('hidden', 'hidden');
+            }
+        });
+
+        initAgreement();
 
         // The no-email box, and a format choice that can take it away.
         $(document).on('change', '#uc-rsvp-noemail, #uc-rsvp-format input[type="radio"]', function () {
@@ -1735,6 +1762,92 @@
     function closeModal() {
         closeOverlay(modal);
         currentEventId = null;
+    }
+
+    /* ---------------------------------------------------------------------
+     * THE REGISTRATION AGREEMENT (3.110.0)
+     *
+     * A second modal <dialog>, over the RSVP form, opened by Register Now when
+     * the event asks: the agreement as the event wrote it, the tick, Confirm
+     * RSVP (off until the tick is on) and Cancel. The words come from the
+     * button, in the event's language. A modal dialog is announced as one and
+     * makes the page behind it inert; Tab is also kept inside by hand, as the
+     * editor's tour does. Esc or Cancel closes it with nothing sent and puts
+     * focus back on Register Now. Confirm closes it and sends the form as
+     * today, with agreed=1, which the server checks.
+     * ------------------------------------------------------------------ */
+    function agreementOpen() {
+        var d = document.getElementById('uc-agree');
+        return !!(d && d.open);
+    }
+
+    function initAgreement() {
+        if (document.getElementById('uc-agree')) { return; }
+        $('body').append(
+            '<dialog class="uc-rsvp-modal-overlay uc-agree-dialog" id="uc-agree" aria-labelledby="uc-agree-heading" aria-describedby="uc-agree-text">' +
+                '<div class="uc-rsvp-modal uc-agree">' +
+                    '<h3 id="uc-agree-heading"></h3>' +
+                    '<div class="uc-agree-text" id="uc-agree-text"></div>' +
+                    '<label class="uc-rsvp-optin uc-agree-tick" for="uc-agree-tick">' +
+                        '<input type="checkbox" id="uc-agree-tick" value="1" />' +
+                        '<span id="uc-agree-tick-label"></span>' +
+                    '</label>' +
+                    '<div class="uc-agree-actions">' +
+                        '<button type="button" class="uc-rsvp-submit" id="uc-agree-confirm" disabled></button>' +
+                        '<button type="button" class="uc-rsvp-cancel" id="uc-agree-cancel"></button>' +
+                    '</div>' +
+                '</div>' +
+            '</dialog>'
+        );
+        $(document).on('change', '#uc-agree-tick', function () {
+            $('#uc-agree-confirm').prop('disabled', !this.checked);
+        });
+        $(document).on('click', '#uc-agree-cancel', function () { closeAgreement(); });
+        $(document).on('click', '#uc-agree-confirm', function () {
+            if (!$('#uc-agree-tick').is(':checked')) { return; }
+            agreedNow = true;
+            closeAgreement();
+            submitRSVP();
+        });
+        var d = document.getElementById('uc-agree');
+        // A press on the dim, outside the panel, is Cancel too.
+        d.addEventListener('click', function (e) { if (e.target === d) { closeAgreement(); } });
+        // The browser's own Esc fires cancel on a modal dialog: handled as Cancel.
+        d.addEventListener('cancel', function (e) { e.preventDefault(); closeAgreement(); });
+        d.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeAgreement(); return; }
+            if (e.key !== 'Tab') { return; }
+            var list = Array.prototype.filter.call(d.querySelectorAll('input, button'), function (el) { return !el.disabled; });
+            var at = list.indexOf(document.activeElement);
+            e.preventDefault();
+            if (!list.length) { return; }
+            if (at < 0) { list[0].focus(); return; }
+            list[(at + (e.shiftKey ? list.length - 1 : 1)) % list.length].focus();
+        });
+    }
+
+    function openAgreement() {
+        var a = currentAgreement || {};
+        $('#uc-agree-heading').text(a.heading || '');
+        $('#uc-agree-text').html(a.text || '');
+        $('#uc-agree-tick-label').text(a.tick || '');
+        $('#uc-agree-confirm').text(a.confirm || '').prop('disabled', true);
+        $('#uc-agree-cancel').text(a.cancel || '');
+        $('#uc-agree-tick').prop('checked', false);
+        var d = document.getElementById('uc-agree');
+        if (typeof d.showModal === 'function') { if (!d.open) { d.showModal(); } } else { d.setAttribute('open', ''); }
+        $(d).addClass('active');
+        document.getElementById('uc-agree-tick').focus();
+    }
+
+    function closeAgreement() {
+        var d = document.getElementById('uc-agree');
+        if (d) {
+            $(d).removeClass('active');
+            if (typeof d.close === 'function') { if (d.open) { d.close(); } } else { d.removeAttribute('open'); }
+        }
+        var back = document.getElementById('uc-rsvp-submit-btn');
+        if (back) { back.focus(); }
     }
 
     /**
@@ -2027,6 +2140,13 @@
             return;
         }
 
+        // THE AGREEMENT (3.110.0): asked once everything else is filled in.
+        // Confirm RSVP sets agreedNow and calls this again.
+        if (currentAgreement && !agreedNow) {
+            openAgreement();
+            return;
+        }
+
         var btn = $('#uc-rsvp-submit-btn');
         btn.prop('disabled', true).text('Submitting...');
         $('#uc-rsvp-error').hide();
@@ -2050,7 +2170,10 @@
                 // Answers to the event's questions (3.106.2). Checked again
                 // on the server, required ones included.
                 answers:      JSON.stringify(qa.answers),
-                answers_more: JSON.stringify(qa.more)
+                answers_more: JSON.stringify(qa.more),
+                // Confirm RSVP was pressed in the agreement dialog (3.110.0).
+                agreed:       agreedNow ? '1' : '',
+                text_opt_in:  (phone && $('#uc-rsvp-text').is(':checked')) ? '1' : ''
             },
             success: function(response) {
                 if (response.success) {
@@ -2063,7 +2186,7 @@
                      */
                     if (response.waitlisted) {
                         $('#uc-rsvp-success-msg').text('You are on the waitlist.');
-                        $('#uc-rsvp-success-sub').text('You are number ' + response.position + '. If a place opens, we will offer it to you.');
+                        $('#uc-rsvp-success-sub').text('You are number ' + response.position + '. If a place opens, we will register you and email your confirmation.');
                         response.gcal = '';
                         response.ics = '';
                     } else if (response.first_name) {

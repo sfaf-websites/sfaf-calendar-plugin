@@ -1,0 +1,142 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="../public/css/calendar.css"><style>*,*::before,*::after,::backdrop{transition:none!important;animation:none!important}</style></head><body style="margin:0;background:#fff"><div class="uc-single"><div class="uc-single-inner"><div class="uc-single-grid"><div class="uc-single-main"><h1>Harm reduction walk</h1></div><aside class="uc-single-sidebar"><div class="uc-single-card">    <div class="uc-card-rsvp">
+                    <div class="uc-capacity-bar">
+                <div class="uc-capacity-fill" style="width: 0%"></div>
+            </div>
+            <span class="uc-capacity-text">0/20 spots filled</span>
+                <button class="uc-actionbtn uc-actionbtn-primary uc-rsvp-btn" type="button" data-event-id="504" data-event-title="Harm reduction walk" data-uc-formats="in_person" data-uc-email-required="0" data-uc-questions="" data-uc-agreement="{&quot;text&quot;:&quot;&lt;p&gt;Photos and video are taken at this event and may appear on sfaf.org.&lt;\/p&gt;&lt;p&gt;Wear closed shoes.&lt;\/p&gt;&quot;,&quot;heading&quot;:&quot;Before you register&quot;,&quot;tick&quot;:&quot;I have read and agree to the event conditions&quot;,&quot;confirm&quot;:&quot;Confirm RSVP&quot;,&quot;cancel&quot;:&quot;Cancel&quot;}" data-uc-text-label="Text me about this event" data-uc-full=""><span class="uc-actionbtn-label">RSVP</span><span class="uc-actionbtn-arrow" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-arrow" width="15px" height="15px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4.5 12h14"/><path d="m12.5 6 6 6-6 6"/></svg></span></button>    </div>
+    </div></aside></div></div></div><script src="vendor/jquery-3.7.1.min.js"></script><script>window.ucData={ajaxUrl:"",nonce:"n"};</script><script src="../public/js/calendar.js"></script><script>window.RV_SHOT=1;window.RV_PAGE="public-desktop";(function () {
+var P = window.RV_PAGE, out = { page: P, errors: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function q(s, r) { return (r || document).querySelector(s); }
+function qa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function text(el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }
+function shut(el) { var d = el.closest('details:not([open])'); return !!d && !(el.tagName === 'SUMMARY' && el.parentNode === d) && !(el.closest('summary') && el.closest('summary').parentNode === d); }
+function seen(el) { if (!el || !el.getClientRects().length || shut(el)) { return false; } var cs = getComputedStyle(el); return cs.visibility !== 'hidden' && cs.display !== 'none' && +cs.opacity !== 0; }
+function rect(el) { if (!el) { return null; } var r = el.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom), w: Math.round(r.width), h: Math.round(r.height) }; }
+function name(el) { return (el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).join('.') : '') + (el.name ? '[' + el.name + ']' : '') + ' "' + (text(el) || el.getAttribute('aria-label') || el.value || '').slice(0, 30) + '"'); }
+/* H: everything a thumb presses, inside root, that is under 44px tall. */
+function small(root) {
+  var bad = [];
+  qa('button, select, textarea, summary, input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), label', root).forEach(function (el) {
+    if (!seen(el)) { return; }
+    if (el.tagName === 'LABEL' && !q('input[type="checkbox"], input[type="radio"]', el)) { return; }
+    if (el.closest('.uc-tpl-editor, [hidden], .uc-tour, #uc-sidebar')) { return; }
+    var r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) { return; }
+    var h = r.height, a = getComputedStyle(el, '::after');
+    if (a.content !== 'none' && a.position === 'absolute') { h = r.height - parseFloat(a.top) - parseFloat(a.bottom); }
+    if (Math.round(h) < 44) { bad.push(name(el) + ' ' + Math.round(r.height) + 'px'); }
+  });
+  return bad;
+}
+/* H: anything poking past the right edge of the screen. */
+function past() {
+  var w = document.documentElement.clientWidth, bad = [];
+  qa('main *, .uc-portal-main *, .uc-single *, dialog *').forEach(function (el) {
+    if (!seen(el) || el.closest('[hidden]')) { return; }
+    var r = el.getBoundingClientRect();
+    if (r.width && r.right > w + 1) { bad.push(name(el) + ' right ' + Math.round(r.right)); }
+  });
+  return bad.slice(0, 8);
+}
+function finish() { out.pageWidth = document.documentElement.scrollWidth; window.parent.postMessage(JSON.stringify(out), '*'); }
+var phone = window.innerWidth < 600;
+
+window.addEventListener('load', function () { setTimeout(function () {
+  /* ---- B and C: the event page. ---- */
+  var reg = q('.uc-rsvp-btn');
+  if (reg && window.jQuery) {
+    var sent = [];
+    jQuery.ajax = function (o) { sent.push(o && o.data ? o.data : null); return { done: function () { return this; }, fail: function () { return this; } }; };
+    reg.click();
+    jQuery('#uc-rsvp-first-name').val('Lee');
+    jQuery('#uc-rsvp-last-name').val('Ramirez');
+    jQuery('#uc-rsvp-email').val('lee@example.org');
+    out.textBefore = seen(q('#uc-rsvp-text-wrap'));
+    var ph = q('#uc-rsvp-phone');
+    if (ph) { ph.value = '(415) 555-0199'; ph.dispatchEvent(new Event('input', { bubbles: true })); }
+    out.textAfter = seen(q('#uc-rsvp-text-wrap'));
+    out.textLabel = text(q('#uc-rsvp-text-label'));
+    var tb = q('#uc-rsvp-text'); if (tb) { tb.checked = true; }
+    q('#uc-rsvp-submit-btn').click();
+    var d = q('#uc-agree');
+    out.formHeading = text(q('#uc-rsvp-heading'));
+    out.dialog = d ? { open: d.open, modal: d.matches(':modal'), heading: text(q('#uc-agree-heading')), body: text(q('#uc-agree-text')),
+      tick: text(q('#uc-agree-tick-label')), confirm: text(q('#uc-agree-confirm')), cancel: text(q('#uc-agree-cancel')),
+      confirmOff: q('#uc-agree-confirm').disabled, focus: document.activeElement ? document.activeElement.id : '',
+      labelledby: d.getAttribute('aria-labelledby'), sentWhileOpen: sent.length, box: rect(q('.uc-agree', d)) } : null;
+    if (d && d.open) {
+      out.dialogSmall = small(d);
+      out.dialogPast = past();
+      /* Tab stays inside. */
+      var inside = [];
+      for (var i = 0; i < 4; i++) { d.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true })); inside.push(d.contains(document.activeElement)); }
+      out.tabInside = inside.every(Boolean);
+      if (window.RV_SHOT) { finish(); return; }
+      d.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      out.afterEsc = { open: d.open, sent: sent.length, focus: document.activeElement ? document.activeElement.id : '' };
+      q('#uc-rsvp-submit-btn').click();
+      var t = q('#uc-agree-tick'); t.checked = true; t.dispatchEvent(new Event('change', { bubbles: true }));
+      out.confirmOnAfterTick = !q('#uc-agree-confirm').disabled;
+      q('#uc-agree-confirm').click();
+      out.afterConfirm = { open: d.open, sent: sent.length, agreed: sent.length ? sent[sent.length - 1].agreed : null, text: sent.length ? sent[sent.length - 1].text_opt_in : null };
+    } else {
+      out.sentNoDialog = sent.length ? { agreed: sent[0].agreed, text: sent[0].text_opt_in } : null;
+    }
+    out.small = small(q('.uc-rsvp-modal-overlay.active') || document);
+    finish(); return;
+  }
+
+  /* ---- caladmin ---- */
+  var priv = q('[data-uc-card="privacy"]');
+  if (priv) {
+    var display = q('[data-uc-card="display"]');
+    var hd = q('h2, h3', priv) ? q('h2, h3', priv).cloneNode(true) : null;
+    if (hd) { qa('button, .uc-help-body', hd).forEach(function (n) { n.remove(); }); }
+    out.privacy = { heading: text(hd), tick: !!q('input[name="uc_private"][type="checkbox"]', priv), afterDisplay: !!display && display.nextElementSibling === priv,
+      link: q('[data-uc-private-link]', priv) ? q('[data-uc-private-link]', priv).value : null, readonly: !!q('[data-uc-private-link][readonly]', priv),
+      copy: text(q('[data-uc-copy]', priv)), help: text(q('.uc-help, .uc-card-help, p', priv)) };
+    var cb = q('[data-uc-copy]', priv);
+    if (cb) {
+      try { Object.defineProperty(navigator, 'clipboard', { value: { writeText: function () { return Promise.resolve(); } }, configurable: true }); } catch (e) {}
+      cb.click();
+    }
+  }
+  var rows = qa('[data-uc-rsvp-row]');
+  if (rows.length || q('[data-uc-attendance-form], form [name="attendance"]')) {
+    var strip = q('.uc-rsvp-counts');
+    out.counts = strip ? text(strip) : null;
+    out.rows = rows.map(function (r) {
+      var nm = q('td:nth-child(2)', r), b = q('[data-uc-checkin]', r);
+      return { name: r.getAttribute('data-uc-rsvp-name'), texts: !!q('[data-uc-texts-mark]', r), btn: b ? text(b) : null,
+        nameBox: rect(nm), btnBox: rect(b), rowBox: rect(r), others: qa('.uc-rsvp-actions button:not([data-uc-checkin])', r).map(function (o) { return rect(o).h; }) };
+    });
+    var mail = q('details.uc-registrant-mail');
+    out.mail = mail ? { open: mail.open, summary: text(q('summary', mail)), log: qa('[data-uc-rm-log] tbody tr').length, send: !!q('[data-uc-confirm]', mail) } : null;
+    var seg = qa('.uc-seg-opt-btn').map(function (b) { return text(b) + (b.getAttribute('aria-pressed') === 'true' || b.classList.contains('is-on') ? '*' : ''); });
+    out.mode = seg;
+    out.attend = q('input[name="attendance"]') ? { value: q('input[name="attendance"]').value, save: text(q('button[type="submit"]', q('input[name="attendance"]').form)) } : null;
+    /* Check in, with the server's answer stood in for. */
+    window.fetch = function () { return Promise.resolve({ json: function () { return { success: true, data: { checked: true, label: 'Checked in 6:05 pm', count: 2 } }; } }); };
+    var first = qa('[data-uc-checkin-form]').filter(function (f) { return text(q('[data-uc-checkin]', f)) === 'Check in'; })[0];
+    if (first) { first.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })); }
+    var filter = q('[data-uc-rsvp-filter]');
+    out.filter = !!filter;
+    setTimeout(function () {
+      out.afterCheckin = first ? text(q('[data-uc-checkin]', first)) : null;
+      out.countAfter = text(q('[data-uc-checked-count]'));
+      if (filter) { filter.value = 'ben'; filter.dispatchEvent(new Event('input', { bubbles: true })); out.filtered = qa('[data-uc-rsvp-row]').filter(function (r) { return !r.hidden; }).map(function (r) { return r.getAttribute('data-uc-rsvp-name'); }); filter.value = ''; filter.dispatchEvent(new Event('input', { bubbles: true })); }
+      out.small = phone ? small(q('.uc-portal-main') || document) : [];
+      out.past = phone ? past() : [];
+      finish();
+    }, 50);
+    return;
+  }
+  setTimeout(function () {
+    if (priv) { out.copied = text(q('[data-uc-copy]', priv)); }
+    out.small = phone ? small(q('.uc-portal-main') || document) : [];
+    out.past = phone ? past() : [];
+    finish();
+  }, 50);
+}, 600); });
+})();</script></body></html>

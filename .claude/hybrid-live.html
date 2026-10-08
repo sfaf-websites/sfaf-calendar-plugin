@@ -237,7 +237,229 @@ function ucDismissOnBackdrop(dialog) {
         run('descImages', initDescImages);
         run('videoPreview', initVideoPreview);
         run('editorTour', initEditorTour);
+        run('copyButtons', initCopyButtons);
+        run('schedule', initSchedule);
+        run('agreement', initAgreementSection);
+        run('registrantMail', initRegistrantMail);
+        run('checkin', initCheckin);
+        run('rsvpFilter', initRsvpFilter);
     });
+
+    /* ---------------------------------------------------------------------
+     * EMAIL REGISTRANTS (3.110.0). The Email Templates editor with its chips;
+     * "Include the waitlist" changes the number Send asks about; Preview asks
+     * the server for the real message for the first person it would reach and
+     * shows it as it will arrive. Send is the form's own submit, through the
+     * one confirm every confirm in caladmin goes through.
+     * ------------------------------------------------------------------ */
+    function initRegistrantMail() {
+        document.querySelectorAll('[data-uc-rm-form]').forEach(function (form) {
+            var labels = {};
+            try { labels = JSON.parse(form.getAttribute('data-uc-rm-tokens') || '{}') || {}; } catch (e) { labels = {}; }
+            var chips = chipEditors(form, form, labels);
+            form.addEventListener('submit', chips.syncAll);
+
+            var tick = form.querySelector('[data-uc-rm-waitlist]');
+            var send = form.querySelector('[data-uc-rm-send]');
+            function confirmText() {
+                var n = parseInt(form.getAttribute(tick && tick.checked ? 'data-uc-rm-to-wait' : 'data-uc-rm-to'), 10) || 0;
+                if (send) { send.setAttribute('data-uc-confirm', 'Send to ' + n + (1 === n ? ' person?' : ' people?')); }
+            }
+            if (tick) { tick.addEventListener('change', confirmText); }
+            confirmText();
+
+            var btn = form.querySelector('[data-uc-rm-preview]');
+            var box = form.querySelector('[data-uc-rm-preview-box]');
+            var err = form.querySelector('[data-uc-rm-error]');
+            if (!btn || !box || !window.fetch) { return; }
+            btn.addEventListener('click', function () {
+                chips.syncAll();
+                var body = new URLSearchParams();
+                body.append('uc_action', 'registrant_mail_preview');
+                body.append('uc_nonce', form.getAttribute('data-uc-rm-preview-nonce') || '');
+                ['event_id', 'rm_subject', 'rm_body'].forEach(function (n) {
+                    var f = form.querySelector('[name="' + n + '"]');
+                    body.append(n, f ? f.value : '');
+                });
+                body.append('rm_waitlist', tick && tick.checked ? '1' : '');
+                if (err) { err.hidden = true; }
+                btn.disabled = true;
+                fetch(form.getAttribute('data-uc-rm-url'), {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                    body: body.toString()
+                }).then(function (res) { return res.json(); }).then(function (json) {
+                    btn.disabled = false;
+                    if (!json || !json.success) {
+                        if (err) { err.textContent = (json && json.data && json.data.message) || 'The preview could not be made.'; err.hidden = false; }
+                        box.hidden = true;
+                        return;
+                    }
+                    box.querySelector('[data-uc-rm-preview-to]').textContent = 'As ' + json.data.to + ' will get it.';
+                    box.querySelector('[data-uc-rm-preview-subject]').textContent = json.data.subject;
+                    box.querySelector('[data-uc-rm-preview-frame]').setAttribute('srcdoc', json.data.html);
+                    box.hidden = false;
+                }).catch(function () {
+                    btn.disabled = false;
+                    if (err) { err.textContent = 'The preview could not be made.'; err.hidden = false; }
+                });
+            });
+        });
+    }
+
+    /* ---------------------------------------------------------------------
+     * CHECK IN BY NAME (3.110.0). Each Check in is a real form, and posts
+     * normally with no script. Here it is sent in the background, so a list
+     * being worked through at the door keeps its place and its search: the
+     * button says "Checked in [time]", or "Check in" again on a second press,
+     * and the count above follows.
+     * ------------------------------------------------------------------ */
+    function initCheckin() {
+        var count = document.querySelector('[data-uc-checked-count]');
+        document.querySelectorAll('[data-uc-checkin-form]').forEach(function (form) {
+            var btn = form.querySelector('[data-uc-checkin]');
+            if (!btn || !window.fetch) { return; }
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                if (btn.disabled) { return; }
+                btn.disabled = true;
+                var body = new URLSearchParams(new FormData(form));
+                body.append('uc_ajax', '1');
+                fetch(form.getAttribute('action'), {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                    body: body.toString()
+                }).then(function (res) { return res.json(); }).then(function (json) {
+                    btn.disabled = false;
+                    if (!json || !json.success) { return; }
+                    btn.textContent = json.data.label;
+                    btn.setAttribute('aria-pressed', json.data.checked ? 'true' : 'false');
+                    if (count) { count.textContent = String(json.data.count); }
+                }).catch(function () { btn.disabled = false; form.submit(); });
+            });
+        });
+    }
+
+    /* ---------------------------------------------------------------------
+     * FIND BY NAME (3.110.0): the RSVP list's rows narrowed to the names
+     * containing what is typed, a row's Details going with it.
+     * ------------------------------------------------------------------ */
+    function initRsvpFilter() {
+        var input = document.querySelector('[data-uc-rsvp-filter]');
+        if (!input) { return; }
+        input.addEventListener('input', function () {
+            var q = input.value.replace(/\s+/g, ' ').trim().toLowerCase();
+            document.querySelectorAll('[data-uc-rsvp-row]').forEach(function (row) {
+                var hit = !q || (row.getAttribute('data-uc-rsvp-name') || '').indexOf(q) > -1;
+                row.hidden = !hit;
+                var next = row.nextElementSibling;
+                if (next && next.classList.contains('uc-rsvp-details') && !hit) { next.hidden = true; }
+            });
+        });
+    }
+
+    /* ---------------------------------------------------------------------
+     * THE REGISTRATION AGREEMENT IN THE EDITOR (3.110.0). The text box shows
+     * while "Ask registrants to agree" is ticked. Until the event has text of
+     * its own, the box follows the series dropdown, showing that series'
+     * default; the save stores the box as the event's own only when it
+     * differs from the series text. With no script the box always shows.
+     * ------------------------------------------------------------------ */
+    function initAgreementSection() {
+        document.querySelectorAll('[data-uc-agreement]').forEach(function (box) {
+            var tick = box.querySelector('[data-uc-agreement-on]');
+            var body = box.querySelector('[data-uc-agreement-body]');
+            var area = box.querySelector('textarea');
+            if (!tick || !body) { return; }
+            var series = {};
+            try { series = JSON.parse(box.getAttribute('data-uc-agreement-series') || '{}') || {}; } catch (e) { series = {}; }
+            var own = '1' === box.getAttribute('data-uc-agreement-own');
+            var shown = area ? area.value : '';
+            function apply() { body.hidden = !tick.checked; }
+            function current() {
+                if (area && area.id && window.tinymce && tinymce.get(area.id)) { return tinymce.get(area.id).getContent(); }
+                return area ? area.value : '';
+            }
+            function write(html) {
+                if (!area) { return; }
+                area.value = html;
+                if (area.id && window.tinymce && tinymce.get(area.id)) { tinymce.get(area.id).setContent(html); }
+                shown = html;
+            }
+            tick.addEventListener('change', apply);
+            var select = (box.closest('form') || document).querySelector('[data-uc-series-select]') || document.querySelector('[data-uc-series-select]');
+            if (select && area) {
+                select.addEventListener('change', function () {
+                    // Text somebody typed for this event stays.
+                    if (own || current() !== shown) { own = true; return; }
+                    write(series[String(select.value)] || '');
+                });
+            }
+            apply();
+        });
+    }
+
+    /* ---------------------------------------------------------------------
+     * SCHEDULE FOR A LATER DATE (3.110.0). The tick shows the date and time
+     * beside it and turns Publish into Schedule; unticked, both go and the
+     * button says Publish again. The server decides what the press does,
+     * from the tick, so this only keeps the words true.
+     * ------------------------------------------------------------------ */
+    function initSchedule() {
+        document.querySelectorAll('[data-uc-schedule]').forEach(function (box) {
+            var tick = box.querySelector('[data-uc-schedule-on]');
+            var when = box.querySelector('[data-uc-schedule-when]');
+            var bar = box.closest('[data-uc-editor-bar]') || document;
+            var btn = bar.querySelector('[data-uc-publish-btn]');
+            if (!tick || !when) { return; }
+            function apply() {
+                when.hidden = !tick.checked;
+                if (btn) { btn.textContent = tick.checked ? 'Schedule' : 'Publish'; }
+            }
+            tick.addEventListener('change', apply);
+            apply();
+        });
+    }
+
+    /* ---------------------------------------------------------------------
+     * COPY (3.110.0). A button naming a read-only box by id copies the box's
+     * text, says "Copied" on itself and in a status region for a screen
+     * reader, and goes back to "Copy" after two seconds. The clipboard API
+     * where the page is allowed it, selecting the text and execCommand where
+     * it is not; either way the box's text is left selected, so a refusal
+     * still leaves it one keystroke from copied.
+     * ------------------------------------------------------------------ */
+    function initCopyButtons() {
+        document.querySelectorAll('[data-uc-copy]').forEach(function (btn) {
+            var box = document.getElementById(btn.getAttribute('data-uc-copy'));
+            if (!box) { return; }
+            var said = btn.parentNode ? btn.parentNode.querySelector('[data-uc-copy-said]') : null;
+            var label = btn.textContent;
+            var timer = 0;
+            function done() {
+                btn.textContent = 'Copied';
+                btn.setAttribute('data-uc-copied', '');
+                if (said) { said.textContent = 'Copied'; }
+                if (timer) { window.clearTimeout(timer); }
+                timer = window.setTimeout(function () {
+                    btn.textContent = label;
+                    btn.removeAttribute('data-uc-copied');
+                    if (said) { said.textContent = ''; }
+                }, 2000);
+            }
+            btn.addEventListener('click', function () {
+                box.focus();
+                box.select();
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(box.value).then(done, function () {
+                        try { if (document.execCommand('copy')) { done(); } } catch (e) { /* the text stays selected */ }
+                    });
+                    return;
+                }
+                try { if (document.execCommand('copy')) { done(); } } catch (e) { /* the text stays selected */ }
+            });
+        });
+    }
 
     /* =====================================================================
      * THE EVENT EDITOR'S TOUR (3.108.0)
@@ -5282,40 +5504,22 @@ function ucDismissOnBackdrop(dialog) {
     }
 
     /* ---------------------------------------------------------------------
-     * THE EMAIL TEMPLATES SCREEN (3.106.0).
+     * EDITORS WITH TOKEN CHIPS (3.106.0; shared since 3.110.0).
      *
-     * Every preview arrives rendered, by the builder that sends, in the JSON
-     * block; picking a message or a language only swaps which one is shown,
-     * so nothing is drawn here that the server did not draw.
+     * Every textarea in form carrying data-uc-tpl-text gets a contenteditable
+     * editor beside it; the textarea stays the real field, hidden, written on
+     * every change and before the form is sent, so with no script the boxes
+     * are what somebody edits. Tokens are contenteditable=false chips that
+     * cannot be typed over: typing while a selection holds a chip is refused,
+     * and Backspace or Delete next to a chip marks it first and removes it on
+     * the second press. The buttons in scope carrying data-uc-tpl-token insert
+     * a chip where the cursor was. labels: token => the words on its chip.
      *
-     * THE TOKENS ARE CHIPS THAT CANNOT BE TYPED OVER OR DELETED BY ACCIDENT.
-     * Each is a contenteditable=false span. Typing while a selection holds a
-     * chip is refused; Backspace or Delete next to a chip marks it first and
-     * removes it only on the second press. The text boxes underneath stay the
-     * real fields: each editor writes its text, with {tokens}, back into its
-     * box on every change and before the form is sent, and with no script the
-     * boxes are what somebody edits.
-     * ------------------------------------------------------------------- */
-    function initEmailTemplates() {
-        var root = document.querySelector('[data-uc-tpl]');
-        var node = root ? root.querySelector('[data-uc-tpl-data]') : null;
-        if (!root || !node) { return; }
-        var data;
-        try {
-            data = JSON.parse(node.textContent || '{}');
-        } catch (e) {
-            return;
-        }
-        var state = {
-            key: root.getAttribute('data-uc-tpl-key'),
-            variant: root.getAttribute('data-uc-tpl-variant'),
-            lang: (root.querySelector('[data-uc-tpl-lang]') || {}).value || 'en'
-        };
-        var form = root.querySelector('[data-uc-tpl-form]');
-        var preview = root.querySelector('[data-uc-tpl-preview]');
-        var subjectOut = root.querySelector('[data-uc-tpl-subject]');
-        var stateOut = root.querySelector('[data-uc-tpl-state]');
-        var editBtn = root.querySelector('[data-uc-tpl-edit]');
+     * Used by the Email Templates screen and by Email registrants on the RSVP
+     * list. Returns the editors by field name, fill(editor, text) and
+     * sync(name).
+     * ------------------------------------------------------------------ */
+    function chipEditors(scope, form, labels) {
         var editors = {};
         var lastEditor = null;
 
@@ -5324,7 +5528,7 @@ function ucDismissOnBackdrop(dialog) {
             span.className = 'uc-tpl-chip';
             span.setAttribute('contenteditable', 'false');
             span.setAttribute('data-token', token);
-            span.textContent = (data.tokens && data.tokens[token]) ? data.tokens[token] : token;
+            span.textContent = labels[token] ? labels[token] : token;
             return span;
         }
         function fill(ed, text) {
@@ -5416,7 +5620,7 @@ function ucDismissOnBackdrop(dialog) {
             ed.addEventListener('input', function () { sync(name); });
         });
 
-        Array.prototype.forEach.call(root.querySelectorAll('[data-uc-tpl-token]'), function (btn) {
+        Array.prototype.forEach.call(scope.querySelectorAll('[data-uc-tpl-token]'), function (btn) {
             btn.addEventListener('click', function () {
                 var ed = lastEditor || editors.intro;
                 if (!ed) { return; }
@@ -5437,6 +5641,51 @@ function ucDismissOnBackdrop(dialog) {
                 sync(ed.getAttribute('data-uc-tpl-editor'));
             });
         });
+
+        return { editors: editors, fill: fill, sync: sync, syncAll: function () { Object.keys(editors).forEach(sync); } };
+    }
+
+    /* ---------------------------------------------------------------------
+     * THE EMAIL TEMPLATES SCREEN (3.106.0).
+     *
+     * Every preview arrives rendered, by the builder that sends, in the JSON
+     * block; picking a message or a language only swaps which one is shown,
+     * so nothing is drawn here that the server did not draw.
+     *
+     * THE TOKENS ARE CHIPS THAT CANNOT BE TYPED OVER OR DELETED BY ACCIDENT.
+     * Each is a contenteditable=false span. Typing while a selection holds a
+     * chip is refused; Backspace or Delete next to a chip marks it first and
+     * removes it only on the second press. The text boxes underneath stay the
+     * real fields: each editor writes its text, with {tokens}, back into its
+     * box on every change and before the form is sent, and with no script the
+     * boxes are what somebody edits.
+     * ------------------------------------------------------------------- */
+    function initEmailTemplates() {
+        var root = document.querySelector('[data-uc-tpl]');
+        var node = root ? root.querySelector('[data-uc-tpl-data]') : null;
+        if (!root || !node) { return; }
+        var data;
+        try {
+            data = JSON.parse(node.textContent || '{}');
+        } catch (e) {
+            return;
+        }
+        var state = {
+            key: root.getAttribute('data-uc-tpl-key'),
+            variant: root.getAttribute('data-uc-tpl-variant'),
+            lang: (root.querySelector('[data-uc-tpl-lang]') || {}).value || 'en'
+        };
+        var form = root.querySelector('[data-uc-tpl-form]');
+        var preview = root.querySelector('[data-uc-tpl-preview]');
+        var subjectOut = root.querySelector('[data-uc-tpl-subject]');
+        var stateOut = root.querySelector('[data-uc-tpl-state]');
+        var editBtn = root.querySelector('[data-uc-tpl-edit]');
+
+        // The editors and their chips are chipEditors()'s (3.110.0), shared with Email registrants.
+        var chips = chipEditors(root, form, data.tokens || {});
+        var editors = chips.editors;
+        var fill = chips.fill;
+        var sync = chips.sync;
 
         form.addEventListener('submit', function () {
             Object.keys(editors).forEach(sync);
