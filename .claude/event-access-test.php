@@ -93,7 +93,19 @@ class WP_Query {
 function get_the_title( $id = 0 ) { return 'Event ' . (int) $id; }
 function get_post_status( $id = 0 ) { return 'publish'; }
 
+$GLOBALS['tmeta'] = array();   // "term:id:key" => value
+$GLOBALS['series_of'] = array(); // event id => series term id
+function get_term_meta( $id, $key, $single = false ) { $k = 'term:' . (int) $id . ':' . $key; return array_key_exists( $k, $GLOBALS['tmeta'] ) ? $GLOBALS['tmeta'][ $k ] : ''; }
+function update_term_meta( $id, $key, $value ) { $GLOBALS['tmeta'][ 'term:' . (int) $id . ':' . $key ] = $value; return true; }
+function delete_term_meta( $id, $key ) { unset( $GLOBALS['tmeta'][ 'term:' . (int) $id . ':' . $key ] ); return true; }
+function wp_unslash( $v ) { return $v; }
+class SFAF_Series {
+    public static function id_for_event( $id ) { return isset( $GLOBALS['series_of'][ (int) $id ] ) ? (int) $GLOBALS['series_of'][ (int) $id ] : 0; }
+    public static function all() { return array(); }
+}
+
 require_once $root . '/includes/class-sfaf-teams.php';
+require_once $root . '/includes/class-sfaf-access.php';
 
 /* ---------------------------------------------------------------------------
  * THE GATE, LIFTED OUT OF THE REAL FILE RATHER THAN COPIED INTO THIS ONE.
@@ -136,8 +148,8 @@ foreach ( $wanted as $w ) {
 
 // The one assertion that proves the extraction is the real rule and not a
 // leftover: the gate must actually consult teams.
-if ( false === strpos( $bodies['user_can_edit_event'], 'SFAF_Teams::user_owns_event' ) ) {
-    $fails[] = 'user_can_edit_event() does not consult SFAF_Teams. Either the model was reverted or the extraction is wrong.';
+if ( false === strpos( $bodies['user_can_edit_event'], 'SFAF_Access::names_user' ) ) {
+    $fails[] = 'user_can_edit_event() does not consult SFAF_Access (Team and access). Either the model was reverted or the extraction is wrong.';
 }
 
 if ( $fails ) {
@@ -176,6 +188,7 @@ const TEAMMATE    = 5;   // contributor, on team alpha
 const OUTSIDER    = 6;   // contributor, on no team
 const OTHER_TEAM  = 7;   // contributor, on team beta
 const NO_ACCESS   = 8;   // in team alpha, but no calendar record at all
+const EDITOR_IN   = 9;   // editor, on team alpha (3.110.1)
 
 make_user( WP_ADMIN,   '',            true );
 make_user( CAL_ADMIN,  'admin' );
@@ -185,8 +198,9 @@ make_user( TEAMMATE,   'contributor' );
 make_user( OUTSIDER,   'contributor' );
 make_user( OTHER_TEAM, 'contributor' );
 make_user( NO_ACCESS,  '' );
+make_user( EDITOR_IN,  'editor' );
 
-make_team( 'alpha', 'Programa Latino', array( TEAMMATE, NO_ACCESS ) );
+make_team( 'alpha', 'Programa Latino', array( TEAMMATE, NO_ACCESS, EDITOR_IN ) );
 make_team( 'beta',  'Syringe Access',  array( OTHER_TEAM ) );
 
 make_event( 100, ORGANIZER );   // team alpha owns it, set below
@@ -208,7 +222,11 @@ echo "The gate\n";
 /* --- An event WITH a team. ------------------------------------------------ */
 expect( 'WP admin edits a team event',            may( WP_ADMIN, 100 ),    true );
 expect( 'calendar admin edits a team event',      may( CAL_ADMIN, 100 ),   true );
-expect( 'editor edits a team event',              may( EDITOR, 100 ),      true );
+/* 3.110.1: A TEAM DECIDES WHICH EVENTS A PERSON HAS. An editor has no event
+   they did not create and no team gives them, so an editor outside the team is
+   refused, and an editor on it is not. */
+expect( 'PLANT B.5: an editor OUTSIDE the team cannot', may( EDITOR, 100 ),  false );
+expect( 'an editor ON the team can',              may( EDITOR_IN, 100 ),   true );
 expect( 'organizer edits their own',              may( ORGANIZER, 100 ),   true );
 expect( 'team member edits the team event',       may( TEAMMATE, 100 ),    true );
 expect( 'ANOTHER team cannot',                    may( OTHER_TEAM, 100 ),  false );
@@ -226,6 +244,8 @@ expect( 'a team member with NO calendar access cannot', may( NO_ACCESS, 100 ), f
 /* --- An event with NO team. ----------------------------------------------- */
 expect( 'organizer edits their teamless event',   may( ORGANIZER, 200 ),   true );
 expect( 'calendar admin edits a teamless event',  may( CAL_ADMIN, 200 ),   true );
+expect( 'PLANT B.5: an editor cannot reach a teamless event', may( EDITOR, 200 ), false );
+expect( 'WP admin reaches a teamless event',      may( WP_ADMIN, 200 ),    true );
 expect( 'team member cannot reach a teamless event', may( TEAMMATE, 200 ), false );
 expect( 'outsider cannot reach a teamless event', may( OUTSIDER, 200 ),    false );
 
@@ -299,6 +319,51 @@ expect( 'user id zero',              may( 0, 100 ),         false );
 $GLOBALS['posts'][300] = (object) array( 'ID' => 300, 'post_author' => ORGANIZER, 'post_type' => 'page' );
 SFAF_Teams::set_access_for_event( 300, array( 'alpha' ) );
 expect( 'a post that is not an event', may( TEAMMATE, 300 ), false );
+
+/* --- People by name (3.110.1). ------------------------------------------- */
+echo "People by name\n";
+SFAF_Access::set( 200, array(), array( OUTSIDER, NO_ACCESS ) );
+expect( 'a contributor named on the event has it',            may( OUTSIDER, 200 ),  true );
+expect( 'somebody named with NO calendar access does not',    may( NO_ACCESS, 200 ), false );
+expect( 'the organizer still has it',                         may( ORGANIZER, 200 ), true );
+SFAF_Access::set( 200, array(), array() );
+expect( 'taking the name off takes the event away',           may( OUTSIDER, 200 ),  false );
+SFAF_Access::set( 200, array(), array( EDITOR ) );
+expect( 'an editor named on the event has it',                may( EDITOR, 200 ),    true );
+SFAF_Access::set( 200, array(), array() );
+
+/* --- The series default, inherited live (3.110.1). ----------------------- */
+echo "The series default\n";
+make_event( 400, ORGANIZER );
+$GLOBALS['series_of'][400] = 50;
+SFAF_Access::set_series( 50, array( 'beta' ), array( OUTSIDER ) );
+expect( 'an event with nothing of its own follows its series: the team',   may( OTHER_TEAM, 400 ), true );
+expect( 'an event with nothing of its own follows its series: the person', may( OUTSIDER, 400 ),   true );
+expect( 'and nobody else',                                                 may( TEAMMATE, 400 ),   false );
+SFAF_Access::set_series( 50, array( 'alpha' ), array() );
+expect( 'a change to the series default reaches the event at once',        may( TEAMMATE, 400 ),   true );
+expect( 'and takes the old default away',                                  may( OTHER_TEAM, 400 ), false );
+SFAF_Access::set( 400, array(), array() );
+expect( 'an event that keeps its own, even an empty one, stops following',  may( TEAMMATE, 400 ),   false );
+if ( '1' !== get_post_meta( 400, SFAF_Access::OWN_META, true ) ) {
+    $fails[] = 'an event saved with less than its series default did not record that it keeps its own';
+}
+SFAF_Access::set( 400, array( 'alpha' ), array() );
+expect( 'saving the series default again follows the series once more',   may( TEAMMATE, 400 ),   true );
+if ( '' !== get_post_meta( 400, SFAF_Access::OWN_META, true ) || '' !== get_post_meta( 400, SFAF_Teams::ACCESS_META, true ) ) {
+    $fails[] = 'an event saved with exactly its series default stored a copy of it instead of following';
+}
+/* An event from before 3.110.1 holds teams with no marker: they are its own. */
+make_event( 401, ORGANIZER );
+$GLOBALS['series_of'][401] = 50;
+update_post_meta( 401, SFAF_Teams::ACCESS_META, array( 'beta' ) );
+expect( 'an older event keeps its own teams over the series default', may( OTHER_TEAM, 401 ), true );
+expect( 'and does not take the series default',                       may( TEAMMATE, 401 ),   false );
+
+/* --- Notification teams grant nothing. ----------------------------------- */
+SFAF_Teams::set_for_event( 200, array( 'alpha' ) );
+expect( 'a team on the notification list gets no access from it', may( TEAMMATE, 200 ), false );
+SFAF_Teams::set_for_event( 200, array() );
 
 /* --- The 3.7.0 rule, which nothing here may weaken. ----------------------- */
 echo "A calendar record can never reduce a WordPress administrator\n";
@@ -397,22 +462,25 @@ $ALLOWED = array(
     'POST:refresh_source_event'   => array( 'event' ),
     'POST:faq_set_apply'          => array( 'event' ),
     'GET:events/edit'             => array( 'event' ),
-    'GET:rsvps'                   => array( 'event', 'viewall' ),
-    'GET:rsvps/export'            => array( 'event', 'viewall' ),
+    // Scoped, the event gate; unscoped, every registration, an admin's (3.110.1).
+    'GET:rsvps'                   => array( 'event', 'caladmin' ),
+    'GET:rsvps/export'            => array( 'event', 'caladmin' ),
 
     // --- Calendar-wide, and correctly not per event. ------------------------
     'POST:save_series'            => array( 'viewall' ),
-    'POST:remove_series'          => array( 'viewall' ),
-    'POST:schedule_pattern'       => array( 'viewall' ),
-    'POST:schedule_extend'        => array( 'viewall' ),
-    'POST:schedule_add_date'      => array( 'viewall' ),
-    'POST:schedule_remove_date'   => array( 'viewall' ),
+    // These write the series' events: can_manage_series_events() asks the
+    // level, then the one gate of every event in the series (3.110.1).
+    'POST:remove_series'          => array( 'viewall', 'caladmin', 'event' ),
+    'POST:schedule_pattern'       => array( 'viewall', 'caladmin', 'event' ),
+    'POST:schedule_extend'        => array( 'viewall', 'caladmin', 'event' ),
+    'POST:schedule_add_date'      => array( 'viewall', 'caladmin', 'event' ),
+    'POST:schedule_remove_date'   => array( 'viewall', 'caladmin', 'event' ),
     // The only schedule action that reaches the public calendar, and the same
     // gate as the other four: it edits a series, and editing a series has
     // always been can_view_all. What it may touch within that series is decided
     // again per event by SFAF_Series::publish_skip_reason(), which is the check
     // that keeps it off submissions, imports and past dates.
-    'POST:schedule_publish'       => array( 'viewall' ),
+    'POST:schedule_publish'       => array( 'viewall', 'caladmin', 'event' ),
     'POST:save_category'          => array( 'viewall' ),
     'POST:delete_category'        => array( 'viewall' ),
     'POST:save_venue'             => array( 'viewall' ),
@@ -428,7 +496,7 @@ $ALLOWED = array(
     'POST:faq_set_duplicate'      => array( 'viewall' ),
     'POST:faq_set_delete'         => array( 'viewall' ),
     'GET:faq-sets'                => array( 'viewall' ),
-    'GET:optins'                  => array( 'viewall' ),
+    'GET:optins'                  => array( 'caladmin' ),   // names a registrant and their event (3.110.1)
     'GET:venues'                  => array( 'viewall' ),
     'GET:organizers'              => array( 'viewall' ),
     'GET:series'                  => array( 'viewall' ),
@@ -634,8 +702,8 @@ foreach ( array(
     if ( ! in_array( 'event', $gates, true ) ) {
         $fails[] = "$label does not ask the event gate, so a team member cannot reach their own event's registrations (or worse, anyone can).";
     }
-    if ( ! in_array( 'viewall', $gates, true ) ) {
-        $fails[] = "$label does not keep can_view_all for the unscoped list, so one event's gate would let somebody read the whole calendar's registrations.";
+    if ( ! in_array( 'caladmin', $gates, true ) || in_array( 'viewall', $gates, true ) ) {
+        $fails[] = "PLANT B.5: $label does not keep the unscoped list to admins (3.110.1), so an editor could read the whole calendar's registrations.";
     }
 }
 

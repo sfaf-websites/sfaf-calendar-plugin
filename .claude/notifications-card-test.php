@@ -107,7 +107,7 @@ nc( (string) get_post_meta( $new, '_uc_email_replyto', true ), 'events@example.o
  * required instead. Both events are in a series and FAQ sets exist, so every
  * conditional control that the page can draw is drawn.
  * ======================================================================== */
-$SAVED_ACTIONS = array( 'manage-series', 'edit-schedule', 'cancel', 'delete', 'faq-form', 'access', 'rsvp-list', 'private-link' );
+$SAVED_ACTIONS = array( 'manage-series', 'edit-schedule', 'cancel', 'delete', 'faq-form', 'rsvp-list', 'private-link' );
 $ADD_ONLY      = array( 'series-prefill' );
 
 function nc_controls( $html, $skip_attr, $skip_saves = false ) {
@@ -167,8 +167,8 @@ foreach ( $pages as $st => $eid ) {
         list( $kind, $name ) = explode( ':', $mark, 2 );
         nc( in_array( $name, 'saved' === $kind ? $SAVED_ACTIONS : $ADD_ONLY, true ), true, "PLANT B.3: \"$mark\" is not an action CLAUDE.md lets differ" );
     }
-    nc( in_array( 'saved:cancel', $e['marks'], true ) && in_array( 'saved:delete', $e['marks'], true ) && in_array( 'saved:access', $e['marks'], true ), true,
-        "Edit event ($st) carries its Cancel, Delete and Who can edit markers, so the exclusion above is excluding something: " . json_encode( $e['marks'] ) );
+    nc( in_array( 'saved:cancel', $e['marks'], true ) && in_array( 'saved:delete', $e['marks'], true ), true,
+        "Edit event ($st) carries its Cancel and Delete markers (Team and access is on both editors since 3.110.1), so the exclusion above is excluding something: " . json_encode( $e['marks'] ) );
     if ( $saves ) {
         nc( false !== strpos( $edit_html, '>Save changes</button>' ), true, 'a published event saves with Save changes' );
     }

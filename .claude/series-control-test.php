@@ -307,6 +307,8 @@ class SFAF_Announce {
 /* Teams grant access; no team exists in this world, so every question about
    them has the same empty answer. None of these emits a control named series. */
 class SFAF_Teams {
+    const ACCESS_META = '_uc_event_teams';
+    const MAX_PER_EVENT = 2;
     public static function events_for_user( $uid ) { return array(); }
     public static function all() { return array(); }
     public static function members( $id ) { return array(); }
@@ -620,6 +622,7 @@ require_once $root . '/includes/class-sfaf-notifications.php';
 require_once $root . '/includes/class-sfaf-messages.php';
 require_once $root . '/includes/class-sfaf-questions.php'; // 3.106.2
 require_once $root . '/includes/class-sfaf-agreement.php'; // 3.110.0
+require_once $root . '/includes/class-sfaf-access.php';    // 3.110.1
 require_once $root . '/includes/class-sfaf-checkin.php'; // 3.110.0
 require_once $root . '/includes/class-sfaf-registrant-mail.php'; // 3.110.0
 require_once $root . '/includes/class-sfaf-request.php';

@@ -206,14 +206,21 @@ class SFAF_Portal {
     public static function user_can_view_all( $user_id ) {
         return in_array( (int) $user_id, $GLOBALS['sfaf_editors'], true );
     }
-    /* The real rule, copied: can_view_all OR the event's author. */
+    /* The 3.110.1 shape: an admin, the event's author, or somebody Team and
+       access gives it to. The real gate is asserted in event-access-test.php;
+       this world needs only its answers. User 7 is a calendar admin; user 9 is
+       an editor on the team that has event 42; user 21 created it. Being on the
+       NOTIFICATION list (12, 14) gives nobody the event. */
     public static function user_can_edit_event( $user_id, $post ) {
-        if ( self::user_can_view_all( $user_id ) ) { return true; }
+        if ( in_array( (int) $user_id, $GLOBALS['sfaf_admins'], true ) ) { return true; }
         $post = is_object( $post ) ? $post : get_post( (int) $post );
-        return $post && (int) $post->post_author === (int) $user_id;
+        if ( $post && (int) $post->post_author === (int) $user_id ) { return true; }
+        return in_array( (int) $user_id, $GLOBALS['sfaf_team_has_event'], true );
     }
 }
 $GLOBALS['sfaf_editors'] = $EDITORS;
+$GLOBALS['sfaf_admins']  = array( 7 );
+$GLOBALS['sfaf_team_has_event'] = array( 9 );
 $GLOBALS['sfaf_claims']  = array();
 
 require $root . '/includes/class-sfaf-email.php';
@@ -316,10 +323,12 @@ function check_routing( $what, $sent, $may_open, $expect, &$fails ) {
 }
 
 /* =========================================================================
- * (1) THE REGISTRATION ALERT. /caladmin/rsvps, gated on can_view_all.
+ * (1) THE REGISTRATION ALERT. /caladmin/rsvps?event_id=N, which asks the
+ * event gate since 3.110.1, and so does the alert, per recipient.
  *
- * The two editors, and nobody else. The contributor who AUTHORED the event is
- * not on this list: authorship does not open the RSVP screen.
+ * The admin, the editor whose team has the event, and the contributor who
+ * created it: a person's events include their RSVP list. Being on the
+ * notification list gives nobody the link.
  * ====================================================================== */
 $GLOBALS['sfaf_sent'] = array();
 $sent_count = SFAF_Notifications::send_alert( 42, $person );
@@ -327,7 +336,7 @@ $sent_count = SFAF_Notifications::send_alert( 42, $person );
 check_routing(
     'alert',
     $GLOBALS['sfaf_sent'],
-    array( 'editor@sfaf.org', 'teameditor@sfaf.org' ),
+    array( 'editor@sfaf.org', 'teameditor@sfaf.org', 'author@sfaf.org' ),
     '/caladmin/rsvps?event_id=42',
     $fails
 );
@@ -407,7 +416,7 @@ if ( 0 !== SFAF_Notifications::send_alert( 42, $person ) || $GLOBALS['sfaf_sent'
 echo "Caladmin links in email: who gets one\n";
 echo "recipients: 7 (two editors, two contributors, the contributor who created the event,\n";
 echo "            and two typed addresses, one of which resembles an account)\n";
-echo "messages:   the registration alert (/caladmin/rsvps, can_view_all) and the pre-event\n";
+echo "messages:   the registration alert (/caladmin/rsvps, the event gate) and the pre-event\n";
 echo "            summary (/caladmin/events/edit/N, can_edit_event)\n";
 echo "checked:    no caladmin link in either part reaches anybody without that screen's\n";
 echo "            capability, everybody with it gets the right screen in both parts, everybody\n";

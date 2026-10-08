@@ -86,7 +86,8 @@ $none = array( 'frequency' => 'daily', 'venues' => array(), 'series' => array(),
 world();
 same( 'admin: every published event today, not the cancelled, the draft or tomorrow\'s',
     titles( SFAF_Digest::events_for( $ADMIN, $today, $today, $none ) ), array( 'Coffee social', 'Community meal', 'Walking group', 'Imported gala' ) );
-same( 'editor: the same', titles( SFAF_Digest::events_for( $EDITOR, $today, $today, $none ) ), array( 'Coffee social', 'Community meal', 'Walking group', 'Imported gala' ) );
+// Since 3.110.1 an editor has only their events: Eli created none and is on no team.
+same( 'editor: only their events, none here', titles( SFAF_Digest::events_for( $EDITOR, $today, $today, $none ) ), array() );
 same( 'contributor: their own', titles( SFAF_Digest::events_for( $CON_A, $today, $today, $none ) ), array( 'Coffee social' ) );
 same( 'contributor: their team\'s', titles( SFAF_Digest::events_for( $CON_B, $today, $today, $none ) ), array( 'Community meal' ) );
 same( 'contributor: nothing of anybody else\'s', SFAF_Digest::events_for( $CON_C, $today, $today, $none ), array() );
