@@ -5262,3 +5262,37 @@ body.uc-modal-open { overflow: hidden; }
     .uc-portal .uc-help-btn { position: relative; }
     .uc-portal .uc-help-btn::after { content: ""; position: absolute; top: -14px; right: -14px; bottom: -14px; left: -14px; }
 }
+
+/* ---------------------------------------------------------------------------
+   THE USERS TABLE (3.110.2)
+
+   One row a person. The search box above it is the field's width; the team
+   pills are the standard pill at Helper size. Contributor categories opens as
+   a row under its person. Below 600px a row is two lines: who they are, then
+   the controls, wrapping rather than cutting anything off.
+   ------------------------------------------------------------------------ */
+.uc-users-search { display: block; max-width: 420px; margin: 0 0 16px; }
+.uc-users-search input { width: 100%; }
+.uc-users-table td { vertical-align: middle; }
+.uc-users-table .uc-user-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.uc-users-table .uc-user-id .uc-muted { font-size: 12px; overflow-wrap: anywhere; }
+.uc-users-table .uc-user-cats-toggle { align-self: flex-start; padding: 0; margin-top: 4px; font-size: 12px; }
+.uc-users-table .uc-user-teams { display: flex; flex-wrap: wrap; gap: 4px; }
+.uc-users-table .uc-team-pill { font-size: 12px; font-weight: 400; color: var(--p-text); background: var(--p-bg); border: 1px solid var(--p-border); }
+.uc-users-table .uc-user-actions { white-space: nowrap; text-align: right; }
+.uc-users-table .uc-user-actions .uc-btn[disabled] { opacity: .5; cursor: default; }
+.uc-users-table .uc-user-cats-row > td { background: var(--p-bg); }
+.uc-users-table tr[hidden] { display: none; }
+@media (max-width: 600px) {
+    .uc-users-table thead { display: none; }
+    .uc-users-table, .uc-users-table tbody { display: block; width: 100%; }
+    .uc-users-table tr.uc-user-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 0; border-bottom: 1px solid var(--p-border); }
+    .uc-users-table tr.uc-user-row > td { display: block; padding: 0; border: 0; min-width: 0; }
+    .uc-users-table tr.uc-user-row > td.uc-user-id { flex: 1 1 100%; }
+    .uc-users-table tr.uc-user-row > td.uc-user-teams { flex: 1 1 100%; display: flex; }
+    .uc-users-table tr.uc-user-row > td.uc-user-actions { margin-left: auto; }
+    .uc-users-table tr.uc-user-cats-row, .uc-users-table tr.uc-user-reassign-row { display: block; }
+    .uc-users-table tr.uc-user-cats-row[hidden] { display: none; }
+    .uc-users-table tr.uc-user-cats-row > td, .uc-users-table tr.uc-user-reassign-row > td { display: block; padding: 8px 0 12px; }
+    .uc-users-search { max-width: none; }
+}

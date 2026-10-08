@@ -3921,14 +3921,17 @@ class SFAF_Portal {
             return;
         }
         update_user_meta( $uid, '_uc_calendar_role', self::storable_role( $uid, $_POST['role'] ?? 'contributor' ) );
-        $approval = ( isset( $_POST['approval'] ) && $_POST['approval'] === 'auto' ) ? 'auto' : 'review';
-        update_user_meta( $uid, '_uc_calendar_approval', $approval );
-
-        if ( isset( $_POST['categories'] ) && is_array( $_POST['categories'] ) ) {
-            $cats = array_map( 'intval', wp_unslash( $_POST['categories'] ) );
+        /*
+         * APPROVAL AND CATEGORIES ONLY WHEN THE ROW POSTED THEM (3.110.2). They
+         * apply to contributors, and a row for anybody else draws them disabled,
+         * so they post nothing and what is stored waits for a change back.
+         */
+        if ( isset( $_POST['approval'] ) ) {
+            update_user_meta( $uid, '_uc_calendar_approval', 'auto' === $_POST['approval'] ? 'auto' : 'review' );
+        }
+        if ( isset( $_POST['categories_present'] ) ) {
+            $cats = ( isset( $_POST['categories'] ) && is_array( $_POST['categories'] ) ) ? array_map( 'intval', wp_unslash( $_POST['categories'] ) ) : array();
             update_user_meta( $uid, '_uc_calendar_categories', array_values( array_filter( $cats ) ) );
-        } else {
-            update_user_meta( $uid, '_uc_calendar_categories', array() );
         }
     }
 
@@ -20780,14 +20783,15 @@ class SFAF_Portal {
                         </dd>
                         <dt>Editor</dt>
                         <dd>
-                            Sees and edits every event and can view every registration list. Cannot add or
-                            remove calendar users and cannot approve events.
+                            Edits the events they created and the ones Team and access gives them, with their
+                            registration lists, and manages series, categories, venues, organizers and FAQ sets.
+                            Cannot add or remove calendar users and cannot approve events.
                         </dd>
                         <dt>Contributor</dt>
                         <dd>
-                            Creates events and edits their own, plus any event owned by a team they are in,
-                            and sees the registrations for those. Every other event is read-only, showing
-                            what the public calendar already shows.
+                            Creates events and edits their own and the ones Team and access gives them, with
+                            their registration lists. Every other event is read-only, showing what the public
+                            calendar already shows.
                         </dd>
                     </dl>
                     <p class="uc-hint">
@@ -20818,170 +20822,184 @@ class SFAF_Portal {
             </form>
         </div>
 
-        <div class="uc-card">
+        <?php
+        /*
+         * CALENDAR USERS, A TABLE (3.110.2). One row a person, alphabetical by
+         * last name: who they are, Role, Approval, their teams, Save and
+         * Remove. Each row's controls belong to a form of its own after the
+         * table, by the form attribute, because a form cannot wrap a table
+         * row. Approval and Contributor categories apply to contributors only
+         * (contributor_status() and allowed_categories() are asked of nobody
+         * else), so they are drawn on a contributor's row and are hidden and
+         * disabled, posting nothing, on anybody else's; the save writes them
+         * only when they were posted.
+         */
+        $sorted = $members;
+        $last_of = function ( $m ) {
+            $l = trim( (string) get_user_meta( $m->ID, 'last_name', true ) );
+            if ( '' === $l ) {
+                $bits = preg_split( '/\s+/', trim( (string) $m->display_name ) );
+                $l    = (string) end( $bits );
+            }
+            return strtolower( $l . ' ' . $m->display_name );
+        };
+        usort( $sorted, function ( $a, $b ) use ( $last_of ) { return strcmp( $last_of( $a ), $last_of( $b ) ); } );
+        $all_teams = SFAF_Teams::all();
+        ?>
+        <div class="uc-card uc-users-card">
             <div class="uc-card-head"><h2>Calendar Users (<?php echo count( $members ); ?>)</h2></div>
             <?php if ( empty( $members ) ) : ?>
                 <p class="uc-empty">No calendar users yet.</p>
-            <?php else : foreach ( $members as $m ) :
-                $role     = self::get_role( $m->ID );
-                $approval = get_user_meta( $m->ID, '_uc_calendar_approval', true ) ?: 'review';
-                $ucats    = (array) get_user_meta( $m->ID, '_uc_calendar_categories', true );
-                $is_self  = (int) $m->ID === (int) $user->ID;
-                $is_wpadm = self::is_site_admin( $m->ID );
-                ?>
-                <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>" class="uc-user-row">
-                    <input type="hidden" name="uc_action" value="set_user_role" />
-                    <input type="hidden" name="user_id" value="<?php echo (int) $m->ID; ?>" />
-                    <?php wp_nonce_field( 'uc_portal_set_user_role', 'uc_nonce' ); ?>
-                    <div class="uc-user-id">
-                        <strong><?php echo esc_html( $m->display_name ); ?></strong>
-                        <span class="uc-muted"><?php echo esc_html( $m->user_email ); ?></span>
-                        <?php
-                        /* WHAT THEY HAVE ASKED FOR, READ ONLY (3.102.0). Only the
-                         * person can change it, on their own Preferences. */
-                        $digest_line = SFAF_Digest::describe( $m->ID );
-                        if ( '' !== $digest_line ) : ?>
-                            <span class="uc-muted uc-user-digest"><?php echo esc_html( $digest_line ); ?></span>
-                        <?php endif; ?>
-                    </div>
-                    <div class="uc-user-controls">
-                        <?php if ( $is_wpadm ) : ?>
-                            <?php /*
-                              * SAID, RATHER THAN OFFERED AS A CONTROL THAT DOES NOTHING.
-                              * A WordPress administrator's access is decided by
-                              * manage_options, so a dropdown here would accept a
-                              * change and then have no effect. See get_role().
-                              *
-                              * "Admin (WP Admin)" and not "Admin (fixed)". Fixed
-                              * reads as though something had been corrected, and
-                              * says nothing about WHY it cannot be changed here.
-                              * Naming the thing that decides it answers both.
-                              */ ?>
-                            <div class="uc-user-fixed">
-                                <span class="uc-field-label">Access</span>
-                                <strong>Admin (WP Admin)</strong>
-                                <span class="uc-muted">WordPress administrator, so full calendar access. Change it on the WordPress Users screen.</span>
-                            </div>
-                        <?php else : ?>
-                            <label>Role
-                                <select name="role">
-                                    <?php foreach ( self::roles() as $rk => $rl ) : ?>
-                                        <option value="<?php echo esc_attr( $rk ); ?>" <?php selected( $role, $rk ); ?>><?php echo esc_html( $rl ); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </label>
-                        <?php endif; ?>
-                        <label>Approval
-                            <select name="approval">
-                                <option value="review" <?php selected( $approval, 'review' ); ?>>Requires approval</option>
-                                <option value="auto" <?php selected( $approval, 'auto' ); ?>>Auto-publish</option>
-                            </select>
-                        </label>
-                    </div>
-                    <?php
-                    /*
-                     * SAVE AND REMOVE SIT TOGETHER, IN THE ROW, BEFORE THE
-                     * CATEGORIES DISCLOSURE.
-                     *
-                     * Remove used to be a second <form> that opened after this
-                     * one closed, so it was a SIBLING of the row rather than
-                     * part of it, and it rendered under the row's bottom border
-                     * as a bare link with nothing tying it to a person. On a
-                     * list where only one user can be removed it read as one
-                     * "Remove" floating below the whole table.
-                     *
-                     * Forms cannot nest, so the button stays in this row and
-                     * points at its own form by id with the `form` attribute.
-                     * The form itself is rendered empty and hidden after the
-                     * row. Nothing about which user is removed has changed; it
-                     * was always this row's id, but now the screen says so.
-                     *
-                     * Ordered before the disclosure deliberately: .uc-user-cats
-                     * spans the full grid, so anything after it is pushed onto
-                     * a new line. The actions were landing under the name
-                     * column instead of in the row's third column.
-                     */
-                    ?>
-                    <div class="uc-user-actions">
-                        <button class="uc-btn uc-btn-sm uc-btn-primary" type="submit">Save</button>
-                        <?php if ( ! $is_self ) : ?>
-                            <button type="submit" class="uc-link-danger uc-btn-sm"
-                                    form="uc-remove-user-<?php echo (int) $m->ID; ?>"
-                                    data-uc-confirm="<?php echo esc_attr( $is_wpadm
-                                        ? sprintf( 'Take %s off the calendar list? They keep full calendar access, because they are a WordPress administrator. They come off every team.', $m->display_name )
-                                        : sprintf( 'Remove calendar access for %s? They come off every team. Their WordPress account and role are not changed, and you can add them back at any time.', $m->display_name )
-                                    ); ?>">Remove</button>
-                        <?php else : ?>
-                            <span class="uc-muted">(you)</span>
-                        <?php endif; ?>
-                    </div>
-                    <details class="uc-user-cats">
-                        <summary><span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '15px' ) ); ?></span>Contributor categories</summary>
-                        <p class="uc-hint">Leave all unchecked to allow all categories.</p>
-                        <div class="uc-check-grid">
-                            <?php if ( ! is_wp_error( $cats ) ) : foreach ( $cats as $c ) : ?>
-                                <label class="uc-check"><input type="checkbox" name="categories[]" value="<?php echo (int) $c->term_id; ?>" <?php checked( in_array( $c->term_id, $ucats, true ) ); ?> /> <?php echo esc_html( $c->name ); ?></label>
-                            <?php endforeach; endif; ?>
-                        </div>
-                    </details>
-                </form>
-                <?php if ( ! $is_self ) : ?>
-                    <?php // Carries the fields only. Its button lives in the row above
-                          // and reaches it by id. ?>
-                    <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>"
-                          id="uc-remove-user-<?php echo (int) $m->ID; ?>" hidden>
-                        <input type="hidden" name="uc_action" value="remove_user" />
-                        <input type="hidden" name="user_id" value="<?php echo (int) $m->ID; ?>" />
-                        <?php wp_nonce_field( 'uc_portal_remove_user', 'uc_nonce' ); ?>
-                    </form>
-
-                    <?php
-                    /*
-                     * THE REASSIGNMENT, SHOWN ONLY FOR THE PERSON WHO WAS JUST REFUSED.
-                     *
-                     * Not a control on every row: the question "who should take
-                     * these on" is meaningless until somebody has asked to remove
-                     * this person, and a permanent dropdown offering to move
-                     * another person's events is a way to do it by accident. The
-                     * refusal names the count; this is where the answer goes.
-                     */
-                    if ( $blocked && (int) $blocked['user_id'] === (int) $m->ID ) :
-                        $n = count( $blocked['events'] );
+            <?php else : ?>
+                <label class="uc-users-search">
+                    <span class="uc-visually-hidden">Search name or email</span>
+                    <input type="search" placeholder="Search name or email…" autocomplete="off" data-uc-user-filter />
+                </label>
+                <table class="uc-table uc-users-table" data-uc-users-table>
+                    <thead><tr><th>Person</th><th>Role</th><th>Approval</th><th>Teams</th><th><span class="uc-visually-hidden">Actions</span></th></tr></thead>
+                    <tbody>
+                    <?php foreach ( $sorted as $m ) :
+                        $role     = self::get_role( $m->ID );
+                        $approval = get_user_meta( $m->ID, '_uc_calendar_approval', true ) ?: 'review';
+                        $ucats    = (array) get_user_meta( $m->ID, '_uc_calendar_categories', true );
+                        $is_self  = (int) $m->ID === (int) $user->ID;
+                        $is_wpadm = self::is_site_admin( $m->ID );
+                        $contrib  = ( 'contributor' === $role && ! $is_wpadm );
+                        $fid      = 'uc-user-form-' . (int) $m->ID;
+                        $cats_id  = 'uc-user-cats-' . (int) $m->ID;
                         ?>
-                        <div class="uc-reassign" role="group" aria-label="Reassign before removing">
-                            <p class="uc-reassign-head">
-                                <strong><?php echo esc_html( $m->display_name ); ?></strong> organizes
-                                <strong><?php echo (int) $n; ?></strong> <?php echo esc_html( 1 === $n ? 'event' : 'events' ); ?>.
-                                Choose who takes <?php echo esc_html( 1 === $n ? 'it' : 'them' ); ?> on.
-                            </p>
-                            <ul class="uc-reassign-events">
-                                <?php foreach ( $blocked['events'] as $ev ) : ?>
-                                    <li>
-                                        <a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . (int) $ev['id'] ) ); ?>"><?php echo esc_html( $ev['title'] ); ?></a>
-                                        <span class="uc-muted"><?php echo esc_html( sfaf_status_label( $ev['status'] ) ); ?></span>
-                                    </li>
-                                <?php endforeach; ?>
-                            </ul>
-                            <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>" class="uc-reassign-form">
-                                <input type="hidden" name="uc_action" value="remove_user" />
-                                <input type="hidden" name="user_id" value="<?php echo (int) $m->ID; ?>" />
-                                <?php wp_nonce_field( 'uc_portal_remove_user', 'uc_nonce' ); ?>
-                                <label>
-                                    New organizer
-                                    <select name="reassign_to" required>
-                                        <option value="">Choose somebody</option>
-                                        <?php foreach ( $this->calendar_people() as $cand ) :
-                                            if ( (int) $cand->ID === (int) $m->ID ) { continue; } ?>
-                                            <option value="<?php echo (int) $cand->ID; ?>"><?php echo esc_html( $cand->display_name ); ?></option>
-                                        <?php endforeach; ?>
+                        <tr class="uc-user-row" data-uc-user-row="<?php echo (int) $m->ID; ?>" data-uc-user-form="<?php echo esc_attr( $fid ); ?>"
+                            data-uc-user-name="<?php echo esc_attr( strtolower( (string) $m->display_name ) ); ?>"
+                            data-uc-user-email="<?php echo esc_attr( strtolower( (string) $m->user_email ) ); ?>">
+                            <td class="uc-user-id">
+                                <strong><?php echo esc_html( $m->display_name ); ?></strong>
+                                <span class="uc-muted"><?php echo esc_html( $m->user_email ); ?></span>
+                                <?php
+                                /* WHAT THEY HAVE ASKED FOR, READ ONLY (3.102.0). */
+                                $digest_line = SFAF_Digest::describe( $m->ID );
+                                if ( '' !== $digest_line ) : ?>
+                                    <span class="uc-muted uc-user-digest"><?php echo esc_html( $digest_line ); ?></span>
+                                <?php endif; ?>
+                                <button type="button" class="uc-link-btn uc-user-cats-toggle" data-uc-user-cats-toggle
+                                        aria-expanded="false" aria-controls="<?php echo esc_attr( $cats_id ); ?>"<?php echo $contrib ? '' : ' hidden'; ?>>Contributor categories</button>
+                            </td>
+                            <td class="uc-user-role">
+                                <?php if ( $is_wpadm ) : ?>
+                                    <span class="uc-user-fixed">Admin <span class="uc-muted">(WordPress administrator)</span></span>
+                                <?php else : ?>
+                                    <label>
+                                        <span class="uc-visually-hidden"><?php echo esc_html( 'Role for ' . $m->display_name ); ?></span>
+                                        <select name="role" form="<?php echo esc_attr( $fid ); ?>" data-uc-user-role>
+                                            <?php foreach ( self::roles() as $rk => $rl ) : ?>
+                                                <option value="<?php echo esc_attr( $rk ); ?>" <?php selected( $role, $rk ); ?>><?php echo esc_html( $rl ); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </label>
+                                <?php endif; ?>
+                            </td>
+                            <td class="uc-user-approval">
+                                <label data-uc-user-approval<?php echo $contrib ? '' : ' hidden'; ?>>
+                                    <span class="uc-visually-hidden"><?php echo esc_html( 'Approval for ' . $m->display_name ); ?></span>
+                                    <select name="approval" form="<?php echo esc_attr( $fid ); ?>"<?php echo $contrib ? '' : ' disabled'; ?>>
+                                        <option value="review" <?php selected( $approval, 'review' ); ?>>Requires approval</option>
+                                        <option value="auto" <?php selected( $approval, 'auto' ); ?>>Auto-publish</option>
                                     </select>
                                 </label>
-                                <button type="submit" class="uc-btn uc-btn-primary">Reassign and remove</button>
-                            </form>
-                        </div>
+                            </td>
+                            <td class="uc-user-teams">
+                                <?php
+                                $mine = SFAF_Teams::for_user( $m->ID );
+                                if ( $mine ) :
+                                    foreach ( $mine as $tm ) : ?>
+                                        <span class="uc-pill uc-team-pill"><?php echo esc_html( $tm['name'] ); ?></span>
+                                    <?php endforeach;
+                                else : ?>
+                                    <span class="uc-muted">None</span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="uc-user-actions">
+                                <button class="uc-btn uc-btn-sm uc-btn-primary" type="submit" form="<?php echo esc_attr( $fid ); ?>" data-uc-user-save>Save</button>
+                                <?php if ( ! $is_self ) : ?>
+                                    <button type="submit" class="uc-link-danger uc-btn-sm"
+                                            form="uc-remove-user-<?php echo (int) $m->ID; ?>"
+                                            data-uc-confirm="<?php echo esc_attr( $is_wpadm
+                                                ? sprintf( 'Take %s off the calendar list? They keep full calendar access, because they are a WordPress administrator. They come off every team.', $m->display_name )
+                                                : sprintf( 'Remove calendar access for %s? They come off every team. Their WordPress account and role are not changed, and you can add them back at any time.', $m->display_name )
+                                            ); ?>">Remove</button>
+                                <?php else : ?>
+                                    <span class="uc-muted">(you)</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr class="uc-user-cats-row" id="<?php echo esc_attr( $cats_id ); ?>" data-uc-user-cats="<?php echo (int) $m->ID; ?>" hidden>
+                            <td colspan="5">
+                                <input type="hidden" name="categories_present" value="1" form="<?php echo esc_attr( $fid ); ?>"<?php echo $contrib ? '' : ' disabled'; ?> />
+                                <p class="uc-hint">Leave all unchecked to allow all categories.</p>
+                                <div class="uc-check-grid">
+                                    <?php if ( ! is_wp_error( $cats ) ) : foreach ( $cats as $c ) : ?>
+                                        <label class="uc-check"><input type="checkbox" name="categories[]" form="<?php echo esc_attr( $fid ); ?>" value="<?php echo (int) $c->term_id; ?>" <?php checked( in_array( $c->term_id, $ucats, true ) ); ?><?php echo $contrib ? '' : ' disabled'; ?> /> <?php echo esc_html( $c->name ); ?></label>
+                                    <?php endforeach; endif; ?>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php
+                        if ( ! $is_self && $blocked && (int) $blocked['user_id'] === (int) $m->ID ) :
+                            $n = count( $blocked['events'] );
+                            ?>
+                            <tr class="uc-user-reassign-row"><td colspan="5">
+                            <div class="uc-reassign" role="group" aria-label="Reassign before removing">
+                                <p class="uc-reassign-head">
+                                    <strong><?php echo esc_html( $m->display_name ); ?></strong> organizes
+                                    <strong><?php echo (int) $n; ?></strong> <?php echo esc_html( 1 === $n ? 'event' : 'events' ); ?>.
+                                    Choose who takes <?php echo esc_html( 1 === $n ? 'it' : 'them' ); ?> on.
+                                </p>
+                                <ul class="uc-reassign-events">
+                                    <?php foreach ( $blocked['events'] as $ev ) : ?>
+                                        <li>
+                                            <a class="uc-tlink" href="<?php echo esc_url( $this->url( 'events/edit/' . (int) $ev['id'] ) ); ?>"><?php echo esc_html( $ev['title'] ); ?></a>
+                                            <span class="uc-muted"><?php echo esc_html( sfaf_status_label( $ev['status'] ) ); ?></span>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                                <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>" class="uc-reassign-form">
+                                    <input type="hidden" name="uc_action" value="remove_user" />
+                                    <input type="hidden" name="user_id" value="<?php echo (int) $m->ID; ?>" />
+                                    <?php wp_nonce_field( 'uc_portal_remove_user', 'uc_nonce' ); ?>
+                                    <label>
+                                        New organizer
+                                        <select name="reassign_to" required>
+                                            <option value="">Choose somebody</option>
+                                            <?php foreach ( $this->calendar_people() as $cand ) :
+                                                if ( (int) $cand->ID === (int) $m->ID ) { continue; } ?>
+                                                <option value="<?php echo (int) $cand->ID; ?>"><?php echo esc_html( $cand->display_name ); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </label>
+                                    <button type="submit" class="uc-btn uc-btn-primary">Reassign and remove</button>
+                                </form>
+                            </div>
+                            </td></tr>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <p class="uc-empty" data-uc-user-filter-empty hidden>Nobody matches.</p>
+                <?php // Each row's form, and each Remove: the fields only. Their buttons are in the rows. ?>
+                <?php foreach ( $sorted as $m ) : ?>
+                    <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>" id="<?php echo esc_attr( 'uc-user-form-' . (int) $m->ID ); ?>" hidden>
+                        <input type="hidden" name="uc_action" value="set_user_role" />
+                        <input type="hidden" name="user_id" value="<?php echo (int) $m->ID; ?>" />
+                        <?php wp_nonce_field( 'uc_portal_set_user_role', 'uc_nonce' ); ?>
+                    </form>
+                    <?php if ( (int) $m->ID !== (int) $user->ID ) : ?>
+                        <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>" id="uc-remove-user-<?php echo (int) $m->ID; ?>" hidden>
+                            <input type="hidden" name="uc_action" value="remove_user" />
+                            <input type="hidden" name="user_id" value="<?php echo (int) $m->ID; ?>" />
+                            <?php wp_nonce_field( 'uc_portal_remove_user', 'uc_nonce' ); ?>
+                        </form>
                     <?php endif; ?>
-                <?php endif; ?>
-            <?php endforeach; endif; ?>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </div>
         </section>
 
@@ -21062,19 +21080,13 @@ class SFAF_Portal {
         <section class="uc-section" id="uc-teams">
             <div class="uc-section-head">
                 <h2>Teams</h2>
-                <p class="uc-section-sub">Named groups of calendar users. An event can give a team access, so everybody on it can edit that event and see who has registered.</p>
+                <p class="uc-section-sub">Create a team, add people to it, then choose it under Team and access on an event.</p>
             </div>
 
             <div class="uc-card">
                 <div class="uc-card-head">
                     <h2><?php echo count( $teams ); ?> <?php echo esc_html( 1 === count( $teams ) ? 'team' : 'teams' ); ?></h2>
                 </div>
-                <p class="uc-hint">
-                    A team is a name and a set of people, read fresh every time. Adding somebody gives them access to
-                    every event the team already has, including ones set up before they joined; taking somebody out
-                    removes it. Events can also email a team, which is a separate tick on the event and is off unless
-                    somebody sets it.
-                </p>
 
                 <?php if ( $err ) : ?>
                     <div class="uc-flash uc-flash-error">
@@ -21321,9 +21333,8 @@ class SFAF_Portal {
                                 <p class="uc-hint">Every calendar user is already in this team.</p>
                             <?php else : ?>
                                 <details class="uc-team-add" data-uc-disclosure>
-                                    <summary class="uc-team-add-toggle" aria-expanded="false">
-                                        <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
-                                        <span>Add member</span>
+                                    <summary class="uc-team-add-toggle uc-outline-btn" aria-expanded="false">
+                                        <span>+ Add member</span>
                                     </summary>
                                     <?php // The filter, its list and its empty note are
                                           // found within this element; see

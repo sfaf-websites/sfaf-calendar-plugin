@@ -145,6 +145,7 @@ function ucDismissOnBackdrop(dialog) {
         run('agreement', initAgreementSection);
         run('access', initAccessSection);
         run('reg-where', initRegisterWhere);
+        run('users-table', initUsersTable);
         run('registrantMail', initRegistrantMail);
         run('checkin', initCheckin);
         run('rsvpFilter', initRsvpFilter);
@@ -393,6 +394,78 @@ function ucDismissOnBackdrop(dialog) {
                 });
             }
             apply();
+        });
+    }
+    /* ---------------------------------------------------------------------
+     * THE USERS TABLE (3.110.2). Search narrows the rows by name or email as
+     * you type. A row's Save stays off until something in that row differs
+     * from what the page loaded with, and goes off again if it is put back.
+     * Role decides what else the row shows: Approval and Contributor
+     * categories for a contributor only, hidden and disabled otherwise, so
+     * they post nothing. Contributor categories opens under the row.
+     * ------------------------------------------------------------------ */
+    function initUsersTable() {
+        var table = document.querySelector('[data-uc-users-table]');
+        if (!table) { return; }
+        var filter = document.querySelector('[data-uc-user-filter]');
+        var empty = document.querySelector('[data-uc-user-filter-empty]');
+        if (filter) {
+            filter.addEventListener('input', function () {
+                var q = filter.value.replace(/\s+/g, ' ').trim().toLowerCase();
+                var shown = 0;
+                table.querySelectorAll('[data-uc-user-row]').forEach(function (row) {
+                    var hit = !q || (row.getAttribute('data-uc-user-name') + ' ' + row.getAttribute('data-uc-user-email')).indexOf(q) > -1;
+                    row.hidden = !hit;
+                    if (hit) { shown++; }
+                    var cats = document.getElementById('uc-user-cats-' + row.getAttribute('data-uc-user-row'));
+                    if (cats && !hit) { cats.hidden = true; }
+                });
+                if (empty) { empty.hidden = shown > 0; }
+            });
+        }
+        table.querySelectorAll('[data-uc-user-row]').forEach(function (row) {
+            var id = row.getAttribute('data-uc-user-row');
+            var fid = row.getAttribute('data-uc-user-form');
+            var save = row.querySelector('[data-uc-user-save]');
+            var role = row.querySelector('[data-uc-user-role]');
+            var approval = row.querySelector('[data-uc-user-approval]');
+            var toggle = row.querySelector('[data-uc-user-cats-toggle]');
+            var cats = document.getElementById('uc-user-cats-' + id);
+            function fields() {
+                return Array.prototype.filter.call(document.querySelectorAll('[form="' + fid + '"]'), function (f) {
+                    return f.tagName !== 'BUTTON' && f.type !== 'hidden';
+                });
+            }
+            function state() {
+                return fields().map(function (f) {
+                    return f.name + '=' + ((f.type === 'checkbox') ? (f.checked ? '1' : '0') : f.value) + (f.disabled ? '/off' : '');
+                }).join('&');
+            }
+            function contributorOnly() {
+                var c = !role || role.value === 'contributor';
+                if (!role) { return; }   // a WordPress administrator's row has no role to change
+                if (approval) {
+                    approval.hidden = !c;
+                    approval.querySelectorAll('select').forEach(function (s) { s.disabled = !c; });
+                }
+                if (toggle) { toggle.hidden = !c; if (!c) { toggle.setAttribute('aria-expanded', 'false'); } }
+                if (cats) {
+                    if (!c) { cats.hidden = true; }
+                    cats.querySelectorAll('input').forEach(function (i) { i.disabled = !c; });
+                }
+            }
+            var start = state();
+            function check() { if (save) { save.disabled = (state() === start); } }
+            if (toggle && cats) {
+                toggle.addEventListener('click', function () {
+                    var open = toggle.getAttribute('aria-expanded') !== 'true';
+                    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    cats.hidden = !open;
+                });
+            }
+            if (role) { role.addEventListener('change', function () { contributorOnly(); check(); }); }
+            fields().forEach(function (f) { f.addEventListener('change', check); });
+            check();
         });
     }
     /* ---------------------------------------------------------------------
