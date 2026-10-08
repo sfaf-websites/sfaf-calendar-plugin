@@ -5508,7 +5508,7 @@ class SFAF_Portal {
         _prime_post_caches( $ids, true, true );
         sfaf_prime_rsvp_counts( $ids );
         ?>
-        <table class="uc-table">
+        <table class="uc-table uc-table-cards">
             <thead><tr><th>Event</th><th>Date</th><th>RSVPs</th><th>Status</th></tr></thead>
             <tbody>
             <?php foreach ( $ids as $id ) :
@@ -6542,7 +6542,7 @@ class SFAF_Portal {
         }
         _prime_post_caches( $ids, true, true );
         ?>
-        <table class="uc-table uc-table-public">
+        <table class="uc-table uc-table-cards uc-table-public">
             <thead><tr>
                 <th>Event</th><th>Date</th><th>Time</th><th>Location</th>
                 <th>Category</th><th>Organizer</th><th>Status</th>
@@ -6965,7 +6965,7 @@ class SFAF_Portal {
             : null;
         $tick_why = ( null !== $ticks && isset( $bulk['blocked'] ) ) ? $bulk['blocked'] : array();
         ?>
-        <table class="uc-table">
+        <table class="uc-table uc-table-cards">
             <thead><tr>
                 <?php
                 /*
@@ -9805,7 +9805,7 @@ class SFAF_Portal {
             <?php if ( empty( $series ) ) : ?>
                 <p class="uc-empty">No series yet. Set a repeat on a new event and one is made for it.</p>
             <?php else : ?>
-                <table class="uc-table">
+                <table class="uc-table uc-table-cards">
                     <thead><tr><th></th><th>Series</th><th>Schedule</th><th>Upcoming</th><th>Next date</th><th class="uc-col-actions">Actions</th></tr></thead>
                     <tbody>
                     <?php foreach ( $series as $term ) :
@@ -17025,7 +17025,7 @@ class SFAF_Portal {
             if ( ! empty( $sent ) ) : ?>
                 <div class="uc-notify-section">
                     <h4 class="uc-notify-subhead">Reminder log for this event</h4>
-                    <table class="uc-table">
+                    <table class="uc-table uc-table-cards">
                         <thead><tr><th>Recipient</th><th>Type</th><th>Result</th><th>When</th></tr></thead>
                         <tbody>
                         <?php
@@ -17616,7 +17616,7 @@ class SFAF_Portal {
             <?php if ( empty( $rows ) ) : ?>
                 <p class="uc-empty">No opt-ins recorded<?php echo $search ? ' for that search' : ' yet'; ?>.</p>
             <?php else : ?>
-                <table class="uc-table">
+                <table class="uc-table uc-table-cards">
                     <thead><tr><th>Email</th><th>Name</th><th>Consented</th><th>Form</th><th>Event</th></tr></thead>
                     <tbody>
                         <?php foreach ( $rows as $row ) : ?>
@@ -18325,7 +18325,7 @@ class SFAF_Portal {
         <?php if ( $log ) : ?>
             <div class="uc-registrant-mail-log" data-uc-rm-log>
                 <h3 class="uc-subhead">Emails sent from this list</h3>
-                <table class="uc-table">
+                <table class="uc-table uc-table-cards">
                     <thead><tr><th>Sent by</th><th>When</th><th>Subject</th><th>Recipients</th></tr></thead>
                     <tbody>
                     <?php foreach ( $log as $entry ) :
@@ -20901,7 +20901,7 @@ class SFAF_Portal {
                                 if ( '' !== $digest_line ) : ?>
                                     <span class="uc-muted uc-user-digest"><?php echo esc_html( $digest_line ); ?></span>
                                 <?php endif; ?>
-                                <button type="button" class="uc-link-btn uc-user-cats-toggle" data-uc-user-cats-toggle
+                                <button type="button" class="uc-action-link uc-user-cats-toggle" data-uc-user-cats-toggle
                                         aria-expanded="false" aria-controls="<?php echo esc_attr( $cats_id ); ?>"<?php echo $contrib ? '' : ' hidden'; ?>>Contributor categories</button>
                             </td>
                             <td class="uc-user-role">

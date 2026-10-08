@@ -146,6 +146,7 @@ function ucDismissOnBackdrop(dialog) {
         run('access', initAccessSection);
         run('reg-where', initRegisterWhere);
         run('users-table', initUsersTable);
+        run('table-cards', initTableCards);
         run('registrantMail', initRegistrantMail);
         run('checkin', initCheckin);
         run('rsvpFilter', initRsvpFilter);
@@ -466,6 +467,26 @@ function ucDismissOnBackdrop(dialog) {
             if (role) { role.addEventListener('change', function () { contributorOnly(); check(); }); }
             fields().forEach(function (f) { f.addEventListener('change', check); });
             check();
+        });
+    }
+    /* ---------------------------------------------------------------------
+     * TABLES AS CARDS ON A PHONE (3.110.2). Each cell of a .uc-table-cards
+     * table is given its column's heading as data-label, which the phone
+     * layout prints in front of the value once the heading row is hidden. A
+     * heading that is only for screen readers labels nothing.
+     * ------------------------------------------------------------------ */
+    function initTableCards() {
+        document.querySelectorAll('table.uc-table-cards').forEach(function (t) {
+            var heads = Array.prototype.map.call(t.querySelectorAll('thead th'), function (th) {
+                var c = th.cloneNode(true);
+                Array.prototype.forEach.call(c.querySelectorAll('.uc-visually-hidden, .screen-reader-text'), function (n) { n.remove(); });
+                return c.textContent.replace(/\s+/g, ' ').trim();
+            });
+            t.querySelectorAll('tbody tr').forEach(function (tr) {
+                Array.prototype.forEach.call(tr.children, function (td, i) {
+                    if (heads[i] && !td.hasAttribute('data-label')) { td.setAttribute('data-label', heads[i]); }
+                });
+            });
         });
     }
     /* ---------------------------------------------------------------------

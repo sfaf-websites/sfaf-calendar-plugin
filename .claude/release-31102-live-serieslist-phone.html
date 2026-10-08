@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html >
+<head>
+    <meta charset="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Series - SFAF Calendar</title>
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.110.1" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.110.1" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.110.1" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.110.1" />
+    <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
+        <script>
+    (function (d) {
+        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        d.setAttribute('data-uc-motion', reduced ? 'reduced' : 'on');
+        if (reduced) { return; }
+        d.className += ' uc-anim';
+        // The nav stagger is once per session, not once per navigation: every
+        // screen here is a full page load. A storage failure means it simply
+        // runs again, which is the harmless outcome.
+        try {
+            if (window.sessionStorage.getItem('ucNavIntro') !== '1') {
+                window.sessionStorage.setItem('ucNavIntro', '1');
+                d.className += ' uc-anim-nav';
+            }
+        } catch (e) {
+            d.className += ' uc-anim-nav';
+        }
+    })(document.documentElement);
+    </script>
+    </head>
+<body class="uc-portal">        <div class="uc-portal-layout">
+            <aside class="uc-portal-sidebar" id="uc-sidebar">
+                                <div class="uc-portal-brand">
+                    <span class="uc-portal-logo-wrap" data-uc-sidebar-logo>
+                        <img src="https://resources.sfaf.org/wp-content/uploads/SFAF-heritage-logo_stacked-Yellow-15Gray-preview.webp" alt="San Francisco AIDS Foundation"
+                             class="uc-portal-logo" width="1470" height="901" />
+                    </span>
+                    <span class="uc-portal-brandtext">Calendar Admin</span>
+                </div>
+                <nav class="uc-portal-nav" aria-label="Calendar admin">
+                                                                    <a href="https://resources.sfaf.org/caladmin"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 1"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-home" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 11 12 4l8 7"/><path d="M6.5 9.5V20h11V9.5"/></svg></span>
+                            <span class="uc-nav-label">Dashboard</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/events"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 2"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-calendar" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span>
+                            <span class="uc-nav-label">Events</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/series"
+                           class="uc-nav-item active"
+                           style="--uc-nav-i: 3"
+                            aria-current="page">
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-repeat" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17 2.5 21 6.5l-4 4"/><path d="M3 12.5v-2a4 4 0 0 1 4-4h14"/><path d="M7 21.5 3 17.5l4-4"/><path d="M21 11.5v2a4 4 0 0 1-4 4H3"/></svg></span>
+                            <span class="uc-nav-label">Series &amp; Categories</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/faq-sets"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 4"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-help" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.6"/><path d="M12 17h.01"/></svg></span>
+                            <span class="uc-nav-label">FAQ Sets</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/media"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 5"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-image" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.5"/><path d="m3.5 16.5 4.5-4 3.5 3 3-2.5 6 5"/></svg></span>
+                            <span class="uc-nav-label">Images</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/venues"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 6"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-venue" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 21h18"/><path d="M12 3.5 4 8.5h16z"/><path d="M6.5 21v-9M10.2 21v-9M13.8 21v-9M17.5 21v-9"/></svg></span>
+                            <span class="uc-nav-label">Venues</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/organizers"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 7"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-users" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5"/><path d="M17 13.2a5.5 5.5 0 0 1 3.5 5.8"/></svg></span>
+                            <span class="uc-nav-label">Organizers</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/optins"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 8"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-mail" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/></svg></span>
+                            <span class="uc-nav-label">Email Opt-ins</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/pending"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 9"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-clock" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>
+                            <span class="uc-nav-label">Pending</span>
+                                                            <span class="uc-nav-badge">8<span class="uc-visually-hidden"> waiting for review</span></span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/users"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 10"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-users" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5"/><path d="M17 13.2a5.5 5.5 0 0 1 3.5 5.8"/></svg></span>
+                            <span class="uc-nav-label">Users &amp; Teams</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/email-templates"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 11"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-mail" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/></svg></span>
+                            <span class="uc-nav-label">Email Templates</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/preferences"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 12"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-bell" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 10.5a6 6 0 0 0-12 0c0 4.5-2 6-2 6h16s-2-1.5-2-6z"/><path d="M13.7 19.5a2 2 0 0 1-3.4 0"/></svg></span>
+                            <span class="uc-nav-label">Preferences</span>
+                                                    </a>
+                                    </nav>
+
+                                <div class="uc-portal-foot">
+                    <div class="uc-portal-me">
+                        <span class="uc-portal-me-name">Admin</span>
+                        <span class="uc-portal-me-role">Admin</span>
+                        <a class="uc-portal-signout" href="">Sign out</a>
+                    </div>
+                </div>
+            </aside>
+
+            <div class="uc-portal-main">
+                <header class="uc-portal-topbar">
+                                        <button type="button" class="uc-portal-menu-btn" id="uc-menu-btn" aria-label="Menu"><svg class="sfaf-icon sfaf-icon-menu" width="22px" height="22px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+                                    </header>
+                <main class="uc-portal-content">
+                <div class="uc-page-head">
+            <h1>Series &amp; Categories</h1>
+        </div>
+
+                <section class="uc-section" id="uc-series">
+            <div class="uc-section-head">
+                <h2>Series</h2>
+                <p class="uc-section-sub">An event and all of its dates, with the pattern it runs on.</p>
+            </div>
+
+        <p class="uc-help">
+            <strong>A series is an event's schedule: the event, and all of its dates.</strong> Open one to see the
+            pattern it runs on, change the day or the time for everything still to come, add a date, or take one off.
+            <br />
+            You do not normally create a series here: set a repeat on a new event and its series is made in the same
+            step. Create one by hand when a program needs describing before any of its dates are known.
+        </p>
+
+        <div class="uc-card">
+                        <details class="uc-list-fold" open>
+                <summary class="uc-card-head uc-list-fold-head">
+                    <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                                        <h2>2 series</h2>
+                </summary>
+                            <table class="uc-table uc-table-cards">
+                    <thead><tr><th></th><th>Series</th><th>Schedule</th><th>Upcoming</th><th>Next date</th><th class="uc-col-actions">Actions</th></tr></thead>
+                    <tbody>
+                                            <tr>
+                            <td class="uc-series-thumb"><a href="https://resources.sfaf.org/caladmin/series/edit/11"><span class="uc-series-thumb-none" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-calendar" width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span></a></td>
+                            <td><a class="uc-tlink" href="https://resources.sfaf.org/caladmin/series/edit/11"><strong>Alpha</strong></a></td>
+                            <td>Wednesday, October 14, 2026, 6–7:30 pm</td>
+                            <td>4</td>
+                            <td>Oct 14, 2026</td>
+                            <td class="uc-row-actions">
+                                <div class="uc-actions">
+                                    <a class="uc-action-link" href="https://resources.sfaf.org/caladmin/series/edit/11">Schedule</a>
+                                    <a class="uc-action-link" href="https://resources.sfaf.org/term/11/" target="_blank" rel="noopener">View</a>
+                                </div>
+                            </td>
+                        </tr>
+                                            <tr>
+                            <td class="uc-series-thumb"><a href="https://resources.sfaf.org/caladmin/series/edit/12"><span class="uc-series-thumb-none" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-calendar" width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span></a></td>
+                            <td><a class="uc-tlink" href="https://resources.sfaf.org/caladmin/series/edit/12"><strong>Beta</strong></a></td>
+                            <td>Wednesday, October 14, 2026, 6–7:30 pm</td>
+                            <td>4</td>
+                            <td>Oct 14, 2026</td>
+                            <td class="uc-row-actions">
+                                <div class="uc-actions">
+                                    <a class="uc-action-link" href="https://resources.sfaf.org/caladmin/series/edit/12">Schedule</a>
+                                    <a class="uc-action-link" href="https://resources.sfaf.org/term/12/" target="_blank" rel="noopener">View</a>
+                                </div>
+                            </td>
+                        </tr>
+                                        </tbody>
+                </table>
+                        </details>
+
+                                        <div class="uc-cat-new">
+                    <a href="https://resources.sfaf.org/caladmin/series/new" class="uc-btn uc-btn-sm uc-btn-primary">+ New series</a>
+                </div>
+                    </div>
+        </section>
+
+                <section class="uc-section" id="uc-categories">
+            <div class="uc-section-head">
+                <h2>Categories</h2>
+                <p class="uc-section-sub">What kind of event this is. The color and icon are what a card and its placeholder are drawn from.</p>
+            </div>
+
+            <div class="uc-card">
+                                <details class="uc-list-fold" open>
+                <summary class="uc-card-head uc-list-fold-head">
+                    <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                    <h2>2 categories</h2>
+                </summary>
+
+                
+                <p class="uc-hint">
+                    An event can be in several. The first one alphabetically supplies the color of its card and the
+                    picture shown when it has no image of its own.
+                </p>
+
+                                    <ul class="uc-cat-list">
+                                                    <li class="uc-cat-row">
+                                                                    <span class="uc-cat-swatch" style="--cat: #16BECF; --cat-ink: #373433;">
+                                        <svg class="sfaf-icon sfaf-icon-calendar" width="17px" height="17px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg>                                    </span>
+                                    <span class="uc-cat-id">
+                                        <strong>Alpha</strong>
+                                        <span class="uc-muted">
+                                            Teal,
+                                            calendar icon,
+                                            4 events                                        </span>
+                                    </span>
+                                                                            <span class="uc-cat-actions">
+                                            <a class="uc-btn uc-btn-sm" href="https://resources.sfaf.org/caladmin/series?cat_edit=11#uc-categories">Edit</a>
+                                            <form method="post" action="https://resources.sfaf.org/caladmin/series" class="uc-cat-delete"
+                                                  onsubmit="return confirm('Delete the category &quot;Alpha&quot;? 4 events will stay on the calendar and simply lose this category.');">
+                                                <input type="hidden" name="uc_action" value="delete_category" />
+                                                <input type="hidden" name="category_id" value="11" />
+                                                <input type="hidden" name="uc_nonce" value="nonce" />                                                <button type="submit" class="uc-link-danger uc-btn-sm">Delete</button>
+                                            </form>
+                                        </span>
+                                                                                                </li>
+                                                    <li class="uc-cat-row">
+                                                                    <span class="uc-cat-swatch" style="--cat: #16BECF; --cat-ink: #373433;">
+                                        <svg class="sfaf-icon sfaf-icon-calendar" width="17px" height="17px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg>                                    </span>
+                                    <span class="uc-cat-id">
+                                        <strong>Beta</strong>
+                                        <span class="uc-muted">
+                                            Teal,
+                                            calendar icon,
+                                            4 events                                        </span>
+                                    </span>
+                                                                            <span class="uc-cat-actions">
+                                            <a class="uc-btn uc-btn-sm" href="https://resources.sfaf.org/caladmin/series?cat_edit=12#uc-categories">Edit</a>
+                                            <form method="post" action="https://resources.sfaf.org/caladmin/series" class="uc-cat-delete"
+                                                  onsubmit="return confirm('Delete the category &quot;Beta&quot;? 4 events will stay on the calendar and simply lose this category.');">
+                                                <input type="hidden" name="uc_action" value="delete_category" />
+                                                <input type="hidden" name="category_id" value="12" />
+                                                <input type="hidden" name="uc_nonce" value="nonce" />                                                <button type="submit" class="uc-link-danger uc-btn-sm">Delete</button>
+                                            </form>
+                                        </span>
+                                                                                                </li>
+                                            </ul>
+                                </details>
+
+                                    <div class="uc-cat-new">
+                                                    <a class="uc-btn uc-btn-sm" href="https://resources.sfaf.org/caladmin/series?cat_new=1#uc-categories">Create a category</a>
+                                            </div>
+                            </div>
+        </section>
+                                </main>
+            </div>
+        </div>
+        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.110.1"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.110.1"></script>
+<script src="../public/js/portal.js?ver=3.110.1"></script>
+<script>window.RV_PAGE="serieslist-phone";(function () {
+var P = window.RV_PAGE, out = { page: P, errors: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function q(s, r) { return (r || document).querySelector(s); }
+function qa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function text(el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }
+function shut(el) { var d = el.closest('details:not([open])'); return !!d && !(el.tagName === 'SUMMARY' && el.parentNode === d) && !(el.closest('summary') && el.closest('summary').parentNode === d); }
+function seen(el) { if (!el || !el.getClientRects().length || shut(el)) { return false; } var cs = getComputedStyle(el); return cs.visibility !== 'hidden' && cs.display !== 'none' && +cs.opacity !== 0; }
+function rect(el) { if (!el) { return null; } var r = el.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom), w: Math.round(r.width), h: Math.round(r.height) }; }
+function name(el) { return el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).join('.') : '') + (el.name ? '[' + el.name + ']' : '') + ' "' + (text(el) || el.getAttribute('aria-label') || el.value || '').slice(0, 28) + '"'; }
+var phone = window.innerWidth < 600;
+function small(root) {
+  var bad = [];
+  qa('a.uc-btn, button, select, textarea, summary, input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), label', root).forEach(function (el) {
+    if (!seen(el)) { return; }
+    if (el.tagName === 'LABEL' && !q('input[type="checkbox"], input[type="radio"]', el)) { return; }
+    if (el.closest('.uc-tpl-editor, [hidden], #uc-sidebar, .uc-portal-sidebar')) { return; }
+    var r = el.getBoundingClientRect(); if (!r.width || !r.height) { return; }
+    var h = r.height, a = getComputedStyle(el, '::after');
+    if (a.content !== 'none' && a.position === 'absolute') { h = r.height - parseFloat(a.top) - parseFloat(a.bottom); }
+    if (Math.round(h) < 44) { bad.push(name(el) + ' ' + Math.round(h) + 'px'); }
+  });
+  return bad;
+}
+function past(root) {
+  var w = document.documentElement.clientWidth, bad = [];
+  qa('*', root).forEach(function (el) {
+    if (!seen(el) || el.closest('[hidden], #uc-sidebar, .uc-portal-sidebar')) { return; }
+    var r = el.getBoundingClientRect(); if (r.width && r.right > w + 1) { bad.push(name(el) + ' right ' + Math.round(r.right)); }
+  });
+  return bad.slice(0, 8);
+}
+function finish() { out.pageWidth = document.documentElement.scrollWidth; window.parent.postMessage(JSON.stringify(out), '*'); }
+window.addEventListener('load', function () { setTimeout(function () {
+  var main = q('.uc-portal-main') || q('.uc-login-wrap') || document.body;
+  /* The tour on Add event: started, then measured in its panel. */
+  if (P.indexOf('tour-') === 0) {
+    var start = q('.uc-tour-link, [data-uc-tour-start]');
+    if (start) { start.click(); }
+    setTimeout(function () {
+      var panel = q('.uc-tour-panel, [data-uc-tour-panel], .uc-tour [role="dialog"], dialog.uc-tour');
+      out.tour = panel ? { box: rect(panel), small: phone ? small(panel) : [], past: past(panel) } : null;
+      finish();
+    }, 400);
+    return;
+  }
+  out.small = phone ? small(main) : [];
+  out.past = past(main);
+  /* B: the Users table. */
+  var table = q('[data-uc-users-table]');
+  if (table) {
+    var rows = qa('[data-uc-user-row]', table);
+    out.order = rows.map(function (r) { return text(q('.uc-user-id strong', r)); });
+    out.saveOff = rows.map(function (r) { return q('[data-uc-user-save]', r).disabled; });
+    out.roles = rows.map(function (r) { var s = q('[data-uc-user-role]', r); return { name: text(q('.uc-user-id strong', r)), role: s ? s.value : 'wp', approval: seen(q('[data-uc-user-approval]', r)), cats: seen(q('[data-uc-user-cats-toggle]', r)) }; });
+    var young = rows.filter(function (r) { return text(q('.uc-user-id strong', r)) === 'Ben Young'; })[0];
+    if (young) {
+      var role = q('[data-uc-user-role]', young), save = q('[data-uc-user-save]', young);
+      role.value = 'contributor'; role.dispatchEvent(new Event('change', { bubbles: true }));
+      out.toContrib = { save: save.disabled, approval: seen(q('[data-uc-user-approval]', young)), cats: seen(q('[data-uc-user-cats-toggle]', young)) };
+      role.value = 'editor'; role.dispatchEvent(new Event('change', { bubbles: true }));
+      out.backToEditor = { save: save.disabled, approval: seen(q('[data-uc-user-approval]', young)), cats: seen(q('[data-uc-user-cats-toggle]', young)) };
+    }
+    if (phone) {
+      out.wrap = rows.map(function (r) {
+        var id = rect(q('.uc-user-id', r)), ctl = rect(q('.uc-user-role', r)) || rect(q('.uc-user-actions', r)), act = rect(q('.uc-user-actions', r));
+        return { twoLines: ctl.top >= id.bottom - 1, inside: act.right <= document.documentElement.clientWidth };
+      });
+    }
+    var add = q('.uc-team-add-toggle');
+    if (add) { var ca = getComputedStyle(add); out.addMember = { text: text(add), border: ca.borderTopWidth + ' ' + ca.borderTopStyle, bg: ca.backgroundColor }; }
+    var filter = q('[data-uc-user-filter]');
+    if (filter) { filter.value = 'martinez'; filter.dispatchEvent(new Event('input', { bubbles: true })); out.filtered = rows.filter(function (r) { return !r.hidden; }).map(function (r) { return text(q('.uc-user-id strong', r)); }); filter.value = ''; filter.dispatchEvent(new Event('input', { bubbles: true })); }
+  }
+  /* A.2: Send. */
+  var send = q('[data-uc-rm-send]');
+  if (send) {
+    var details = send.closest('details'); if (details) { details.open = true; }
+    var icon = q('.uc-rm-send-icon', send);
+    out.send = { bg: getComputedStyle(send).backgroundColor, iconSvg: !!q('svg', icon), restW: Math.round(icon.getBoundingClientRect().width),
+      transition: getComputedStyle(icon).transitionDuration, reduce: window.matchMedia('(prefers-reduced-motion: reduce)').matches };
+    /* Headless Chrome does not run a CSS transition to its end, so the length
+       is read above and the end state with the transition held off. */
+    icon.style.transition = 'none';
+    send.focus();
+    setTimeout(function () { out.send.focusW = Math.round(icon.getBoundingClientRect().width); out.send.focusVisible = send.matches(':focus-visible'); finish(); }, 400);
+    return;
+  }
+  finish();
+}, 700); });
+})();</script></body></html>

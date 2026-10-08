@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html >
+<head>
+    <meta charset="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Pending - SFAF Calendar</title>
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.110.1" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.110.1" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.110.1" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.110.1" />
+    <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
+        <script>
+    (function (d) {
+        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        d.setAttribute('data-uc-motion', reduced ? 'reduced' : 'on');
+        if (reduced) { return; }
+        d.className += ' uc-anim';
+        // The nav stagger is once per session, not once per navigation: every
+        // screen here is a full page load. A storage failure means it simply
+        // runs again, which is the harmless outcome.
+        try {
+            if (window.sessionStorage.getItem('ucNavIntro') !== '1') {
+                window.sessionStorage.setItem('ucNavIntro', '1');
+                d.className += ' uc-anim-nav';
+            }
+        } catch (e) {
+            d.className += ' uc-anim-nav';
+        }
+    })(document.documentElement);
+    </script>
+    </head>
+<body class="uc-portal">        <div class="uc-portal-layout">
+            <aside class="uc-portal-sidebar" id="uc-sidebar">
+                                <div class="uc-portal-brand">
+                    <span class="uc-portal-logo-wrap" data-uc-sidebar-logo>
+                        <img src="https://resources.sfaf.org/wp-content/uploads/SFAF-heritage-logo_stacked-Yellow-15Gray-preview.webp" alt="San Francisco AIDS Foundation"
+                             class="uc-portal-logo" width="1470" height="901" />
+                    </span>
+                    <span class="uc-portal-brandtext">Calendar Admin</span>
+                </div>
+                <nav class="uc-portal-nav" aria-label="Calendar admin">
+                                                                    <a href="https://resources.sfaf.org/caladmin"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 1"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-home" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 11 12 4l8 7"/><path d="M6.5 9.5V20h11V9.5"/></svg></span>
+                            <span class="uc-nav-label">Dashboard</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/events"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 2"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-calendar" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span>
+                            <span class="uc-nav-label">Events</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/series"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 3"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-repeat" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17 2.5 21 6.5l-4 4"/><path d="M3 12.5v-2a4 4 0 0 1 4-4h14"/><path d="M7 21.5 3 17.5l4-4"/><path d="M21 11.5v2a4 4 0 0 1-4 4H3"/></svg></span>
+                            <span class="uc-nav-label">Series &amp; Categories</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/faq-sets"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 4"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-help" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.6"/><path d="M12 17h.01"/></svg></span>
+                            <span class="uc-nav-label">FAQ Sets</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/media"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 5"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-image" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.5"/><path d="m3.5 16.5 4.5-4 3.5 3 3-2.5 6 5"/></svg></span>
+                            <span class="uc-nav-label">Images</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/venues"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 6"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-venue" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 21h18"/><path d="M12 3.5 4 8.5h16z"/><path d="M6.5 21v-9M10.2 21v-9M13.8 21v-9M17.5 21v-9"/></svg></span>
+                            <span class="uc-nav-label">Venues</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/organizers"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 7"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-users" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5"/><path d="M17 13.2a5.5 5.5 0 0 1 3.5 5.8"/></svg></span>
+                            <span class="uc-nav-label">Organizers</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/optins"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 8"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-mail" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/></svg></span>
+                            <span class="uc-nav-label">Email Opt-ins</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/pending"
+                           class="uc-nav-item active"
+                           style="--uc-nav-i: 9"
+                            aria-current="page">
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-clock" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>
+                            <span class="uc-nav-label">Pending</span>
+                                                            <span class="uc-nav-badge">8<span class="uc-visually-hidden"> waiting for review</span></span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/users"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 10"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-users" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5"/><path d="M17 13.2a5.5 5.5 0 0 1 3.5 5.8"/></svg></span>
+                            <span class="uc-nav-label">Users &amp; Teams</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/email-templates"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 11"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-mail" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/></svg></span>
+                            <span class="uc-nav-label">Email Templates</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/preferences"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 12"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-bell" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 10.5a6 6 0 0 0-12 0c0 4.5-2 6-2 6h16s-2-1.5-2-6z"/><path d="M13.7 19.5a2 2 0 0 1-3.4 0"/></svg></span>
+                            <span class="uc-nav-label">Preferences</span>
+                                                    </a>
+                                    </nav>
+
+                                <div class="uc-portal-foot">
+                    <div class="uc-portal-me">
+                        <span class="uc-portal-me-name">Admin</span>
+                        <span class="uc-portal-me-role">Admin</span>
+                        <a class="uc-portal-signout" href="">Sign out</a>
+                    </div>
+                </div>
+            </aside>
+
+            <div class="uc-portal-main">
+                <header class="uc-portal-topbar">
+                                        <button type="button" class="uc-portal-menu-btn" id="uc-menu-btn" aria-label="Menu"><svg class="sfaf-icon sfaf-icon-menu" width="22px" height="22px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+                                    </header>
+                <main class="uc-portal-content">
+                <div class="uc-page-head">
+            <h1>Pending Events</h1>
+            <div class="uc-head-actions">
+                                <form method="post" action="https://resources.sfaf.org/caladmin/pending" class="uc-inline-form"
+                      data-uc-async="fetch"
+                      data-uc-ajax="https://resources.sfaf.org/wp-admin/admin-ajax.php"
+                      data-uc-action="sfaf_portal_fetch"
+                      data-uc-ajax-nonce="nonce"
+                      data-uc-busy="Fetching&hellip;">
+                    <input type="hidden" name="uc_action" value="fetch_sources" />
+                    <input type="hidden" name="uc_nonce" value="nonce" />                                        <button type="submit" class="uc-btn uc-btn-utility" disabled>
+                        <svg class="sfaf-icon sfaf-icon-refresh" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 11.5a8 8 0 1 0-.9 5.2"/><path d="M20 4.5v7h-7"/></svg>                        <span>Fetch updates</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+                                <div class="uc-card uc-card-muted">
+                    <div class="uc-card-head"><h2>Sources</h2></div>
+                    <p class="uc-empty">No third-party sources are connected yet. Connect one under
+                    <strong>Settings &rsaquo; Integrations</strong> in the WordPress admin, then
+                    &ldquo;Fetch updates&rdquo; will pull its events into the Pending queue.</p>
+                                    </div>
+                        
+                <div class="uc-view-tabs" role="navigation" aria-label="Which pending events to show">
+                            <a class="uc-view-tab uc-view-tab-active"
+                   href="https://resources.sfaf.org/caladmin/pending?orderby=received&amp;order=desc" aria-current="page">
+                    Everything                    <span class="uc-tab-count">4</span>
+                </a>
+                            <a class="uc-view-tab"
+                   href="https://resources.sfaf.org/caladmin/pending?kind=import&amp;orderby=received&amp;order=desc">
+                    Imported                    <span class="uc-tab-count">4</span>
+                </a>
+                            <a class="uc-view-tab"
+                   href="https://resources.sfaf.org/caladmin/pending?kind=staff&amp;orderby=received&amp;order=desc">
+                    Staff requests                    <span class="uc-tab-count">0</span>
+                </a>
+                            <a class="uc-view-tab"
+                   href="https://resources.sfaf.org/caladmin/pending?kind=community&amp;orderby=received&amp;order=desc">
+                    Community submissions                    <span class="uc-tab-count">0</span>
+                </a>
+                    </div>
+        
+        <div class="uc-card">
+            <div class="uc-card-head">
+                <h2>Waiting for a decision</h2>
+                <span class="uc-count-badge">4</span>            </div>
+                    <div class="uc-queue-sort">
+            <span class="uc-queue-sort-label">Sort by</span>
+                            <a class="uc-queue-sort-link uc-queue-sort-active"
+                   href="https://resources.sfaf.org/caladmin/pending?orderby=received&amp;order=asc" aria-current="true">
+                    Received                    <span class="uc-sort-mark" aria-hidden="true"> &#9660;</span>
+                    <span class="screen-reader-text">, sorted newest first. Activate to reverse.</span>
+                </a>
+                            <a class="uc-queue-sort-link"
+                   href="https://resources.sfaf.org/caladmin/pending?orderby=date&amp;order=asc">
+                    Event date                    <span class="uc-sort-mark" aria-hidden="true"></span>
+                    <span class="screen-reader-text">, not sorted by this. Activate to sort.</span>
+                </a>
+                    </div>
+                            <form method="post" action="https://resources.sfaf.org/caladmin/pending"
+              class="uc-pending-bulk" id="uc-pending-bulk" data-uc-tick-picker>
+            <input type="hidden" name="uc_action" value="pending_bulk" />
+            <input type="hidden" name="uc_pending_bulk_present" value="1" />
+            <input type="hidden" name="uc_nonce" value="nonce" />
+            <label class="uc-check uc-tick-all" hidden data-uc-tick-all-row>
+                <input type="checkbox" data-uc-tick-all />
+                Select every event in this list
+            </label>
+
+            <div class="uc-pending-panel" data-uc-pending-panel>
+                <label class="uc-field uc-pending-panel-col">
+                    <span class="uc-field-label">Series</span>
+                    <select name="bulk_series">
+                        <option value="">Leave as it is</option>
+                                                    <option value="11">Alpha</option>
+                                                    <option value="12">Beta</option>
+                                            </select>
+                </label>
+
+                <div class="uc-field uc-pending-panel-col" role="group" aria-labelledby="uc-pending-panel-cats">
+                    <span class="uc-field-label" id="uc-pending-panel-cats">Categories</span>
+                    <div class="uc-pending-panel-list">
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="bulk_categories[]" value="11" />
+                                Alpha                            </label>
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="bulk_categories[]" value="12" />
+                                Beta                            </label>
+                                            </div>
+                </div>
+
+                <div class="uc-field uc-pending-panel-col" role="group" aria-labelledby="uc-pending-panel-orgs">
+                    <span class="uc-field-label" id="uc-pending-panel-orgs">Organizers</span>
+                    <div class="uc-pending-panel-list">
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="bulk_organizers[]" value="11" />
+                                Alpha                            </label>
+                                                    <label class="uc-check">
+                                <input type="checkbox" name="bulk_organizers[]" value="12" />
+                                Beta                            </label>
+                                            </div>
+                </div>
+            </div>
+
+            <div class="uc-bulk-cat-go">
+                <button type="submit" class="uc-btn uc-btn-sm" name="uc_do" value="apply"
+                        data-uc-tick-submit data-uc-tick-word="events" data-uc-tick-word-one="event"
+                        data-uc-confirm="Apply these to the ticked events? Ticked categories and organizers replace what each event has."
+                        data-uc-tick-confirm="Apply these to {n} {noun}? Ticked categories and organizers replace what each event has.">
+                    Apply to <span data-uc-tick-count>0</span> <span data-uc-tick-noun>events</span>
+                </button>
+                <span class="uc-hint">A blank control is left as it is. A series with defaults also fills the category and organizer on any event that has none.</span>
+            </div>
+
+            <div class="uc-pending-bulk-row">
+                <div class="uc-bulk-cat-go">
+                    <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary" name="uc_do" value="publish"
+                            data-uc-tick-submit data-uc-tick-eligible
+                            data-uc-tick-word="events" data-uc-tick-word-one="event"
+                            data-uc-confirm="Publish the ticked events? They go on the public calendar straight away, and nobody who sent one is told."
+                            data-uc-tick-confirm="Publish {n} {noun}? They go on the public calendar straight away, and nobody who sent one is told.">
+                        Publish <span data-uc-tick-count>0</span> <span data-uc-tick-noun>events</span>
+                    </button>
+                    <button type="submit" class="uc-btn uc-btn-sm" name="uc_do" value="dismiss"
+                            data-uc-tick-submit data-uc-tick-word="events" data-uc-tick-word-one="event"
+                            data-uc-confirm="Dismiss the ticked imports? A fetch never offers a dismissed import again."
+                            data-uc-tick-confirm="Dismiss {n} {noun}? A fetch never offers a dismissed import again.">
+                        Dismiss <span data-uc-tick-count>0</span> <span data-uc-tick-noun>events</span>
+                    </button>
+                    <span class="uc-hint">Dismiss takes imports only. Reject a submission from its own row.</span>
+                </div>
+            </div>
+        </form>
+                                    <ul class="uc-queue-list">
+                                                    <li class="uc-queue-item"
+            data-uc-id="504" data-uc-kind="import">
+            <div class="uc-queue-row">
+                                <span class="uc-queue-tick">
+                    <input type="checkbox" name="pending_ids[]" value="504"
+                           form="uc-pending-bulk" data-uc-tick-one
+                           data-uc-tick-block="needs an organizer"                           aria-label="Select Imported gala dinner" />
+                </span>
+                                
+                <div class="uc-queue-id">
+                    <h3 class="uc-queue-title">
+                        <a href="https://resources.sfaf.org/caladmin/events/edit/504">Imported gala dinner</a>
+                                                    <span class="uc-source-badge uc-badge-import">Imported</span>
+                                                                    </h3>
+
+                                                                                                        <p class="uc-queue-hold" data-uc-hold>Not ready to publish: needs an organizer.</p>
+                                        <p class="uc-queue-meta">
+                        <span>Oct 14, 2026, 6–7:30 pm</span>
+                                                                                                                            <span>1035 Market Street</span>
+                                                                        <span class="uc-muted">Received </span>
+                    </p>
+
+                                                            
+                                    </div>
+
+                <div class="uc-queue-actions">
+                    <div class="uc-actions">
+                                                    <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                <input type="hidden" name="uc_action" value="import_publish" />
+                                <input type="hidden" name="event_id" value="504" />
+                                <input type="hidden" name="uc_nonce" value="nonce" />                                <button class="uc-link-ok" type="submit">Publish</button>
+                            </form>
+                            <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                <input type="hidden" name="uc_action" value="import_dismiss" />
+                                <input type="hidden" name="event_id" value="504" />
+                                <input type="hidden" name="uc_nonce" value="nonce" />                                <button class="uc-action-link" type="submit">Dismiss</button>
+                            </form>
+                                            </div>
+                                    </div>
+            </div>
+
+                                            <details class="uc-queue-panel">
+                    <summary>
+                        <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="15px" height="15px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                        Set the fields this platform does not supply                    </summary>
+                    <form method="post" action="https://resources.sfaf.org/caladmin/pending" class="uc-form uc-queue-form">
+                        <input type="hidden" name="uc_action" value="save_manager_fields" />
+                        <input type="hidden" name="event_id" value="504" />
+                        <input type="hidden" name="uc_nonce" value="nonce" />                                <div class="uc-manager-panel" data-uc-manager-panel>
+                                            <p class="uc-help">
+                    These are the fields
+                    a person sets.
+                    They are the same controls as the event editor, on the same event: whatever is set here is set there.
+                                    </p>
+            
+                                            <div class="uc-field uc-image-field"
+                      data-uc-media-folder="calendar" data-uc-media-flag="uc_calendar_media" data-uc-media-series="11" data-uc-media-upload="1" data-uc-media-folder-empty="1"                     >
+                    <span class="uc-field-label">Featured Image
+                                            </span>
+                                                                    <div class="uc-image-block" data-uc-image-block
+             data-uc-series-pictures="{}"
+             data-uc-image-start="none"
+             data-uc-image-start-name="">
+            <div class="uc-image-preview uc-image-preview-empty" id="uc-image-preview-e504"
+                 data-uc-image-preview>
+                <img src="" alt="" data-uc-image-preview-img hidden />
+                <span class="uc-image-pill" data-uc-img-source-tag
+                      data-uc-img-source-own="Event-specific"
+                      data-uc-img-source-series="From series"
+                      data-uc-img-source-none="Placeholder">Placeholder</span>
+                                    <button type="button" class="uc-image-remove" data-uc-image-remove hidden>Remove</button>
+                            </div>
+                                            <input type="hidden" name="reset_series_image" value="1" data-uc-image-reset disabled />
+                    
+        
+                                <p class="uc-hint uc-image-outside" data-uc-image-outside hidden>Not in this series. It stays chosen until you pick another.</p>
+        </div>
+                                <label class="uc-field uc-image-url-field">
+            <span class="uc-field-label">Or an image URL                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-imgurl-e504" aria-label="More about the image URL">?</button><span class="uc-help-body" id="uc-help-imgurl-e504" data-uc-help-body>Used only when no picture is chosen above.</span>            </span>
+            <input type="url" name="image_url"
+                   id="uc-image-url-e504"
+                   data-uc-image-url value=""
+                   placeholder="https://…/image.jpg" />
+        </label>
+                                <p class="uc-hint uc-hint-spec"><strong>1200 x 675 pixels, 16:9 landscape.</strong></p>
+                            <p class="uc-field-note uc-field-note-attention"><svg class="uc-state-icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path fill="currentColor" d="M4 17.2V20h2.8L17 9.8 14.2 7zm14.8-9.6a.75.75 0 0 0 0-1.06l-1.74-1.74a.75.75 0 0 0-1.06 0L14.6 6.2 17.4 9z"/></svg><span>The calendar folder has no images in it yet, so Choose Image will look empty. Uploading one here puts it in the folder. If you expected pictures to be there, check that the folder is still <code>uploads/calendar</code>.</span></p>
+                                </div>
+                                <div class="uc-field">
+                    <span class="uc-field-label">Description </span>
+                    <textarea name="description" id="uc-description">&lt;p&gt;Words.&lt;/p&gt;</textarea>                <details class="uc-desc-images" data-uc-desc-images
+                 data-uc-ajax="https://resources.sfaf.org/wp-admin/admin-ajax.php"
+                 data-uc-action="sfaf_desc_image"
+                 data-uc-field="uc_desc_image"
+                 data-uc-ajax-nonce="nonce"
+                 data-uc-editor="uc-description">
+                                    <summary class="uc-outline-btn uc-desc-images-open">Insert image</summary>
+            <div class="uc-desc-images-panel">
+                                <label class="uc-field uc-field-upload">
+                    <span class="uc-field-label">Upload a picture</span>
+                    <input type="file" data-uc-desc-upload
+                           accept="image/jpeg,image/png,image/gif,image/webp" />
+                    <span class="uc-hint">JPEG, PNG, GIF or WebP, up to 10MB.</span>
+                </label>
+                <p class="uc-desc-images-status uc-notice" data-uc-desc-status role="status" hidden></p>
+
+                            </div>
+        </details>
+                        </div>
+                                                <div class="uc-field uc-cat-field"                     data-uc-chips>
+                    <span class="uc-field-label">Categories                         <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-cats-e504" aria-label="More about categories">?</button><span class="uc-help-body" id="uc-help-cats-e504" data-uc-help-body>The first chip supplies the card color and the placeholder picture.</span>                    </span>
+                    <input type="hidden" name="uc_category_present" value="1" />
+
+                                        <div class="uc-chips" data-uc-chips-list hidden></div>
+                    <p class="uc-chips-empty" data-uc-chips-empty hidden>No categories chosen yet.</p>
+
+                    <div class="uc-chips-add" data-uc-chips-add hidden>
+                        <button type="button" class="uc-btn uc-btn-sm" data-uc-chips-toggle
+                                aria-expanded="false">+ Add category</button>
+                    </div>
+
+                    <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
+                                                    <label class="uc-check" data-uc-chip-label="Alpha">
+                                <input type="checkbox" name="category[]" value="11"
+                                       data-uc-chip-color="#16BECF"
+                                        checked="checked" />
+                                Alpha                            </label>
+                                                    <label class="uc-check" data-uc-chip-label="Beta">
+                                <input type="checkbox" name="category[]" value="12"
+                                       data-uc-chip-color="#16BECF"
+                                        />
+                                Beta                            </label>
+                                            </div>
+
+                                    </div>
+                                                <div class="uc-field uc-cat-field uc-org-field"                     data-uc-chips>
+                    <span class="uc-field-label">Organizer </span>
+
+                                        <input type="hidden" name="uc_organizer_present" value="1" />
+
+                    <div class="uc-chips" data-uc-chips-list hidden></div>
+                    <p class="uc-chips-empty" data-uc-chips-empty hidden>No organizers chosen yet.</p>
+
+                    <div class="uc-chips-add" data-uc-chips-add hidden>
+                        <button type="button" class="uc-btn uc-btn-sm" data-uc-chips-toggle
+                                aria-expanded="false">+ Add organizer</button>
+                    </div>
+
+                    <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
+                                                    <label class="uc-check" data-uc-chip-label="Alpha">
+                                <input type="checkbox" name="organizer[]" value="11"
+                                        />
+                                Alpha                            </label>
+                                                    <label class="uc-check" data-uc-chip-label="Beta">
+                                <input type="checkbox" name="organizer[]" value="12"
+                                        />
+                                Beta                            </label>
+                                            </div>
+
+                                                        </div>
+
+                                                <div class="uc-field uc-private-field" data-uc-private>
+                            <span class="uc-field-label">Who can find this event <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-private-504" aria-label="More about private events">?</button><span class="uc-help-body" id="uc-help-private-504" data-uc-help-body>The link is the whole of the protection: anybody who has it can open the event and can pass it on. There is no list of who has looked and no way to take the link back except making a new one.</span></span>
+                                    <input type="hidden" name="uc_private" value="0" />
+            <label class="uc-check">
+                <input type="checkbox" name="uc_private" value="1"  />
+                Make this event private
+            </label>
+                            <p class="uc-hint">
+                    The event will not appear anywhere on the site. Only people you send the link to can
+                    find it. Turning this on gives the event a new link, so any link you have already
+                    shared will stop working.
+                </p>
+                                            </div>
+                        </div>
+                                <div class="uc-form-actions">
+                            <button type="submit" class="uc-btn uc-btn-primary">Save these fields</button>
+                            <a class="uc-action-link" href="https://resources.sfaf.org/caladmin/events/edit/504">Open the full editor</a>
+                        </div>
+                    </form>
+                </details>
+                    </li>
+                                                            <li class="uc-queue-item"
+            data-uc-id="503" data-uc-kind="import">
+            <div class="uc-queue-row">
+                                <span class="uc-queue-tick">
+                    <input type="checkbox" name="pending_ids[]" value="503"
+                           form="uc-pending-bulk" data-uc-tick-one
+                           data-uc-tick-block="needs an organizer"                           aria-label="Select Support group for people newly diagnosed" />
+                </span>
+                                
+                <div class="uc-queue-id">
+                    <h3 class="uc-queue-title">
+                        <a href="https://resources.sfaf.org/caladmin/events/edit/503">Support group for people newly diagnosed</a>
+                                                    <span class="uc-source-badge uc-badge-import">Imported</span>
+                                                                    </h3>
+
+                                                                                                        <p class="uc-queue-hold" data-uc-hold>Not ready to publish: needs an organizer.</p>
+                                        <p class="uc-queue-meta">
+                        <span>Oct 14, 2026, 6–7:30 pm</span>
+                                                                                                                            <span>1035 Market Street</span>
+                                                                        <span class="uc-muted">Received </span>
+                    </p>
+
+                                                            
+                                    </div>
+
+                <div class="uc-queue-actions">
+                    <div class="uc-actions">
+                                                    <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                <input type="hidden" name="uc_action" value="import_publish" />
+                                <input type="hidden" name="event_id" value="503" />
+                                <input type="hidden" name="uc_nonce" value="nonce" />                                <button class="uc-link-ok" type="submit">Publish</button>
+                            </form>
+                            <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                <input type="hidden" name="uc_action" value="import_dismiss" />
+                                <input type="hidden" name="event_id" value="503" />
+                                <input type="hidden" name="uc_nonce" value="nonce" />                                <button class="uc-action-link" type="submit">Dismiss</button>
+                            </form>
+                                            </div>
+                                    </div>
+            </div>
+
+                                            <details class="uc-queue-panel">
+                    <summary>
+                        <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="15px" height="15px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                        Set the fields this platform does not supply                    </summary>
+                    <form method="post" action="https://resources.sfaf.org/caladmin/pending" class="uc-form uc-queue-form">
+                        <input type="hidden" name="uc_action" value="save_manager_fields" />
+                        <input type="hidden" name="event_id" value="503" />
+                        <input type="hidden" name="uc_nonce" value="nonce" />                                <div class="uc-manager-panel" data-uc-manager-panel>
+                                            <p class="uc-help">
+                    These are the fields
+                    a person sets.
+                    They are the same controls as the event editor, on the same event: whatever is set here is set there.
+                                    </p>
+            
+                                            <div class="uc-field uc-image-field"
+                      data-uc-media-folder="calendar" data-uc-media-flag="uc_calendar_media" data-uc-media-series="11" data-uc-media-upload="1" data-uc-media-folder-empty="1"                     >
+                    <span class="uc-field-label">Featured Image
+                                            </span>
+                                                                    <div class="uc-image-block" data-uc-image-block
+             data-uc-series-pictures="{}"
+             data-uc-image-start="none"
+             data-uc-image-start-name="">
+            <div class="uc-image-preview uc-image-preview-empty" id="uc-image-preview-e503"
+                 data-uc-image-preview>
+                <img src="" alt="" data-uc-image-preview-img hidden />
+                <span class="uc-image-pill" data-uc-img-source-tag
+                      data-uc-img-source-own="Event-specific"
+                      data-uc-img-source-series="From series"
+                      data-uc-img-source-none="Placeholder">Placeholder</span>
+                                    <button type="button" class="uc-image-remove" data-uc-image-remove hidden>Remove</button>
+                            </div>
+                                            <input type="hidden" name="reset_series_image" value="1" data-uc-image-reset disabled />
+                    
+        
+                                <p class="uc-hint uc-image-outside" data-uc-image-outside hidden>Not in this series. It stays chosen until you pick another.</p>
+        </div>
+                                <label class="uc-field uc-image-url-field">
+            <span class="uc-field-label">Or an image URL                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-imgurl-e503" aria-label="More about the image URL">?</button><span class="uc-help-body" id="uc-help-imgurl-e503" data-uc-help-body>Used only when no picture is chosen above.</span>            </span>
+            <input type="url" name="image_url"
+                   id="uc-image-url-e503"
+                   data-uc-image-url value=""
+                   placeholder="https://…/image.jpg" />
+        </label>
+                                <p class="uc-hint uc-hint-spec"><strong>1200 x 675 pixels, 16:9 landscape.</strong></p>
+                            <p class="uc-field-note uc-field-note-attention"><svg class="uc-state-icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path fill="currentColor" d="M4 17.2V20h2.8L17 9.8 14.2 7zm14.8-9.6a.75.75 0 0 0 0-1.06l-1.74-1.74a.75.75 0 0 0-1.06 0L14.6 6.2 17.4 9z"/></svg><span>The calendar folder has no images in it yet, so Choose Image will look empty. Uploading one here puts it in the folder. If you expected pictures to be there, check that the folder is still <code>uploads/calendar</code>.</span></p>
+                                </div>
+                                <div class="uc-field">
+                    <span class="uc-field-label">Description </span>
+                    <textarea name="description" id="uc-description">&lt;p&gt;Words.&lt;/p&gt;</textarea>                <details class="uc-desc-images" data-uc-desc-images
+                 data-uc-ajax="https://resources.sfaf.org/wp-admin/admin-ajax.php"
+                 data-uc-action="sfaf_desc_image"
+                 data-uc-field="uc_desc_image"
+                 data-uc-ajax-nonce="nonce"
+                 data-uc-editor="uc-description">
+                                    <summary class="uc-outline-btn uc-desc-images-open">Insert image</summary>
+            <div class="uc-desc-images-panel">
+                                <label class="uc-field uc-field-upload">
+                    <span class="uc-field-label">Upload a picture</span>
+                    <input type="file" data-uc-desc-upload
+                           accept="image/jpeg,image/png,image/gif,image/webp" />
+                    <span class="uc-hint">JPEG, PNG, GIF or WebP, up to 10MB.</span>
+                </label>
+                <p class="uc-desc-images-status uc-notice" data-uc-desc-status role="status" hidden></p>
+
+                            </div>
+        </details>
+                        </div>
+                                                <div class="uc-field uc-cat-field"                     data-uc-chips>
+                    <span class="uc-field-label">Categories                         <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-cats-e503" aria-label="More about categories">?</button><span class="uc-help-body" id="uc-help-cats-e503" data-uc-help-body>The first chip supplies the card color and the placeholder picture.</span>                    </span>
+                    <input type="hidden" name="uc_category_present" value="1" />
+
+                                        <div class="uc-chips" data-uc-chips-list hidden></div>
+                    <p class="uc-chips-empty" data-uc-chips-empty hidden>No categories chosen yet.</p>
+
+                    <div class="uc-chips-add" data-uc-chips-add hidden>
+                        <button type="button" class="uc-btn uc-btn-sm" data-uc-chips-toggle
+                                aria-expanded="false">+ Add category</button>
+                    </div>
+
+                    <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
+                                                    <label class="uc-check" data-uc-chip-label="Alpha">
+                                <input type="checkbox" name="category[]" value="11"
+                                       data-uc-chip-color="#16BECF"
+                                        checked="checked" />
+                                Alpha                            </label>
+                                                    <label class="uc-check" data-uc-chip-label="Beta">
+                                <input type="checkbox" name="category[]" value="12"
+                                       data-uc-chip-color="#16BECF"
+                                        />
+                                Beta                            </label>
+                                            </div>
+
+                                    </div>
+                                                <div class="uc-field uc-cat-field uc-org-field"                     data-uc-chips>
+                    <span class="uc-field-label">Organizer </span>
+
+                                        <input type="hidden" name="uc_organizer_present" value="1" />
+
+                    <div class="uc-chips" data-uc-chips-list hidden></div>
+                    <p class="uc-chips-empty" data-uc-chips-empty hidden>No organizers chosen yet.</p>
+
+                    <div class="uc-chips-add" data-uc-chips-add hidden>
+                        <button type="button" class="uc-btn uc-btn-sm" data-uc-chips-toggle
+                                aria-expanded="false">+ Add organizer</button>
+                    </div>
+
+                    <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
+                                                    <label class="uc-check" data-uc-chip-label="Alpha">
+                                <input type="checkbox" name="organizer[]" value="11"
+                                        />
+                                Alpha                            </label>
+                                                    <label class="uc-check" data-uc-chip-label="Beta">
+                                <input type="checkbox" name="organizer[]" value="12"
+                                        />
+                                Beta                            </label>
+                                            </div>
+
+                                                        </div>
+
+                                                <div class="uc-field uc-private-field" data-uc-private>
+                            <span class="uc-field-label">Who can find this event <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-private-503" aria-label="More about private events">?</button><span class="uc-help-body" id="uc-help-private-503" data-uc-help-body>The link is the whole of the protection: anybody who has it can open the event and can pass it on. There is no list of who has looked and no way to take the link back except making a new one.</span></span>
+                                    <input type="hidden" name="uc_private" value="0" />
+            <label class="uc-check">
+                <input type="checkbox" name="uc_private" value="1"  />
+                Make this event private
+            </label>
+                            <p class="uc-hint">
+                    The event will not appear anywhere on the site. Only people you send the link to can
+                    find it. Turning this on gives the event a new link, so any link you have already
+                    shared will stop working.
+                </p>
+                                            </div>
+                        </div>
+                                <div class="uc-form-actions">
+                            <button type="submit" class="uc-btn uc-btn-primary">Save these fields</button>
+                            <a class="uc-action-link" href="https://resources.sfaf.org/caladmin/events/edit/503">Open the full editor</a>
+                        </div>
+                    </form>
+                </details>
+                    </li>
+                                                            <li class="uc-queue-item"
+            data-uc-id="502" data-uc-kind="import">
+            <div class="uc-queue-row">
+                                <span class="uc-queue-tick">
+                    <input type="checkbox" name="pending_ids[]" value="502"
+                           form="uc-pending-bulk" data-uc-tick-one
+                           data-uc-tick-block="needs an organizer"                           aria-label="Select Coffee social" />
+                </span>
+                                
+                <div class="uc-queue-id">
+                    <h3 class="uc-queue-title">
+                        <a href="https://resources.sfaf.org/caladmin/events/edit/502">Coffee social</a>
+                                                    <span class="uc-source-badge uc-badge-import">Imported</span>
+                                                                    </h3>
+
+                                                                                                        <p class="uc-queue-hold" data-uc-hold>Not ready to publish: needs an organizer.</p>
+                                        <p class="uc-queue-meta">
+                        <span>Oct 14, 2026, 6–7:30 pm</span>
+                                                                                                                            <span>1035 Market Street</span>
+                                                                        <span class="uc-muted">Received </span>
+                    </p>
+
+                                                            
+                                    </div>
+
+                <div class="uc-queue-actions">
+                    <div class="uc-actions">
+                                                    <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                <input type="hidden" name="uc_action" value="import_publish" />
+                                <input type="hidden" name="event_id" value="502" />
+                                <input type="hidden" name="uc_nonce" value="nonce" />                                <button class="uc-link-ok" type="submit">Publish</button>
+                            </form>
+                            <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                <input type="hidden" name="uc_action" value="import_dismiss" />
+                                <input type="hidden" name="event_id" value="502" />
+                                <input type="hidden" name="uc_nonce" value="nonce" />                                <button class="uc-action-link" type="submit">Dismiss</button>
+                            </form>
+                                            </div>
+                                    </div>
+            </div>
+
+                                            <details class="uc-queue-panel">
+                    <summary>
+                        <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="15px" height="15px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                        Set the fields this platform does not supply                    </summary>
+                    <form method="post" action="https://resources.sfaf.org/caladmin/pending" class="uc-form uc-queue-form">
+                        <input type="hidden" name="uc_action" value="save_manager_fields" />
+                        <input type="hidden" name="event_id" value="502" />
+                        <input type="hidden" name="uc_nonce" value="nonce" />                                <div class="uc-manager-panel" data-uc-manager-panel>
+                                            <p class="uc-help">
+                    These are the fields
+                    a person sets.
+                    They are the same controls as the event editor, on the same event: whatever is set here is set there.
+                                    </p>
+            
+                                            <div class="uc-field uc-image-field"
+                      data-uc-media-folder="calendar" data-uc-media-flag="uc_calendar_media" data-uc-media-series="11" data-uc-media-upload="1" data-uc-media-folder-empty="1"                     >
+                    <span class="uc-field-label">Featured Image
+                                            </span>
+                                                                    <div class="uc-image-block" data-uc-image-block
+             data-uc-series-pictures="{}"
+             data-uc-image-start="none"
+             data-uc-image-start-name="">
+            <div class="uc-image-preview uc-image-preview-empty" id="uc-image-preview-e502"
+                 data-uc-image-preview>
+                <img src="" alt="" data-uc-image-preview-img hidden />
+                <span class="uc-image-pill" data-uc-img-source-tag
+                      data-uc-img-source-own="Event-specific"
+                      data-uc-img-source-series="From series"
+                      data-uc-img-source-none="Placeholder">Placeholder</span>
+                                    <button type="button" class="uc-image-remove" data-uc-image-remove hidden>Remove</button>
+                            </div>
+                                            <input type="hidden" name="reset_series_image" value="1" data-uc-image-reset disabled />
+                    
+        
+                                <p class="uc-hint uc-image-outside" data-uc-image-outside hidden>Not in this series. It stays chosen until you pick another.</p>
+        </div>
+                                <label class="uc-field uc-image-url-field">
+            <span class="uc-field-label">Or an image URL                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-imgurl-e502" aria-label="More about the image URL">?</button><span class="uc-help-body" id="uc-help-imgurl-e502" data-uc-help-body>Used only when no picture is chosen above.</span>            </span>
+            <input type="url" name="image_url"
+                   id="uc-image-url-e502"
+                   data-uc-image-url value=""
+                   placeholder="https://…/image.jpg" />
+        </label>
+                                <p class="uc-hint uc-hint-spec"><strong>1200 x 675 pixels, 16:9 landscape.</strong></p>
+                            <p class="uc-field-note uc-field-note-attention"><svg class="uc-state-icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path fill="currentColor" d="M4 17.2V20h2.8L17 9.8 14.2 7zm14.8-9.6a.75.75 0 0 0 0-1.06l-1.74-1.74a.75.75 0 0 0-1.06 0L14.6 6.2 17.4 9z"/></svg><span>The calendar folder has no images in it yet, so Choose Image will look empty. Uploading one here puts it in the folder. If you expected pictures to be there, check that the folder is still <code>uploads/calendar</code>.</span></p>
+                                </div>
+                                <div class="uc-field">
+                    <span class="uc-field-label">Description </span>
+                    <textarea name="description" id="uc-description">&lt;p&gt;Words.&lt;/p&gt;</textarea>                <details class="uc-desc-images" data-uc-desc-images
+                 data-uc-ajax="https://resources.sfaf.org/wp-admin/admin-ajax.php"
+                 data-uc-action="sfaf_desc_image"
+                 data-uc-field="uc_desc_image"
+                 data-uc-ajax-nonce="nonce"
+                 data-uc-editor="uc-description">
+                                    <summary class="uc-outline-btn uc-desc-images-open">Insert image</summary>
+            <div class="uc-desc-images-panel">
+                                <label class="uc-field uc-field-upload">
+                    <span class="uc-field-label">Upload a picture</span>
+                    <input type="file" data-uc-desc-upload
+                           accept="image/jpeg,image/png,image/gif,image/webp" />
+                    <span class="uc-hint">JPEG, PNG, GIF or WebP, up to 10MB.</span>
+                </label>
+                <p class="uc-desc-images-status uc-notice" data-uc-desc-status role="status" hidden></p>
+
+                            </div>
+        </details>
+                        </div>
+                                                <div class="uc-field uc-cat-field"                     data-uc-chips>
+                    <span class="uc-field-label">Categories                         <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-cats-e502" aria-label="More about categories">?</button><span class="uc-help-body" id="uc-help-cats-e502" data-uc-help-body>The first chip supplies the card color and the placeholder picture.</span>                    </span>
+                    <input type="hidden" name="uc_category_present" value="1" />
+
+                                        <div class="uc-chips" data-uc-chips-list hidden></div>
+                    <p class="uc-chips-empty" data-uc-chips-empty hidden>No categories chosen yet.</p>
+
+                    <div class="uc-chips-add" data-uc-chips-add hidden>
+                        <button type="button" class="uc-btn uc-btn-sm" data-uc-chips-toggle
+                                aria-expanded="false">+ Add category</button>
+                    </div>
+
+                    <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
+                                                    <label class="uc-check" data-uc-chip-label="Alpha">
+                                <input type="checkbox" name="category[]" value="11"
+                                       data-uc-chip-color="#16BECF"
+                                        checked="checked" />
+                                Alpha                            </label>
+                                                    <label class="uc-check" data-uc-chip-label="Beta">
+                                <input type="checkbox" name="category[]" value="12"
+                                       data-uc-chip-color="#16BECF"
+                                        />
+                                Beta                            </label>
+                                            </div>
+
+                                    </div>
+                                                <div class="uc-field uc-cat-field uc-org-field"                     data-uc-chips>
+                    <span class="uc-field-label">Organizer </span>
+
+                                        <input type="hidden" name="uc_organizer_present" value="1" />
+
+                    <div class="uc-chips" data-uc-chips-list hidden></div>
+                    <p class="uc-chips-empty" data-uc-chips-empty hidden>No organizers chosen yet.</p>
+
+                    <div class="uc-chips-add" data-uc-chips-add hidden>
+                        <button type="button" class="uc-btn uc-btn-sm" data-uc-chips-toggle
+                                aria-expanded="false">+ Add organizer</button>
+                    </div>
+
+                    <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
+                                                    <label class="uc-check" data-uc-chip-label="Alpha">
+                                <input type="checkbox" name="organizer[]" value="11"
+                                        />
+                                Alpha                            </label>
+                                                    <label class="uc-check" data-uc-chip-label="Beta">
+                                <input type="checkbox" name="organizer[]" value="12"
+                                        />
+                                Beta                            </label>
+                                            </div>
+
+                                                        </div>
+
+                                                <div class="uc-field uc-private-field" data-uc-private>
+                            <span class="uc-field-label">Who can find this event <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-private-502" aria-label="More about private events">?</button><span class="uc-help-body" id="uc-help-private-502" data-uc-help-body>The link is the whole of the protection: anybody who has it can open the event and can pass it on. There is no list of who has looked and no way to take the link back except making a new one.</span></span>
+                                    <input type="hidden" name="uc_private" value="0" />
+            <label class="uc-check">
+                <input type="checkbox" name="uc_private" value="1"  />
+                Make this event private
+            </label>
+                            <p class="uc-hint">
+                    The event will not appear anywhere on the site. Only people you send the link to can
+                    find it. Turning this on gives the event a new link, so any link you have already
+                    shared will stop working.
+                </p>
+                                            </div>
+                        </div>
+                                <div class="uc-form-actions">
+                            <button type="submit" class="uc-btn uc-btn-primary">Save these fields</button>
+                            <a class="uc-action-link" href="https://resources.sfaf.org/caladmin/events/edit/502">Open the full editor</a>
+                        </div>
+                    </form>
+                </details>
+                    </li>
+                                                            <li class="uc-queue-item"
+            data-uc-id="501" data-uc-kind="import">
+            <div class="uc-queue-row">
+                                <span class="uc-queue-tick">
+                    <input type="checkbox" name="pending_ids[]" value="501"
+                           form="uc-pending-bulk" data-uc-tick-one
+                           data-uc-tick-block="needs an organizer"                           aria-label="Select Harm reduction walk through the Tenderloin and back again" />
+                </span>
+                                
+                <div class="uc-queue-id">
+                    <h3 class="uc-queue-title">
+                        <a href="https://resources.sfaf.org/caladmin/events/edit/501">Harm reduction walk through the Tenderloin and back again</a>
+                                                    <span class="uc-source-badge uc-badge-import">Imported</span>
+                                                                    </h3>
+
+                                                                                                        <p class="uc-queue-hold" data-uc-hold>Not ready to publish: needs an organizer.</p>
+                                        <p class="uc-queue-meta">
+                        <span>Oct 14, 2026, 6–7:30 pm</span>
+                                                                                                                            <span>1035 Market Street</span>
+                                                                        <span class="uc-muted">Received </span>
+                    </p>
+
+                                                            
+                                    </div>
+
+                <div class="uc-queue-actions">
+                    <div class="uc-actions">
+                                                    <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                <input type="hidden" name="uc_action" value="import_publish" />
+                                <input type="hidden" name="event_id" value="501" />
+                                <input type="hidden" name="uc_nonce" value="nonce" />                                <button class="uc-link-ok" type="submit">Publish</button>
+                            </form>
+                            <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                <input type="hidden" name="uc_action" value="import_dismiss" />
+                                <input type="hidden" name="event_id" value="501" />
+                                <input type="hidden" name="uc_nonce" value="nonce" />                                <button class="uc-action-link" type="submit">Dismiss</button>
+                            </form>
+                                            </div>
+                                    </div>
+            </div>
+
+                                            <details class="uc-queue-panel">
+                    <summary>
+                        <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="15px" height="15px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                        Set the fields this platform does not supply                    </summary>
+                    <form method="post" action="https://resources.sfaf.org/caladmin/pending" class="uc-form uc-queue-form">
+                        <input type="hidden" name="uc_action" value="save_manager_fields" />
+                        <input type="hidden" name="event_id" value="501" />
+                        <input type="hidden" name="uc_nonce" value="nonce" />                                <div class="uc-manager-panel" data-uc-manager-panel>
+                                            <p class="uc-help">
+                    These are the fields
+                    a person sets.
+                    They are the same controls as the event editor, on the same event: whatever is set here is set there.
+                                    </p>
+            
+                                            <div class="uc-field uc-image-field"
+                      data-uc-media-folder="calendar" data-uc-media-flag="uc_calendar_media" data-uc-media-series="11" data-uc-media-upload="1" data-uc-media-folder-empty="1"                     >
+                    <span class="uc-field-label">Featured Image
+                                            </span>
+                                                                    <div class="uc-image-block" data-uc-image-block
+             data-uc-series-pictures="{}"
+             data-uc-image-start="none"
+             data-uc-image-start-name="">
+            <div class="uc-image-preview uc-image-preview-empty" id="uc-image-preview-e501"
+                 data-uc-image-preview>
+                <img src="" alt="" data-uc-image-preview-img hidden />
+                <span class="uc-image-pill" data-uc-img-source-tag
+                      data-uc-img-source-own="Event-specific"
+                      data-uc-img-source-series="From series"
+                      data-uc-img-source-none="Placeholder">Placeholder</span>
+                                    <button type="button" class="uc-image-remove" data-uc-image-remove hidden>Remove</button>
+                            </div>
+                                            <input type="hidden" name="reset_series_image" value="1" data-uc-image-reset disabled />
+                    
+        
+                                <p class="uc-hint uc-image-outside" data-uc-image-outside hidden>Not in this series. It stays chosen until you pick another.</p>
+        </div>
+                                <label class="uc-field uc-image-url-field">
+            <span class="uc-field-label">Or an image URL                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-imgurl-e501" aria-label="More about the image URL">?</button><span class="uc-help-body" id="uc-help-imgurl-e501" data-uc-help-body>Used only when no picture is chosen above.</span>            </span>
+            <input type="url" name="image_url"
+                   id="uc-image-url-e501"
+                   data-uc-image-url value=""
+                   placeholder="https://…/image.jpg" />
+        </label>
+                                <p class="uc-hint uc-hint-spec"><strong>1200 x 675 pixels, 16:9 landscape.</strong></p>
+                            <p class="uc-field-note uc-field-note-attention"><svg class="uc-state-icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path fill="currentColor" d="M4 17.2V20h2.8L17 9.8 14.2 7zm14.8-9.6a.75.75 0 0 0 0-1.06l-1.74-1.74a.75.75 0 0 0-1.06 0L14.6 6.2 17.4 9z"/></svg><span>The calendar folder has no images in it yet, so Choose Image will look empty. Uploading one here puts it in the folder. If you expected pictures to be there, check that the folder is still <code>uploads/calendar</code>.</span></p>
+                                </div>
+                                <div class="uc-field">
+                    <span class="uc-field-label">Description </span>
+                    <textarea name="description" id="uc-description">&lt;p&gt;Words.&lt;/p&gt;</textarea>                <details class="uc-desc-images" data-uc-desc-images
+                 data-uc-ajax="https://resources.sfaf.org/wp-admin/admin-ajax.php"
+                 data-uc-action="sfaf_desc_image"
+                 data-uc-field="uc_desc_image"
+                 data-uc-ajax-nonce="nonce"
+                 data-uc-editor="uc-description">
+                                    <summary class="uc-outline-btn uc-desc-images-open">Insert image</summary>
+            <div class="uc-desc-images-panel">
+                                <label class="uc-field uc-field-upload">
+                    <span class="uc-field-label">Upload a picture</span>
+                    <input type="file" data-uc-desc-upload
+                           accept="image/jpeg,image/png,image/gif,image/webp" />
+                    <span class="uc-hint">JPEG, PNG, GIF or WebP, up to 10MB.</span>
+                </label>
+                <p class="uc-desc-images-status uc-notice" data-uc-desc-status role="status" hidden></p>
+
+                            </div>
+        </details>
+                        </div>
+                                                <div class="uc-field uc-cat-field"                     data-uc-chips>
+                    <span class="uc-field-label">Categories                         <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-cats-e501" aria-label="More about categories">?</button><span class="uc-help-body" id="uc-help-cats-e501" data-uc-help-body>The first chip supplies the card color and the placeholder picture.</span>                    </span>
+                    <input type="hidden" name="uc_category_present" value="1" />
+
+                                        <div class="uc-chips" data-uc-chips-list hidden></div>
+                    <p class="uc-chips-empty" data-uc-chips-empty hidden>No categories chosen yet.</p>
+
+                    <div class="uc-chips-add" data-uc-chips-add hidden>
+                        <button type="button" class="uc-btn uc-btn-sm" data-uc-chips-toggle
+                                aria-expanded="false">+ Add category</button>
+                    </div>
+
+                    <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
+                                                    <label class="uc-check" data-uc-chip-label="Alpha">
+                                <input type="checkbox" name="category[]" value="11"
+                                       data-uc-chip-color="#16BECF"
+                                        checked="checked" />
+                                Alpha                            </label>
+                                                    <label class="uc-check" data-uc-chip-label="Beta">
+                                <input type="checkbox" name="category[]" value="12"
+                                       data-uc-chip-color="#16BECF"
+                                        />
+                                Beta                            </label>
+                                            </div>
+
+                                    </div>
+                                                <div class="uc-field uc-cat-field uc-org-field"                     data-uc-chips>
+                    <span class="uc-field-label">Organizer </span>
+
+                                        <input type="hidden" name="uc_organizer_present" value="1" />
+
+                    <div class="uc-chips" data-uc-chips-list hidden></div>
+                    <p class="uc-chips-empty" data-uc-chips-empty hidden>No organizers chosen yet.</p>
+
+                    <div class="uc-chips-add" data-uc-chips-add hidden>
+                        <button type="button" class="uc-btn uc-btn-sm" data-uc-chips-toggle
+                                aria-expanded="false">+ Add organizer</button>
+                    </div>
+
+                    <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
+                                                    <label class="uc-check" data-uc-chip-label="Alpha">
+                                <input type="checkbox" name="organizer[]" value="11"
+                                        />
+                                Alpha                            </label>
+                                                    <label class="uc-check" data-uc-chip-label="Beta">
+                                <input type="checkbox" name="organizer[]" value="12"
+                                        />
+                                Beta                            </label>
+                                            </div>
+
+                                                        </div>
+
+                                                <div class="uc-field uc-private-field" data-uc-private>
+                            <span class="uc-field-label">Who can find this event <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-private-501" aria-label="More about private events">?</button><span class="uc-help-body" id="uc-help-private-501" data-uc-help-body>The link is the whole of the protection: anybody who has it can open the event and can pass it on. There is no list of who has looked and no way to take the link back except making a new one.</span></span>
+                                    <input type="hidden" name="uc_private" value="0" />
+            <label class="uc-check">
+                <input type="checkbox" name="uc_private" value="1"  />
+                Make this event private
+            </label>
+                            <p class="uc-hint">
+                    The event will not appear anywhere on the site. Only people you send the link to can
+                    find it. Turning this on gives the event a new link, so any link you have already
+                    shared will stop working.
+                </p>
+                                            </div>
+                        </div>
+                                <div class="uc-form-actions">
+                            <button type="submit" class="uc-btn uc-btn-primary">Save these fields</button>
+                            <a class="uc-action-link" href="https://resources.sfaf.org/caladmin/events/edit/501">Open the full editor</a>
+                        </div>
+                    </form>
+                </details>
+                    </li>
+                                            </ul>
+                    </div>
+
+                <div class="uc-card">
+            <div class="uc-card-head">
+                <h2>Dismissed</h2>
+                <span class="uc-count-badge">4</span>
+            </div>
+            <p class="uc-help">Dismissed events are kept so they are never fetched again. Restore one to put it back in the list above.</p>
+            <ul class="uc-queue-list">
+                                    <li class="uc-queue-item" data-uc-id="501" data-uc-kind="dismissed">
+                        <div class="uc-queue-row">
+                            <div class="uc-queue-id">
+                                <h3 class="uc-queue-title">
+                                    <a href="https://resources.sfaf.org/caladmin/events/edit/501">Harm reduction walk through the Tenderloin and back again</a>
+                                    <span class="uc-source-badge uc-badge-import">Imported</span>
+                                </h3>
+                                <p class="uc-queue-meta">
+                                    <span>Oct 14, 2026, 6–7:30 pm</span>
+                                </p>
+                            </div>
+                            <div class="uc-queue-actions">
+                                <div class="uc-actions">
+                                    <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                        <input type="hidden" name="uc_action" value="import_publish" />
+                                        <input type="hidden" name="event_id" value="501" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <button class="uc-link-ok" type="submit">Publish</button>
+                                    </form>
+                                    <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                        <input type="hidden" name="uc_action" value="import_restore" />
+                                        <input type="hidden" name="event_id" value="501" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <button class="uc-action-link" type="submit">Restore</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                                    <li class="uc-queue-item" data-uc-id="502" data-uc-kind="dismissed">
+                        <div class="uc-queue-row">
+                            <div class="uc-queue-id">
+                                <h3 class="uc-queue-title">
+                                    <a href="https://resources.sfaf.org/caladmin/events/edit/502">Coffee social</a>
+                                    <span class="uc-source-badge uc-badge-import">Imported</span>
+                                </h3>
+                                <p class="uc-queue-meta">
+                                    <span>Oct 14, 2026, 6–7:30 pm</span>
+                                </p>
+                            </div>
+                            <div class="uc-queue-actions">
+                                <div class="uc-actions">
+                                    <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                        <input type="hidden" name="uc_action" value="import_publish" />
+                                        <input type="hidden" name="event_id" value="502" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <button class="uc-link-ok" type="submit">Publish</button>
+                                    </form>
+                                    <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                        <input type="hidden" name="uc_action" value="import_restore" />
+                                        <input type="hidden" name="event_id" value="502" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <button class="uc-action-link" type="submit">Restore</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                                    <li class="uc-queue-item" data-uc-id="503" data-uc-kind="dismissed">
+                        <div class="uc-queue-row">
+                            <div class="uc-queue-id">
+                                <h3 class="uc-queue-title">
+                                    <a href="https://resources.sfaf.org/caladmin/events/edit/503">Support group for people newly diagnosed</a>
+                                    <span class="uc-source-badge uc-badge-import">Imported</span>
+                                </h3>
+                                <p class="uc-queue-meta">
+                                    <span>Oct 14, 2026, 6–7:30 pm</span>
+                                </p>
+                            </div>
+                            <div class="uc-queue-actions">
+                                <div class="uc-actions">
+                                    <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                        <input type="hidden" name="uc_action" value="import_publish" />
+                                        <input type="hidden" name="event_id" value="503" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <button class="uc-link-ok" type="submit">Publish</button>
+                                    </form>
+                                    <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                        <input type="hidden" name="uc_action" value="import_restore" />
+                                        <input type="hidden" name="event_id" value="503" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <button class="uc-action-link" type="submit">Restore</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                                    <li class="uc-queue-item" data-uc-id="504" data-uc-kind="dismissed">
+                        <div class="uc-queue-row">
+                            <div class="uc-queue-id">
+                                <h3 class="uc-queue-title">
+                                    <a href="https://resources.sfaf.org/caladmin/events/edit/504">Imported gala dinner</a>
+                                    <span class="uc-source-badge uc-badge-import">Imported</span>
+                                </h3>
+                                <p class="uc-queue-meta">
+                                    <span>Oct 14, 2026, 6–7:30 pm</span>
+                                </p>
+                            </div>
+                            <div class="uc-queue-actions">
+                                <div class="uc-actions">
+                                    <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                        <input type="hidden" name="uc_action" value="import_publish" />
+                                        <input type="hidden" name="event_id" value="504" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <button class="uc-link-ok" type="submit">Publish</button>
+                                    </form>
+                                    <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                        <input type="hidden" name="uc_action" value="import_restore" />
+                                        <input type="hidden" name="event_id" value="504" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <button class="uc-action-link" type="submit">Restore</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                            </ul>
+        </div>
+                                </main>
+            </div>
+        </div>
+        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.110.1"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.110.1"></script>
+<script src="../public/js/portal.js?ver=3.110.1"></script>
+<script>window.RV_PAGE="pending-wide";(function () {
+var P = window.RV_PAGE, out = { page: P, errors: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function q(s, r) { return (r || document).querySelector(s); }
+function qa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function text(el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }
+function shut(el) { var d = el.closest('details:not([open])'); return !!d && !(el.tagName === 'SUMMARY' && el.parentNode === d) && !(el.closest('summary') && el.closest('summary').parentNode === d); }
+function seen(el) { if (!el || !el.getClientRects().length || shut(el)) { return false; } var cs = getComputedStyle(el); return cs.visibility !== 'hidden' && cs.display !== 'none' && +cs.opacity !== 0; }
+function rect(el) { if (!el) { return null; } var r = el.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom), w: Math.round(r.width), h: Math.round(r.height) }; }
+function name(el) { return el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).join('.') : '') + (el.name ? '[' + el.name + ']' : '') + ' "' + (text(el) || el.getAttribute('aria-label') || el.value || '').slice(0, 28) + '"'; }
+var phone = window.innerWidth < 600;
+function small(root) {
+  var bad = [];
+  qa('a.uc-btn, button, select, textarea, summary, input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), label', root).forEach(function (el) {
+    if (!seen(el)) { return; }
+    if (el.tagName === 'LABEL' && !q('input[type="checkbox"], input[type="radio"]', el)) { return; }
+    if (el.closest('.uc-tpl-editor, [hidden], #uc-sidebar, .uc-portal-sidebar')) { return; }
+    var r = el.getBoundingClientRect(); if (!r.width || !r.height) { return; }
+    var h = r.height, a = getComputedStyle(el, '::after');
+    if (a.content !== 'none' && a.position === 'absolute') { h = r.height - parseFloat(a.top) - parseFloat(a.bottom); }
+    if (Math.round(h) < 44) { bad.push(name(el) + ' ' + Math.round(h) + 'px'); }
+  });
+  return bad;
+}
+function past(root) {
+  var w = document.documentElement.clientWidth, bad = [];
+  qa('*', root).forEach(function (el) {
+    if (!seen(el) || el.closest('[hidden], #uc-sidebar, .uc-portal-sidebar')) { return; }
+    var r = el.getBoundingClientRect(); if (r.width && r.right > w + 1) { bad.push(name(el) + ' right ' + Math.round(r.right)); }
+  });
+  return bad.slice(0, 8);
+}
+function finish() { out.pageWidth = document.documentElement.scrollWidth; window.parent.postMessage(JSON.stringify(out), '*'); }
+window.addEventListener('load', function () { setTimeout(function () {
+  var main = q('.uc-portal-main') || q('.uc-login-wrap') || document.body;
+  /* The tour on Add event: started, then measured in its panel. */
+  if (P.indexOf('tour-') === 0) {
+    var start = q('.uc-tour-link, [data-uc-tour-start]');
+    if (start) { start.click(); }
+    setTimeout(function () {
+      var panel = q('.uc-tour-panel, [data-uc-tour-panel], .uc-tour [role="dialog"], dialog.uc-tour');
+      out.tour = panel ? { box: rect(panel), small: phone ? small(panel) : [], past: past(panel) } : null;
+      finish();
+    }, 400);
+    return;
+  }
+  out.small = phone ? small(main) : [];
+  out.past = past(main);
+  /* B: the Users table. */
+  var table = q('[data-uc-users-table]');
+  if (table) {
+    var rows = qa('[data-uc-user-row]', table);
+    out.order = rows.map(function (r) { return text(q('.uc-user-id strong', r)); });
+    out.saveOff = rows.map(function (r) { return q('[data-uc-user-save]', r).disabled; });
+    out.roles = rows.map(function (r) { var s = q('[data-uc-user-role]', r); return { name: text(q('.uc-user-id strong', r)), role: s ? s.value : 'wp', approval: seen(q('[data-uc-user-approval]', r)), cats: seen(q('[data-uc-user-cats-toggle]', r)) }; });
+    var young = rows.filter(function (r) { return text(q('.uc-user-id strong', r)) === 'Ben Young'; })[0];
+    if (young) {
+      var role = q('[data-uc-user-role]', young), save = q('[data-uc-user-save]', young);
+      role.value = 'contributor'; role.dispatchEvent(new Event('change', { bubbles: true }));
+      out.toContrib = { save: save.disabled, approval: seen(q('[data-uc-user-approval]', young)), cats: seen(q('[data-uc-user-cats-toggle]', young)) };
+      role.value = 'editor'; role.dispatchEvent(new Event('change', { bubbles: true }));
+      out.backToEditor = { save: save.disabled, approval: seen(q('[data-uc-user-approval]', young)), cats: seen(q('[data-uc-user-cats-toggle]', young)) };
+    }
+    if (phone) {
+      out.wrap = rows.map(function (r) {
+        var id = rect(q('.uc-user-id', r)), ctl = rect(q('.uc-user-role', r)) || rect(q('.uc-user-actions', r)), act = rect(q('.uc-user-actions', r));
+        return { twoLines: ctl.top >= id.bottom - 1, inside: act.right <= document.documentElement.clientWidth };
+      });
+    }
+    var add = q('.uc-team-add-toggle');
+    if (add) { var ca = getComputedStyle(add); out.addMember = { text: text(add), border: ca.borderTopWidth + ' ' + ca.borderTopStyle, bg: ca.backgroundColor }; }
+    var filter = q('[data-uc-user-filter]');
+    if (filter) { filter.value = 'martinez'; filter.dispatchEvent(new Event('input', { bubbles: true })); out.filtered = rows.filter(function (r) { return !r.hidden; }).map(function (r) { return text(q('.uc-user-id strong', r)); }); filter.value = ''; filter.dispatchEvent(new Event('input', { bubbles: true })); }
+  }
+  /* A.2: Send. */
+  var send = q('[data-uc-rm-send]');
+  if (send) {
+    var details = send.closest('details'); if (details) { details.open = true; }
+    var icon = q('.uc-rm-send-icon', send);
+    out.send = { bg: getComputedStyle(send).backgroundColor, iconSvg: !!q('svg', icon), restW: Math.round(icon.getBoundingClientRect().width),
+      transition: getComputedStyle(icon).transitionDuration, reduce: window.matchMedia('(prefers-reduced-motion: reduce)').matches };
+    /* Headless Chrome does not run a CSS transition to its end, so the length
+       is read above and the end state with the transition held off. */
+    icon.style.transition = 'none';
+    send.focus();
+    setTimeout(function () { out.send.focusW = Math.round(icon.getBoundingClientRect().width); out.send.focusVisible = send.matches(':focus-visible'); finish(); }, 400);
+    return;
+  }
+  finish();
+}, 700); });
+})();</script></body></html>

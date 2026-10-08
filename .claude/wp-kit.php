@@ -192,11 +192,23 @@ function get_current_user_id() { return (int) $GLOBALS['kit_user_id']; }
 /* With kit_umeta set (3.110.1), a user is that id with that stored meta, so a
    calendar role can be modelled; get_userdata() says who it is. Off, nothing
    changes: every user is the one administrator. */
-function get_userdata( $id ) { $u = new WP_User(); if ( isset( $GLOBALS['kit_umeta'] ) ) { $u->ID = (int) $id; $u->display_name = 'User ' . (int) $id; $u->user_email = 'user' . (int) $id . '@sfaf.org'; } return $u; }
+function get_userdata( $id ) { if ( ! empty( $GLOBALS['kit_users'] ) ) { foreach ( $GLOBALS['kit_users'] as $ku ) { if ( (int) $ku->ID === (int) $id ) { return $ku; } } } $u = new WP_User(); if ( isset( $GLOBALS['kit_umeta'] ) ) { $u->ID = (int) $id; $u->display_name = 'User ' . (int) $id; $u->user_email = 'user' . (int) $id . '@sfaf.org'; } return $u; }
 function current_user_can( $c ) { return true; }
 function user_can( $u, $c ) { return ! in_array( (int) ( is_object( $u ) ? $u->ID : $u ), $GLOBALS['kit_refused'], true ); }
 function is_user_logged_in() { return true; }
-function get_users( $a = array() ) { return array(); }
+/* With kit_users set (3.110.2), get_users() answers from that list: those
+   holding a calendar role when asked for _uc_calendar_role, less any excluded
+   ids. Off, nobody. */
+function get_users( $a = array() ) {
+    if ( empty( $GLOBALS['kit_users'] ) ) { return array(); }
+    $out = array();
+    foreach ( $GLOBALS['kit_users'] as $u ) {
+        if ( ! empty( $a['exclude'] ) && in_array( (int) $u->ID, array_map( 'intval', (array) $a['exclude'] ), true ) ) { continue; }
+        if ( isset( $a['meta_key'] ) && '_uc_calendar_role' === $a['meta_key'] && '' === (string) get_user_meta( $u->ID, '_uc_calendar_role', true ) ) { continue; }
+        $out[] = $u;
+    }
+    return $out;
+}
 function get_user_meta( $id, $k = '', $s = false ) {
     if ( isset( $GLOBALS['kit_umeta'][ (int) $id ] ) && array_key_exists( $k, $GLOBALS['kit_umeta'][ (int) $id ] ) ) { $v = $GLOBALS['kit_umeta'][ (int) $id ][ $k ]; return $s ? $v : array( $v ); }
     return $s ? '' : array();

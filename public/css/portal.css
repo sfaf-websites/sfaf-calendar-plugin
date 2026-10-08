@@ -1666,10 +1666,7 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 /* ---------- Users ---------- */
 /* Layout only. The box is the baseline's. */
 .uc-inline-form select { max-width: 100%; }
-.uc-user-row { display: grid; grid-template-columns: 1.4fr 1.6fr auto; gap: 14px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--p-border); }
 .uc-user-id strong { display: block; }
-.uc-user-controls { display: flex; gap: 12px; flex-wrap: wrap; }
-.uc-user-controls label { font-size: 12px; color: var(--p-muted); display: flex; flex-direction: column; gap: 4px; }
 /* No rule of its own. Both selects on this screen are the standard select,
    and this one was the smallest and faintest of the three sizes in use. */
 /* ---------------------------------------------------------------------------
@@ -2425,8 +2422,6 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 
 .uc-user-fixed { display: flex; flex-direction: column; gap: 4px; font-size: 12px; max-width: 260px; }
 .uc-user-fixed .uc-field-label { color: var(--p-muted); }
-.uc-user-cats { grid-column: 1 / -1; font-size: 13px; }
-.uc-user-cats summary { cursor: pointer; color: var(--uc-accent-text); }
 .uc-check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px; margin-top: 8px; }
 /* No size override. 13px is the FIELD LABEL's size, so a checkbox in a grid
    rendered at exactly the size of the label above it. Density comes from the
@@ -2679,7 +2674,6 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 @media (max-width: 900px) {
     .uc-form-grid { grid-template-columns: 1fr; }
     .uc-stats { grid-template-columns: repeat(2, 1fr); }
-    .uc-user-row { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
     .uc-portal-sidebar { position: fixed; left: -260px; top: 0; z-index: 100; transition: left 0.2s; box-shadow: 4px 0 24px rgba(0,0,0,0.2); }
@@ -5274,12 +5268,16 @@ body.uc-modal-open { overflow: hidden; }
 .uc-users-search { display: block; max-width: 420px; margin: 0 0 16px; }
 .uc-users-search input { width: 100%; }
 .uc-users-table td { vertical-align: middle; }
-.uc-users-table .uc-user-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+/* The cells stay table cells: their contents stack, not the cells. */
+.uc-users-table .uc-user-id > * { display: block; }
+.uc-users-table .uc-user-id > [hidden] { display: none; }
 .uc-users-table .uc-user-id .uc-muted { font-size: 12px; overflow-wrap: anywhere; }
-.uc-users-table .uc-user-cats-toggle { align-self: flex-start; padding: 0; margin-top: 4px; font-size: 12px; }
-.uc-users-table .uc-user-teams { display: flex; flex-wrap: wrap; gap: 4px; }
+.uc-users-table .uc-user-cats-toggle { margin-top: 4px; font-size: 12px; text-align: left; }
+.uc-users-table .uc-user-teams .uc-team-pill { display: inline-block; margin: 2px 4px 2px 0; }
 .uc-users-table .uc-team-pill { font-size: 12px; font-weight: 400; color: var(--p-text); background: var(--p-bg); border: 1px solid var(--p-border); }
-.uc-users-table .uc-user-actions { white-space: nowrap; text-align: right; }
+/* A table cell, not the old row's flex box (3.110.2). */
+.uc-users-table td.uc-user-actions { display: table-cell; white-space: nowrap; text-align: right; }
+.uc-users-table td.uc-user-actions > * + * { margin-left: 12px; }
 .uc-users-table .uc-user-actions .uc-btn[disabled] { opacity: .5; cursor: default; }
 .uc-users-table .uc-user-cats-row > td { background: var(--p-bg); }
 .uc-users-table tr[hidden] { display: none; }
@@ -5289,10 +5287,35 @@ body.uc-modal-open { overflow: hidden; }
     .uc-users-table tr.uc-user-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 0; border-bottom: 1px solid var(--p-border); }
     .uc-users-table tr.uc-user-row > td { display: block; padding: 0; border: 0; min-width: 0; }
     .uc-users-table tr.uc-user-row > td.uc-user-id { flex: 1 1 100%; }
-    .uc-users-table tr.uc-user-row > td.uc-user-teams { flex: 1 1 100%; display: flex; }
+    .uc-users-table tr.uc-user-row > td.uc-user-teams { flex: 1 1 100%; }
     .uc-users-table tr.uc-user-row > td.uc-user-actions { margin-left: auto; }
     .uc-users-table tr.uc-user-cats-row, .uc-users-table tr.uc-user-reassign-row { display: block; }
     .uc-users-table tr.uc-user-cats-row[hidden] { display: none; }
     .uc-users-table tr.uc-user-cats-row > td, .uc-users-table tr.uc-user-reassign-row > td { display: block; padding: 8px 0 12px; }
     .uc-users-search { max-width: none; }
+}
+/* ---------------------------------------------------------------------------
+   THE REST OF CALADMIN ON A PHONE (3.110.2)
+
+   Tables marked .uc-table-cards are one card a row below 600px: no heading
+   row, each value under its column's name (data-label, from portal.js), the
+   first cell as the card's title. Every summary, the events list's row
+   icons, the pending queue's text actions, the template picker and the
+   sign-in tick reach 44px, as the 3.110.0 block does for the rest.
+   ------------------------------------------------------------------------ */
+@media (max-width: 600px) {
+    .uc-portal .uc-table-cards thead { display: none; }
+    .uc-portal .uc-table-cards, .uc-portal .uc-table-cards tbody { display: block; width: 100%; }
+    .uc-portal .uc-table-cards tr { display: block; padding: 12px 0; border-bottom: 1px solid var(--p-border); }
+    .uc-portal .uc-table-cards tr > td { display: flex; gap: 8px; align-items: baseline; padding: 2px 0; border: 0; min-width: 0; overflow-wrap: anywhere; text-align: left; }
+    .uc-portal .uc-table-cards tr > td[data-label]::before { content: attr(data-label); flex: 0 0 96px; font-size: 12px; font-weight: 400; color: var(--p-muted); }
+    .uc-portal .uc-table-cards tr > td:first-child { font-size: 16px; }
+    .uc-portal .uc-table-cards tr > td:first-child::before { content: none; }
+    .uc-portal .uc-table-cards tr > td:empty { display: none; }
+}
+@media (pointer: coarse), (max-width: 600px) {
+    .uc-portal summary { min-height: 44px; box-sizing: border-box; }
+    .uc-portal .uc-icon-action { min-width: 44px; min-height: 44px; }
+    .uc-portal .uc-link-ok, .uc-portal .uc-action-link, .uc-portal .uc-tpl-pick { min-height: 44px; }
+    .uc-portal .uc-tick-all, .uc-portal .uc-login-remember { min-height: 44px; display: inline-flex; align-items: center; }
 }

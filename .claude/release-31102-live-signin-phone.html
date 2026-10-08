@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html >
+<head>
+    <meta charset="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Sign In - SFAF Calendar</title>
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.110.1" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.110.1" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.110.1" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.110.1" />
+    <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
+        <script>
+    (function (d) {
+        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        d.setAttribute('data-uc-motion', reduced ? 'reduced' : 'on');
+        if (reduced) { return; }
+        d.className += ' uc-anim';
+        // The nav stagger is once per session, not once per navigation: every
+        // screen here is a full page load. A storage failure means it simply
+        // runs again, which is the harmless outcome.
+        try {
+            if (window.sessionStorage.getItem('ucNavIntro') !== '1') {
+                window.sessionStorage.setItem('ucNavIntro', '1');
+                d.className += ' uc-anim-nav';
+            }
+        } catch (e) {
+            d.className += ' uc-anim-nav';
+        }
+    })(document.documentElement);
+    </script>
+    </head>
+<body class="uc-portal">        <div class="uc-login-wrap">
+            <div class="uc-login-card">
+                <div class="uc-login-brand">
+                    <img src="https://resources.sfaf.org/wp-content/uploads/logos/sfaf-logo.webp" alt="San Francisco AIDS Foundation"
+                         class="uc-login-logo" width="348" height="91" data-uc-login-logo />
+                </div>
+                <h1>SFAF Calendar Admin</h1>
+                                    <p class="uc-login-sub">Sign in to manage events</p>
+                                        
+                <form method="post" action="https://resources.sfaf.org/caladmin" class="uc-login-form">
+                    <input type="hidden" name="uc_action" value="login" />
+                    <input type="hidden" name="uc_nonce" value="nonce" />                    <label>Username or Email
+                        <input type="text" name="log" autocomplete="username" required autofocus />
+                    </label>
+                    <label>Password
+                        <input type="password" name="pwd" autocomplete="current-password" required />
+                    </label>
+                    <label class="uc-login-remember">
+                        <input type="checkbox" name="rememberme" value="1" /> Remember me
+                    </label>
+                    <button type="submit" class="uc-btn uc-btn-primary uc-btn-block">Sign In</button>
+                </form>
+                <p class="uc-login-aside"><a href="https://resources.sfaf.org/caladmin/forgot" data-uc-forgot-link>Forgot your password?</a></p>
+                    </div>
+        </div>
+        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.110.1"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.110.1"></script>
+<script src="../public/js/portal.js?ver=3.110.1"></script>
+<script>window.RV_PAGE="signin-phone";(function () {
+var P = window.RV_PAGE, out = { page: P, errors: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function q(s, r) { return (r || document).querySelector(s); }
+function qa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function text(el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }
+function shut(el) { var d = el.closest('details:not([open])'); return !!d && !(el.tagName === 'SUMMARY' && el.parentNode === d) && !(el.closest('summary') && el.closest('summary').parentNode === d); }
+function seen(el) { if (!el || !el.getClientRects().length || shut(el)) { return false; } var cs = getComputedStyle(el); return cs.visibility !== 'hidden' && cs.display !== 'none' && +cs.opacity !== 0; }
+function rect(el) { if (!el) { return null; } var r = el.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom), w: Math.round(r.width), h: Math.round(r.height) }; }
+function name(el) { return el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).join('.') : '') + (el.name ? '[' + el.name + ']' : '') + ' "' + (text(el) || el.getAttribute('aria-label') || el.value || '').slice(0, 28) + '"'; }
+var phone = window.innerWidth < 600;
+function small(root) {
+  var bad = [];
+  qa('a.uc-btn, button, select, textarea, summary, input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), label', root).forEach(function (el) {
+    if (!seen(el)) { return; }
+    if (el.tagName === 'LABEL' && !q('input[type="checkbox"], input[type="radio"]', el)) { return; }
+    if (el.closest('.uc-tpl-editor, [hidden], #uc-sidebar, .uc-portal-sidebar')) { return; }
+    var r = el.getBoundingClientRect(); if (!r.width || !r.height) { return; }
+    var h = r.height, a = getComputedStyle(el, '::after');
+    if (a.content !== 'none' && a.position === 'absolute') { h = r.height - parseFloat(a.top) - parseFloat(a.bottom); }
+    if (Math.round(h) < 44) { bad.push(name(el) + ' ' + Math.round(h) + 'px'); }
+  });
+  return bad;
+}
+function past(root) {
+  var w = document.documentElement.clientWidth, bad = [];
+  qa('*', root).forEach(function (el) {
+    if (!seen(el) || el.closest('[hidden], #uc-sidebar, .uc-portal-sidebar')) { return; }
+    var r = el.getBoundingClientRect(); if (r.width && r.right > w + 1) { bad.push(name(el) + ' right ' + Math.round(r.right)); }
+  });
+  return bad.slice(0, 8);
+}
+function finish() { out.pageWidth = document.documentElement.scrollWidth; window.parent.postMessage(JSON.stringify(out), '*'); }
+window.addEventListener('load', function () { setTimeout(function () {
+  var main = q('.uc-portal-main') || q('.uc-login-wrap') || document.body;
+  /* The tour on Add event: started, then measured in its panel. */
+  if (P.indexOf('tour-') === 0) {
+    var start = q('.uc-tour-link, [data-uc-tour-start]');
+    if (start) { start.click(); }
+    setTimeout(function () {
+      var panel = q('.uc-tour-panel, [data-uc-tour-panel], .uc-tour [role="dialog"], dialog.uc-tour');
+      out.tour = panel ? { box: rect(panel), small: phone ? small(panel) : [], past: past(panel) } : null;
+      finish();
+    }, 400);
+    return;
+  }
+  out.small = phone ? small(main) : [];
+  out.past = past(main);
+  /* B: the Users table. */
+  var table = q('[data-uc-users-table]');
+  if (table) {
+    var rows = qa('[data-uc-user-row]', table);
+    out.order = rows.map(function (r) { return text(q('.uc-user-id strong', r)); });
+    out.saveOff = rows.map(function (r) { return q('[data-uc-user-save]', r).disabled; });
+    out.roles = rows.map(function (r) { var s = q('[data-uc-user-role]', r); return { name: text(q('.uc-user-id strong', r)), role: s ? s.value : 'wp', approval: seen(q('[data-uc-user-approval]', r)), cats: seen(q('[data-uc-user-cats-toggle]', r)) }; });
+    var young = rows.filter(function (r) { return text(q('.uc-user-id strong', r)) === 'Ben Young'; })[0];
+    if (young) {
+      var role = q('[data-uc-user-role]', young), save = q('[data-uc-user-save]', young);
+      role.value = 'contributor'; role.dispatchEvent(new Event('change', { bubbles: true }));
+      out.toContrib = { save: save.disabled, approval: seen(q('[data-uc-user-approval]', young)), cats: seen(q('[data-uc-user-cats-toggle]', young)) };
+      role.value = 'editor'; role.dispatchEvent(new Event('change', { bubbles: true }));
+      out.backToEditor = { save: save.disabled, approval: seen(q('[data-uc-user-approval]', young)), cats: seen(q('[data-uc-user-cats-toggle]', young)) };
+    }
+    if (phone) {
+      out.wrap = rows.map(function (r) {
+        var id = rect(q('.uc-user-id', r)), ctl = rect(q('.uc-user-role', r)) || rect(q('.uc-user-actions', r)), act = rect(q('.uc-user-actions', r));
+        return { twoLines: ctl.top >= id.bottom - 1, inside: act.right <= document.documentElement.clientWidth };
+      });
+    }
+    var add = q('.uc-team-add-toggle');
+    if (add) { var ca = getComputedStyle(add); out.addMember = { text: text(add), border: ca.borderTopWidth + ' ' + ca.borderTopStyle, bg: ca.backgroundColor }; }
+    var filter = q('[data-uc-user-filter]');
+    if (filter) { filter.value = 'martinez'; filter.dispatchEvent(new Event('input', { bubbles: true })); out.filtered = rows.filter(function (r) { return !r.hidden; }).map(function (r) { return text(q('.uc-user-id strong', r)); }); filter.value = ''; filter.dispatchEvent(new Event('input', { bubbles: true })); }
+  }
+  /* A.2: Send. */
+  var send = q('[data-uc-rm-send]');
+  if (send) {
+    var details = send.closest('details'); if (details) { details.open = true; }
+    var icon = q('.uc-rm-send-icon', send);
+    out.send = { bg: getComputedStyle(send).backgroundColor, iconSvg: !!q('svg', icon), restW: Math.round(icon.getBoundingClientRect().width),
+      transition: getComputedStyle(icon).transitionDuration, reduce: window.matchMedia('(prefers-reduced-motion: reduce)').matches };
+    /* Headless Chrome does not run a CSS transition to its end, so the length
+       is read above and the end state with the transition held off. */
+    icon.style.transition = 'none';
+    send.focus();
+    setTimeout(function () { out.send.focusW = Math.round(icon.getBoundingClientRect().width); out.send.focusVisible = send.matches(':focus-visible'); finish(); }, 400);
+    return;
+  }
+  finish();
+}, 700); });
+})();</script></body></html>
