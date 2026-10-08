@@ -17734,6 +17734,27 @@ class SFAF_Portal {
 
             <?php
             /*
+             * REGISTER ON ANOTHER SITE (3.110.1): one line with the link, in
+             * place of the settings, which the save would ignore. Anybody who
+             * registered here before the switch is still listed below; with
+             * nobody, the line is the page.
+             */
+            $elsewhere = SFAF_Register_Elsewhere::is_on( $event_id );
+            if ( $elsewhere ) :
+                $away_url = SFAF_Register_Elsewhere::url( $event_id );
+                ?>
+                <p class="uc-notice" data-uc-reg-elsewhere>Registrations are taken on another site:
+                    <a href="<?php echo esc_url( $away_url ); ?>" target="_blank" rel="noopener"><?php echo esc_html( $away_url ); ?><span class="uc-visually-hidden"> (opens in a new tab)</span></a></p>
+                <?php
+                if ( empty( $rsvps ) ) {
+                    $this->chrome_close();
+                    return;
+                }
+            endif;
+            ?>
+
+            <?php
+            /*
              * THE EVENT'S REGISTRATION SETTINGS, HERE, WHERE THE QUESTION GETS
              * ASKED.
              *
@@ -17773,6 +17794,7 @@ class SFAF_Portal {
             $cap_now = (int) get_post_meta( $event_id, '_uc_capacity', true );
             $on_now  = ( '1' === (string) get_post_meta( $event_id, '_uc_rsvp_enabled', true ) );
             ?>
+            <?php if ( ! $elsewhere ) : ?>
             <details class="uc-card uc-rsvp-settings" data-uc-disclosure>
                 <summary class="uc-rsvp-settings-toggle" aria-expanded="false">
                     <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '18px' ) ); ?></span>
@@ -17826,6 +17848,8 @@ class SFAF_Portal {
                     </div>
                 </form>
             </details>
+            <?php endif; ?>
+            <?php if ( $this->can_edit_event( $user, $event ) ) { $this->render_registrant_mail( $user, $event_id ); } ?>
         <?php elseif ( $orphans ) : ?>
             <p class="uc-hint">
                 Registrations whose event has been deleted. The name shown is the title the event had when it was
@@ -17840,7 +17864,8 @@ class SFAF_Portal {
         <?php endif; ?>
 
         <form method="get" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>" class="uc-filters-bar">
-            <input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="Search name or email…" />
+            <label class="uc-visually-hidden" for="uc-rsvp-search">Search name or email</label>
+            <input type="search" id="uc-rsvp-search" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="Search name or email…" autocomplete="off" data-uc-rsvp-filter />
             <?php if ( $event_id ) : ?><input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" /><?php endif; ?>
             <?php if ( $orphans ) : ?><input type="hidden" name="orphans" value="1" /><?php endif; ?>
             <button class="uc-btn" type="submit">Search</button>
@@ -17891,7 +17916,27 @@ class SFAF_Portal {
                     <span data-uc-texts-count><strong><?php echo (int) $texts_n; ?></strong> want texts</span>
                 <?php endif; ?>
             </p>
-            <?php if ( $ck_edit ) : ?>
+            <?php
+            /*
+             * THE ANSWERS, IN TOTAL (3.106.2), one line per current question,
+             * confirmed registrants only. Absent for an event with no questions.
+             */
+            $q_totals = SFAF_Questions::totals( $event_id );
+            if ( $q_totals ) :
+                ?>
+                <ul class="uc-q-totals" data-uc-q-totals>
+                    <?php foreach ( $q_totals as $t ) : ?>
+                        <li><?php echo esc_html( SFAF_Questions::total_line( $t ) ); ?></li>
+                    <?php endforeach; ?>
+                </ul>
+                <?php
+            endif;
+        }
+        ?>
+
+        <div class="uc-card">
+            <div class="uc-card-head"><h2><?php echo count( $rsvps ); ?> registrations</h2></div>
+            <?php if ( $event && ! empty( $ck_edit ) ) : // Check-in, above the table (3.110.1). ?>
                 <div class="uc-checkin-bar" data-uc-checkin-bar>
                     <form method="post" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>" class="uc-checkin-mode" aria-label="How to record who came">
                         <input type="hidden" name="uc_action" value="checkin_mode" />
@@ -17916,31 +17961,6 @@ class SFAF_Portal {
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
-            <label class="uc-field uc-rsvp-search">
-                <span class="uc-visually-hidden">Find a registrant by name</span>
-                <input type="search" placeholder="Find by name" autocomplete="off" data-uc-rsvp-filter />
-            </label>
-            <?php if ( $ck_edit ) { $this->render_registrant_mail( $user, $event_id ); } ?>
-            <?php
-            /*
-             * THE ANSWERS, IN TOTAL (3.106.2), one line per current question,
-             * confirmed registrants only. Absent for an event with no questions.
-             */
-            $q_totals = SFAF_Questions::totals( $event_id );
-            if ( $q_totals ) :
-                ?>
-                <ul class="uc-q-totals" data-uc-q-totals>
-                    <?php foreach ( $q_totals as $t ) : ?>
-                        <li><?php echo esc_html( SFAF_Questions::total_line( $t ) ); ?></li>
-                    <?php endforeach; ?>
-                </ul>
-                <?php
-            endif;
-        }
-        ?>
-
-        <div class="uc-card">
-            <div class="uc-card-head"><h2><?php echo count( $rsvps ); ?> registrations</h2></div>
             <?php if ( empty( $rsvps ) ) : ?>
                 <?php
                 /*
@@ -18007,7 +18027,7 @@ class SFAF_Portal {
                     <?php foreach ( $rsvps as $r ) :
                         $has_details = ! empty( $answers[ (int) $r->id ] ) || ! empty( $r->agreed_at );
                         ?>
-                        <tr data-uc-rsvp-row data-uc-rsvp-name="<?php echo esc_attr( strtolower( trim( $r->first_name . ' ' . $r->last_name ) ) ); ?>">
+                        <tr data-uc-rsvp-row data-uc-rsvp-name="<?php echo esc_attr( strtolower( trim( $r->first_name . ' ' . $r->last_name ) ) ); ?>" data-uc-rsvp-email="<?php echo esc_attr( strtolower( trim( (string) $r->email ) ) ); ?>">
                             <?php if ( ! $event ) : ?>
                                 <td><?php
                                     // Linked when the event still exists, plain
@@ -18196,12 +18216,16 @@ class SFAF_Portal {
         }
         $log = SFAF_Registrant_Mail::log( $event_id );
         ?>
-        <details class="uc-picker uc-registrant-mail" data-uc-registrant-mail<?php echo is_array( $said ) ? ' open' : ''; ?>>
-            <summary class="uc-picker-toggle">
-                <span class="uc-picker-label">Email registrants</span>
-                <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
+        <?php // The Registration settings panel's component, under it (3.110.1). ?>
+        <details class="uc-card uc-rsvp-settings uc-registrant-mail" data-uc-disclosure data-uc-registrant-mail<?php echo is_array( $said ) ? ' open' : ''; ?>>
+            <summary class="uc-rsvp-settings-toggle" aria-expanded="<?php echo is_array( $said ) ? 'true' : 'false'; ?>">
+                <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '18px' ) ); ?></span>
+                <span class="uc-rsvp-settings-id">
+                    <span class="uc-rsvp-settings-name"><strong>Email registrants</strong></span>
+                    <span class="uc-muted">Send a message to everyone registered.</span>
+                </span>
             </summary>
-            <div class="uc-picker-panel">
+            <div class="uc-rsvp-settings-form uc-registrant-mail-body">
                 <?php if ( is_array( $said ) && ! empty( $said['error'] ) ) : ?>
                     <p class="uc-notice uc-notice-error" role="alert"><?php echo esc_html( $said['error'] ); ?></p>
                 <?php elseif ( is_array( $said ) ) : ?>
@@ -18255,11 +18279,9 @@ class SFAF_Portal {
                         <iframe class="uc-rm-preview-frame" title="Preview of the message" data-uc-rm-preview-frame></iframe>
                     </div>
                 </form>
-            </div>
-        </details>
         <?php if ( $log ) : ?>
-            <div class="uc-card uc-registrant-mail-log" data-uc-rm-log>
-                <div class="uc-card-head"><h2>Emails sent from this list</h2></div>
+            <div class="uc-registrant-mail-log" data-uc-rm-log>
+                <h3 class="uc-subhead">Emails sent from this list</h3>
                 <table class="uc-table">
                     <thead><tr><th>Sent by</th><th>When</th><th>Subject</th><th>Recipients</th></tr></thead>
                     <tbody>
@@ -18277,6 +18299,8 @@ class SFAF_Portal {
                 </table>
             </div>
         <?php endif; ?>
+            </div>
+        </details>
         <?php
     }
 

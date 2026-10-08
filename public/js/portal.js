@@ -246,16 +246,23 @@ function ucDismissOnBackdrop(dialog) {
     }
 
     /* ---------------------------------------------------------------------
-     * FIND BY NAME (3.110.0): the RSVP list's rows narrowed to the names
-     * containing what is typed, a row's Details going with it.
+     * SEARCH NAME OR EMAIL (3.110.0; one box since 3.110.1): the RSVP list's
+     * rows narrowed as you type to those whose name or email contains it, a
+     * row's Details going with it. The box is the page's own search, so with
+     * no script its Search button still asks the server; with one, the
+     * button goes, because there is nothing left for it to do.
      * ------------------------------------------------------------------ */
     function initRsvpFilter() {
         var input = document.querySelector('[data-uc-rsvp-filter]');
         if (!input) { return; }
+        var form = input.form;
+        var go = form ? form.querySelector('button[type="submit"]') : null;
+        if (go) { go.hidden = true; }
         input.addEventListener('input', function () {
             var q = input.value.replace(/\s+/g, ' ').trim().toLowerCase();
             document.querySelectorAll('[data-uc-rsvp-row]').forEach(function (row) {
-                var hit = !q || (row.getAttribute('data-uc-rsvp-name') || '').indexOf(q) > -1;
+                var hay = (row.getAttribute('data-uc-rsvp-name') || '') + ' ' + (row.getAttribute('data-uc-rsvp-email') || '');
+                var hit = !q || hay.indexOf(q) > -1;
                 row.hidden = !hit;
                 var next = row.nextElementSibling;
                 if (next && next.classList.contains('uc-rsvp-details') && !hit) { next.hidden = true; }
