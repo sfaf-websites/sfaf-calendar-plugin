@@ -106,6 +106,68 @@ $en = SFAF_Registrant_Mail::preview( $E, 'Hola', 'Hola {first_name}', false );
 $es = SFAF_Registrant_Mail::preview( $ES, 'Hola', 'Hola {first_name}', false );
 rm( 'a Spanish event\'s wrapper is not the English one', false !== strpos( $es['html'], '>Fecha<' ) && false === strpos( $es['html'], '>Date<' ) && false !== strpos( $en['html'], '>Date<' ), true );
 
+/* ---- 3.110.2: the layout ------------------------------------------------- */
+$rich = "Hi {first_name},\n\nBring <strong>water</strong> and read <a href=\"https://www.sfaf.org/walk\">the route</a>.<script>x</script>";
+$pv = SFAF_Registrant_Mail::preview( $E, 'Meeting point for {title}', SFAF_Registrant_Mail::clean_body( $rich ), false );
+$h  = $pv['html'];
+rm( 'A.1: the subject is the heading', false !== strpos( $h, SFAF_Email::heading( 'Meeting point for Harm reduction walk' ) ), true );
+rm( 'A.1: the body\'s first paragraph is a paragraph, not the heading', (bool) preg_match( '#<p[^>]*>Hi Ana,</p>#', $h ), true );
+rm( 'A.1: bold is kept', false !== strpos( $h, '<strong>water</strong>' ), true );
+rm( 'A.1: the link is kept', (bool) preg_match( '#<a href="https://www.sfaf.org/walk"[^>]*>the route</a>#', $h ), true );
+rm( 'A.1: nothing else is', false === strpos( $h, '<script>' ), true );
+rm( 'A.1: the plain-text part gives the link its address', false !== strpos( $pv['text'], 'the route (https://www.sfaf.org/walk)' ), true );
+$at_body    = strpos( $h, 'Hi Ana,' );
+$at_details = strpos( $h, '>Event<' );
+$at_button  = strpos( $h, 'See the event page' );
+rm( 'A.1: body, then the details, then See the event page', false !== $at_body && false !== $at_details && false !== $at_button && $at_body < $at_details && $at_details < $at_button, true );
+rm( 'A.1: See the event page is the button', (bool) preg_match( '#<a[^>]+href="[^"]*"[^>]*>[^<]*See the event page#', $h ) && false !== stripos( substr( $h, max( 0, $at_button - 600 ), 600 ), 'background' ), true );
+
+/* ---- 3.110.2: the event team and the organizer's copy -------------------- */
+mk_reset();
+$ORG  = mk_user( 'mark@sfaf.org', 'Mark Sapoznikov', 'admin' );
+$T1   = mk_user( 'tia@sfaf.org', 'Tia Team', 'contributor' );
+$T2   = mk_user( 'ana@example.org', 'Ana Alvarez', 'contributor' );   // also registered: counted once, as a participant
+$NAMD = mk_user( 'ned@sfaf.org', 'Ned Named', 'editor' );
+update_option( 'sfaf_teams', array( 'prog' => array( 'id' => 'prog', 'name' => 'Programs', 'users' => array( $T1, $T2 ), 'created' => 1, 'updated' => 1 ) ) );
+$F = mk_post( array( 'post_title' => 'Harm reduction walk', 'post_author' => $ORG ) );
+foreach ( array( '_uc_event_date' => date( 'Y-m-d', strtotime( '+10 days' ) ), '_uc_start_time' => '18:00', '_uc_end_time' => '19:00', '_uc_rsvp_enabled' => '1', '_uc_capacity' => '3' ) as $k => $v ) { update_post_meta( $F, $k, $v ); }
+SFAF_Access::set( $F, array( 'prog' ), array( $NAMD ) );
+rm_reg( $F, 'Ana', 'Alvarez', 'ana@example.org' );
+rm_reg( $F, 'Ben', 'Brooks', 'ben@example.org' );
+
+$to_of = function () { return array_map( function ( $m ) { return strtolower( $m['to'] ); }, $GLOBALS['mk_mail'] ); };
+$GLOBALS['mk_mail'] = array();
+$out = SFAF_Registrant_Mail::send( $F, 'Hello', 'Hi {first_name}', false, $ORG, false );
+$to  = $to_of();
+rm( 'A.4: without the team, the participants and the organizer, once each', $to, array( 'ana@example.org', 'ben@example.org', 'mark@sfaf.org' ) );
+rm( 'A.4: the line', SFAF_Registrant_Mail::said( $out ), 'Sent to 2 participants and a copy to Mark Sapoznikov.' );
+
+$GLOBALS['mk_mail'] = array();
+$out = SFAF_Registrant_Mail::send( $F, 'Hello', 'Hi {first_name}', false, $ORG, true );
+$to  = $to_of();
+sort( $to );
+rm( 'A.3: with the team, its members and the named person, each address once', $to, array( 'ana@example.org', 'ben@example.org', 'mark@sfaf.org', 'ned@sfaf.org', 'tia@sfaf.org' ) );
+rm( 'A.3: the line counts them apart', SFAF_Registrant_Mail::said( $out ), 'Sent to 2 participants, 2 team members, and a copy to Mark Sapoznikov.' );
+$tia = mk_mail_to( 'tia@sfaf.org' );
+rm( 'A.3: a team member is greeted by their own first name', isset( $tia[0] ) && false !== strpos( $tia[0]['text'], 'Hi Tia' ), true );
+$log = SFAF_Registrant_Mail::log( $F );
+rm( 'A.3: the log counts them apart', array( $log[0]['sent'], $log[0]['team'], $log[0]['organizer'], $log[0]['count'] ), array( 2, 2, 'Mark Sapoznikov', 5 ) );
+
+/* The organizer already a recipient: on the team, so no second copy. */
+update_option( 'sfaf_teams', array( 'prog' => array( 'id' => 'prog', 'name' => 'Programs', 'users' => array( $T1, $ORG ), 'created' => 1, 'updated' => 1 ) ) );
+$GLOBALS['mk_mail'] = array();
+$out = SFAF_Registrant_Mail::send( $F, 'Hello', 'Hi {first_name}', false, $ORG, true );
+rm( 'PLANT A.4: the organizer, already on the team, gets one copy and not two', count( mk_mail_to( 'mark@sfaf.org' ) ), 1 );
+rm( 'PLANT A.4: and is counted as a team member, not a copy', SFAF_Registrant_Mail::said( $out ), 'Sent to 2 participants and 3 team members.' );
+/* The organizer registered for their own event: one copy, as a participant. */
+update_option( 'sfaf_teams', array() );
+SFAF_Access::set( $F, array(), array() );
+rm_reg( $F, 'Mark', 'Sapoznikov', 'mark@sfaf.org' );
+$GLOBALS['mk_mail'] = array();
+$out = SFAF_Registrant_Mail::send( $F, 'Hello', 'Hi {first_name}', false, $ORG, false );
+rm( 'PLANT A.4: the organizer, registered, gets one copy', count( mk_mail_to( 'mark@sfaf.org' ) ), 1 );
+rm( 'PLANT A.4: the line names no copy', SFAF_Registrant_Mail::said( $out ), 'Sent to 3 participants.' );
+
 if ( $fails ) {
     echo 'REGISTRANT MAIL: ' . count( $fails ) . " FAILURE(S)\n  - " . implode( "\n  - ", $fails ) . "\n";
     exit( 1 );

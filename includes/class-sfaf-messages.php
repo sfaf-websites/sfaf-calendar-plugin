@@ -603,6 +603,39 @@ class SFAF_Messages {
     }
 
     /** A paragraph that is one link token and nothing else, or ''. */
+    /**
+     * A paragraph that may hold bold, italics and links (3.110.2), as email
+     * HTML: those tags are rebuilt from scratch, everything else is escaped as
+     * fill_html() escapes it, tokens filled the same way, and a line break
+     * kept as a line break.
+     */
+    public static function fill_rich_html( $key, $p, $values, $lang ) {
+        $keep = array();
+        $marked = preg_replace_callback( '#<(/?)(strong|b|em|i)>|<a href="([^"]*)">|</a>#i', function ( $m ) use ( &$keep ) {
+            if ( isset( $m[3] ) && '' !== $m[3] ) {
+                $html = '<a href="' . esc_url( html_entity_decode( $m[3], ENT_QUOTES ) ) . '" style="color:' . SFAF_Email::C_TEAL . ';">';
+            } elseif ( '</a>' === strtolower( $m[0] ) ) {
+                $html = '</a>';
+            } else {
+                $tag  = in_array( strtolower( $m[2] ), array( 'strong', 'b' ), true ) ? 'strong' : 'em';
+                $html = '<' . $m[1] . $tag . '>';
+            }
+            $keep[] = $html;
+            return "\x03" . ( count( $keep ) - 1 ) . "\x04";
+        }, (string) $p );
+        $safe = self::fill_html( $key, $marked, $values, $lang );
+        $safe = preg_replace_callback( "/\x03(\d+)\x04/", function ( $m ) use ( $keep ) {
+            return $keep[ (int) $m[1] ];
+        }, $safe );
+        return nl2br( $safe, false );
+    }
+
+    /** The same paragraph for the plain-text part: a link as its words and its address. */
+    public static function rich_to_text( $p ) {
+        $p = preg_replace( '#<a href="([^"]*)">(.*?)</a>#is', '$2 ($1)', (string) $p );
+        return html_entity_decode( strip_tags( $p ), ENT_QUOTES, 'UTF-8' );
+    }
+
     private static function sole_link( $p ) {
         return ( preg_match( '/^\{([a-z_]+)\}$/', trim( $p ), $m ) && in_array( $m[1], self::link_tokens(), true ) ) ? $m[1] : '';
     }
@@ -662,6 +695,16 @@ class SFAF_Messages {
         if ( ! empty( $parts['heading'] ) ) {
             $head = (string) $parts['heading'];
         }
+        /*
+         * A MESSAGE WRITTEN FOR ONE SEND (3.110.2): the subject is the heading
+         * and every paragraph of the body goes under it, keeping its bold,
+         * italics and links.
+         */
+        $rich = ! empty( $parts['rich_intro'] );
+        if ( $rich ) {
+            $intro = self::paragraphs( $t['intro'], $values );
+            $head  = (string) $t['subject'];
+        }
 
         if ( ! empty( $parts['intro_override'] ) ) {
             $intro = array( (string) $parts['intro_override'] );
@@ -694,6 +737,11 @@ class SFAF_Messages {
                 $label = self::link_label( $key, $sole, $lang );
                 $html .= SFAF_Email::button_row( array( SFAF_Email::button( $url, $label, 'primary' ) ) );
                 $text .= $label . ': ' . $url . "\n\n";
+                continue;
+            }
+            if ( $rich ) {
+                $html .= self::para_html( self::fill_rich_html( $key, $p, $values, $lang ) );
+                $text .= self::fill_text( $key, self::rich_to_text( $p ), $values, $lang ) . "\n\n";
                 continue;
             }
             $html .= self::para_html( self::fill_html( $key, $p, $values, $lang ) );

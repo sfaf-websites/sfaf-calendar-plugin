@@ -54,7 +54,7 @@ $CAPTIONS = array(
     'links'          => array( 'Links', 'Choose which donation link goes in the emails, and paste a volunteer page if there is one.' ),
     'display'        => array( 'Display', 'Choose which buttons appear on the public event page.' ),
     'privacy'        => array( 'Who can find this event', 'Tick Make this event private to keep it off the calendar. Only people you send the link to can open it. Copy the link here once the event is saved.' ),
-    'access'         => array( 'Team and access', 'Add the people who may change this event besides its creator.' ),
+    'access'         => array( 'Team and access', 'Choose the team and any individuals who should have access to this event. What they can do depends on their level.' ),
 );
 $BAR_ADD  = 'Save draft keeps the event private until you are ready. Publish puts it on the calendar.';
 $BAR_EDIT = 'Save changes updates the event. Cancel event keeps it on the calendar marked cancelled and tells registrants. Delete removes it for good.';
@@ -174,7 +174,7 @@ window.addEventListener('load', function () { setTimeout(function () {
   out.startedAlone = !!q('[data-uc-tour]');
   if (!link) { finish(); return; }
 
-  var TOUR = ['series', 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications', 'links', 'display', 'privacy', 'access', 'actions'];
+  var TOUR = ['series', 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications', 'access', 'links', 'display', 'privacy', 'actions'];
   out.present = TOUR.filter(function (c) { var e = q('[data-uc-card="' + c + '"]'); return !!e && e.getClientRects().length > 0; });
 
   link.focus(); link.click();
@@ -338,8 +338,8 @@ foreach ( array( 'add-desktop', 'add-phone', 'edit-desktop', 'edit-phone' ) as $
 
     /* B.3 */
     $want = $is_add
-        ? array( 'series', 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications', 'links', 'display', 'privacy', 'access', 'actions' )
-        : array( 'series', 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications', 'links', 'display', 'privacy', 'access', 'actions' );
+        ? array( 'series', 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications', 'access', 'links', 'display', 'privacy', 'actions' )
+        : array( 'series', 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications', 'access', 'links', 'display', 'privacy', 'actions' );
     rt_check( $want === $v( $t, 'present' ), "$t: the cards on the page are " . json_encode( $v( $t, 'present' ) ) );
     $steps = (array) $v( $t, 'steps' );
     $n     = count( $want );

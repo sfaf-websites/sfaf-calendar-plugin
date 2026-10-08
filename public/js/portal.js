@@ -165,13 +165,37 @@ function ucDismissOnBackdrop(dialog) {
             form.addEventListener('submit', chips.syncAll);
 
             var tick = form.querySelector('[data-uc-rm-waitlist]');
+            var team = form.querySelector('[data-uc-rm-team]');
             var send = form.querySelector('[data-uc-rm-send]');
+            var counts = {};
+            try { counts = JSON.parse(form.getAttribute('data-uc-rm-counts') || '{}') || {}; } catch (e) { counts = {}; }
+            // How many messages the ticks make, the organizer's copy included (3.110.2).
             function confirmText() {
-                var n = parseInt(form.getAttribute(tick && tick.checked ? 'data-uc-rm-to-wait' : 'data-uc-rm-to'), 10) || 0;
+                var key = (tick && tick.checked ? '1' : '0') + (team && team.checked ? '1' : '0');
+                var n = parseInt(counts[key], 10) || 0;
                 if (send) { send.setAttribute('data-uc-confirm', 'Send to ' + n + (1 === n ? ' person?' : ' people?')); }
             }
             if (tick) { tick.addEventListener('change', confirmText); }
+            if (team) { team.addEventListener('change', confirmText); }
             confirmText();
+
+            // Bold and Link act on the message's selection; pressing them keeps it.
+            var bodyEd = chips.editors.intro;
+            Array.prototype.forEach.call(form.querySelectorAll('[data-uc-rm-bold], [data-uc-rm-link]'), function (b) {
+                b.addEventListener('mousedown', function (e) { e.preventDefault(); });
+                b.addEventListener('click', function () {
+                    if (!bodyEd) { return; }
+                    if (!bodyEd.contains(document.activeElement) && document.activeElement !== bodyEd) { bodyEd.focus(); }
+                    if (b.hasAttribute('data-uc-rm-bold')) {
+                        document.execCommand('bold');
+                    } else {
+                        var url = window.prompt('Link address', 'https://');
+                        if (!url || !/^(https?:\/\/|mailto:)/i.test(url.trim())) { return; }
+                        document.execCommand('createLink', false, url.trim());
+                    }
+                    chips.syncAll();
+                });
+            });
 
             var btn = form.querySelector('[data-uc-rm-preview]');
             var box = form.querySelector('[data-uc-rm-preview-box]');
@@ -187,6 +211,7 @@ function ucDismissOnBackdrop(dialog) {
                     body.append(n, f ? f.value : '');
                 });
                 body.append('rm_waitlist', tick && tick.checked ? '1' : '');
+                body.append('rm_team', team && team.checked ? '1' : '');
                 if (err) { err.hidden = true; }
                 btn.disabled = true;
                 fetch(form.getAttribute('data-uc-rm-url'), {
@@ -5502,20 +5527,56 @@ function ucDismissOnBackdrop(dialog) {
             span.textContent = labels[token] ? labels[token] : token;
             return span;
         }
+        function decode(s) {
+            var t = document.createElement('textarea');
+            t.innerHTML = s;
+            return t.value;
+        }
         function fill(ed, text) {
             ed.textContent = '';
-            String(text || '').split(/(\{[a-z_]+\})/).forEach(function (part) {
-                var m = part.match(/^\{([a-z_]+)\}$/);
-                ed.appendChild(m ? chip(m[1]) : document.createTextNode(part));
+            if (!ed.hasAttribute('data-uc-tpl-rich')) {
+                String(text || '').split(/(\{[a-z_]+\})/).forEach(function (part) {
+                    var m = part.match(/^\{([a-z_]+)\}$/);
+                    ed.appendChild(m ? chip(m[1]) : document.createTextNode(part));
+                });
+                return;
+            }
+            // A rich message (3.110.2): bold, italics and links rebuilt as elements.
+            var stack = [ed];
+            String(text || '').split(/(\{[a-z_]+\}|<\/?(?:strong|b|em|i)>|<a href="[^"]*">|<\/a>)/i).forEach(function (part) {
+                if (!part) { return; }
+                var top = stack[stack.length - 1];
+                var tok = part.match(/^\{([a-z_]+)\}$/);
+                var open = part.match(/^<(strong|b|em|i)>$/i);
+                var link = part.match(/^<a href="([^"]*)">$/i);
+                if (tok) { top.appendChild(chip(tok[1])); return; }
+                if (open || link) {
+                    var el = document.createElement(link ? 'a' : (/^(strong|b)$/i.test(open[1]) ? 'strong' : 'em'));
+                    if (link) { el.setAttribute('href', decode(link[1])); }
+                    top.appendChild(el);
+                    stack.push(el);
+                    return;
+                }
+                if (/^<\//.test(part)) { if (stack.length > 1) { stack.pop(); } return; }
+                top.appendChild(document.createTextNode(decode(part)));
             });
         }
+        function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
         function serialise(ed) {
             var out = '';
+            var rich = ed.hasAttribute('data-uc-tpl-rich');
             (function walk(n) {
                 Array.prototype.forEach.call(n.childNodes, function (c) {
-                    if (c.nodeType === 3) { out += c.nodeValue; return; }
+                    if (c.nodeType === 3) { out += rich ? esc(c.nodeValue) : c.nodeValue; return; }
                     if (c.nodeType !== 1) { return; }
                     if (c.hasAttribute('data-token')) { out += '{' + c.getAttribute('data-token') + '}'; return; }
+                    if (rich && /^(STRONG|B|EM|I|A)$/.test(c.tagName)) {
+                        var tag = c.tagName === 'A' ? 'a' : (/^(STRONG|B)$/.test(c.tagName) ? 'strong' : 'em');
+                        out += tag === 'a' ? '<a href="' + esc(c.getAttribute('href') || '').replace(/"/g, '&quot;') + '">' : '<' + tag + '>';
+                        walk(c);
+                        out += '</' + tag + '>';
+                        return;
+                    }
                     if (c.tagName === 'BR') { out += '\n'; return; }
                     if ((c.tagName === 'DIV' || c.tagName === 'P') && out !== '' && out.slice(-1) !== '\n') { out += '\n'; }
                     walk(c);
@@ -5554,6 +5615,7 @@ function ucDismissOnBackdrop(dialog) {
             ed.setAttribute('role', 'textbox');
             if (name !== 'subject') { ed.setAttribute('aria-multiline', 'true'); }
             ed.setAttribute('data-uc-tpl-editor', name);
+            if (box.hasAttribute('data-uc-tpl-rich')) { ed.setAttribute('data-uc-tpl-rich', ''); }
             var label = box.closest('label');
             var labelText = label ? (label.querySelector('.uc-field-label') || {}).textContent : name;
             ed.setAttribute('aria-label', labelText || name);

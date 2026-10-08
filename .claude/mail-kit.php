@@ -54,6 +54,19 @@ function do_action( $h, ...$args ) { foreach ( isset( $GLOBALS['mk_hooks'][ $h ]
 function apply_filters( $h, $v ) { return $v; }
 function esc_html( $t ) { return htmlspecialchars( (string) $t, ENT_QUOTES, 'UTF-8' ); }
 function esc_attr( $t ) { return htmlspecialchars( (string) $t, ENT_QUOTES, 'UTF-8' ); }
+/* wp_kses(), modelled for what the plugin asks of it (3.110.2): the allowed
+   tags stay, with only the attributes allowed for them; everything else goes.
+   force_balance_tags() is left as given. */
+function wp_kses( $t, $allowed = array() ) {
+    $tags = ''; foreach ( array_keys( (array) $allowed ) as $tg ) { $tags .= '<' . $tg . '>'; }
+    $t = strip_tags( (string) $t, $tags );
+    return preg_replace_callback( '#<(\w+)([^>]*)>#', function ( $m ) use ( $allowed ) {
+        $keep = '';
+        if ( isset( $allowed[ strtolower( $m[1] ) ]['href'] ) && preg_match( '/href\s*=\s*["\']([^"\']*)["\']/i', $m[2], $h ) ) { $keep = ' href="' . $h[1] . '"'; }
+        return '<' . $m[1] . $keep . '>';
+    }, $t );
+}
+function force_balance_tags( $t ) { return (string) $t; }
 function esc_url( $u ) { return htmlspecialchars( (string) $u, ENT_QUOTES, 'UTF-8' ); }
 function esc_url_raw( $u ) { return (string) $u; }
 function wp_kses_post( $t ) { return (string) $t; }

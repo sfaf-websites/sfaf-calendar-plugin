@@ -173,9 +173,9 @@ if ( 'screens' === $part ) {
     }
 
     /*
-     * THE REST FEED. Its payload is the satellite sync's and carries each
-     * event's rsvp_count, so what keeps registration data from an editor is
-     * the route's permission: the site's API key, which a signed-in editor
+     * THE REST FEED. Its payload is the satellite sync's (with no registration
+     * count since 3.110.2), and what keeps it from an editor is the route's
+     * permission: the site's API key, which a signed-in editor
      * does not have. Asked as the editor, with no key, a wrong key, and the
      * feed switched off; then with the key, so the refusal is not the only
      * answer the function knows.
@@ -188,6 +188,12 @@ if ( 'screens' === $part ) {
     ta( is_wp_error( sfaf_rest_events_permission( new TA_Request( '' ) ) ), 'PLANT B.5: the REST feed answered an editor with no key' );
     ta( is_wp_error( sfaf_rest_events_permission( new TA_Request( 'guess' ) ) ), 'PLANT B.5: the REST feed answered a wrong key' );
     ta( true === sfaf_rest_events_permission( new TA_Request( 'site-key' ) ), 'the REST feed refuses its own key, so the refusals above prove nothing' );
+
+    /* 3.110.2: the feed's payload carries no registration count at all, so
+       even the key holder, a satellite site, is given none. */
+    $payload = ( new SFAF_Sync() )->event_to_array( $E );
+    ta( is_array( $payload ) && 'Trans health drop-in' === $payload['title'], 'the feed payload could not be built, so its fields prove nothing' );
+    ta( ! array_key_exists( 'rsvp_count', (array) $payload ), 'PLANT C: the REST feed payload still carries the registration count' );
     ta_end( $part );
 }
 

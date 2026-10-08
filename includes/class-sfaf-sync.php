@@ -129,7 +129,8 @@ class SFAF_Sync {
                 'reminders' => get_post_meta( $post_id, '_uc_show_reminders', true ),
             ),
             'faq'             => sfaf_get_faqs( $post_id ),
-            'rsvp_count'      => sfaf_get_rsvp_count( $post_id ),
+            // No registration count since 3.110.2: nothing read it, and a count is
+            // registration data that should not leave the site.
             // Legacy (names + colour map) kept for older satellites.
             'categories'      => $categories,
             'category_colors' => $cat_colors,

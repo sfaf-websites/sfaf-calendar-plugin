@@ -7589,10 +7589,11 @@ class SFAF_Portal {
             array( 'faqs', 'FAQs', 'Add questions and answers for this event, or apply a saved set and edit it. To make a set you can reuse, create it on the FAQ Sets screen.' ),
             array( 'classification', 'Classification', 'Add at least one category and one organizer. A category is the kind of event, such as a support group or a fundraiser, and drives the calendar filters. An organizer is the SFAF program or team hosting the event, and its events are listed together on the calendar.' ),
             array( 'notifications', 'Notifications', 'Choose who is told when people register or cancel, and who gets the reminder copies. Set the reply address for the reminder email.' ),
+            // After Notifications, by the 3.110.2 brief, though the card is in the side column.
+            array( 'access', 'Team and access', 'Choose the team and any individuals who should have access to this event. What they can do depends on their level.' ),
             array( 'links', 'Links', 'Choose which donation link goes in the emails, and paste a volunteer page if there is one.' ),
             array( 'display', 'Display', 'Choose which buttons appear on the public event page.' ),
             array( 'privacy', 'Who can find this event', 'Tick Make this event private to keep it off the calendar. Only people you send the link to can open it. Copy the link here once the event is saved.' ),
-            array( 'access', 'Team and access', 'Add the people who may change this event besides its creator.' ),
             array( 'actions', 'Action bar', $is_edit
                 ? 'Save changes updates the event. Cancel event keeps it on the calendar marked cancelled and tells registrants. Delete removes it for good.'
                 : 'Save draft keeps the event private until you are ready. Publish puts it on the calendar.' ),
@@ -18169,8 +18170,10 @@ class SFAF_Portal {
      */
     private function registrant_mail_route( $user, $event_id, $send ) {
         $rm_subject = trim( sanitize_text_field( wp_unslash( $_POST['rm_subject'] ?? '' ) ) );
-        $rm_body    = trim( sanitize_textarea_field( wp_unslash( $_POST['rm_body'] ?? '' ) ) );
+        // Bold, italics and links are kept; nothing else (3.110.2).
+        $rm_body    = SFAF_Registrant_Mail::clean_body( wp_unslash( $_POST['rm_body'] ?? '' ) );
         $rm_wait    = ! empty( $_POST['rm_waitlist'] );
+        $rm_team    = ! empty( $_POST['rm_team'] );
         $rm_bad     = SFAF_Registrant_Mail::unknown_tokens( $rm_subject . ' ' . $rm_body );
         $rm_error   = '';
         if ( '' === $rm_subject || '' === $rm_body ) {
@@ -18182,7 +18185,7 @@ class SFAF_Portal {
             if ( '' !== $rm_error ) {
                 wp_send_json_error( array( 'message' => $rm_error ) );
             }
-            $pv = SFAF_Registrant_Mail::preview( $event_id, $rm_subject, $rm_body, $rm_wait );
+            $pv = SFAF_Registrant_Mail::preview( $event_id, $rm_subject, $rm_body, $rm_wait, $rm_team );
             if ( ! $pv ) {
                 wp_send_json_error( array( 'message' => 'Nobody on this list has an email address to send to.' ) );
             }
@@ -18192,7 +18195,7 @@ class SFAF_Portal {
             set_transient( 'sfaf_rm_said_' . $user->ID, array( 'error' => $rm_error ), 5 * MINUTE_IN_SECONDS );
             $this->redirect( 'rsvps', array( 'event_id' => $event_id ) );
         }
-        set_transient( 'sfaf_rm_said_' . $user->ID, SFAF_Registrant_Mail::send( $event_id, $rm_subject, $rm_body, $rm_wait, (int) $user->ID ), 5 * MINUTE_IN_SECONDS );
+        set_transient( 'sfaf_rm_said_' . $user->ID, SFAF_Registrant_Mail::send( $event_id, $rm_subject, $rm_body, $rm_wait, (int) $user->ID, $rm_team ), 5 * MINUTE_IN_SECONDS );
         $this->redirect( 'rsvps', array( 'event_id' => $event_id ) );
     }
 
@@ -18207,8 +18210,15 @@ class SFAF_Portal {
         if ( false !== $said ) {
             delete_transient( 'sfaf_rm_said_' . $user->ID );
         }
-        $to_reg  = count( SFAF_Registrant_Mail::recipients( $event_id, false )['to'] );
-        $to_all  = count( SFAF_Registrant_Mail::recipients( $event_id, true )['to'] );
+        // How many messages each combination of the two ticks makes, the
+        // organizer's copy included: waitlist then team, '0' or '1'.
+        $rm_counts = array();
+        foreach ( array( 0, 1 ) as $w ) {
+            foreach ( array( 0, 1 ) as $tm ) {
+                $rm_counts[ $w . $tm ] = SFAF_Registrant_Mail::count_plan( SFAF_Registrant_Mail::plan( $event_id, (bool) $w, (bool) $tm ) );
+            }
+        }
+        $to_reg = $rm_counts['00'];
         $labels  = SFAF_Messages::tokens();
         $tokens  = array();
         foreach ( SFAF_Registrant_Mail::tokens() as $tk ) {
@@ -18230,7 +18240,7 @@ class SFAF_Portal {
                     <p class="uc-notice uc-notice-error" role="alert"><?php echo esc_html( $said['error'] ); ?></p>
                 <?php elseif ( is_array( $said ) ) : ?>
                     <p class="uc-notice" role="status" data-uc-rm-said><?php
-                        echo esc_html( sprintf( 'Sent to %d %s.', (int) $said['sent'], 1 === (int) $said['sent'] ? 'person' : 'people' ) );
+                        echo esc_html( SFAF_Registrant_Mail::said( $said ) );
                         if ( ! empty( $said['unreachable'] ) ) {
                             echo ' ' . esc_html( sprintf(
                                 '%d had no email and could not be reached: %s.',
@@ -18241,7 +18251,7 @@ class SFAF_Portal {
                     ?></p>
                 <?php endif; ?>
                 <form method="post" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>" class="uc-registrant-mail-form" data-uc-rm-form
-                      data-uc-rm-to="<?php echo (int) $to_reg; ?>" data-uc-rm-to-wait="<?php echo (int) $to_all; ?>"
+                      data-uc-rm-counts="<?php echo esc_attr( wp_json_encode( $rm_counts ) ); ?>"
                       data-uc-rm-url="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>"
                       data-uc-rm-preview-nonce="<?php echo esc_attr( wp_create_nonce( 'uc_portal_registrant_mail_preview' ) ); ?>"
                       data-uc-rm-tokens="<?php echo esc_attr( wp_json_encode( $tokens ) ); ?>">
@@ -18253,6 +18263,9 @@ class SFAF_Portal {
                         <?php foreach ( $tokens as $tk => $tlabel ) : ?>
                             <button type="button" class="uc-tpl-token" data-uc-tpl-token="<?php echo esc_attr( $tk ); ?>"><?php echo esc_html( $tlabel ); ?></button>
                         <?php endforeach; ?>
+                        <?php // Bold and a link, in the message only (3.110.2). ?>
+                        <button type="button" class="uc-tpl-token uc-rm-format" data-uc-rm-bold aria-label="Bold"><strong>B</strong></button>
+                        <button type="button" class="uc-tpl-token uc-rm-format" data-uc-rm-link>Link</button>
                     </div>
                     <label class="uc-field">
                         <span class="uc-field-label">Subject</span>
@@ -18260,17 +18273,23 @@ class SFAF_Portal {
                     </label>
                     <label class="uc-field">
                         <span class="uc-field-label">Message</span>
-                        <textarea name="rm_body" rows="7" data-uc-tpl-text="intro"></textarea>
-                        <span class="uc-hint">The first paragraph is the heading. Leave a blank line between paragraphs.</span>
+                        <textarea name="rm_body" rows="7" data-uc-tpl-text="intro" data-uc-tpl-rich></textarea>
+                        <span class="uc-hint">The subject is the heading. Leave a blank line between paragraphs.</span>
                     </label>
-                    <label class="uc-check">
-                        <input type="checkbox" name="rm_waitlist" value="1" data-uc-rm-waitlist />
-                        Include the waitlist
-                    </label>
+                    <div class="uc-rm-ticks">
+                        <label class="uc-check">
+                            <input type="checkbox" name="rm_waitlist" value="1" data-uc-rm-waitlist />
+                            Include the waitlist
+                        </label>
+                        <label class="uc-check">
+                            <input type="checkbox" name="rm_team" value="1" data-uc-rm-team />
+                            Include event team
+                        </label>
+                    </div>
                     <div class="uc-form-actions">
                         <button type="button" class="uc-btn" data-uc-rm-preview>Preview</button>
-                        <button type="submit" class="uc-btn uc-btn-primary" data-uc-rm-send
-                                data-uc-confirm="<?php echo esc_attr( sprintf( 'Send to %d %s?', $to_reg, 1 === $to_reg ? 'person' : 'people' ) ); ?>">Send</button>
+                        <button type="submit" class="uc-btn uc-btn-go uc-rm-send" data-uc-rm-send
+                                data-uc-confirm="<?php echo esc_attr( sprintf( 'Send to %d %s?', $to_reg, 1 === $to_reg ? 'person' : 'people' ) ); ?>"><span class="uc-rm-send-icon" aria-hidden="true"><?php echo sfaf_icon( 'mail', array( 'size' => '16px' ) ); ?></span><span class="uc-rm-send-label">Send</span></button>
                     </div>
                     <p class="uc-notice uc-notice-error" role="alert" data-uc-rm-error hidden></p>
                     <div class="uc-rm-preview" data-uc-rm-preview-box hidden>
@@ -18292,7 +18311,7 @@ class SFAF_Portal {
                             <td><?php echo esc_html( $who && '' !== (string) $who->display_name ? $who->display_name : 'A former user' ); ?></td>
                             <td><?php echo esc_html( sfaf_ap_datetime( (string) $entry['at'] ) ); ?></td>
                             <td><?php echo esc_html( (string) $entry['subject'] ); ?></td>
-                            <td><?php echo (int) $entry['count']; ?></td>
+                            <td><?php echo esc_html( SFAF_Registrant_Mail::said( $entry, false ) ); ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>

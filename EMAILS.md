@@ -218,6 +218,15 @@ Words in a message that come from the event, such as its title, location and org
 | Title | Nothing to cancel | No hay nada que cancelar |
 | Page | We could not find an active registration for Coffee and Conversation against this address. It may already have been canceled. | No encontramos una inscripción activa en Coffee and Conversation para esta dirección. Es posible que ya se haya cancelado. |
 
+## Email registrants (a sample message)
+
+The organizer writes the subject and the message on the registrations list for each send. The subject is the heading; the message follows, then the event details and See the event page. This sample shows the layout around their words.
+
+| | English | Spanish |
+|---|---|---|
+| Subject | Meeting point for Coffee and Conversation | Meeting point for Coffee and Conversation |
+| Text | Meeting point for Coffee and Conversation<br><br>Hi Alex,<br><br>We will meet at the front desk. The route is on sfaf.org (https://www.sfaf.org/).<br><br>Event: Coffee and Conversation<br>Date: Thursday, November 12, 2026<br>Time: 6–7:30 pm PT<br>Location: SFAF Main Office, 1035 Market St, San Francisco, CA 94103<br><br>See the event page: https://resources.sfaf.org/collections/events/coffee-and-conversation/<br><br>San Francisco AIDS Foundation, 940 Howard Street, San Francisco, CA 94103 | Meeting point for Coffee and Conversation<br><br>Hi Alex,<br><br>We will meet at the front desk. The route is on sfaf.org (https://www.sfaf.org/).<br><br>Evento: Coffee and Conversation<br>Fecha: jueves, 12 de noviembre de 2026<br>Hora: 6–7:30 p. m., hora del Pacífico<br>Lugar: SFAF Main Office, 1035 Market St, San Francisco, CA 94103<br><br>Ver la página del evento: https://resources.sfaf.org/collections/events/coffee-and-conversation/<br><br>San Francisco AIDS Foundation, 940 Howard Street, San Francisco, CA 94103 |
+
 ## The fixed words around the text
 
 Labels, buttons and the calendar file's words. These are not edited on the Templates screen.

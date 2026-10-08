@@ -877,9 +877,13 @@ class SFAF_Notifications {
                 'subject' => isset( $context['subject'] ) ? (string) $context['subject'] : '',
                 'intro'   => isset( $context['body'] ) ? (string) $context['body'] : '',
             ),
-            'details'   => self::detail_rows( $f ),
-            'event_url' => $f['url'],
-            'preheader' => $f['title'],
+            'details'      => self::detail_rows( $f ),
+            'event_url'    => $f['url'],
+            // The confirmation family's button, under the details (3.110.2).
+            'event_button' => true,
+            // The subject is the heading; the body's paragraphs keep their markup.
+            'rich_intro'   => true,
+            'preheader'    => $f['title'],
         ) );
     }
 

@@ -5149,6 +5149,19 @@ body.uc-modal-open { overflow: hidden; }
 .uc-registrant-mail .uc-rm-preview-frame { display: block; width: 100%; height: 640px; border: 1px solid var(--p-border); border-radius: 8px; background: var(--p-panel); }
 .uc-registrant-mail .uc-rm-preview-subject { margin: 0; }
 .uc-registrant-mail .uc-rm-preview[hidden] { display: none; }
+/* Email registrants (3.110.2): the two ticks side by side; Send in the
+   Publish green, its envelope sliding in from the label's left on hover and
+   focus, and appearing without moving when motion is reduced. */
+.uc-registrant-mail .uc-rm-ticks { display: flex; flex-wrap: wrap; gap: 0 20px; }
+.uc-portal .uc-rm-send { display: inline-flex; align-items: center; justify-content: center; }
+.uc-rm-send .uc-rm-send-icon { display: inline-flex; width: 0; margin-right: 0; overflow: hidden; opacity: 0; transform: translateX(-8px);
+    transition: width 150ms ease, margin-right 150ms ease, opacity 150ms ease, transform 150ms ease; }
+.uc-rm-send:hover .uc-rm-send-icon,
+.uc-rm-send:focus-visible .uc-rm-send-icon { width: 16px; margin-right: 8px; opacity: 1; transform: translateX(0); }
+@media (prefers-reduced-motion: reduce) {
+    .uc-rm-send .uc-rm-send-icon { transition: none; transform: none; }
+}
+.uc-registrant-mail .uc-rm-format { min-width: 40px; }
 .uc-rsvp-table .uc-checkin-form { display: inline; margin: 0; }
 .uc-rsvp-table .uc-checkin-btn[aria-pressed="true"] { border-color: var(--uc-accent-text); color: var(--uc-accent-text); background: var(--uc-band); }
 .uc-texts-mark {

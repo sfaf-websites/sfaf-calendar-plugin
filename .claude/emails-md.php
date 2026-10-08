@@ -60,6 +60,30 @@ function emd_render() {
         }
     }
 
+    /*
+     * EMAIL REGISTRANTS (3.110.2). Not a template, so not in catalog() and not
+     * on the Templates screen: the organizer writes the subject and body for
+     * each send. This is a sample of one, through the builder that sends, so
+     * the layout around their words is what is read here.
+     */
+    $out[] = '## Email registrants (a sample message)';
+    $out[] = '';
+    $out[] = 'The organizer writes the subject and the message on the registrations list for each send. The subject is the heading; the message follows, then the event details and See the event page. This sample shows the layout around their words.';
+    $out[] = '';
+    $rm = array();
+    foreach ( array( 'en', 'es' ) as $lang ) {
+        $smp = SFAF_Messages::sample( $lang );
+        $person = (object) array( 'first_name' => $smp['first_name'], 'last_name' => $smp['last_name'], 'name' => $smp['first_name'] . ' ' . $smp['last_name'],
+            'email' => 'alex@example.org', 'token' => 'SAMPLE', 'format' => '' );
+        $rm[ $lang ] = SFAF_Notifications::build( 'registrant_message', 0, $person, array( 'sample' => $smp,
+            'subject' => 'Meeting point for {title}',
+            'body'    => "Hi {first_name},\n\nWe will meet at the <strong>front desk</strong>. The route is on <a href=\"https://www.sfaf.org/\">sfaf.org</a>." ) );
+    }
+    $out[] = '| | English | Spanish |';
+    $out[] = '|---|---|---|';
+    $out[] = '| Subject | ' . emd_cell( $rm['en']['subject'] ) . ' | ' . emd_cell( $rm['es']['subject'] ) . ' |';
+    $out[] = '| Text | ' . emd_cell( $rm['en']['text'] ) . ' | ' . emd_cell( $rm['es']['text'] ) . ' |';
+    $out[] = '';
     $out[] = '## The fixed words around the text';
     $out[] = '';
     $out[] = 'Labels, buttons and the calendar file\'s words. These are not edited on the Templates screen.';
