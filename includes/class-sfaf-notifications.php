@@ -503,17 +503,18 @@ class SFAF_Notifications {
      * Somebody who has just been told a person registered wants the
      * REGISTRATION LIST, not the public page: who else is coming, how full it
      * is, the address to write to. So the button is the RSVP screen for this
-     * event. That screen is gated on can_view_all, and the notification list is
-     * not: it holds contributors, people reached through a team, and typed
+     * event. That screen asks the event gate, user_can_edit_event(), and the
+     * notification list is not: it holds contributors, people reached through a team, and typed
      * addresses that are not accounts at all. A link that answers "Denied" is
      * worse than the public page, because it also tells somebody there is a
      * screen they are not allowed to see.
      *
-     * Hence $context['can_view_all'], decided by send_alert() one recipient at
-     * a time. Absent means false, so any caller that does not say gets the
-     * public page, which is what everybody got before this existed.
+     * Hence $context['can_edit_event'], decided by send_alert() one recipient
+     * at a time with the same gate the screen asks (3.110.1; it was
+     * can_view_all, which an editor outside the event would have passed).
+     * Absent means false, so any caller that does not say gets the public page.
      *
-     * @param array $context can_view_all: bool.
+     * @param array $context can_edit_event: bool.
      */
     private static function build_alert( $event_id, $person, $context = array() ) {
         $f     = self::facts( $event_id );
@@ -550,7 +551,7 @@ class SFAF_Notifications {
                 : sprintf( '%d registered so far', $count );
         }
 
-        $can_view = ! empty( $context['can_view_all'] );
+        $can_view = ! empty( $context['can_edit_event'] );
         if ( $can_view ) {
             $link  = add_query_arg( 'event_id', (int) $event_id, SFAF_Portal::link( 'rsvps' ) );
             $label = 'See who has registered';
@@ -1273,11 +1274,11 @@ class SFAF_Notifications {
         $sent     = 0;
 
         foreach ( self::staff_entries( $event_id ) as $email => $entry ) {
-            $can = ( ! empty( $entry['user_id'] ) && SFAF_Portal::user_can_view_all( (int) $entry['user_id'] ) );
+            $can = ( ! empty( $entry['user_id'] ) && SFAF_Portal::user_can_edit_event( (int) $entry['user_id'], (int) $event_id ) );
             $key = $can ? 'view' : 'public';
 
             if ( ! isset( $variants[ $key ] ) ) {
-                $variants[ $key ] = self::build( 'alert', $event_id, $person, array( 'can_view_all' => $can ) );
+                $variants[ $key ] = self::build( 'alert', $event_id, $person, array( 'can_edit_event' => $can ) );
             }
             $built = $variants[ $key ];
             if ( ! $built ) {

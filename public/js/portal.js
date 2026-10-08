@@ -143,6 +143,7 @@ function ucDismissOnBackdrop(dialog) {
         run('copyButtons', initCopyButtons);
         run('schedule', initSchedule);
         run('agreement', initAgreementSection);
+        run('access', initAccessSection);
         run('registrantMail', initRegistrantMail);
         run('checkin', initCheckin);
         run('rsvpFilter', initRsvpFilter);
@@ -302,6 +303,30 @@ function ucDismissOnBackdrop(dialog) {
         });
     }
 
+    /* ---------------------------------------------------------------------
+     * TEAM AND ACCESS IN THE EDITOR (3.110.1). Until the event keeps its
+     * own, its ticks follow the series dropdown, showing that series'
+     * default; a tick somebody changes makes it the event's own. The server
+     * stores nothing when the ticks equal the series default.
+     * ------------------------------------------------------------------ */
+    function initAccessSection() {
+        document.querySelectorAll('[data-uc-access]').forEach(function (box) {
+            var series = {};
+            try { series = JSON.parse(box.getAttribute('data-uc-access-series') || '{}') || {}; } catch (e) { series = {}; }
+            var own = '1' === box.getAttribute('data-uc-access-own');
+            box.addEventListener('change', function (e) {
+                if (e.target && e.target.type === 'checkbox' && e.target.name !== 'access_teams_notify') { own = true; }
+            });
+            var select = document.querySelector('[data-uc-series-select]');
+            if (!select) { return; }
+            select.addEventListener('change', function () {
+                if (own) { return; }
+                var d = series[String(select.value)] || { teams: [], people: [] };
+                box.querySelectorAll('input[name="access_teams[]"]').forEach(function (i) { i.checked = d.teams.indexOf(i.value) > -1; });
+                box.querySelectorAll('input[name="access_people[]"]').forEach(function (i) { i.checked = d.people.indexOf(parseInt(i.value, 10)) > -1; });
+            });
+        });
+    }
     /* ---------------------------------------------------------------------
      * SCHEDULE FOR A LATER DATE (3.110.0). The tick shows the date and time
      * beside it and turns Publish into Schedule; unticked, both go and the

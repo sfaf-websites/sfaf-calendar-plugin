@@ -488,15 +488,14 @@ class SFAF_Portal {
     }
 
     /**
-     * The same test, by user id, reachable without an instance.
+     * Calendar admin or editor: the calendar's STRUCTURE, never its events.
      *
-     * THE EMAILS HAVE TO ASK THIS. The registration alert links an organizer to
-     * the RSVP list for the event, and that screen is gated on can_view_all, so
-     * the message has to know per recipient whether the link would open or
-     * refuse. A second copy of the rule in class-sfaf-notifications.php is a
-     * second thing to change when the rule changes, which is how a link to a
-     * "Denied" page gets sent. One definition; the private method above is now
-     * a wrapper on it.
+     * SINCE 3.110.1 THIS ANSWERS NOTHING ABOUT AN EVENT OR ITS REGISTRATIONS.
+     * It is the level that may manage series, categories, venues, organizers
+     * and FAQ sets. Which events somebody has, and so whose registrations they
+     * may read, is user_can_edit_event()'s alone; an editor no longer has
+     * every event. A screen about the whole calendar's registrations asks
+     * is_admin_role().
      *
      * @param int $user_id
      * @return bool
@@ -535,9 +534,18 @@ class SFAF_Portal {
     public static function user_can_edit_event( $user_id, $post ) {
         $user_id = (int) $user_id;
 
-        // Calendar admins and editors, from manage_options or the stored
-        // record, in that order. Nothing below can reduce this. See get_role().
-        if ( self::user_can_view_all( $user_id ) ) {
+        /*
+         * THE RULE (3.110.1): a team decides which events a person has; their
+         * level decides what they can do on those events. This function is the
+         * only place it lives, and every route that reads or writes an event or
+         * its registrations asks it.
+         *
+         * Calendar admins have every event, from manage_options or the stored
+         * record, in that order, and nothing below can reduce that. EDITORS NO
+         * LONGER DO: since 3.110.1 an editor has the events they created and the
+         * ones Team and access gives them, like anybody else.
+         */
+        if ( 'admin' === self::get_role( $user_id ) ) {
             return true;
         }
 
@@ -571,7 +579,51 @@ class SFAF_Portal {
             return false;
         }
 
-        return SFAF_Teams::user_owns_event( $user_id, $post->ID );
+        // Team and access: a team they are on, or their name, on the event or
+        // inherited from its series. Live: read fresh on every call.
+        return SFAF_Access::names_user( $user_id, $post->ID );
+    }
+
+    /**
+     * Every event this person has, by asking the gate of each (3.110.1).
+     *
+     * For the lists that narrow to a person's events: My events, the
+     * dashboard's counts, recent activity. It holds no rule of its own; an
+     * id is here exactly when user_can_edit_event() says yes. Memoized for
+     * the request, which is one page load, so a change to a team is seen on
+     * the next one.
+     *
+     * @param int $user_id
+     * @return int[]
+     */
+    public static function user_event_ids( $user_id ) {
+        static $memo = array();
+        $user_id = (int) $user_id;
+        if ( isset( $memo[ $user_id ] ) ) {
+            return $memo[ $user_id ];
+        }
+        $out = array();
+        if ( $user_id > 0 && '' !== (string) self::get_role( $user_id ) ) {
+            $q = new WP_Query( array(
+                'post_type'              => 'uc_event',
+                'post_status'            => array( 'publish', 'pending', 'draft', 'future', 'private' ),
+                'posts_per_page'         => -1,
+                'fields'                 => 'ids',
+                'no_found_rows'          => true,
+                'update_post_term_cache' => false,
+            ) );
+            $ids = array_map( 'intval', (array) $q->posts );
+            if ( $ids && function_exists( 'update_meta_cache' ) ) {
+                update_meta_cache( 'post', $ids );
+            }
+            foreach ( $ids as $id ) {
+                if ( self::user_can_edit_event( $user_id, $id ) ) {
+                    $out[] = $id;
+                }
+            }
+        }
+        $memo[ $user_id ] = $out;
+        return $out;
     }
 
     /** Status a contributor's published event lands in (auto vs review). */
@@ -612,6 +664,26 @@ class SFAF_Portal {
         }
         wp_safe_redirect( $url );
         exit;
+    }
+
+    /**
+     * Somebody asked for an event that is not one of theirs (3.110.1).
+     *
+     * They are sent to its public page when it has one, published and not
+     * private: what an anonymous visitor can open, and nothing more. Otherwise
+     * nothing is said about it at all, and the caller shows what it showed
+     * before. Never the private address, which is that event's credential.
+     *
+     * @return bool True when a redirect was sent; the caller stops.
+     */
+    private function send_to_public_page( $event_id ) {
+        $event_id = (int) $event_id;
+        if ( $event_id && 'uc_event' === get_post_type( $event_id ) && 'publish' === get_post_status( $event_id )
+            && ! SFAF_Privacy::is_private( $event_id ) ) {
+            wp_safe_redirect( get_permalink( $event_id ) );
+            exit;
+        }
+        return false;
     }
 
     /* =====================================================================
@@ -1239,7 +1311,8 @@ class SFAF_Portal {
              * than out of the form.
              */
             case 'remove_series':
-                if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
+                // Writes the series' events: the one gate, of each of them (3.110.1).
+                if ( ! $this->can_manage_series_events( $user, isset( $_POST['series_id'] ) ? intval( $_POST['series_id'] ) : 0 ) ) { wp_die( 'Denied' ); }
                 $term_id = intval( $_POST['series_id'] );
                 $mode    = isset( $_POST['remove_mode'] ) ? sanitize_key( wp_unslash( $_POST['remove_mode'] ) ) : 'keep_events';
 
@@ -1350,27 +1423,32 @@ class SFAF_Portal {
              * one the series already holds, and never before today.
              */
             case 'schedule_pattern':
-                if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
+                // Writes the series' events: the one gate, of each of them (3.110.1).
+                if ( ! $this->can_manage_series_events( $user, isset( $_POST['series_id'] ) ? intval( $_POST['series_id'] ) : 0 ) ) { wp_die( 'Denied' ); }
                 $this->schedule_pattern_from_post();
                 break;
 
             case 'schedule_extend':
-                if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
+                // Writes the series' events: the one gate, of each of them (3.110.1).
+                if ( ! $this->can_manage_series_events( $user, isset( $_POST['series_id'] ) ? intval( $_POST['series_id'] ) : 0 ) ) { wp_die( 'Denied' ); }
                 $this->schedule_extend_from_post();
                 break;
 
             case 'schedule_add_date':
-                if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
+                // Writes the series' events: the one gate, of each of them (3.110.1).
+                if ( ! $this->can_manage_series_events( $user, isset( $_POST['series_id'] ) ? intval( $_POST['series_id'] ) : 0 ) ) { wp_die( 'Denied' ); }
                 $this->schedule_add_date_from_post();
                 break;
 
             case 'schedule_remove_date':
-                if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
+                // Writes the series' events: the one gate, of each of them (3.110.1).
+                if ( ! $this->can_manage_series_events( $user, isset( $_POST['series_id'] ) ? intval( $_POST['series_id'] ) : 0 ) ) { wp_die( 'Denied' ); }
                 $this->schedule_remove_date_from_post();
                 break;
 
             case 'schedule_publish':
-                if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
+                // Writes the series' events: the one gate, of each of them (3.110.1).
+                if ( ! $this->can_manage_series_events( $user, isset( $_POST['series_id'] ) ? intval( $_POST['series_id'] ) : 0 ) ) { wp_die( 'Denied' ); }
                 $this->schedule_publish_from_post();
                 break;
 
@@ -3876,15 +3954,17 @@ class SFAF_Portal {
          * (defect three in PROJECT.md §5) was a download link whose gate had
          * drifted from its screen's, and any Author on the site could fetch the
          * whole registration list by calling it directly. Scoped to one event,
-         * the event gate. Unscoped, and for the orphan view, can_view_all.
+         * the event gate. Unscoped, and for the orphan view, an admin's alone.
          */
         $user = wp_get_current_user();
         if ( $event_id ) {
             $event = get_post( $event_id );
             if ( ! $event || 'uc_event' !== $event->post_type || ! $this->can_edit_event( $user, $event ) ) {
+                $this->send_to_public_page( $event_id );
                 wp_die( 'Denied' );
             }
-        } elseif ( ! $this->can_view_all( $user ) ) {
+        } elseif ( ! $this->is_admin_role( $user ) ) {
+            // Every registration on the calendar: an admin's alone (3.110.1).
             wp_die( 'Denied' );
         }
         $rsvps    = SFAF_RSVP::get_all_rsvps( array(
@@ -3930,7 +4010,7 @@ class SFAF_Portal {
     }
 
     private function export_optins_csv() {
-        if ( ! is_user_logged_in() || ! $this->can_view_all( wp_get_current_user() ) ) {
+        if ( ! is_user_logged_in() || ! $this->is_admin_role( wp_get_current_user() ) ) {
             wp_die( 'Denied' );
         }
         $nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
@@ -4176,7 +4256,10 @@ class SFAF_Portal {
              * The Events list links to those whenever any exist. See
              * render_rsvps().
              */
-            $nav['optins'] = array( 'Email Opt-ins', 'optins', 'mail' );
+            if ( $is_admin ) {
+                // Registrant names by event: an admin's alone (3.110.1).
+                $nav['optins'] = array( 'Email Opt-ins', 'optins', 'mail' );
+            }
         }
         if ( $is_admin ) {
             // Automation moved out of this portal in 2.13.0. The run log, cron
@@ -5081,8 +5164,10 @@ class SFAF_Portal {
         $public     = $this->is_public_scope( $user, $scope );
         $own        = ( 'mine' === $scope );
         $author     = $own ? $user->ID : 0;
-        $total      = $this->count_events( 'publish', $author );
-        $upcoming   = $this->count_events( 'publish', $author, true );
+        // My events is a person's events (3.110.1); for an admin, theirs by author.
+        $only       = ( $own && ! $this->is_admin_role( $user ) ) ? self::user_event_ids( $user->ID ) : null;
+        $total      = $this->count_events( 'publish', null === $only ? $author : 0, false, $only );
+        $upcoming   = $this->count_events( 'publish', null === $only ? $author : 0, true, $only );
         $rsvp_total = $this->count_rsvps( $user );
         $pending    = $this->count_events( 'pending', 0 );
         $is_admin   = $this->is_admin_role( $user );
@@ -5090,7 +5175,7 @@ class SFAF_Portal {
 
         // Whether the RSVP figure covers everything or only this person's own,
         // which is not the same question as the scope above.
-        $rsvps_are_own = ! $this->can_view_all( $user );
+        $rsvps_are_own = ! $this->is_admin_role( $user );
         ?>
         <div class="uc-page-head">
             <h1>Welcome, <?php echo esc_html( $user->first_name ?: $user->display_name ); ?></h1>
@@ -5234,7 +5319,16 @@ class SFAF_Portal {
              * person may see registrations for.
              */
             if ( $public ) {
-                $this->public_events_table( $next );
+                list( $mine_ids, $other_ids ) = $this->split_by_gate( $user, $next );
+                if ( $mine_ids ) {
+                    $this->upcoming_overview( $mine_ids, $user );
+                }
+                if ( $other_ids ) {
+                    echo '<h3 class="uc-public-heading">Other events</h3>';
+                    $this->public_events_table( $other_ids );
+                } elseif ( ! $mine_ids ) {
+                    $this->public_events_table( array() );
+                }
             } else {
                 $this->upcoming_overview( $next, $user );
             }
@@ -5446,7 +5540,7 @@ class SFAF_Portal {
                          * events_table(): see the note there.
                          */
                         $rsvp_n = (int) sfaf_get_rsvp_count( $id );
-                        if ( $user && $this->can_view_all( $user ) ) {
+                        if ( $user && $this->can_edit_event( $user, $id ) ) {
                             echo '<a class="uc-tlink" href="'
                                 . esc_url( add_query_arg( 'event_id', $id, $this->url( 'rsvps' ) ) ) . '">'
                                 . (int) $rsvp_n . '</a>';
@@ -5490,18 +5584,18 @@ class SFAF_Portal {
          * knows the rule, one built around it.
          */
         $table = $wpdb->prefix . 'uc_rsvps';
-        if ( $this->can_view_all( $user ) ) {
+        if ( $this->is_admin_role( $user ) ) {
             $rsvps = $wpdb->get_results(
                 "SELECT event_id, name, first_name, last_name, status, created_at FROM $table ORDER BY id DESC LIMIT 5"
             );
         } else {
-            $rsvps = $wpdb->get_results( $wpdb->prepare(
-                "SELECT r.event_id, r.name, r.first_name, r.last_name, r.status, r.created_at FROM $table r
-                 INNER JOIN {$wpdb->posts} p ON p.ID = r.event_id
-                 WHERE p.post_author = %d
-                 ORDER BY r.id DESC LIMIT 5",
-                (int) $user->ID
-            ) );
+            // This person's events, as the gate decides them (3.110.1).
+            $ids   = self::user_event_ids( $user->ID );
+            $rsvps = $ids ? $wpdb->get_results(
+                "SELECT event_id, name, first_name, last_name, status, created_at FROM $table
+                 WHERE event_id IN (" . implode( ',', array_map( 'absint', $ids ) ) . ')
+                 ORDER BY id DESC LIMIT 5'
+            ) : array();
         }
         foreach ( (array) $rsvps as $r ) {
             $title = get_the_title( $r->event_id );
@@ -6209,7 +6303,24 @@ class SFAF_Portal {
              * behave like the other one.
              */
             if ( $public ) {
-                $this->public_events_table( $ids );
+                /*
+                 * ALL EVENTS FOR ANYBODY BUT AN ADMIN (3.110.1): their own
+                 * events in the full table, then everybody else's in the
+                 * public one, which cannot draw a count, an edit link or a
+                 * registration. The gate splits them, row by row.
+                 */
+                list( $mine_ids, $other_ids ) = $this->split_by_gate( $user, $ids );
+                if ( $mine_ids ) {
+                    $bulk = $this->bulk_plan( $user, $mine_ids );
+                    $this->render_bulk_actions( $bulk );
+                    $this->events_table( $mine_ids, $user, $sort, $filters, $bulk );
+                }
+                if ( $other_ids ) {
+                    echo '<h3 class="uc-public-heading">Other events</h3>';
+                    $this->public_events_table( $other_ids );
+                } elseif ( ! $mine_ids ) {
+                    $this->public_events_table( array() );
+                }
             } else {
                 /*
                  * ASKED ONCE, HANDED TO BOTH (3.79.0). The panel's counts and
@@ -6235,7 +6346,7 @@ class SFAF_Portal {
          * Events list, appears only when there is something behind it, and
          * says how many, so it is a signpost rather than furniture.
          */
-        if ( $this->can_view_all( $user ) ) {
+        if ( $this->is_admin_role( $user ) ) {
             $orphan_total = SFAF_RSVP::orphan_count();
             if ( $orphan_total ) : ?>
                 <p class="uc-hint uc-orphan-note">
@@ -6364,7 +6475,25 @@ class SFAF_Portal {
      * @return bool
      */
     private function is_public_scope( $user, $scope ) {
-        return ( 'all' === $scope && ! $this->can_view_all( $user ) );
+        return ( 'all' === $scope && ! $this->is_admin_role( $user ) );
+    }
+
+    /**
+     * Split a page of All events into this person's events and everybody
+     * else's, in the order given (3.110.1). Each half goes to its own renderer.
+     *
+     * @return array{0:int[],1:int[]} mine, others
+     */
+    private function split_by_gate( $user, $ids ) {
+        $mine = array(); $others = array();
+        foreach ( (array) $ids as $id ) {
+            if ( $this->can_edit_event( $user, (int) $id ) ) {
+                $mine[] = (int) $id;
+            } else {
+                $others[] = (int) $id;
+            }
+        }
+        return array( $mine, $others );
     }
 
     /**
@@ -6386,10 +6515,12 @@ class SFAF_Portal {
      * does not exist in this table at all. A contributor who wants their own
      * counts switches to My events, where every row is theirs.
      *
-     * NOTHING IS CLICKABLE. A link would mean another surface that has to
-     * exclude participant data correctly, and the last three permission
-     * defects in this plugin were all of that shape. The public calendar is
-     * where somebody goes for detail about an event that is not theirs.
+     * ONE LINK, TO THE PUBLIC PAGE, AND ONLY WHERE THERE IS ONE (3.110.1). The
+     * title opens the event's page on the site in a new tab when the event is
+     * published and not private: exactly what an anonymous visitor can open.
+     * A private event's address is its credential, so it is never printed
+     * here; a draft or a scheduled event has no public page. Nothing else is
+     * clickable: no edit link, no registrations, no form.
      *
      * FIELDS, AND WHY EACH ONE IS SAFE: title, date, time, location, category,
      * organizer and published status are exactly what an anonymous visitor
@@ -6424,8 +6555,12 @@ class SFAF_Portal {
                 );
                 ?>
                 <tr>
-                    <?php // Plain text. Deliberately not a link: see the note above. ?>
-                    <td><strong><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></strong></td>
+                    <?php
+                    // The public page, and only that: see the note above.
+                    $open = ( 'publish' === $st && ! SFAF_Privacy::is_private( $id ) ) ? get_permalink( $id ) : '';
+                    $name = get_the_title( $id ) ?: '(untitled)';
+                    ?>
+                    <td><strong><?php if ( $open ) : ?><a class="uc-tlink" href="<?php echo esc_url( $open ); ?>" target="_blank" rel="noopener" data-uc-public-link><?php echo esc_html( $name ); ?><span class="uc-visually-hidden"> (opens in a new tab)</span></a><?php else : echo esc_html( $name ); endif; ?></strong></td>
                     <td><?php echo $date ? esc_html( sfaf_ap_date( $date, 'short' ) . ', ' . date_i18n( 'Y', strtotime( $date . ' 12:00:00' ) ) ) : '<span class="uc-muted">None</span>'; ?></td>
                     <td><?php echo '' !== $clock ? esc_html( $clock ) : '<span class="uc-muted">None</span>'; ?></td>
                     <td><?php
@@ -6935,7 +7070,7 @@ class SFAF_Portal {
                          * explains itself.
                          */
                         $rsvp_n = (int) sfaf_get_rsvp_count( $id );
-                        if ( $this->can_view_all( $user ) ) {
+                        if ( $this->can_edit_event( $user, $id ) ) {
                             echo '<a class="uc-tlink" href="'
                                 . esc_url( add_query_arg( 'event_id', $id, $this->url( 'rsvps' ) ) ) . '">'
                                 . (int) $rsvp_n . '</a>';
@@ -7431,8 +7566,8 @@ class SFAF_Portal {
      * The event editor's tour, in page order (3.108.0).
      *
      * One entry per data-uc-card name, with the name the panel shows and the
-     * caption Mark wrote, word for word. Who can edit this is listed on both
-     * screens: the script skips any step whose card is not on the page, which
+     * caption Mark wrote, word for word. The script skips any step whose card
+     * is not on the page, which
      * is the rule that also drops Notifications from an imported event. The
      * action bar is the one step whose caption depends on the screen.
      *
@@ -7453,7 +7588,7 @@ class SFAF_Portal {
             array( 'links', 'Links', 'Choose which donation link goes in the emails, and paste a volunteer page if there is one.' ),
             array( 'display', 'Display', 'Choose which buttons appear on the public event page.' ),
             array( 'privacy', 'Who can find this event', 'Tick Make this event private to keep it off the calendar. Only people you send the link to can open it. Copy the link here once the event is saved.' ),
-            array( 'access', 'Who can edit this', 'Add the people who may change this event besides its creator.' ),
+            array( 'access', 'Team and access', 'Add the people who may change this event besides its creator.' ),
             array( 'actions', 'Action bar', $is_edit
                 ? 'Save changes updates the event. Cancel event keeps it on the calendar marked cancelled and tells registrants. Delete removes it for good.'
                 : 'Save draft keeps the event private until you are ready. Publish puts it on the calendar.' ),
@@ -9498,6 +9633,7 @@ class SFAF_Portal {
             }
             $this->tag_series_image( $term_id, (int) $args['image_id'] );
             $this->save_series_agreement( $term_id );
+            $this->save_series_access( $user, $term_id );
             return $term_id;
         }
 
@@ -9507,6 +9643,7 @@ class SFAF_Portal {
         }
         $this->tag_series_image( (int) $created, (int) $args['image_id'] );
         $this->save_series_agreement( (int) $created );
+        $this->save_series_access( $user, (int) $created );
         return (int) $created;
     }
 
@@ -9515,6 +9652,18 @@ class SFAF_Portal {
      * presence check. Events in the series that have no text of their own
      * use it. See SFAF_Agreement.
      */
+    /**
+     * The series' default Team and access (3.110.1). Only somebody who has
+     * every event in the series may change it, since it gives them away.
+     */
+    private function save_series_access( $user, $term_id ) {
+        $c = SFAF_Access::from_post( $_POST, 'series_access' );
+        if ( ! $term_id || ! $c['present'] || ! $this->can_manage_series_events( $user, $term_id ) ) {
+            return;
+        }
+        SFAF_Access::set_series( $term_id, $c['teams'], $c['people'] );
+    }
+
     private function save_series_agreement( $term_id ) {
         if ( ! $term_id || ! isset( $_POST['series_agreement'] ) ) {
             return;
@@ -10178,6 +10327,9 @@ class SFAF_Portal {
                     <span class="uc-hint">Used by events in this series that ask registrants to agree and have no text of their own.</span>
                 </div>
 
+                <?php // The default Team and access its events follow (3.110.1). ?>
+                <?php $this->render_series_access( $user, (int) $term_id ); ?>
+
                 <?php
                 /*
                  * THE DEFAULT CATEGORIES AND ORGANIZERS (3.103.0). Copied onto
@@ -10250,7 +10402,12 @@ class SFAF_Portal {
             <?php
             // Outside the form: this posts on its own, and HTML forms cannot
             // nest. Same reasoning as the FAQ set and refresh panels.
-            $this->render_schedule( $term_id );
+            if ( $this->can_manage_series_events( $user, (int) $term_id ) ) {
+                $this->render_schedule( $term_id );
+            } else {
+                // The schedule writes the series' events; this person does not have them all (3.110.1).
+                echo '<div class="uc-card" data-uc-schedule-locked><p class="uc-hint">A calendar admin can change this series\' schedule.</p></div>';
+            }
             ?>
 
             <?php
@@ -10299,7 +10456,8 @@ class SFAF_Portal {
      * @param int     $term_id
      */
     private function render_series_remove( $user, $term_id ) {
-        if ( ! $this->can_view_all( $user ) ) {
+        // It counts and deletes the series' events: the one gate, of each (3.110.1).
+        if ( ! $this->can_manage_series_events( $user, (int) $term_id ) ) {
             $this->render_dashboard( $user );
             return;
         }
@@ -13290,6 +13448,7 @@ class SFAF_Portal {
     private function render_event_form( $user, $event_id ) {
         $post = $event_id ? get_post( $event_id ) : null;
         if ( $event_id && ( ! $post || $post->post_type !== 'uc_event' || ! $this->can_edit_event( $user, $post ) ) ) {
+            $this->send_to_public_page( $event_id );
             $this->chrome_open( $user, 'events' );
             echo '<div class="uc-card"><p class="uc-empty">Event not found or you don\'t have permission to edit it.</p></div>';
             $this->chrome_close();
@@ -13749,7 +13908,8 @@ class SFAF_Portal {
                 <?php // Who can find this event: its own card, under Display, on both editors (3.110.0). ?>
                 <?php $this->render_private_control( (int) $event_id, '' !== $prov['source'], 'card' ); ?>
 
-                <?php $this->render_access_card( $user, $event_id ); ?>
+                <?php // Team and access, on both editors (3.110.1). ?>
+                <?php $this->render_access_card( $user, $event_id, (int) $cur_series ); ?>
             <?php
             $side_html = ob_get_clean();
             ?>
@@ -16220,100 +16380,113 @@ class SFAF_Portal {
     }
 
     /**
-     * Write the team access fields, if this person may set them.
+     * May this person change Team and access on this event? (3.110.1)
      *
-     * THE GATE IS HERE AS WELL AS ON THE RENDERER, AND NOT BECAUSE THE RENDERER
-     * MIGHT BE WRONG. A form that is not drawn is not a permission: a POST is a
-     * request anybody can construct by hand, and the whole of defect one in
-     * PROJECT.md §5 was a screen that relied on not being linked to. So the
-     * question "may this person give access away" is asked again at the moment
-     * the write happens, against the same can_view_all() the renderer asked.
+     * A calendar admin, or an editor on an event they have (on Add event, the
+     * event they are making). A contributor sees who has access and cannot
+     * change it. The level decides what somebody can do on their events, and
+     * giving an event to others is an editor's.
+     */
+    private function may_assign_access( $user, $event_id ) {
+        if ( ! $this->can_view_all( $user ) ) {
+            return false;
+        }
+        return ! (int) $event_id || $this->can_edit_event( $user, (int) $event_id );
+    }
+
+    /**
+     * Write Team and access, if this person may set it (3.110.1).
      *
-     * A contributor saving their own event posts no access fields, and if one
-     * arrives anyway it is ignored rather than refused: the rest of their save
-     * is legitimate and failing it would teach them that saving is unreliable.
-     * Nothing is written, which is the outcome that matters.
+     * ASKED AGAIN HERE, NOT ONLY ON THE RENDERER. A form that is not drawn is
+     * not a permission: a POST is a request anybody can construct, and defect
+     * one in PROJECT.md 5 was a screen that relied on not being linked to. A
+     * contributor's save that carries the fields anyway writes nothing here and
+     * the rest of their save goes through.
      *
      * @param WP_User $user
      * @param int     $event_id
      */
     private function save_access_from_post( $user, $event_id ) {
-        if ( ! isset( $_POST['access_teams_present'] ) ) {
+        $c = SFAF_Access::from_post( $_POST );
+        if ( ! $c['present'] || ! $this->may_assign_access( $user, $event_id ) ) {
             return;
         }
-        if ( ! $this->can_view_all( $user ) ) {
-            return;
-        }
-
-        $ids = isset( $_POST['access_teams'] ) ? (array) wp_unslash( $_POST['access_teams'] ) : array();
-        SFAF_Teams::set_access_for_event( $event_id, $ids );
+        SFAF_Access::set( $event_id, $c['teams'], $c['people'] );
 
         /*
          * THE NOTIFICATION LIST IS A SEPARATE WRITE, AND IT ONLY EVER TOUCHES
-         * THE TEAMS THIS FORM OFFERED.
-         *
-         * The $offered guarantee, applied to a second field: a team on the
-         * notification list that is NOT one of the access teams was put there
-         * by the notify picker and is none of this control's business, so it is
-         * kept whatever the checkbox says. Without that, ticking and unticking
-         * this box would quietly delete notification choices made elsewhere on
-         * the same screen.
+         * THE TEAMS THIS CARD GIVES THE EVENT. The $offered guarantee: a team on
+         * the notification list that is not one of them was put there by the
+         * notify picker and is kept whatever the tick says.
          */
-        $kept  = SFAF_Teams::access_for_event( $event_id );
+        $kept       = SFAF_Access::teams( $event_id );
         $notify_now = SFAF_Teams::for_event( $event_id );
-        $others = array_values( array_diff( $notify_now, $kept ) );
-
-        $wants = isset( $_POST['access_teams_notify'] );
+        $others     = array_values( array_diff( $notify_now, $kept ) );
+        $wants      = isset( $_POST['access_teams_notify'] );
         SFAF_Teams::set_for_event( $event_id, $wants ? array_merge( $others, $kept ) : $others );
     }
 
     /**
-     * WHO CAN EDIT THIS EVENT: the organizer, and up to two teams.
+     * The people Team and access may name: everybody with calendar access, by
+     * name. id => display name.
      *
-     * ONLY SOMEBODY WHO CAN ALREADY GIVE ACCESS AWAY MAY DRAW THIS. Assigning a
-     * team hands edit rights and the registration list to a group of people, so
-     * it is an admin-or-editor control, not something a contributor may do to
-     * their own event. A contributor sees who has access and cannot change it,
-     * which is a separate render rather than a disabled input: a disabled input
-     * is a control that posts nothing today and posts something the day
-     * somebody removes the attribute.
+     * @return array<int,string>
+     */
+    private function access_people_choices() {
+        $out = array();
+        foreach ( $this->calendar_people() as $p ) {
+            $out[ (int) $p->ID ] = (string) $p->display_name;
+        }
+        return $out;
+    }
+
+    /**
+     * TEAM AND ACCESS (3.110.1; "Who can edit this" until then), on Add event
+     * and Edit event alike: the organizer, up to two teams, and people by name.
+     * Whoever it names has this event; their level decides what they can do.
      *
-     * THE NOTIFY CHECKBOX IS DELIBERATELY OFF BY DEFAULT AND DELIBERATELY
-     * SEPARATE. A team generally wants to log in and look at who has registered,
-     * not receive an email per registration. Assigning a team therefore grants
-     * access and nothing else; the tick is what also puts it on the
-     * notification list, and it writes the OTHER meta key. See
-     * SFAF_Teams::ACCESS_META for why those are two keys and not one.
+     * Until the event keeps its own, it shows and follows its series' default;
+     * on Add event the ticks follow the series dropdown. A contributor gets a
+     * separate render naming who has access, with no control at all.
      *
      * @param WP_User $user
-     * @param int     $event_id
+     * @param int     $event_id 0 on Add event.
+     * @param int     $series_id The series the editor opened on.
      */
-    private function render_access_card( $user, $event_id ) {
+    private function render_access_card( $user, $event_id, $series_id = 0 ) {
         $event_id = (int) $event_id;
-        if ( ! $event_id ) {
-            // Nothing to own yet. The organizer is settled by the first save.
+        $post     = $event_id ? get_post( $event_id ) : null;
+        if ( $event_id && ! $post ) {
             return;
         }
-
-        $post = get_post( $event_id );
-        if ( ! $post ) {
-            return;
-        }
-
-        $organizer = get_userdata( $post->post_author );
+        $organizer = $post ? get_userdata( $post->post_author ) : $user;
         $teams     = SFAF_Teams::all();
-        $chosen    = SFAF_Teams::access_for_event( $event_id );
-        $notified  = SFAF_Teams::for_event( $event_id );
+        $people    = $this->access_people_choices();
+        if ( $event_id ) {
+            $chosen_t = SFAF_Access::teams( $event_id );
+            $chosen_p = SFAF_Access::people( $event_id );
+            $own      = SFAF_Access::has_own( $event_id );
+        } else {
+            $chosen_t = SFAF_Access::series_teams( $series_id );
+            $chosen_p = SFAF_Access::series_people( $series_id );
+            $own      = false;
+        }
+        $notified = $event_id ? SFAF_Teams::for_event( $event_id ) : array();
+        $series   = array();
+        foreach ( SFAF_Series::all() as $term ) {
+            $st = SFAF_Access::series_teams( $term->term_id );
+            $sp = SFAF_Access::series_people( $term->term_id );
+            if ( $st || $sp ) {
+                $series[ (string) $term->term_id ] = array( 'teams' => $st, 'people' => $sp );
+            }
+        }
         ?>
-        <section class="uc-bento-card" data-uc-card="access" data-uc-saved-action="access">
-            <h2 class="uc-bento-title">Who can edit this
+        <section class="uc-bento-card" data-uc-card="access">
+            <h2 class="uc-bento-title">Team and access
                 <?php
-                /* THE LIVE RESOLUTION IS THE SURPRISE. Naming a team here is
-                 * not a snapshot, so somebody joining that team next month can
-                 * edit this event without anybody touching it. */
                 echo sfaf_help(
-                    'uc-help-teams-' . (int) $event_id,
-                    'Adding somebody to a team gives them this event too, and taking them out takes it away.',
+                    'uc-help-teams-' . $event_id,
+                    'Adding somebody to a team gives them this event too, and taking them out takes it away. What they can do on it is set by their level.',
                     'teams'
                 );
                 ?>
@@ -16322,75 +16495,175 @@ class SFAF_Portal {
             <p class="uc-access-organizer">
                 <strong><?php echo esc_html( $organizer ? $organizer->display_name : 'Nobody' ); ?></strong>
                 <span class="uc-muted">
-                    <?php echo $organizer
-                        ? 'created this event and can always edit it.'
-                        : 'The account that created this event no longer exists. An administrator should reassign it.'; ?>
+                    <?php
+                    if ( ! $event_id ) {
+                        echo 'will be the organizer and can always edit this event.';
+                    } elseif ( $organizer ) {
+                        echo 'created this event and can always edit it.';
+                    } else {
+                        echo 'The account that created this event no longer exists. An administrator should reassign it.';
+                    }
+                    ?>
                 </span>
             </p>
-            <p class="uc-hint">Calendar admins and editors can edit every event.</p>
+            <p class="uc-hint">Calendar admins can open every event.</p>
 
-            <?php if ( ! $this->can_view_all( $user ) ) : ?>
+            <?php if ( ! $this->may_assign_access( $user, $event_id ) ) : ?>
                 <?php
-                /*
-                 * THE READ-ONLY RENDER. It names the teams and offers no
-                 * control at all: no select, no checkbox, no marker. A form
-                 * that does not ask cannot be answered, so there is nothing
-                 * here for save_access_from_post() to act on even if a
-                 * request arrived carrying the fields.
-                 */
+                // THE READ-ONLY RENDER: names, no control, no marker, so there
+                // is nothing for save_access_from_post() to act on.
+                $names = array();
+                foreach ( $chosen_t as $tid ) {
+                    if ( isset( $teams[ $tid ] ) ) {
+                        $names[] = $teams[ $tid ]['name'];
+                    }
+                }
+                foreach ( $chosen_p as $pid ) {
+                    if ( isset( $people[ $pid ] ) ) {
+                        $names[] = $people[ $pid ];
+                    }
+                }
                 ?>
-                <?php if ( empty( $chosen ) ) : ?>
-                    <p class="uc-muted">No team has been given access to this event.</p>
-                <?php else : ?>
-                    <p class="uc-muted">
-                        Also editable by
-                        <?php
-                        $names = array();
-                        foreach ( $chosen as $id ) {
-                            if ( isset( $teams[ $id ] ) ) {
-                                $names[] = $teams[ $id ]['name'];
-                            }
-                        }
-                        echo esc_html( implode( ' and ', $names ) );
-                        ?>.
-                    </p>
-                <?php endif; ?>
-                <p class="uc-hint">Ask a calendar admin to change this.</p>
-            <?php elseif ( empty( $teams ) ) : ?>
-                <p class="uc-muted">No teams exist yet.</p>
-                <p class="uc-hint">Teams are created under Users &amp; Teams.</p>
+                <p class="uc-muted" data-uc-access-readonly>
+                    <?php echo $names ? esc_html( 'Also open to ' . implode( ', ', $names ) . '.' ) : 'Nobody else has been given this event.'; ?>
+                </p>
+                <p class="uc-hint">Ask a calendar admin or editor to change this.</p>
             <?php else : ?>
-                <?php // The marker: every box unticked posts nothing, and that
-                      // has to mean "no teams" rather than "this form did not
-                      // ask". Same guarantee as notify_teams_present. ?>
-                <input type="hidden" name="access_teams_present" value="1" />
+                <div class="uc-access" data-uc-access
+                     data-uc-access-series="<?php echo esc_attr( wp_json_encode( (object) $series ) ); ?>"
+                     data-uc-access-own="<?php echo $own ? '1' : '0'; ?>">
+                    <input type="hidden" name="access_present" value="1" />
 
-                <p class="uc-hint">Pick up to <?php echo (int) SFAF_Teams::MAX_PER_EVENT; ?>; each can edit this event and see who registered.</p>
+                    <fieldset class="uc-access-group">
+                        <legend class="uc-field-label">Teams</legend>
+                        <?php if ( empty( $teams ) ) : ?>
+                            <p class="uc-muted">No teams exist yet. Teams are created under Users &amp; Teams.</p>
+                        <?php else : ?>
+                            <p class="uc-hint">Pick up to <?php echo (int) SFAF_Teams::MAX_PER_EVENT; ?>.</p>
+                            <div class="uc-access-teams" data-uc-access-teams data-uc-access-max="<?php echo (int) SFAF_Teams::MAX_PER_EVENT; ?>">
+                                <?php foreach ( $teams as $team ) :
+                                    $on = in_array( (string) $team['id'], $chosen_t, true ); ?>
+                                    <label class="uc-check">
+                                        <input type="checkbox" name="access_teams[]" value="<?php echo esc_attr( $team['id'] ); ?>" <?php checked( $on ); ?> />
+                                        <?php echo esc_html( $team['name'] ); ?>
+                                        <span class="uc-muted"><?php
+                                            $n = SFAF_Teams::member_count( $team['id'] );
+                                            echo esc_html( $n . ' ' . ( 1 === $n ? 'person' : 'people' ) );
+                                        ?></span>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </fieldset>
 
-                <div class="uc-access-teams" data-uc-access-teams data-uc-access-max="<?php echo (int) SFAF_Teams::MAX_PER_EVENT; ?>">
-                    <?php foreach ( $teams as $team ) :
-                        $on = in_array( (string) $team['id'], $chosen, true ); ?>
-                        <label class="uc-check">
-                            <input type="checkbox" name="access_teams[]"
-                                   value="<?php echo esc_attr( $team['id'] ); ?>" <?php checked( $on ); ?> />
-                            <?php echo esc_html( $team['name'] ); ?>
-                            <span class="uc-muted"><?php
-                                $n = SFAF_Teams::member_count( $team['id'] );
-                                echo esc_html( $n . ' ' . ( 1 === $n ? 'person' : 'people' ) );
-                            ?></span>
+                    <fieldset class="uc-access-group">
+                        <legend class="uc-field-label">People</legend>
+                        <?php if ( empty( $people ) ) : ?>
+                            <p class="uc-muted">Nobody has calendar access yet.</p>
+                        <?php else : ?>
+                            <div class="uc-access-people" data-uc-access-people>
+                                <?php foreach ( $people as $pid => $pname ) : ?>
+                                    <label class="uc-check">
+                                        <input type="checkbox" name="access_people[]" value="<?php echo (int) $pid; ?>" <?php checked( in_array( (int) $pid, $chosen_p, true ) ); ?> />
+                                        <?php echo esc_html( $pname ); ?>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </fieldset>
+
+                    <?php if ( ! empty( $teams ) ) : ?>
+                        <label class="uc-check uc-access-notify">
+                            <input type="checkbox" name="access_teams_notify" value="1"
+                                <?php checked( ! empty( $chosen_t ) && count( array_intersect( $chosen_t, $notified ) ) === count( $chosen_t ) ); ?> />
+                            Also email these teams about registrations and reminders
                         </label>
-                    <?php endforeach; ?>
+                        <p class="uc-hint">Everybody on the list gets one email per registration.</p>
+                    <?php endif; ?>
                 </div>
-
-                <label class="uc-check uc-access-notify">
-                    <input type="checkbox" name="access_teams_notify" value="1"
-                        <?php checked( ! empty( $chosen ) && count( array_intersect( $chosen, $notified ) ) === count( $chosen ) ); ?> />
-                    Also email these teams about registrations and reminders
-                </label>
-                <p class="uc-hint">Everybody on the list gets one email per registration.</p>
             <?php endif; ?>
         </section>
         <?php
+    }
+
+    /**
+     * A series' default Team and access, on the series screen (3.110.1).
+     * Its events follow it until they keep their own.
+     */
+    private function render_series_access( $user, $term_id ) {
+        $teams  = SFAF_Teams::all();
+        $people = $this->access_people_choices();
+        $ct     = SFAF_Access::series_teams( $term_id );
+        $cp     = SFAF_Access::series_people( $term_id );
+        if ( ! $this->can_manage_series_events( $user, $term_id ) ) {
+            $names = array();
+            foreach ( $ct as $tid ) { if ( isset( $teams[ $tid ] ) ) { $names[] = $teams[ $tid ]['name']; } }
+            foreach ( $cp as $pid ) { if ( isset( $people[ $pid ] ) ) { $names[] = $people[ $pid ]; } }
+            ?>
+            <div class="uc-field" data-uc-series-access-readonly>
+                <span class="uc-field-label">Default team and access</span>
+                <p class="uc-muted"><?php echo $names ? esc_html( implode( ', ', $names ) ) : 'None.'; ?></p>
+            </div>
+            <?php
+            return;
+        }
+        ?>
+        <div class="uc-field uc-series-access" data-uc-series-access>
+            <input type="hidden" name="series_access_present" value="1" />
+            <span class="uc-field-label">Default team and access</span>
+            <p class="uc-hint">Events in this series get these teams and people until an event sets its own.</p>
+            <?php if ( $teams ) : ?>
+                <div class="uc-access-teams" data-uc-access-teams data-uc-access-max="<?php echo (int) SFAF_Teams::MAX_PER_EVENT; ?>">
+                    <?php foreach ( $teams as $team ) : ?>
+                        <label class="uc-check">
+                            <input type="checkbox" name="series_access_teams[]" value="<?php echo esc_attr( $team['id'] ); ?>" <?php checked( in_array( (string) $team['id'], $ct, true ) ); ?> />
+                            <?php echo esc_html( $team['name'] ); ?>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+            <?php if ( $people ) : ?>
+                <div class="uc-access-people">
+                    <?php foreach ( $people as $pid => $pname ) : ?>
+                        <label class="uc-check">
+                            <input type="checkbox" name="series_access_people[]" value="<?php echo (int) $pid; ?>" <?php checked( in_array( (int) $pid, $cp, true ) ); ?> />
+                            <?php echo esc_html( $pname ); ?>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * May this person act on every event in a series? (3.110.1)
+     *
+     * The series screen's schedule actions write the series' events, and its
+     * default Team and access gives them away, so each asks the one gate of
+     * every event in the series. An admin passes; so does an editor who has
+     * them all. An empty series asks nothing of anybody but the level.
+     */
+    private function can_manage_series_events( $user, $term_id ) {
+        if ( ! $this->can_view_all( $user ) ) {
+            return false;
+        }
+        if ( $this->is_admin_role( $user ) ) {
+            return true;
+        }
+        $ids = get_posts( array(
+            'post_type'      => 'uc_event',
+            'post_status'    => array( 'publish', 'pending', 'draft', 'future', 'private' ),
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+            'tax_query'      => array( array( 'taxonomy' => 'uc_series', 'field' => 'term_id', 'terms' => (int) $term_id ) ),
+        ) );
+        foreach ( (array) $ids as $id ) {
+            if ( ! $this->can_edit_event( $user, (int) $id ) ) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -17219,7 +17492,9 @@ class SFAF_Portal {
      * ================================================================== */
 
     private function render_optins( $user ) {
-        if ( ! $this->can_view_all( $user ) ) {
+        // Each row names a person and the event they registered for: the whole
+        // calendar's registration data, so an admin's alone (3.110.1).
+        if ( ! $this->is_admin_role( $user ) ) {
             $this->chrome_open( $user, 'optins' );
             echo '<div class="uc-card"><p class="uc-empty">You don\'t have permission to view email opt-ins.</p></div>';
             $this->chrome_close();
@@ -17339,10 +17614,12 @@ class SFAF_Portal {
         if ( $event_id ) {
             $event = get_post( $event_id );
             if ( ! $event || 'uc_event' !== $event->post_type || ! $this->can_edit_event( $user, $event ) ) {
+                $this->send_to_public_page( $event_id );
                 $this->render_dashboard( $user );
                 return;
             }
-        } elseif ( ! $this->can_view_all( $user ) ) {
+        } elseif ( ! $this->is_admin_role( $user ) ) {
+            // Every registration on the calendar: an admin's, who has every event (3.110.1).
             $this->render_dashboard( $user );
             return;
         }
@@ -17400,7 +17677,9 @@ class SFAF_Portal {
         <?php if ( $event ) : ?>
             <p class="uc-hint">
                 Registrations for this event only.
-                <a href="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>">All registrations across every event</a>.
+                <?php if ( $this->is_admin_role( $user ) ) : // Every event's: an admin's alone (3.110.1). ?>
+                    <a href="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>">All registrations across every event</a>.
+                <?php endif; ?>
             </p>
 
             <?php
@@ -21153,8 +21432,8 @@ class SFAF_Portal {
         /*
          * WHOSE EVENTS. THREE STATES, AND SAYING NOTHING IS THE SAFE ONE.
          *
-         *   (unset)  THIS PERSON'S OWN EVENTS, PLUS THEIR TEAMS'. Whoever they
-         *            are, including an admin. This line used to say "anyone who
+         *   (unset)  THIS PERSON'S EVENTS, as the gate decides them, whoever
+         *            they are; for an admin, every event. This line used to say "anyone who
          *            may view all sees everything", and the code below has
          *            never done that: there is no can_view_all() check on the
          *            unset path, and there never was. A comment describing a
@@ -21167,8 +21446,8 @@ class SFAF_Portal {
          *            SO A SCREEN THAT MUST SHOW EVERYTHING SAYS 'all'. It is
          *            one word, and it is the difference between a queue and a
          *            personal list.
-         *   'mine'   this person's own events, whoever they are. For an admin
-         *            or an editor that is a filter, not a gate.
+         *   'mine'   this person's events. For an admin, who has every
+         *            event, it is the literal author filter instead.
          *   'all'    no author filter at all.
          *
          * WIDENING TAKES AN EXPLICIT ARGUMENT. Only the two screens that offer
@@ -21180,58 +21459,31 @@ class SFAF_Portal {
          * be one forgotten argument away from a disclosure.
          */
         /*
-         * "MINE" MEANS MINE. "WHAT I CAN ACT ON" IS A WIDER SET (3.35.0).
-         *
-         * Since teams grant access, the events a contributor may work on are
-         * their own PLUS every event owned by a team they are in. Those two
-         * cannot be expressed as one WP_Query argument: `author` and `post__in`
-         * AND together rather than OR. So the widening is a posts_where filter
-         * installed for this query only and removed immediately, which is the
-         * same shape as the ordering filter above it.
-         *
-         * 'mine' still means authored-by-me, unchanged and deliberately: it is
-         * the label on a toggle a person reads, and quietly making "My events"
-         * mean "my events and four other people's" would be a worse answer than
-         * the narrow one.
+         * "MY EVENTS" IS A PERSON'S EVENTS (3.110.1), the ones they created and
+         * the ones Team and access gives them: one list, from the one gate.
+         * Until 3.110.1 it was authored-by-me for admins and editors and wider
+         * for everybody else; the rule now makes the two the same question.
          */
         $scope        = isset( $args['scope'] ) ? (string) $args['scope'] : '';
-        $where_filter = null;
 
         if ( 'all' === $scope ) {
             // Nothing added: the caller has said so in as many words.
-        } elseif ( 'mine' === $scope && $this->can_view_all( $user ) ) {
-            // An admin or an editor asking to see only their own. A filter on a
-            // list they may see either way, not a gate, so it stays literal.
+        } elseif ( 'mine' === $scope && $this->is_admin_role( $user ) ) {
+            // An admin has every event, so My events is a filter on a list
+            // they may see either way, not a gate, and it stays literal.
             $q['author'] = $user->ID;
         } else {
             /*
-             * EVERYTHING THIS PERSON MAY ACT ON: their own events plus every
-             * event a team they are in owns. Both the unset default (the
-             * dashboard, and every caller predating 3.19.0) and 'mine' for
-             * somebody who is not view-all land here, because for them the two
-             * questions are the same one and answering them differently is how
-             * a team member's own work goes missing from "My events".
-             *
-             * `author` and `post__in` AND together in WP_Query rather than OR,
-             * so the widening is a posts_where installed for this query only
-             * and removed immediately. Same shape as the ordering filter above.
-             * The ids are absint()ed into the string; nothing here is user
-             * input, and it is cast anyway.
+             * THIS PERSON'S EVENTS (3.110.1): the ones the gate says they
+             * have, which is what they created plus what Team and access gives
+             * them. user_event_ids() asks user_can_edit_event() of each, so
+             * this list and every other screen give one answer. Nothing at all
+             * is post__in array( 0 ), never an empty array, which WordPress
+             * reads as no restriction.
              */
-            $team_events = SFAF_Teams::events_for_user( $user->ID );
-            if ( empty( $team_events ) ) {
-                $q['author'] = $user->ID;
-            } else {
-                global $wpdb;
-                $ids  = implode( ',', array_map( 'absint', $team_events ) );
-                $mine = (int) $user->ID;
-                $where_filter = function ( $where ) use ( $wpdb, $ids, $mine ) {
-                    return $where . " AND ( {$wpdb->posts}.post_author = {$mine} OR {$wpdb->posts}.ID IN ({$ids}) )";
-                };
-                add_filter( 'posts_where', $where_filter );
-            }
+            $mine_ids        = self::user_event_ids( $user->ID );
+            $q['post__in']   = $mine_ids ? $mine_ids : array( 0 );
         }
-
         /*
          * SEARCH. Not $q['s'].
          *
@@ -21302,9 +21554,6 @@ class SFAF_Portal {
         if ( $clause_filter ) {
             remove_filter( 'posts_clauses', $clause_filter );
         }
-        if ( $where_filter ) {
-            remove_filter( 'posts_where', $where_filter );
-        }
 
         $this->last_query_total = (int) $query->found_posts;
         $this->last_query_pages = max( 1, (int) $query->max_num_pages );
@@ -21312,7 +21561,7 @@ class SFAF_Portal {
         return wp_list_pluck( $query->posts, 'ID' );
     }
 
-    private function count_events( $status, $author = 0, $upcoming = false ) {
+    private function count_events( $status, $author = 0, $upcoming = false, $only = null ) {
         // Ask only for the total (found_posts) instead of pulling every matching
         // ID into memory just to count() them.
         $q = array(
@@ -21326,6 +21575,9 @@ class SFAF_Portal {
         );
         if ( $author ) {
             $q['author'] = $author;
+        }
+        if ( null !== $only ) {
+            $q['post__in'] = $only ? array_map( 'intval', $only ) : array( 0 );
         }
         if ( $upcoming ) {
             $q['meta_query'] = array( array( 'key' => '_uc_event_date', 'value' => current_time( 'Y-m-d' ), 'compare' => '>=', 'type' => 'DATE' ) );
@@ -21359,13 +21611,16 @@ class SFAF_Portal {
         global $wpdb;
         $table = $wpdb->prefix . 'uc_rsvps';
 
-        if ( $user && ! $this->can_view_all( $user ) ) {
-            return (int) $wpdb->get_var( $wpdb->prepare(
-                "SELECT COUNT(*) FROM $table r
-                 INNER JOIN {$wpdb->posts} p ON p.ID = r.event_id
-                 WHERE r.status = 'confirmed' AND p.post_author = %d",
-                (int) $user->ID
-            ) );
+        // Over this person's events, as the gate decides them (3.110.1).
+        // Only an admin, who has every event, counts the whole table.
+        if ( $user && ! $this->is_admin_role( $user ) ) {
+            $ids = self::user_event_ids( $user->ID );
+            if ( ! $ids ) {
+                return 0;
+            }
+            return (int) $wpdb->get_var(
+                "SELECT COUNT(*) FROM $table WHERE status = 'confirmed' AND event_id IN (" . implode( ',', array_map( 'absint', $ids ) ) . ')'
+            );
         }
 
         return (int) $wpdb->get_var( "SELECT COUNT(*) FROM $table WHERE status = 'confirmed'" );

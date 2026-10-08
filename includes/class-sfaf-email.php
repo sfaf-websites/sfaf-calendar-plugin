@@ -465,9 +465,9 @@ class SFAF_Email {
         /*
          * THE TEST MESSAGES LINK INTO CALADMIN, because whoever pressed the
          * button is on the Settings screen, which needs manage_options, and
-         * that is can_view_all by definition, which is also can_edit_event for
-         * every event. Both keys are set because the two messages ask different
-         * ones: the alert opens the RSVP list, the summary opens the event.
+         * that is a calendar admin by definition, who has every event, so
+         * can_edit_event is true. Since 3.110.1 the alert and the summary both
+         * ask that one key.
          * They are also the half of each message worth looking at.
          *
          * WHAT THE TEST CANNOT SHOW is the count. "0 of 12 places taken" on a
@@ -478,7 +478,6 @@ class SFAF_Email {
          * was not held.
          */
         $built = SFAF_Notifications::build( $type, $event_id, $person, array(
-            'can_view_all'   => true,
             'can_edit_event' => true,
         ) );
         if ( ! $built ) {

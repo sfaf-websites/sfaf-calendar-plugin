@@ -166,6 +166,13 @@ casually.
   Derive access from `manage_options` first.
 - **Credentials live in `sfaf_credentials`, never `uc_settings`**, which is
   rebuilt wholesale on save.
+- **A team decides which events a person has; their level decides what they
+  can do on those events** (3.110.1). A person's events are the ones they
+  created and the ones Team and access gives them, by a team they are on or
+  by name, the event's own or its series' default. Calendar admins have every
+  event; editors do not. `SFAF_Portal::user_can_edit_event()` is the only
+  place this lives, and every route that reads or writes an event or its
+  registrations asks it. Notification teams grant nothing.
 - **Teams resolve at send time.** A team is a name and a set of user ids, never
   a snapshot of addresses. Deletion is refused while any event names it, and
   the refusal names the events.
@@ -178,11 +185,12 @@ casually.
   screen; writes are upcoming-only.
 - **Add event and Edit event offer the same settings.** Any setting or option
   that shapes the event (private, RSVPs, capacity, questions, notifications,
-  language, links, display) must be on Add event, applying at the first save
-  where it needs the event to exist. Actions on a saved event may be
-  Edit-only: Cancel event, Delete, the RSVP list, Edit the schedule, Manage
-  the series, the no-JavaScript FAQ form, Who can edit this, and a private
-  event's link with its Copy button (3.110.0). The series
+  language, links, display, Team and access) must be on Add event, applying
+  at the first save where it needs the event to exist. Actions on a saved
+  event may be Edit-only: Cancel event, Delete, the RSVP list, Edit the
+  schedule, Manage the series, the no-JavaScript FAQ form, and a private
+  event's link with its Copy button (3.110.0). Team and access, "Who can edit
+  this" until 3.110.1, is on both. The series
   prefill is Add-only. Anything else that differs is a defect. Each allowed
   difference carries `data-uc-saved-action` or `data-uc-add-only` in the
   markup, and `.claude/notifications-card-test.php` fails on any other.

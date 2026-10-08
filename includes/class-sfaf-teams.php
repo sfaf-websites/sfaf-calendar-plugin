@@ -262,6 +262,24 @@ class SFAF_Teams {
             return new WP_Error( 'sfaf_team_missing', 'That team no longer exists.' );
         }
 
+        /*
+         * A SERIES DEFAULT IS A USE TOO (3.110.1). Every event in the series
+         * that follows it gets its people from this team; deleting it would
+         * take those events away from them with the deletion reporting success.
+         */
+        $series = class_exists( 'SFAF_Access' ) ? SFAF_Access::series_using_team( $id ) : array();
+        if ( ! empty( $series ) ) {
+            return new WP_Error(
+                'sfaf_team_in_use',
+                sprintf(
+                    'This team is the default under Team and access for %s, so deleting it would take those events away from its members. Take it off %s first, then delete it.',
+                    implode( ', ', $series ),
+                    1 === count( $series ) ? 'that series' : 'those series'
+                ),
+                array( 'series' => $series )
+            );
+        }
+
         $in_use = self::events_using( $id );
         if ( ! empty( $in_use ) ) {
             return new WP_Error(
@@ -384,7 +402,8 @@ class SFAF_Teams {
      * @return bool
      */
     public static function user_owns_event( $user_id, $event_id ) {
-        $teams = self::access_for_event( $event_id );
+        // The event's own teams, or its series' default (3.110.1).
+        $teams = class_exists( 'SFAF_Access' ) ? SFAF_Access::teams( $event_id ) : self::access_for_event( $event_id );
         if ( empty( $teams ) ) {
             return false;
         }
@@ -399,49 +418,6 @@ class SFAF_Teams {
             }
         }
         return false;
-    }
-
-    /**
-     * Events any of this person's teams own. For the events list and dashboard.
-     *
-     * @param int $user_id
-     * @return int[] Event ids.
-     */
-    public static function events_for_user( $user_id ) {
-        $mine = array();
-        foreach ( self::for_user( $user_id ) as $team ) {
-            $mine[] = (string) $team['id'];
-        }
-        if ( empty( $mine ) ) {
-            return array();
-        }
-
-        // Same reasoning as events_using(): ask for the small set of events that
-        // name any team at all, then check each properly, because a meta_query
-        // LIKE against a serialized array matches on a substring and answers
-        // this question wrongly whenever one team id contains another.
-        $q = new WP_Query( array(
-            'post_type'              => 'uc_event',
-            'post_status'            => array( 'publish', 'pending', 'draft', 'future', 'private' ),
-            'posts_per_page'         => 500,
-            'fields'                 => 'ids',
-            'no_found_rows'          => true,
-            'update_post_term_cache' => false,
-            'meta_query'             => array(
-                array( 'key' => self::ACCESS_META, 'compare' => 'EXISTS' ),
-            ),
-        ) );
-
-        $out = array();
-        foreach ( $q->posts as $event_id ) {
-            foreach ( self::access_for_event( $event_id ) as $tid ) {
-                if ( in_array( $tid, $mine, true ) ) {
-                    $out[] = (int) $event_id;
-                    break;
-                }
-            }
-        }
-        return $out;
     }
 
     /**

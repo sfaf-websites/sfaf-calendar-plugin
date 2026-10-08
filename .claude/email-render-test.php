@@ -215,7 +215,7 @@ $cases = array(
     'reminder'     => array( 'person' => $person, 'cancel' => true ),
     'reminder-staff' => array( 'type' => 'reminder', 'person' => $staff, 'cancel' => false ),
     'alert'        => array( 'person' => $person, 'cancel' => false ),
-    'alert-viewer' => array( 'type' => 'alert', 'person' => $person, 'cancel' => false, 'context' => array( 'can_view_all' => true ) ),
+    'alert-viewer' => array( 'type' => 'alert', 'person' => $person, 'cancel' => false, 'context' => array( 'can_edit_event' => true ) ),
     'summary'      => array( 'person' => null, 'cancel' => false ),
     'summary-editor' => array( 'type' => 'summary', 'person' => null, 'cancel' => false, 'context' => array( 'can_edit_event' => true ) ),
     /*

@@ -131,6 +131,7 @@ $sfaf_includes = array(
     'includes/class-sfaf-messages.php',
     // The waitlist (3.106.0). After the mail layer it sends through.
     'includes/class-sfaf-waitlist.php',
+    'includes/class-sfaf-access.php',
     'includes/class-sfaf-agreement.php',
     'includes/class-sfaf-checkin.php',
     'includes/class-sfaf-registrant-mail.php',
