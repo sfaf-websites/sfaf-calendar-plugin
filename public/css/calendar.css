@@ -5263,10 +5263,9 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
    ------------------------------------------------------------------------ */
 @media (pointer: coarse), (max-width: 600px) {
     .uc-rsvp-modal-overlay .uc-rsvp-form input:not([type="checkbox"]):not([type="radio"]) { min-height: 44px; }
+    /* Padding, not centring: the box stays on the label's first line. */
     .uc-rsvp-form .uc-rsvp-optin,
-    .uc-agree-dialog .uc-rsvp-optin { min-height: 44px; align-items: center; }
-    .uc-rsvp-form .uc-rsvp-optin input,
-    .uc-agree-dialog .uc-rsvp-optin input { margin-top: 0; }
+    .uc-agree-dialog .uc-rsvp-optin { box-sizing: border-box; min-height: 44px; padding-top: 11px; padding-bottom: 11px; }
     .uc-rsvp-modal .uc-rsvp-cancel,
     .uc-rsvp-modal .uc-rsvp-submit { min-height: 44px; }
     .uc-single .uc-actionbtn { min-height: 44px; }

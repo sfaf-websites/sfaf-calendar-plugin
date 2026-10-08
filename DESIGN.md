@@ -1250,8 +1250,10 @@ a narrow window, which is what the pass measures.
   token chips, link buttons, the tour link, the questions' icon buttons (also
   44px wide), the image summary, the segmented options (36px) and every
   `.uc-check` and `.uc-radio-row` label (22px) take `min-height: 44px`. A tick
-  label centres its box, which the baseline had set to `align-self:
-  flex-start`, and drops its 8px bottom margin, the 44px being its own air.
+  label grows by 11px of padding above and below, never by centring, so its
+  box stays on the first line (`.claude/checkbox-align-test.php`), and drops
+  its 8px bottom margin, the 44px being its own air. The RSVP form's and the
+  dialog's tick labels do the same.
 - The "?" help glyph stays a 16px circle. Its target is a `::after` 14px
   outside it on every side, 44 by 44, which is what the pass measures for it.
 - The RSVP form: the fields (42px), the tick labels (19 to 38px), Cancel (38px)

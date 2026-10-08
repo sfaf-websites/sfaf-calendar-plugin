@@ -5215,7 +5215,8 @@ body.uc-modal-open { overflow: hidden; }
    phone pass measures. Fields, selects, buttons, tick-box rows and the
    summary that opens the image picker take min-height, which wins over any
    height they declare. The 16px "?" keeps its look and gains a 44px hit
-   area round it, drawn by ::after. Two classes or more throughout, so the
+   area round it, drawn by ::after. A tick's label grows by padding, not by
+   centring, so its box stays on the first line. Two classes or more throughout, so the
    button rules above, at one class plus one, cannot take it back.
    ------------------------------------------------------------------------ */
 @media (pointer: coarse), (max-width: 600px) {
@@ -5231,9 +5232,9 @@ body.uc-modal-open { overflow: hidden; }
     /* Required, In person only and the 44px remove stay on one line in 390px. */
     .uc-questions .uc-q-ticks { gap: 0 8px; }
     .uc-portal summary.uc-outline-btn { display: inline-flex; align-items: center; }
-    .uc-portal .uc-check, .uc-portal .uc-radio-row { min-height: 44px; align-items: center; margin-bottom: 0; }
-    /* The box carries align-self: flex-start from the baseline, so it is centred by name. */
-    .uc-portal .uc-check > input, .uc-portal .uc-radio-row > input { align-self: center; margin-top: 0; }
+    /* The box stays on the label's first line (checkbox-align-test); 11px above
+       and below a 22px line make the 44px, and a longer label just grows. */
+    .uc-portal .uc-check, .uc-portal .uc-radio-row { box-sizing: border-box; min-height: 44px; padding-top: 11px; padding-bottom: 11px; margin-bottom: 0; }
     .uc-portal .uc-seg-opt span { display: flex; align-items: center; min-height: 44px; }
     .uc-portal .uc-help-btn { position: relative; }
     .uc-portal .uc-help-btn::after { content: ""; position: absolute; top: -14px; right: -14px; bottom: -14px; left: -14px; }
