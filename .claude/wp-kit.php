@@ -189,12 +189,18 @@ function wp_timezone_string() { return 'America/Los_Angeles'; }
 /* ---- Users. One administrator. ---- */
 function wp_get_current_user() { $u = new WP_User(); $u->ID = (int) $GLOBALS['kit_user_id']; return $u; }
 function get_current_user_id() { return (int) $GLOBALS['kit_user_id']; }
-function get_userdata( $id ) { return new WP_User(); }
+/* With kit_umeta set (3.110.1), a user is that id with that stored meta, so a
+   calendar role can be modelled; get_userdata() says who it is. Off, nothing
+   changes: every user is the one administrator. */
+function get_userdata( $id ) { $u = new WP_User(); if ( isset( $GLOBALS['kit_umeta'] ) ) { $u->ID = (int) $id; $u->display_name = 'User ' . (int) $id; $u->user_email = 'user' . (int) $id . '@sfaf.org'; } return $u; }
 function current_user_can( $c ) { return true; }
 function user_can( $u, $c ) { return ! in_array( (int) ( is_object( $u ) ? $u->ID : $u ), $GLOBALS['kit_refused'], true ); }
 function is_user_logged_in() { return true; }
 function get_users( $a = array() ) { return array(); }
-function get_user_meta( $id, $k = '', $s = false ) { return $s ? '' : array(); }
+function get_user_meta( $id, $k = '', $s = false ) {
+    if ( isset( $GLOBALS['kit_umeta'][ (int) $id ] ) && array_key_exists( $k, $GLOBALS['kit_umeta'][ (int) $id ] ) ) { $v = $GLOBALS['kit_umeta'][ (int) $id ][ $k ]; return $s ? $v : array( $v ); }
+    return $s ? '' : array();
+}
 function get_avatar_url( $a = '', $b = array() ) { return ''; }
 
 /* ---- Posts and meta, from the store. ---- */
