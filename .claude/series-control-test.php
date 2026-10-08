@@ -623,6 +623,7 @@ require_once $root . '/includes/class-sfaf-messages.php';
 require_once $root . '/includes/class-sfaf-questions.php'; // 3.106.2
 require_once $root . '/includes/class-sfaf-agreement.php'; // 3.110.0
 require_once $root . '/includes/class-sfaf-access.php';    // 3.110.1
+require_once $root . '/includes/class-sfaf-register-elsewhere.php'; // 3.110.1
 require_once $root . '/includes/class-sfaf-checkin.php'; // 3.110.0
 require_once $root . '/includes/class-sfaf-registrant-mail.php'; // 3.110.0
 require_once $root . '/includes/class-sfaf-request.php';
