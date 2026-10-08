@@ -329,7 +329,7 @@ foreach ( array_keys( $pages ) as $t ) {
     /* B.2 and B.3 */
     $reg = (array) $v( $t, 'reg' );
     if ( $add ) {
-        rv_check( isset( $reg['ticked'] ) && false === $reg['ticked'] && false === $reg['bodySeen'] && array( 'rsvp_enabled' ) === $reg['visibleControls'],
+        rv_check( isset( $reg['ticked'] ) && false === $reg['ticked'] && false === $reg['bodySeen'] && array( 'reg_mode', 'reg_mode', 'rsvp_enabled' ) === $reg['visibleControls'],   // Where people register sits above the tick since 3.110.1
             "PLANT B.2: $t: with RSVPs off Registration shows more than the tick: " . json_encode( $reg ) );
         $tg = (array) $v( $t, 'regToggled' );
         rv_check( isset( $tg['bodySeen'] ) && $tg['ticked'] && $tg['bodySeen'] && $tg['capacity'] && $tg['email'] && $tg['questions'], "PLANT B.2: $t: ticking Accept RSVPs did not reveal the rest: " . json_encode( $tg ) );

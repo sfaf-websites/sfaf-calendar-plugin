@@ -354,7 +354,7 @@ foreach ( array( 'desktop', 'phone', 'wide' ) as $wn ) {
     rx_check( false !== strpos( $counts, 'registered' ) && false !== strpos( $counts, 'checked in' ) && false !== strpos( $counts, 'waitlisted' ) && false !== strpos( $counts, 'text' ),
         "F.2/C: $t: the counts strip does not carry registered, checked in, waitlisted and want texts: $counts" );
     $m = (array) $v( $t, 'mail' );
-    rx_check( $m && false === $m['open'] && 'Email registrants' === $m['summary'] && 1 === $m['log'] && true === $m['send'], "D.1: $t: Email registrants is not a closed accordion with its log and Send: " . json_encode( $m ) );
+    rx_check( $m && false === $m['open'] && 'Email registrants Send a message to everyone registered.' === $m['summary'] &&   /* the panel's muted line since 3.110.1 */ 1 === $m['log'] && true === $m['send'], "D.1: $t: Email registrants is not a closed accordion with its log and Send: " . json_encode( $m ) );
     if ( 'desktop' !== $wn ) {
         foreach ( $rows as $r ) {
             if ( ! $r['btnBox'] ) { continue; }
