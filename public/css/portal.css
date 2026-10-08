@@ -4161,6 +4161,7 @@ body.uc-modal-open { overflow: hidden; }
 .uc-access-teams .uc-muted { margin-left: 6px; font-size: 12px; }
 /* Team and access (3.110.1): two groups, teams then people; the people list
    scrolls past eight names rather than lengthening the side column. */
+.uc-access { margin-top: 12px; }
 .uc-access-group { margin: 0 0 12px; padding: 0; border: 0; min-width: 0; }
 .uc-access-group > legend { padding: 0; margin: 0 0 4px; }
 .uc-access-people { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; padding: 8px 10px; border: 1px solid var(--p-border); border-radius: 8px; background: var(--p-panel); }

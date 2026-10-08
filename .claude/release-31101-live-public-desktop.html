@@ -1,0 +1,85 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="../public/css/calendar.css"></head><body style="margin:0;background:#fff"><div class="uc-single"><div class="uc-single-inner"><div class="uc-single-grid"><div class="uc-single-main"><h1>Gala dinner</h1></div><aside class="uc-single-sidebar"><div class="uc-single-card"><div class="uc-card-rsvp uc-card-rsvp-elsewhere"><a class="uc-actionbtn uc-actionbtn-primary" href="https://www.eventbrite.com/e/gala-dinner" target="_blank" rel="noopener noreferrer"><span class="uc-actionbtn-label">Register</span><span class="uc-sr-only"> (opens in a new tab)</span><span class="uc-actionbtn-arrow" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-arrow" width="15px" height="15px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4.5 12h14"/><path d="m12.5 6 6 6-6 6"/></svg></span></a></div></div></aside></div></div></div><script src="vendor/jquery-3.7.1.min.js"></script><script>window.ucData={ajaxUrl:"",nonce:"n"};</script><script src="../public/js/calendar.js"></script><script>window.RV_PAGE="public-desktop";(function () {
+var P = window.RV_PAGE, out = { page: P, errors: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function q(s, r) { return (r || document).querySelector(s); }
+function qa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function text(el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }
+function seen(el) { if (!el || !el.getClientRects().length) { return false; } var cs = getComputedStyle(el); return cs.visibility !== 'hidden' && cs.display !== 'none'; }
+function rect(el) { if (!el) { return null; } var r = el.getBoundingClientRect(); return { top: Math.round(r.top + window.scrollY), left: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom + window.scrollY), w: Math.round(r.width), h: Math.round(r.height) }; }
+function finish() { out.pageWidth = document.documentElement.scrollWidth; window.parent.postMessage(JSON.stringify(out), '*'); }
+window.addEventListener('load', function () { setTimeout(function () {
+  /* A: the RSVP list. */
+  var settings = q('details.uc-rsvp-settings:not(.uc-registrant-mail)');
+  var mail = q('details.uc-registrant-mail');
+  if (settings || q('[data-uc-reg-elsewhere]')) {
+    out.searchBoxes = qa('input[type="search"]').filter(seen).length;
+    out.searchLabel = (q('input[type="search"]') || {}).placeholder || '';
+    var bar = q('form.uc-filters-bar');
+    out.searchButtonShown = bar ? seen(q('button[type="submit"]', bar)) : null;
+    var card = qa('.uc-card').filter(function (c) { return q('[data-uc-rsvp-row]', c); })[0];
+    var order = [
+      ['head', q('.uc-page-head')], ['line', qa('p.uc-hint').filter(function (p) { return text(p).indexOf('Registrations for this event only') === 0; })[0]],
+      ['settings', settings], ['mail', mail], ['search', bar], ['counts', q('[data-uc-rsvp-counts]')], ['card', card]
+    ];
+    out.order = order.map(function (o) { var r = rect(o[1]); return [o[0], r ? r.top : null]; });
+    out.elsewhere = q('[data-uc-reg-elsewhere]') ? { text: text(q('[data-uc-reg-elsewhere]')), href: q('[data-uc-reg-elsewhere] a').getAttribute('href'), target: q('[data-uc-reg-elsewhere] a').getAttribute('target') } : null;
+    if (settings && mail) {
+      var s1 = q('summary', settings), s2 = q('summary', mail);
+      var c1 = getComputedStyle(settings), c2 = getComputedStyle(mail);
+      out.panel = {
+        sameClasses: settings.className.split(/\s+/).every(function (c) { return mail.classList.contains(c); }),
+        chevron: !!q('.uc-disclosure-chevron', s1) && !!q('.uc-disclosure-chevron', s2),
+        chevronSame: getComputedStyle(q('.uc-disclosure-chevron', s1)).borderRadius === getComputedStyle(q('.uc-disclosure-chevron', s2)).borderRadius,
+        bg: [c1.backgroundColor, c2.backgroundColor], name: text(q('strong', s2)), line: text(q('.uc-muted', s2)), closed: !mail.open,
+        gap: rect(mail).top - rect(settings).bottom
+      };
+    }
+    if (card) {
+      var ck = q('[data-uc-checkin-bar]', card), head = q('.uc-card-head', card), table = q('table', card);
+      var cr = card.getBoundingClientRect(), pad = parseFloat(getComputedStyle(card).paddingLeft);
+      out.checkin = ck ? { inCard: true, belowHead: rect(ck).top >= rect(head).bottom, aboveTable: rect(ck).bottom <= rect(table).top,
+        leftEdge: Math.round(ck.getBoundingClientRect().left - cr.left - pad) } : null;
+      out.checkinOutside = qa('[data-uc-checkin-bar]').filter(function (b) { return !card.contains(b); }).length;
+    }
+    var input = q('input[data-uc-rsvp-filter]');
+    if (input) {
+      function visible() { return qa('[data-uc-rsvp-row]').filter(function (r) { return !r.hidden; }).map(function (r) { return r.getAttribute('data-uc-rsvp-name'); }); }
+      input.value = 'ben'; input.dispatchEvent(new Event('input', { bubbles: true })); out.byName = visible();
+      input.value = 'example.net'; input.dispatchEvent(new Event('input', { bubbles: true })); out.byEmail = visible();
+      input.value = ''; input.dispatchEvent(new Event('input', { bubbles: true })); out.cleared = visible().length;
+    }
+  }
+  /* B and C on the editors. */
+  var access = q('[data-uc-card="access"]');
+  if (access) {
+    out.access = { title: text(q('h2', access)).replace(/\s*\?.*$/, ''), teams: !!q('[data-uc-access-teams], .uc-muted', access), people: !!q('[data-uc-access-people], [data-uc-access-readonly], .uc-access-group', access) };
+    var reg = q('[data-uc-registration]');
+    var away = q('[data-uc-reg-mode][value="elsewhere"]', reg);
+    if (away) {
+      out.regBefore = { here: seen(q('[data-uc-reg-here]', reg)), url: seen(q('[data-uc-reg-url]', reg)), rsvpTick: seen(q('input[name="rsvp_enabled"]', reg)) };
+      away.checked = true; away.dispatchEvent(new Event('change', { bubbles: true }));
+      out.regAway = { here: seen(q('[data-uc-reg-here]', reg)), url: seen(q('[data-uc-reg-url]', reg)), rsvpTick: seen(q('input[name="rsvp_enabled"]', reg)), capacity: seen(q('input[name="capacity"]', reg)) };
+      var back = q('[data-uc-reg-mode][value="here"]', reg); back.checked = true; back.dispatchEvent(new Event('change', { bubbles: true }));
+      out.regBack = { here: seen(q('[data-uc-reg-here]', reg)), url: seen(q('[data-uc-reg-url]', reg)) };
+    }
+  }
+  /* C on the event page. */
+  var btn = q('.uc-card-rsvp-elsewhere a');
+  if (btn) { out.publicBtn = { href: btn.getAttribute('href'), target: btn.getAttribute('target'), rel: btn.getAttribute('rel'), note: text(btn), form: !!q('.uc-rsvp-btn') }; }
+  /* B: All events for an editor. */
+  var pub = q('table.uc-table-public');
+  if (pub) {
+    out.allEvents = { heading: text(q('.uc-public-heading')), publicRows: qa('tbody tr', pub).map(function (r) { var c = q('td', r).cloneNode(true); qa('.uc-visually-hidden', c).forEach(function (n) { n.remove(); }); return text(c); }),
+      links: qa('a[data-uc-public-link]', pub).map(function (a) { return [a.getAttribute('href'), a.getAttribute('target'), a.getAttribute('rel')]; }),
+      wayIn: qa('a', pub).filter(function (a) { return /caladmin\/(rsvps|events\/edit)/.test(a.getAttribute('href') || ''); }).length,
+      counts: pub.querySelectorAll('th').length, mineRows: qa('table.uc-table:not(.uc-table-public) tbody tr').map(function (r) { return text(r).slice(0, 30); }) };
+  }
+  var past = [], w = document.documentElement.clientWidth;
+  qa('.uc-portal-main *').forEach(function (el) {
+    if (!seen(el) || el.closest('[hidden], details:not([open]) > :not(summary)')) { return; }
+    var r = el.getBoundingClientRect(); if (r.width && r.right > w + 1) { past.push(el.tagName + '.' + el.className + ' ' + Math.round(r.right)); }
+  });
+  out.past = past.slice(0, 6);
+  finish();
+}, 600); });
+})();</script></body></html>
