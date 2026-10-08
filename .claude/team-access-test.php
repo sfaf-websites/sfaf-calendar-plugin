@@ -43,8 +43,21 @@ if ( ! isset( $argv[1] ) ) {
 $part  = $argv[1];
 $fails = array();
 function ta( $ok, $why ) { global $fails; if ( ! $ok ) { $fails[] = $why; } }
+/*
+ * A ROUTE THAT RUNS PAST ITS GATE ENDS THE REQUEST. An export that is let
+ * through writes its file and exits, or dies on the kit; either way this
+ * process stops mid-check. So whatever step was running when it stopped is
+ * named here, as the failure it is.
+ */
+$GLOBALS['ta_step'] = '';
+register_shutdown_function( function () {
+    if ( empty( $GLOBALS['ta_done'] ) ) {
+        echo "\n  - PLANT B.5: the request ended inside '" . $GLOBALS['ta_step'] . "', so a route ran past its gate\n";
+    }
+} );
 function ta_end( $part ) {
     global $fails;
+    $GLOBALS['ta_done'] = true;
     if ( $fails ) { echo "  - " . implode( "\n  - ", $fails ) . "\n"; exit( 1 ); }
     echo "PART $part OK\n";
     exit( 0 );
@@ -101,6 +114,7 @@ if ( 'screens' === $part ) {
     $as = function ( $uid ) { $GLOBALS['kit_user_id'] = $uid; $u = new WP_User(); $u->ID = $uid; $u->display_name = 'User ' . $uid; return $u; };
     /** Run a screen; answer what it printed, where it redirected, and whether it died. */
     $run = function ( $method, $args, $get = array() ) use ( $portal ) {
+        $GLOBALS['ta_step'] = $method . ' ' . json_encode( $get );
         $GLOBALS['kit_redirect'] = null; $_GET = $get;
         $d = ob_get_level(); ob_start(); $died = '';
         try { kit_call( 'SFAF_Portal', $method, $portal, $args ); }
