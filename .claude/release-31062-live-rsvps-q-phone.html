@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Events - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.110.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.110.0" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.110.0" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.110.1" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.110.1" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.110.1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.110.0" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.110.1" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -155,10 +155,11 @@
 
                             <p class="uc-hint">
                 Registrations for this event only.
-                <a href="https://resources.sfaf.org/caladmin/rsvps">All registrations across every event</a>.
-            </p>
+                                    <a href="https://resources.sfaf.org/caladmin/rsvps">All registrations across every event</a>.
+                            </p>
 
-                                    <details class="uc-card uc-rsvp-settings" data-uc-disclosure>
+            
+                                                <details class="uc-card uc-rsvp-settings" data-uc-disclosure>
                 <summary class="uc-rsvp-settings-toggle" aria-expanded="false">
                     <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
                     <span class="uc-rsvp-settings-id">
@@ -354,39 +355,15 @@
                     </div>
                 </form>
             </details>
-        
-        <form method="get" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-filters-bar">
-            <input type="search" name="s" value="" placeholder="Search name or email…" />
-            <input type="hidden" name="event_id" value="502" />                        <button class="uc-btn" type="submit">Search</button>
-        </form>
-
-                                <p class="uc-rsvp-counts" data-uc-rsvp-counts>
-                <span><strong>2</strong> registered</span>
-                <span aria-hidden="true">&middot;</span>
-                <span><strong data-uc-checked-count>0</strong> checked in</span>
-                <span aria-hidden="true">&middot;</span>
-                <span><strong>1</strong> waitlisted</span>
-                            </p>
-                            <div class="uc-checkin-bar" data-uc-checkin-bar>
-                    <form method="post" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-checkin-mode" aria-label="How to record who came">
-                        <input type="hidden" name="uc_action" value="checkin_mode" />
-                        <input type="hidden" name="uc_nonce" value="nonce" />                        <input type="hidden" name="event_id" value="502" />
-                        <span class="uc-seg">
-                            <button type="submit" name="checkin_mode" value="name" class="uc-seg-opt-btn" aria-pressed="true">Check in by name</button>
-                            <button type="submit" name="checkin_mode" value="count" class="uc-seg-opt-btn" aria-pressed="false">Enter a count</button>
-                        </span>
-                    </form>
-                                    </div>
-                        <label class="uc-field uc-rsvp-search">
-                <span class="uc-visually-hidden">Find a registrant by name</span>
-                <input type="search" placeholder="Find by name" autocomplete="off" data-uc-rsvp-filter />
-            </label>
-                    <details class="uc-picker uc-registrant-mail" data-uc-registrant-mail>
-            <summary class="uc-picker-toggle">
-                <span class="uc-picker-label">Email registrants</span>
-                <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                                        <details class="uc-card uc-rsvp-settings uc-registrant-mail" data-uc-disclosure data-uc-registrant-mail>
+            <summary class="uc-rsvp-settings-toggle" aria-expanded="false">
+                <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                <span class="uc-rsvp-settings-id">
+                    <span class="uc-rsvp-settings-name"><strong>Email registrants</strong></span>
+                    <span class="uc-muted">Send a message to everyone registered.</span>
+                </span>
             </summary>
-            <div class="uc-picker-panel">
+            <div class="uc-rsvp-settings-form uc-registrant-mail-body">
                                 <form method="post" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-registrant-mail-form" data-uc-rm-form
                       data-uc-rm-to="2" data-uc-rm-to-wait="3"
                       data-uc-rm-url="https://resources.sfaf.org/caladmin/rsvps"
@@ -428,18 +405,42 @@
                         <iframe class="uc-rm-preview-frame" title="Preview of the message" data-uc-rm-preview-frame></iframe>
                     </div>
                 </form>
-            </div>
+                    </div>
         </details>
-                                            <ul class="uc-q-totals" data-uc-q-totals>
+                
+        <form method="get" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-filters-bar">
+            <label class="uc-visually-hidden" for="uc-rsvp-search">Search name or email</label>
+            <input type="search" id="uc-rsvp-search" name="s" value="" placeholder="Search name or email…" autocomplete="off" data-uc-rsvp-filter />
+            <input type="hidden" name="event_id" value="502" />                        <button class="uc-btn" type="submit">Search</button>
+        </form>
+
+                                <p class="uc-rsvp-counts" data-uc-rsvp-counts>
+                <span><strong>2</strong> registered</span>
+                <span aria-hidden="true">&middot;</span>
+                <span><strong data-uc-checked-count>0</strong> checked in</span>
+                <span aria-hidden="true">&middot;</span>
+                <span><strong>1</strong> waitlisted</span>
+                            </p>
+                            <ul class="uc-q-totals" data-uc-q-totals>
                                             <li>Any dietary needs?: 2 of 2 answered. Vegetarian 1, Allergy 1</li>
                                     </ul>
                 
         <div class="uc-card">
             <div class="uc-card-head"><h2>2 registrations</h2></div>
-                                                            <table class="uc-table uc-rsvp-table">
+                            <div class="uc-checkin-bar" data-uc-checkin-bar>
+                    <form method="post" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-checkin-mode" aria-label="How to record who came">
+                        <input type="hidden" name="uc_action" value="checkin_mode" />
+                        <input type="hidden" name="uc_nonce" value="nonce" />                        <input type="hidden" name="event_id" value="502" />
+                        <span class="uc-seg">
+                            <button type="submit" name="checkin_mode" value="name" class="uc-seg-opt-btn" aria-pressed="true">Check in by name</button>
+                            <button type="submit" name="checkin_mode" value="count" class="uc-seg-opt-btn" aria-pressed="false">Enter a count</button>
+                        </span>
+                    </form>
+                                    </div>
+                                                                        <table class="uc-table uc-rsvp-table">
                     <thead><tr><th>First name</th><th>Last name</th><th>Email</th><th>Phone</th><th>Updates</th><th>Status</th><th>Registered</th><th><span class="uc-visually-hidden">Actions</span></th></tr></thead>
                     <tbody>
-                                            <tr data-uc-rsvp-row data-uc-rsvp-name="ana alvarez">
+                                            <tr data-uc-rsvp-row data-uc-rsvp-name="ana alvarez" data-uc-rsvp-email="ana@example.org">
                                                         <td><strong>Ana</strong></td>
                                                         <td>Alvarez</td>
                             <td>ana@example.org</td>
@@ -474,7 +475,7 @@
                                                                                                                         </dl>
                                 </td>
                             </tr>
-                                                                    <tr data-uc-rsvp-row data-uc-rsvp-name="ben brooks">
+                                                                    <tr data-uc-rsvp-row data-uc-rsvp-name="ben brooks" data-uc-rsvp-email="ben@example.org">
                                                         <td><strong>Ben</strong></td>
                                                         <td>Brooks</td>
                             <td>ben@example.org</td>
@@ -545,8 +546,8 @@
                             </main>
             </div>
         </div>
-        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.110.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.110.0"></script>
-<script src="../public/js/portal.js?ver=3.110.0"></script>
+        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.110.1"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.110.1"></script>
+<script src="../public/js/portal.js?ver=3.110.1"></script>
 <script>window.RQ_PAGE="rsvps-q-phone";(function () {
 var P = window.RQ_PAGE, out = { page: P, errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });

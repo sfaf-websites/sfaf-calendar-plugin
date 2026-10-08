@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Series - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.110.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.110.0" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.110.0" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.110.1" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.110.1" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.110.1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.110.0" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.110.1" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -228,6 +228,35 @@
                     <span class="uc-field-label" id="uc-series-agreement-label">Default registration agreement</span>
                     <textarea name="series_agreement" id="uc-series-agreement"></textarea>                    <span class="uc-hint">Used by events in this series that ask registrants to agree and have no text of their own.</span>
                 </div>
+
+                                        <div class="uc-field uc-series-access" data-uc-series-access>
+            <input type="hidden" name="series_access_present" value="1" />
+            <span class="uc-field-label">Default team and access</span>
+            <p class="uc-hint">Events in this series get these teams and people until an event sets its own.</p>
+                                </div>
+        
+                                <div class="uc-reg-choice" data-uc-reg-choice>
+                            <fieldset class="uc-reg-where" data-uc-reg-where>
+            <legend class="uc-field-label">Where people register</legend>
+            <input type="hidden" name="series_reg_mode_present" value="1" />
+            <div class="uc-seg" role="radiogroup" aria-label="Where people register">
+                <label class="uc-seg-opt">
+                    <input type="radio" name="series_reg_mode" value="here" data-uc-reg-mode  checked="checked" />
+                    <span>Take registrations here</span>
+                </label>
+                <label class="uc-seg-opt">
+                    <input type="radio" name="series_reg_mode" value="elsewhere" data-uc-reg-mode  />
+                    <span>Register on another site</span>
+                </label>
+            </div>
+            <label class="uc-field uc-reg-url" for="uc-series-reg-url" data-uc-reg-url hidden>
+                <span class="uc-field-label">Registration link</span>
+                <input type="url" id="uc-series-reg-url" name="series_reg_url" value=""
+                       placeholder="https://" inputmode="url" />
+                <span class="uc-hint">The Register button opens this page in a new tab.</span>
+            </label>
+        </fieldset>
+                        </div>
 
                                 <input type="hidden" name="uc_series_defaults_present" value="1" />
                 <div class="uc-field uc-series-default" data-uc-series-default="category" role="group" aria-labelledby="uc-series-default-category">
@@ -511,8 +540,8 @@
                                 </main>
             </div>
         </div>
-        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.110.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.110.0"></script>
-<script src="../public/js/portal.js?ver=3.110.0"></script>
+        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.110.1"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.110.1"></script>
+<script src="../public/js/portal.js?ver=3.110.1"></script>
 <script>window.SL_PAGE="series";(function () {
 var out = { page: window.SL_PAGE, errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });

@@ -189,6 +189,8 @@ function ucDismissOnBackdrop(dialog) {
         run('copyButtons', initCopyButtons);
         run('schedule', initSchedule);
         run('agreement', initAgreementSection);
+        run('access', initAccessSection);
+        run('reg-where', initRegisterWhere);
         run('registrantMail', initRegistrantMail);
         run('checkin', initCheckin);
         run('rsvpFilter', initRsvpFilter);
@@ -290,16 +292,23 @@ function ucDismissOnBackdrop(dialog) {
     }
 
     /* ---------------------------------------------------------------------
-     * FIND BY NAME (3.110.0): the RSVP list's rows narrowed to the names
-     * containing what is typed, a row's Details going with it.
+     * SEARCH NAME OR EMAIL (3.110.0; one box since 3.110.1): the RSVP list's
+     * rows narrowed as you type to those whose name or email contains it, a
+     * row's Details going with it. The box is the page's own search, so with
+     * no script its Search button still asks the server; with one, the
+     * button goes, because there is nothing left for it to do.
      * ------------------------------------------------------------------ */
     function initRsvpFilter() {
         var input = document.querySelector('[data-uc-rsvp-filter]');
         if (!input) { return; }
+        var form = input.form;
+        var go = form ? form.querySelector('button[type="submit"]') : null;
+        if (go) { go.hidden = true; }
         input.addEventListener('input', function () {
             var q = input.value.replace(/\s+/g, ' ').trim().toLowerCase();
             document.querySelectorAll('[data-uc-rsvp-row]').forEach(function (row) {
-                var hit = !q || (row.getAttribute('data-uc-rsvp-name') || '').indexOf(q) > -1;
+                var hay = (row.getAttribute('data-uc-rsvp-name') || '') + ' ' + (row.getAttribute('data-uc-rsvp-email') || '');
+                var hit = !q || hay.indexOf(q) > -1;
                 row.hidden = !hit;
                 var next = row.nextElementSibling;
                 if (next && next.classList.contains('uc-rsvp-details') && !hit) { next.hidden = true; }
@@ -348,6 +357,65 @@ function ucDismissOnBackdrop(dialog) {
         });
     }
 
+    /* ---------------------------------------------------------------------
+     * TEAM AND ACCESS IN THE EDITOR (3.110.1). Until the event keeps its
+     * own, its ticks follow the series dropdown, showing that series'
+     * default; a tick somebody changes makes it the event's own. The server
+     * stores nothing when the ticks equal the series default.
+     * ------------------------------------------------------------------ */
+    function initAccessSection() {
+        document.querySelectorAll('[data-uc-access]').forEach(function (box) {
+            var series = {};
+            try { series = JSON.parse(box.getAttribute('data-uc-access-series') || '{}') || {}; } catch (e) { series = {}; }
+            var own = '1' === box.getAttribute('data-uc-access-own');
+            box.addEventListener('change', function (e) {
+                if (e.target && e.target.type === 'checkbox' && e.target.name !== 'access_teams_notify') { own = true; }
+            });
+            var select = document.querySelector('[data-uc-series-select]');
+            if (!select) { return; }
+            select.addEventListener('change', function () {
+                if (own) { return; }
+                var d = series[String(select.value)] || { teams: [], people: [] };
+                box.querySelectorAll('input[name="access_teams[]"]').forEach(function (i) { i.checked = d.teams.indexOf(i.value) > -1; });
+                box.querySelectorAll('input[name="access_people[]"]').forEach(function (i) { i.checked = d.people.indexOf(parseInt(i.value, 10)) > -1; });
+            });
+        });
+    }
+    /* ---------------------------------------------------------------------
+     * WHERE PEOPLE REGISTER (3.110.1). "Register on another site" shows the
+     * link box and hides everything that only applies here; "Take
+     * registrations here" brings it back as it was. On Add event, until the
+     * choice is touched, it follows the series dropdown's default.
+     * ------------------------------------------------------------------ */
+    function initRegisterWhere() {
+        document.querySelectorAll('[data-uc-reg-choice]').forEach(function (box) {
+            var urlBox = box.querySelector('[data-uc-reg-url]');
+            var card = box.closest('[data-uc-registration]');
+            var here = card ? card.querySelector('[data-uc-reg-here]') : null;
+            var radios = box.querySelectorAll('[data-uc-reg-mode]');
+            var series = {};
+            try { series = JSON.parse(box.getAttribute('data-uc-reg-series') || '{}') || {}; } catch (e) { series = {}; }
+            var own = '1' === box.getAttribute('data-uc-reg-own');
+            function apply() {
+                var away = !!box.querySelector('[data-uc-reg-mode][value="elsewhere"]:checked');
+                if (urlBox) { urlBox.hidden = !away; }
+                if (here) { here.hidden = away; }
+            }
+            radios.forEach(function (r) { r.addEventListener('change', function () { own = true; apply(); }); });
+            var select = box.hasAttribute('data-uc-reg-series') ? document.querySelector('[data-uc-series-select]') : null;
+            if (select) {
+                select.addEventListener('change', function () {
+                    if (own) { return; }
+                    var d = series[String(select.value)] || { mode: 'here', url: '' };
+                    radios.forEach(function (r) { r.checked = (r.value === d.mode); });
+                    var input = urlBox ? urlBox.querySelector('input') : null;
+                    if (input) { input.placeholder = d.url || 'https://'; }
+                    apply();
+                });
+            }
+            apply();
+        });
+    }
     /* ---------------------------------------------------------------------
      * SCHEDULE FOR A LATER DATE (3.110.0). The tick shows the date and time
      * beside it and turns Publish into Schedule; unticked, both go and the
