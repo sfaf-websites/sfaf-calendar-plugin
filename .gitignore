@@ -53,6 +53,10 @@ Event Documents/
 # of the repository's weight. Re-download it from their developer docs.
 apiv2-public-gfmp.json
 
+# Event pictures dropped here to upload to the calendar. Not part of the
+# plugin. Files committed here before this line stay tracked.
+Event Images/
+
 # Anything under a folder explicitly marked private/local.
 private/
 scratch/
