@@ -10,9 +10,11 @@ pass=0
 # committed, and not started until the ceiling plus BROWSER_RESERVE_MB is free.
 # The next check does not start until every process of the last one has ended.
 # Measured on 3.110.2: the heaviest check peaks at 472 MB, most near 380, and
-# nine of them left a Chrome process running after they returned.
-BROWSER_CEILING_MB=1024
-BROWSER_RESERVE_MB=512
+# nine of them left a Chrome process running after they returned. 1024 + 512
+# could not start on this machine with Edge, Claude Code and Asana open (about
+# 1 GB available), so 768 + 256: 1.6 times the heaviest peak, and 1 GB to start.
+BROWSER_CEILING_MB=768
+BROWSER_RESERVE_MB=256
 
 run() { # label, command...
   local label="$1"; shift
