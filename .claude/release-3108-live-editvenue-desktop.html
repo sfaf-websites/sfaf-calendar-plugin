@@ -161,7 +161,7 @@
         
         
         
-                <form method="post" id="uc-event-form-502" action="https://resources.sfaf.org/caladmin/events/edit/502" class="uc-form">
+                        <form method="post" id="uc-event-form-502" action="https://resources.sfaf.org/caladmin/events/edit/502" class="uc-form" enctype="multipart/form-data">
             <input type="hidden" name="uc_action" value="save_event" />
             <input type="hidden" name="event_id" value="502" />
             <input type="hidden" name="uc_nonce" value="nonce" />
@@ -843,7 +843,8 @@
                                             <input type="hidden" name="reset_series_image" value="1" data-uc-image-reset disabled />
                     
         
-                            <details class="uc-picker uc-image-picker" data-uc-image-picker data-uc-image-series-fixed="12">
+                            <details class="uc-picker uc-image-picker" data-uc-image-picker data-uc-image-groups
+                 data-uc-image-series-fixed="12">
             <summary class="uc-picker-toggle">
                 <span class="uc-picker-label">Choose a picture</span>
                         <span class="uc-picker-count uc-image-current" data-uc-image-current>
@@ -853,75 +854,132 @@
             </summary>
 
             <div class="uc-picker-panel" data-uc-filter-scope>
-                <label class="uc-picker-filter uc-image-search">
-                    <span class="uc-visually-hidden">Search pictures</span>
-                                        <input type="search" placeholder="Search pictures&hellip;"
-                           data-uc-filter autocomplete="off" />
-                </label>
+                <div class="uc-image-tools">
+                    <label class="uc-picker-filter uc-image-search">
+                        <span class="uc-visually-hidden">Search pictures by name</span>
+                                                <input type="search" placeholder="Search by name&hellip;"
+                               data-uc-filter data-uc-image-search autocomplete="off" />
+                    </label>
+                    <label class="uc-check uc-image-active-only">
+                        <input type="checkbox" data-uc-image-active-only />
+                        Show active images only
+                    </label>
+                </div>
 
                 <div class="uc-picker-options uc-image-options" data-uc-filter-list>
-                                        <label class="uc-check uc-picker-option uc-image-option" data-uc-filter-text="no picture"
+                    <label class="uc-check uc-picker-option uc-image-option" data-uc-filter-text="no picture the series picture"
                            data-uc-image-default>
                         <input type="radio" name="featured_image_id" value="0"  checked="checked"                               data-uc-image-option data-uc-image-name="The series picture" />
-                                                                                <span class="uc-image-option-thumb uc-image-option-thumb-series" aria-hidden="true"
+                                                    <span class="uc-image-option-thumb uc-image-option-thumb-series" aria-hidden="true"
                                   style="background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+');"></span>
                             <span class="uc-image-option-text">
                                 <span class="uc-image-option-name">The series picture</span>
                                 <span class="uc-image-option-note">Used when you do not choose one</span>
                             </span>
                                             </label>
-                                                                    <label class="uc-check uc-picker-option uc-image-option"
-                               data-uc-filter-text="pic-601.jpg picture 601 alpha"
-                                                              data-uc-image-series=" 11 ">
-                            <input type="radio" name="featured_image_id" value="601"
-                                                                      data-uc-image-option
-                                   data-uc-image-thumb="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
-                                   data-uc-image-full="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
-                                   data-uc-image-name="Picture 601" />
-                            <img class="uc-image-option-thumb" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+" alt="" loading="lazy" />
-                            <span class="uc-image-option-text">
-                                <span class="uc-image-option-name">Picture 601</span>
-                            </span>
-                        </label>
-                                                                    <label class="uc-check uc-picker-option uc-image-option"
-                               data-uc-filter-text="pic-602.jpg picture 602 beta"
-                                                              data-uc-image-series=" 12 ">
-                            <input type="radio" name="featured_image_id" value="602"
-                                                                      data-uc-image-option
-                                   data-uc-image-thumb="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
-                                   data-uc-image-full="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
-                                   data-uc-image-name="Picture 602" />
-                            <img class="uc-image-option-thumb" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+" alt="" loading="lazy" />
-                            <span class="uc-image-option-text">
-                                <span class="uc-image-option-name">Picture 602</span>
-                            </span>
-                        </label>
-                                                                    <label class="uc-check uc-picker-option uc-image-option"
-                               data-uc-filter-text="pic-603.jpg picture 603"
-                                                              data-uc-image-series="">
-                            <input type="radio" name="featured_image_id" value="603"
-                                                                      data-uc-image-option
-                                   data-uc-image-thumb="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
-                                   data-uc-image-full="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
-                                   data-uc-image-name="Picture 603" />
-                            <img class="uc-image-option-thumb" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+" alt="" loading="lazy" />
-                            <span class="uc-image-option-text">
-                                <span class="uc-image-option-name">Picture 603</span>
-                            </span>
-                        </label>
-                                    </div>
-                                <p class="uc-muted uc-picker-no-series" data-uc-image-none hidden>
-                    No images are available for that series yet. Contact MarCom for an event image to be added.
-                </p>
+
+                    <p class="uc-image-group-head" data-uc-image-group-head="series">Series pictures</p>
+                                                    <label class="uc-check uc-picker-option uc-image-option"
+               data-uc-filter-text="pic-601.jpg picture 601"
+               data-uc-image-active="0" data-uc-image-series=" 11 ">
+            <input type="radio" name="featured_image_id" value="601"
+                                      data-uc-image-option
+                   data-uc-image-thumb="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
+                   data-uc-image-full="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
+                   data-uc-image-name="Picture 601" />
+            <img class="uc-image-option-thumb" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+" alt="" loading="lazy" />
+            <span class="uc-image-option-text">
+                <span class="uc-image-option-name">Picture 601</span>
+            </span>
+        </label>
+                                                            <label class="uc-check uc-picker-option uc-image-option"
+               data-uc-filter-text="pic-602.jpg picture 602"
+               data-uc-image-active="0" data-uc-image-series=" 12 ">
+            <input type="radio" name="featured_image_id" value="602"
+                                      data-uc-image-option
+                   data-uc-image-thumb="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
+                   data-uc-image-full="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
+                   data-uc-image-name="Picture 602" />
+            <img class="uc-image-option-thumb" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+" alt="" loading="lazy" />
+            <span class="uc-image-option-text">
+                <span class="uc-image-option-name">Picture 602</span>
+            </span>
+        </label>
+                                                            <label class="uc-check uc-picker-option uc-image-option"
+               data-uc-filter-text="pic-603.jpg picture 603"
+               data-uc-image-active="0" data-uc-image-series="">
+            <input type="radio" name="featured_image_id" value="603"
+                                      data-uc-image-option
+                   data-uc-image-thumb="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
+                   data-uc-image-full="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
+                   data-uc-image-name="Picture 603" />
+            <img class="uc-image-option-thumb" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+" alt="" loading="lazy" />
+            <span class="uc-image-option-text">
+                <span class="uc-image-option-name">Picture 603</span>
+            </span>
+        </label>
+                                                <p class="uc-muted uc-image-group-none" data-uc-image-choose hidden>Choose a series to see its pictures.</p>
+                    <p class="uc-muted uc-image-group-none" data-uc-image-none hidden>No pictures for this series yet.</p>
+
+                    <p class="uc-image-group-head" data-uc-image-group-head="other">Other images</p>
+                                                    <label class="uc-check uc-picker-option uc-image-option"
+               data-uc-filter-text="pic-601.jpg picture 601"
+               data-uc-image-active="0" data-uc-image-group="other">
+            <input type="radio" name="featured_image_id" value="601"
+                                      data-uc-image-option
+                   data-uc-image-thumb="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
+                   data-uc-image-full="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
+                   data-uc-image-name="Picture 601" />
+            <img class="uc-image-option-thumb" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+" alt="" loading="lazy" />
+            <span class="uc-image-option-text">
+                <span class="uc-image-option-name">Picture 601</span>
+            </span>
+        </label>
+                                                            <label class="uc-check uc-picker-option uc-image-option"
+               data-uc-filter-text="pic-602.jpg picture 602"
+               data-uc-image-active="0" data-uc-image-group="other">
+            <input type="radio" name="featured_image_id" value="602"
+                                      data-uc-image-option
+                   data-uc-image-thumb="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
+                   data-uc-image-full="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
+                   data-uc-image-name="Picture 602" />
+            <img class="uc-image-option-thumb" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+" alt="" loading="lazy" />
+            <span class="uc-image-option-text">
+                <span class="uc-image-option-name">Picture 602</span>
+            </span>
+        </label>
+                                                            <label class="uc-check uc-picker-option uc-image-option"
+               data-uc-filter-text="pic-603.jpg picture 603"
+               data-uc-image-active="0" data-uc-image-group="other">
+            <input type="radio" name="featured_image_id" value="603"
+                                      data-uc-image-option
+                   data-uc-image-thumb="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
+                   data-uc-image-full="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+"
+                   data-uc-image-name="Picture 603" />
+            <img class="uc-image-option-thumb" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjY3NSI+PHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSIjMEU4MThDIi8+PC9zdmc+" alt="" loading="lazy" />
+            <span class="uc-image-option-text">
+                <span class="uc-image-option-name">Picture 603</span>
+            </span>
+        </label>
+                                                                </div>
                 <p class="uc-muted uc-picker-empty" data-uc-filter-empty hidden>No pictures match that.</p>
-                                                        <button type="button" class="uc-btn uc-btn-sm uc-picker-show-all" data-uc-image-show-all>All calendar images</button>
-                            </div>
+            </div>
         </details>
-                    <p class="uc-hint uc-image-outside" data-uc-image-outside hidden>Not in this series. It stays chosen until you pick another.</p>
+                        <label class="uc-outline-btn uc-image-upload">
+                    <span>+ Upload a picture for this event</span>
+                    <input type="file" name="uc_event_picture" class="uc-visually-hidden"
+                           accept="image/jpeg,image/png,image/webp"
+                           data-uc-event-upload
+                           data-uc-rule-width="1200"
+                           data-uc-rule-height="675"
+                           data-uc-rule-bytes="512000"
+                           data-uc-rule-message="Pictures must be 1200 by 675 pixels and under 500KB." />
+                </label>
+                <p class="uc-field-error uc-image-upload-error" role="alert" data-uc-event-upload-error hidden></p>
+                            <p class="uc-hint uc-image-outside" data-uc-image-outside hidden>Not in this series. It stays chosen until you pick another.</p>
         </div>
-                                                <p class="uc-hint uc-hint-spec"><strong>1200 x 675 pixels, 16:9 landscape.</strong></p>
-                            <p class="uc-field-note uc-field-note-attention"><svg class="uc-state-icon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path fill="currentColor" d="M4 17.2V20h2.8L17 9.8 14.2 7zm14.8-9.6a.75.75 0 0 0 0-1.06l-1.74-1.74a.75.75 0 0 0-1.06 0L14.6 6.2 17.4 9z"/></svg><span>The calendar folder has no images in it yet, so Choose Image will look empty. Uploading one here puts it in the folder. If you expected pictures to be there, check that the folder is still <code>uploads/calendar</code>.</span></p>
-                                </div>
+                                                <p class="uc-hint uc-hint-spec"><strong>Pictures must be 1200 by 675 pixels and under 500KB.</strong></p>
+                                                            </div>
                                                     <input type="hidden" name="uc_video_present" value="1" />
         <label class="uc-field">
             <span class="uc-field-label">Video</span>
@@ -1254,16 +1312,16 @@
                      data-uc-access-own="0">
                     <input type="hidden" name="access_present" value="1" />
 
-                    <fieldset class="uc-access-group">
-                        <legend class="uc-field-label">Teams</legend>
-                                                    <p class="uc-muted">No teams exist yet. Teams are created under Users &amp; Teams.</p>
-                                            </fieldset>
+                            <fieldset class="uc-access-group">
+            <legend class="uc-field-label">Teams</legend>
+                            <p class="uc-muted">No teams exist yet. Teams are created under Users &amp; Teams.</p>
+                    </fieldset>
 
-                    <fieldset class="uc-access-group">
-                        <legend class="uc-field-label">People</legend>
-                                                    <p class="uc-muted">Nobody has calendar access yet.</p>
-                                            </fieldset>
-
+        <fieldset class="uc-access-group">
+            <legend class="uc-field-label">People</legend>
+                            <p class="uc-muted">Nobody has calendar access yet.</p>
+                    </fieldset>
+        
                                     </div>
                     </section>
                     </div>

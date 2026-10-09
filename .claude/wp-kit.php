@@ -47,6 +47,7 @@ function kit_reset() {
     $GLOBALS['kit_refused'] = array();    // user ids that hold no capability at all (3.105.0)
     $GLOBALS['kit_db'] = null;            // callable( method, sql ) standing in for a table, or null (3.105.0)
     $GLOBALS['kit_images'] = array();     // attachment id => image URL; empty means no picture has one (3.107.0)
+    $GLOBALS['kit_get_posts'] = null;     // callable( args ) => posts or ids for get_posts(), or null for none (3.110.3)
 }
 kit_reset();
 
@@ -222,7 +223,9 @@ function get_post_type( $id = null ) { $p = get_post( $id ); return $p ? $p->pos
 function get_post_field( $f, $id = null ) { $p = get_post( $id ); return ( $p && isset( $p->$f ) ) ? $p->$f : ''; }
 function get_the_title( $id = 0 ) { return get_post_field( 'post_title', $id ); }
 function get_permalink( $id = 0 ) { return 'https://resources.sfaf.org/events/' . (int) ( is_object( $id ) ? $id->ID : $id ) . '/'; }
-function get_posts( $a = array() ) { return array(); }
+/* None, unless a test sets $GLOBALS['kit_get_posts'] (3.110.3); every other
+   test keeps the old answer. */
+function get_posts( $a = array() ) { return empty( $GLOBALS['kit_get_posts'] ) ? array() : (array) call_user_func( $GLOBALS['kit_get_posts'], $a ); }
 function kit_write_post( $arr ) {
     $id = ! empty( $arr['ID'] ) ? (int) $arr['ID'] : ++$GLOBALS['kit_next'];
     $p  = get_post( $id );
