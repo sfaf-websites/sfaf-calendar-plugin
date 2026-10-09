@@ -896,6 +896,10 @@ class SFAF_Portal {
                     $this->bulk_publish_from_post( $user, $wanted );
                     break;
                 }
+                if ( isset( $_POST['uc_do'] ) && 'team' === $_POST['uc_do'] ) {
+                    $this->bulk_team_from_post( $user, $wanted );
+                    break;
+                }
 
                 $term_id = isset( $_POST['bulk_category'] ) ? intval( $_POST['bulk_category'] ) : 0;
                 if ( ! $term_id || ! SFAF_Categories::exists( $term_id ) ) {
@@ -4953,6 +4957,18 @@ class SFAF_Portal {
             return;
         }
 
+        /* Set team (3.110.3), counting what it reached and what it left. */
+        if ( 'bulk_team_done' === $key ) {
+            $did     = isset( $_GET['did'] ) ? max( 0, (int) $_GET['did'] ) : 0;
+            $refused = isset( $_GET['refused'] ) ? max( 0, (int) $_GET['refused'] ) : 0;
+            $said    = sprintf( 'Team and access set on %d %s.', $did, _n( 'event', 'events', $did ) );
+            if ( $refused > 0 ) {
+                $said .= sprintf( _n( ' %d was not yours to change and was skipped.', ' %d were not yours to change and were skipped.', $refused ), $refused );
+            }
+            echo '<div class="uc-flash">' . esc_html( $said ) . '</div>';
+            return;
+        }
+
         if ( 'schedule_published' === $key ) {
             $made   = isset( $_GET['made'] ) ? max( 0, intval( $_GET['made'] ) ) : 0;
             $failed = isset( $_GET['failed'] ) ? max( 0, intval( $_GET['failed'] ) ) : 0;
@@ -6831,7 +6847,10 @@ class SFAF_Portal {
      * @return array{tick:int[],publish:int[],blocked:array<int,string>,skipped:array<string,int>}
      */
     private function bulk_plan( $user, $ids ) {
-        $out = array( 'tick' => array(), 'publish' => array(), 'blocked' => array(), 'skipped' => array() );
+        $out = array( 'tick' => array(), 'publish' => array(), 'blocked' => array(), 'skipped' => array(),
+            /* Set team (3.110.3): the people who may assign Team and access on
+             * an event they have, which a contributor may not. */
+            'team' => $this->can_view_all( $user ) );
         if ( empty( $ids ) ) {
             return $out;
         }
@@ -6909,7 +6928,7 @@ class SFAF_Portal {
          * is no panel. A form holding two hidden fields and a nonce is a
          * hairline rule above a table and nothing else.
          */
-        if ( empty( $cats ) && $ready < 1 ) {
+        if ( empty( $cats ) && $ready < 1 && empty( $plan['team'] ) ) {
             return;
         }
 
@@ -7051,8 +7070,71 @@ class SFAF_Portal {
                     </span>
                 </div>
             <?php endif; ?>
+
+            <?php if ( ! empty( $plan['team'] ) ) : ?>
+                <?php
+                /*
+                 * SET TEAM (3.110.3). The Team and access choices the card
+                 * draws, under their own names, and a third verb on the same
+                 * ticks. It replaces what each ticked event had; the route
+                 * asks may_assign_access() of every id again.
+                 */
+                ?>
+                <details class="uc-bulk-team" data-uc-bulk-team>
+                    <summary class="uc-outline-btn">Set team</summary>
+                    <div class="uc-bulk-team-body">
+                        <input type="hidden" name="bulk_access_present" value="1" />
+                        <?php $this->render_access_choices( SFAF_Teams::all(), $this->access_people_choices(), array(), array(), 'bulk_access' ); ?>
+                        <div class="uc-bulk-cat-go">
+                            <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary"
+                                    name="uc_do" value="team" formnovalidate
+                                    data-uc-tick-submit
+                                    data-uc-confirm="Set this team and access on the ticked events? It replaces what each of them had."
+                                    data-uc-tick-confirm="Set this team and access on {n} {noun}? It replaces what each of them had."
+                                    data-uc-tick-word="events"
+                                    data-uc-tick-word-one="event">
+                                Set team on <span data-uc-tick-count>0</span>
+                                <span data-uc-tick-noun>events</span>
+                            </button>
+                        </div>
+                    </div>
+                </details>
+            <?php endif; ?>
         </form>
         <?php
+    }
+
+    /**
+     * Set team on the ticked events (3.110.3).
+     *
+     * ASKED PER ID, AT THE WRITE: may_assign_access() is the card's own gate,
+     * so a ticked id somebody may not assign on is left alone and counted,
+     * never written. The choice replaces each event's Team and access, the
+     * way saving the card does; the notification list is not touched.
+     *
+     * @param WP_User $user
+     * @param int[]   $wanted
+     */
+    private function bulk_team_from_post( $user, $wanted ) {
+        $c = SFAF_Access::from_post( $_POST, 'bulk_access' );
+        if ( ! $c['present'] || empty( $wanted ) ) {
+            $this->redirect( 'events', array( 'msg' => 'bulk_cat_none' ) );
+        }
+        $did     = 0;
+        $refused = 0;
+        foreach ( array_unique( array_map( 'intval', $wanted ) ) as $bulk_id ) {
+            $bulk_post = get_post( $bulk_id );
+            if ( ! $bulk_post || 'uc_event' !== $bulk_post->post_type ) {
+                continue;
+            }
+            if ( ! $this->may_assign_access( $user, $bulk_id ) ) {
+                $refused++;
+                continue;
+            }
+            SFAF_Access::set( $bulk_id, $c['teams'], $c['people'] );
+            $did++;
+        }
+        $this->redirect( 'events', array( 'msg' => 'bulk_team_done', 'did' => $did, 'refused' => $refused ) );
     }
 
     private function events_table( $ids, $user, $sort = null, $filters = null, $bulk = null ) {
@@ -16878,43 +16960,7 @@ class SFAF_Portal {
                      data-uc-access-own="<?php echo $own ? '1' : '0'; ?>">
                     <input type="hidden" name="access_present" value="1" />
 
-                    <fieldset class="uc-access-group">
-                        <legend class="uc-field-label">Teams</legend>
-                        <?php if ( empty( $teams ) ) : ?>
-                            <p class="uc-muted">No teams exist yet. Teams are created under Users &amp; Teams.</p>
-                        <?php else : ?>
-                            <p class="uc-hint">Pick up to <?php echo (int) SFAF_Teams::MAX_PER_EVENT; ?>.</p>
-                            <div class="uc-access-teams" data-uc-access-teams data-uc-access-max="<?php echo (int) SFAF_Teams::MAX_PER_EVENT; ?>">
-                                <?php foreach ( $teams as $team ) :
-                                    $on = in_array( (string) $team['id'], $chosen_t, true ); ?>
-                                    <label class="uc-check">
-                                        <input type="checkbox" name="access_teams[]" value="<?php echo esc_attr( $team['id'] ); ?>" <?php checked( $on ); ?> />
-                                        <?php echo esc_html( $team['name'] ); ?>
-                                        <span class="uc-muted"><?php
-                                            $n = SFAF_Teams::member_count( $team['id'] );
-                                            echo esc_html( $n . ' ' . ( 1 === $n ? 'person' : 'people' ) );
-                                        ?></span>
-                                    </label>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
-                    </fieldset>
-
-                    <fieldset class="uc-access-group">
-                        <legend class="uc-field-label">People</legend>
-                        <?php if ( empty( $people ) ) : ?>
-                            <p class="uc-muted">Nobody has calendar access yet.</p>
-                        <?php else : ?>
-                            <div class="uc-access-people" data-uc-access-people>
-                                <?php foreach ( $people as $pid => $pname ) : ?>
-                                    <label class="uc-check">
-                                        <input type="checkbox" name="access_people[]" value="<?php echo (int) $pid; ?>" <?php checked( in_array( (int) $pid, $chosen_p, true ) ); ?> />
-                                        <?php echo esc_html( $pname ); ?>
-                                    </label>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endif; ?>
-                    </fieldset>
+                    <?php $this->render_access_choices( $teams, $people, $chosen_t, $chosen_p, 'access' ); ?>
 
                     <?php if ( ! empty( $teams ) ) : ?>
                         <label class="uc-check uc-access-notify">
@@ -16927,6 +16973,59 @@ class SFAF_Portal {
                 </div>
             <?php endif; ?>
         </section>
+        <?php
+    }
+
+    /**
+     * The Teams and People choices of Team and access, for the card and for the
+     * events list's Set team (3.110.3). One render, so the two cannot offer
+     * different lists; $prefix names the fields SFAF_Access::from_post() reads.
+     *
+     * @param array    $teams    SFAF_Teams::all().
+     * @param array    $people   id => name.
+     * @param string[] $chosen_t
+     * @param int[]    $chosen_p
+     * @param string   $prefix   'access' on the card, 'bulk_access' on the list.
+     */
+    private function render_access_choices( $teams, $people, $chosen_t, $chosen_p, $prefix ) {
+        ?>
+        <fieldset class="uc-access-group">
+            <legend class="uc-field-label">Teams</legend>
+            <?php if ( empty( $teams ) ) : ?>
+                <p class="uc-muted">No teams exist yet. Teams are created under Users &amp; Teams.</p>
+            <?php else : ?>
+                <p class="uc-hint">Pick up to <?php echo (int) SFAF_Teams::MAX_PER_EVENT; ?>.</p>
+                <div class="uc-access-teams" data-uc-access-teams data-uc-access-max="<?php echo (int) SFAF_Teams::MAX_PER_EVENT; ?>">
+                    <?php foreach ( $teams as $team ) :
+                        $on = in_array( (string) $team['id'], $chosen_t, true ); ?>
+                        <label class="uc-check">
+                            <input type="checkbox" name="<?php echo esc_attr( $prefix ); ?>_teams[]" value="<?php echo esc_attr( $team['id'] ); ?>" <?php checked( $on ); ?> />
+                            <?php echo esc_html( $team['name'] ); ?>
+                            <span class="uc-muted"><?php
+                                $n = SFAF_Teams::member_count( $team['id'] );
+                                echo esc_html( $n . ' ' . ( 1 === $n ? 'person' : 'people' ) );
+                            ?></span>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </fieldset>
+
+        <fieldset class="uc-access-group">
+            <legend class="uc-field-label">People</legend>
+            <?php if ( empty( $people ) ) : ?>
+                <p class="uc-muted">Nobody has calendar access yet.</p>
+            <?php else : ?>
+                <div class="uc-access-people" data-uc-access-people>
+                    <?php foreach ( $people as $pid => $pname ) : ?>
+                        <label class="uc-check">
+                            <input type="checkbox" name="<?php echo esc_attr( $prefix ); ?>_people[]" value="<?php echo (int) $pid; ?>" <?php checked( in_array( (int) $pid, $chosen_p, true ) ); ?> />
+                            <?php echo esc_html( $pname ); ?>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </fieldset>
         <?php
     }
 
