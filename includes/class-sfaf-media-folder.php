@@ -58,12 +58,109 @@ class SFAF_Media_Folder {
      */
     const FLAG = 'uc_calendar_media';
 
+    /**
+     * OTHER IMAGES (3.110.3): pictures that belong to no series, such as a
+     * picture uploaded for one event. A SIBLING of `calendar/`, never a child,
+     * for the reason calendar-submissions/ is one: anything under `calendar/`
+     * is a series picture to every anchored match in this plugin.
+     */
+    const OTHER = 'calendar-other';
+
     public static function register() {
         add_filter( 'ajax_query_attachments_args', array( __CLASS__, 'restrict_query' ) );
         add_filter( 'upload_dir', array( __CLASS__, 'upload_to_folder' ) );
         add_filter( 'map_meta_cap', array( __CLASS__, 'gate_upload' ), 10, 3 );
+        add_filter( 'wp_handle_upload_prefilter', array( __CLASS__, 'hold_to_picture_rule' ) );
         add_action( 'add_attachment', array( __CLASS__, 'tag_upload_with_series' ) );
         add_action( 'add_attachment', array( __CLASS__, 'file_into_library_folder' ) );
+    }
+
+    /**
+     * The picture rule on an upload made through the media modal (3.110.3).
+     *
+     * The series screen's picker is still wp.media, and its uploads go to
+     * async-upload.php rather than through a form of ours, so they never pass
+     * SFAF_Uploads::inspect() on the way. This puts them through it. Only for
+     * a request carrying the calendar flag, so an upload anywhere else on the
+     * site is untouched.
+     *
+     * @param array $file One entry of $_FILES.
+     * @return array
+     */
+    public static function hold_to_picture_rule( $file ) {
+        if ( ! self::asked_for() || ! class_exists( 'SFAF_Uploads' ) ) {
+            return $file;
+        }
+        foreach ( (array) $_FILES as $field => $entry ) {
+            if ( is_array( $entry ) && isset( $entry['tmp_name'], $file['tmp_name'] ) && $entry['tmp_name'] === $file['tmp_name'] ) {
+                $seen = SFAF_Uploads::inspect( (string) $field );
+                if ( ! $seen['ok'] ) {
+                    $file['error'] = '' !== $seen['error'] ? $seen['error'] : SFAF_Uploads::RULE_MESSAGE;
+                }
+                return $file;
+            }
+        }
+        $file['error'] = SFAF_Uploads::RULE_MESSAGE;
+        return $file;
+    }
+
+    /** Other images, uploads-relative, with the trailing slash. */
+    public static function other_prefix() {
+        return self::OTHER . '/';
+    }
+
+    /**
+     * Is this attachment in Other images?
+     *
+     * @param int $attachment_id
+     * @return bool
+     */
+    public static function in_other( $attachment_id ) {
+        $file = ltrim( (string) get_post_meta( (int) $attachment_id, '_wp_attached_file', true ), '/' );
+        return 0 === strpos( $file, self::other_prefix() );
+    }
+
+    /**
+     * Is this a picture the calendar uses: a series picture or an Other image?
+     *
+     * THE FOLDER RULE FROM 3.110.3. Display, the editor and the Images screen
+     * ask this; holds() still means the series pictures alone, which is what
+     * tagging and the series fallback want. Submitted files answer no.
+     *
+     * @param int $attachment_id
+     * @return bool
+     */
+    public static function offers( $attachment_id ) {
+        return self::holds( $attachment_id ) || self::in_other( $attachment_id );
+    }
+
+    /**
+     * The same question of an uploads-relative path.
+     *
+     * @param string $file
+     * @return bool
+     */
+    public static function offers_path( $file ) {
+        $file = ltrim( (string) $file, '/' );
+        return self::path_is_inside( $file ) || 0 === strpos( $file, self::other_prefix() );
+    }
+
+    /**
+     * Send this request's upload into Other images. Added and removed around
+     * the one upload, like SFAF_Uploads::upload_to_folder(), because it is a
+     * global filter.
+     *
+     * @param array $dirs
+     * @return array
+     */
+    public static function upload_to_other( $dirs ) {
+        if ( empty( $dirs['basedir'] ) || empty( $dirs['baseurl'] ) ) {
+            return $dirs;
+        }
+        $dirs['subdir'] = '/' . self::OTHER;
+        $dirs['path']   = $dirs['basedir'] . $dirs['subdir'];
+        $dirs['url']    = $dirs['baseurl'] . $dirs['subdir'];
+        return $dirs;
     }
 
     /**

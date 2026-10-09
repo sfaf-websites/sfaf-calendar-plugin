@@ -150,9 +150,10 @@ class SFAF_Email {
      * @param string $html     Full HTML document.
      * @param string $text     Plain-text alternative. Required.
      * @param string $reply_to Optional single address.
+     * @param string[] $files  Absolute paths to attach (3.110.3).
      * @return bool wp_mail()'s answer, which means "handed off", not "delivered".
      */
-    public static function send( $to, $subject, $html, $text, $reply_to = '' ) {
+    public static function send( $to, $subject, $html, $text, $reply_to = '', $files = array() ) {
         if ( ! is_email( $to ) ) {
             return false;
         }
@@ -167,7 +168,7 @@ class SFAF_Email {
 
         self::$alt_body = (string) $text;
         add_action( 'phpmailer_init', array( __CLASS__, 'attach_alt_body' ) );
-        $ok = wp_mail( $to, $subject, $html, $headers );
+        $ok = wp_mail( $to, $subject, $html, $headers, array_values( array_filter( (array) $files, 'file_exists' ) ) );
         remove_action( 'phpmailer_init', array( __CLASS__, 'attach_alt_body' ) );
         self::$alt_body = '';
 

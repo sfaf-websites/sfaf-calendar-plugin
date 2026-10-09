@@ -826,6 +826,7 @@ class SFAF_Portal {
                     'moved'      => (int) $result['moved'],
                     'told'       => (int) $result['told'],
                     'needs'      => isset( $result['needs'] ) ? $result['needs'] : '',
+                    'pic'        => ! empty( $result['pic'] ) ? 1 : 0,
                 ) );
                 break;
 
@@ -3217,6 +3218,10 @@ class SFAF_Portal {
          */
         $this->save_manager_fields_from_post( $user, $event_id, $is_locked );
 
+        /* A picture uploaded for this event (3.110.3), after the picker's own
+         * choice so the file wins over a radio left on. */
+        $pic_refused = $this->save_event_upload( $user, $event_id, $is_locked );
+
         /*
          * SERIES. A term assignment and nothing else.
          *
@@ -3427,6 +3432,10 @@ class SFAF_Portal {
             $told   = (int) $result['sent'];
         }
 
+        /* websites@ hears about a picture uploaded for an event, once per
+         * picture, on whichever save first carries it (3.110.3). */
+        SFAF_Media::notify_event_upload( $event_id );
+
         /*
          * THE HELD PUBLISH OUTRANKS THE OTHERS, because it is the one outcome
          * that differs from what the button said it would do. "Saved" on a
@@ -3462,7 +3471,63 @@ class SFAF_Portal {
             // Which fields held a publish back, for the flash to name. Empty
             // unless it was held.
             'needs'   => $org_held ? implode( ',', $pub_missing ) : '',
+            // 1 when an uploaded picture broke the rule (3.110.3).
+            'pic'     => '' !== $pic_refused ? 1 : 0,
         );
+    }
+
+    /**
+     * Take a picture uploaded from Add or Edit event (3.110.3).
+     *
+     * EVERY LEVEL THAT CAN EDIT THE EVENT, because the route that calls this
+     * has already asked can_edit_event(). The file answers to the picture
+     * rule through SFAF_Uploads::inspect(), lands in Other images under the
+     * name it was chosen with, belongs to whoever uploaded it, and becomes the
+     * event's picture. The rest of the save goes through either way.
+     *
+     * @return string '' when nothing was sent or it was taken; the refusal
+     *                otherwise.
+     */
+    private function save_event_upload( $user, $event_id, $is_locked ) {
+        if ( empty( $_FILES['uc_event_picture'] ) || $is_locked( 'image' ) ) {
+            return '';
+        }
+        $seen = SFAF_Uploads::inspect( 'uc_event_picture' );
+        if ( ! $seen['ok'] ) {
+            return (string) $seen['error'];
+        }
+
+        if ( ! function_exists( 'media_handle_upload' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+        }
+        add_filter( 'upload_dir', array( 'SFAF_Media_Folder', 'upload_to_other' ), 20 );
+        $att = media_handle_upload( 'uc_event_picture', 0, array( 'post_author' => (int) $user->ID ), array(
+            'test_form' => false,
+            'mimes'     => array( 'jpg|jpeg|jpe' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp' ),
+        ) );
+        remove_filter( 'upload_dir', array( 'SFAF_Media_Folder', 'upload_to_other' ), 20 );
+
+        if ( is_wp_error( $att ) || ! $att ) {
+            return SFAF_Uploads::RULE_MESSAGE;
+        }
+        $att = (int) $att;
+        if ( ! SFAF_Media_Folder::in_other( $att ) ) {
+            wp_delete_attachment( $att, true );
+            return 'That picture could not be saved. Try it again.';
+        }
+
+        update_post_meta( $att, SFAF_Media::META_UPLOAD, array(
+            'by'    => (int) $user->ID,
+            'at'    => time(),
+            'event' => (int) $event_id,
+        ) );
+        set_post_thumbnail( $event_id, $att );
+        delete_post_meta( $event_id, '_uc_image_url' );
+        delete_post_meta( $event_id, self::META_IMAGE_TYPED );
+        update_post_meta( $event_id, '_uc_image_override', '1' );
+        return '';
     }
 
     /* ---------------------------------------------------------------------
@@ -4563,6 +4628,14 @@ class SFAF_Portal {
             'password_changed' => 'Password changed. You are still signed in.',
         );
         $key = sanitize_key( $_GET['msg'] );
+
+        /* An uploaded picture that broke the rule (3.110.3), said beside
+         * whatever the save itself reports. */
+        if ( ! empty( $_GET['pic'] ) ) {
+            echo '<div class="uc-flash uc-flash-error">'
+                . esc_html( 'Saved without the uploaded picture. ' . SFAF_Uploads::RULE_MESSAGE )
+                . '</div>';
+        }
 
         /*
          * A PUBLISH HELD BACK, NAMING EVERYTHING IT WAS HELD FOR (3.99.0).
@@ -8629,6 +8702,9 @@ class SFAF_Portal {
             'series_pictures' => array(),
             'current_name'    => '',
             'source'          => 'none',
+            /* "+ Upload a picture for this event" (3.110.3): Add and Edit
+               event only, never the pending queue. */
+            'upload'          => false,
         ), $args );
 
         $inline = ! empty( $a['inline'] );
@@ -8703,16 +8779,43 @@ class SFAF_Portal {
              * hint says where it went. That is Mark's decision and it is not a
              * side effect: see the release notes for what goes with it.
              */
+            /*
+             * TWO GROUPS FROM 3.110.3, the series' pictures and then Other
+             * images, and no "All calendar images": pictures of another series
+             * are not offered here. See SFAF_Media::grouped_picker().
+             */
             SFAF_Media::picker( array(
                 'name'         => $a['id_name'],
                 'chosen'       => (int) $a['id_value'],
                 'series'       => (int) $a['inline_series'],
                 'series_fixed' => (int) $a['inline_series'],
                 'series_follow' => true,
-                'show_all'     => true,
+                'groups'       => true,
                 'label'        => 'Choose a picture',
                 'current_name' => (string) $a['current_name'],
             ) );
+            if ( ! empty( $a['upload'] ) ) :
+                /*
+                 * A ONE-OFF PICTURE FOR THIS EVENT (3.110.3). The file goes up
+                 * with the event's own Save, lands in Other images under the
+                 * name it was chosen with, and becomes the event's picture.
+                 * portal.js checks it against the rule as it is chosen and
+                 * previews it; the save checks it again with inspect().
+                 */
+                ?>
+                <label class="uc-outline-btn uc-image-upload">
+                    <span>+ Upload a picture for this event</span>
+                    <input type="file" name="uc_event_picture" class="uc-visually-hidden"
+                           accept="<?php echo esc_attr( SFAF_Uploads::picture_accept() ); ?>"
+                           data-uc-event-upload
+                           data-uc-rule-width="<?php echo (int) SFAF_Uploads::PICTURE_WIDTH; ?>"
+                           data-uc-rule-height="<?php echo (int) SFAF_Uploads::PICTURE_HEIGHT; ?>"
+                           data-uc-rule-bytes="<?php echo (int) SFAF_Uploads::PICTURE_BYTES; ?>"
+                           data-uc-rule-message="<?php echo esc_attr( SFAF_Uploads::RULE_MESSAGE ); ?>" />
+                </label>
+                <p class="uc-field-error uc-image-upload-error" role="alert" data-uc-event-upload-error hidden></p>
+                <?php
+            endif;
             /*
              * A CHOSEN PICTURE OUTSIDE THE SERIES STAYS CHOSEN (3.107.0), and
              * says so in one line. Drawn by the server for the first paint and
@@ -8787,7 +8890,7 @@ class SFAF_Portal {
          * a picture rather than once. Behind a "?" it would be read never.
          */
         ?>
-        <p class="uc-hint uc-hint-spec"><strong>1200 x 675 pixels, 16:9 landscape.</strong></p>
+        <p class="uc-hint uc-hint-spec"><strong><?php echo esc_html( SFAF_Uploads::RULE_MESSAGE ); ?></strong></p>
         <?php
         /*
          * WHAT THE PICKER WILL SHOW, SAID BEFORE IT IS OPENED.
@@ -8800,12 +8903,10 @@ class SFAF_Portal {
          * person needs to know it is not them.
          */
         ?>
-        <?php if ( $a['folder_has_any'] ) : ?>
-            <?php if ( $inline ) : ?>
-                <p class="uc-hint">Upload a new picture on the Images screen first.</p>
-            <?php else : ?>
-                <p class="uc-hint">Choose Image shows the calendar folder only, so everything in it is already the right shape. Anything you upload here goes into that folder.</p>
-            <?php endif; ?>
+        <?php if ( $inline ) : ?>
+            <?php // The grouped picker says what each group holds, empty or not. ?>
+        <?php elseif ( $a['folder_has_any'] ) : ?>
+            <p class="uc-hint">Choose Image shows the calendar folder only, so everything in it is already the right shape. Anything you upload here goes into that folder.</p>
         <?php else : ?>
             <p class="uc-field-note uc-field-note-attention"><?php echo $this->icon_needs(); ?><span>The calendar folder has no images in it yet, so Choose Image will look empty. Uploading one here puts it in the folder. If you expected pictures to be there, check that the folder is still <code>uploads/<?php echo esc_html( SFAF_Media_Folder::FOLDER ); ?></code>.</span></p>
         <?php endif; ?>
@@ -8893,7 +8994,7 @@ class SFAF_Portal {
                 $thumb_id = 0;
                 if ( $event_id && sfaf_event_has_own_image( $event_id ) ) {
                     $maybe    = (int) get_post_thumbnail_id( $event_id );
-                    $thumb_id = ( $maybe && SFAF_Media_Folder::holds( $maybe ) ) ? $maybe : 0;
+                    $thumb_id = ( $maybe && SFAF_Media_Folder::offers( $maybe ) ) ? $maybe : 0;
                 }
                 $own_url    = ( $event_id && sfaf_event_has_own_image( $event_id ) )
                     ? get_post_meta( $event_id, '_uc_image_url', true ) : '';
@@ -9001,6 +9102,7 @@ class SFAF_Portal {
                         'current_name' => $current_name,
                         'source'       => $img_source,
                         'folder_has_any' => $folder_has_any,
+                        'upload'       => $on_editor,
                     ) );
                     ?>
                 </div>
@@ -13632,7 +13734,8 @@ class SFAF_Portal {
          * 3.74.0 for the same reason. */
         $form_id = 'uc-event-form-' . (int) $event_id;
         ?>
-        <form method="post" id="<?php echo esc_attr( $form_id ); ?>" action="<?php echo esc_url( $this->url( $event_id ? 'events/edit/' . $event_id : 'events/new' ) ); ?>" class="uc-form">
+        <?php // multipart for "+ Upload a picture for this event" (3.110.3). ?>
+        <form method="post" id="<?php echo esc_attr( $form_id ); ?>" action="<?php echo esc_url( $this->url( $event_id ? 'events/edit/' . $event_id : 'events/new' ) ); ?>" class="uc-form" enctype="multipart/form-data">
             <input type="hidden" name="uc_action" value="save_event" />
             <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
             <?php wp_nonce_field( 'uc_portal_save_event', 'uc_nonce' ); ?>

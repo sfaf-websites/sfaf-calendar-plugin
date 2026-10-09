@@ -65,7 +65,11 @@ class SFAF_Uploads {
     const MAX_PIXELS = 50000000;
 
     /**
-     * The narrowest picture worth putting on an event.
+     * The narrowest picture worth putting in a description, where it warns.
+     *
+     * FROM 3.110.3 AN EVENT PICTURE ANSWERS TO THE PICTURE RULE BELOW INSTEAD,
+     * which refuses rather than warns. What follows is the reasoning this
+     * floor was written with, kept because it is still why 1200.
      *
      * WHY THERE IS A FLOOR AT ALL, AND WHY 1200. A submitted picture becomes
      * the event's own image once somebody presses "Use this image" on the
@@ -88,6 +92,52 @@ class SFAF_Uploads {
      */
     const MIN_WIDTH = 1200;
 
+    /*
+     * THE PICTURE RULE (3.110.3). Every event picture uploaded anywhere, the
+     * Images screen, the event editor and both public forms, is exactly this
+     * size and no heavier, in one of three formats. Nothing is resized or
+     * recompressed: a file that does not fit is refused with RULE_MESSAGE and
+     * nothing else, so the person holding the original fixes it once.
+     * picture_rule_error() is the rule; inspect() asks it; the size line on
+     * every form reads these constants.
+     */
+    const PICTURE_WIDTH  = 1200;
+    const PICTURE_HEIGHT = 675;
+    const PICTURE_BYTES  = 512000; // 500KB.
+    const RULE_MESSAGE   = 'Pictures must be 1200 by 675 pixels and under 500KB.';
+
+    /** The types the picture rule takes. GIF is not one of them. */
+    public static function picture_types() {
+        return array(
+            IMAGETYPE_JPEG => 'image/jpeg',
+            IMAGETYPE_PNG  => 'image/png',
+            IMAGETYPE_WEBP => 'image/webp',
+        );
+    }
+
+    /**
+     * Does a file break the picture rule? RULE_MESSAGE when it does, '' when it
+     * fits. Pure, so a check can ask it about any size without a real upload.
+     *
+     * @param int $type  An IMAGETYPE_ constant, 0 when no reader could tell.
+     * @param int $bytes On disk.
+     * @param int $w
+     * @param int $h
+     * @return string
+     */
+    public static function picture_rule_error( $type, $bytes, $w, $h ) {
+        $ok = isset( self::picture_types()[ (int) $type ] )
+            && (int) $bytes > 0 && (int) $bytes <= self::PICTURE_BYTES
+            && self::PICTURE_WIDTH === (int) $w
+            && self::PICTURE_HEIGHT === (int) $h;
+        return $ok ? '' : self::RULE_MESSAGE;
+    }
+
+    /** The accept attribute for a picture file input. */
+    public static function picture_accept() {
+        return implode( ',', array_values( self::picture_types() ) );
+    }
+
     /**
      * What may be sent: the constant getimagesize() returns, mapped to the MIME
      * type finfo must independently agree on.
@@ -95,7 +145,9 @@ class SFAF_Uploads {
      * FOUR FORMATS, AND NO SVG. An SVG is a document. It carries script, it
      * carries external references, and it would be served from our own domain,
      * so accepting one from an anonymous form is accepting stored XSS. It is
-     * not in this list and there is no setting that adds it.
+     * not in this list and there is no setting that adds it. Event pictures take
+     * three of the four (picture_types()); a picture inside a description takes
+     * all four.
      *
      * @return array<int,string>
      */
@@ -261,14 +313,22 @@ class SFAF_Uploads {
      * goes, what it is called and who it belongs to, which is the only part
      * the two callers disagree about.
      *
+     * TWO RULES (3.110.3). 'picture', the default, is every event picture:
+     * picture_rule_error() decides, and every way a file can fail it gets the
+     * one RULE_MESSAGE. 'description' is a picture inside an event's prose,
+     * which is whatever shape the prose needs, and keeps the checks below as
+     * they were.
+     *
      * @param string        $field   The $_FILES key.
      * @param callable|null $limiter Returns false when the caller is over its rate limit.
+     * @param string        $rule    'picture' or 'description'.
      * @return array{ok:bool,error:string,warning:string,type:int,mime:string,width:int,height:int}
      */
-    public static function inspect( $field, $limiter = null ) {
+    public static function inspect( $field, $limiter = null, $rule = 'picture' ) {
         $no = function ( $error ) {
             return array( 'ok' => false, 'error' => $error, 'warning' => '', 'type' => 0, 'mime' => '', 'width' => 0, 'height' => 0 );
         };
+        $picture = ( 'description' !== $rule );
 
         /* 1. Is there a file at all. An empty field is not an error. */
         if ( empty( $_FILES[ $field ] ) || ! is_array( $_FILES[ $field ] ) ) {
@@ -286,7 +346,7 @@ class SFAF_Uploads {
         /* 2. What PHP says went wrong. */
         if ( UPLOAD_ERR_OK !== $code ) {
             if ( UPLOAD_ERR_INI_SIZE === $code || UPLOAD_ERR_FORM_SIZE === $code ) {
-                return $no( self::too_big() );
+                return $no( $picture ? self::RULE_MESSAGE : self::too_big() );
             }
             return $no( 'That image did not finish uploading. Try it again.' );
         }
@@ -307,15 +367,15 @@ class SFAF_Uploads {
         if ( false === $bytes || $bytes <= 0 ) {
             return $no( 'That image arrived empty. Try it again.' );
         }
-        if ( $bytes > self::MAX_BYTES ) {
-            return $no( self::too_big() );
+        if ( $bytes > ( $picture ? self::PICTURE_BYTES : self::MAX_BYTES ) ) {
+            return $no( $picture ? self::RULE_MESSAGE : self::too_big() );
         }
 
         /* 6. What is inside it. */
         $info    = @getimagesize( $tmp );
-        $allowed = self::allowed_types();
+        $allowed = $picture ? self::picture_types() : self::allowed_types();
         if ( ! is_array( $info ) || empty( $info[2] ) || ! isset( $allowed[ (int) $info[2] ] ) ) {
-            return $no( self::wrong_kind() );
+            return $no( $picture ? self::RULE_MESSAGE : self::wrong_kind() );
         }
         $type = (int) $info[2];
         $mime = $allowed[ $type ];
@@ -323,14 +383,24 @@ class SFAF_Uploads {
         /* 7. And finfo agrees, reading the bytes for itself. */
         $sniffed = self::sniff( $tmp );
         if ( '' === $sniffed || $sniffed !== $mime ) {
-            return $no( self::wrong_kind() );
+            return $no( $picture ? self::RULE_MESSAGE : self::wrong_kind() );
         }
 
         /* 8. The dimensions are sane. */
         $w = isset( $info[0] ) ? (int) $info[0] : 0;
         $h = isset( $info[1] ) ? (int) $info[1] : 0;
         if ( $w < 1 || $h < 1 ) {
-            return $no( self::wrong_kind() );
+            return $no( $picture ? self::RULE_MESSAGE : self::wrong_kind() );
+        }
+
+        /* 8a. The picture rule, which is the whole answer for an event picture
+         * and decides on what steps 5 to 8 measured from the file itself. */
+        if ( $picture ) {
+            $broken = self::picture_rule_error( $type, (int) $bytes, $w, $h );
+            if ( '' !== $broken ) {
+                return $no( $broken );
+            }
+            return array( 'ok' => true, 'error' => '', 'warning' => '', 'type' => $type, 'mime' => $mime, 'width' => $w, 'height' => $h );
         }
         if ( ( $w * $h ) > self::MAX_PIXELS ) {
             return $no( 'That image is too many pixels. Save it at a smaller size and send it again.' );
@@ -399,7 +469,6 @@ class SFAF_Uploads {
             'mimes'     => array(
                 'jpg|jpeg|jpe' => 'image/jpeg',
                 'png'          => 'image/png',
-                'gif'          => 'image/gif',
                 'webp'         => 'image/webp',
             ),
         ) );

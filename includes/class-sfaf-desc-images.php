@@ -186,9 +186,11 @@ class SFAF_Desc_Images {
          * THE EIGHT DECISIONS FIRST, AND THEY ARE NOT OURS. inspect() is the
          * one guard between a file and the disk and it was split out of
          * SFAF_Uploads::store() so that exactly this could reuse it. Nothing
-         * about being logged in makes a crafted image safe.
+         * about being logged in makes a crafted image safe. The 'description'
+         * rule, because a picture in prose is not an event picture and is not
+         * held to 1200 by 675 (3.110.3).
          */
-        $seen = SFAF_Uploads::inspect( $field );
+        $seen = SFAF_Uploads::inspect( $field, null, 'description' );
         if ( ! $seen['ok'] ) {
             return $no( '' !== $seen['error'] ? $seen['error'] : 'Choose an image to upload.' );
         }

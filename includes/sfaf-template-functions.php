@@ -2928,7 +2928,9 @@ function sfaf_event_own_image_url( $post_id, $size = 'large' ) {
     $folder = class_exists( 'SFAF_Media_Folder' );
 
     $thumb = (int) get_post_thumbnail_id( $post_id );
-    if ( $thumb && ( ! $folder || SFAF_Media_Folder::holds( $thumb ) ) ) {
+    /* Series pictures and Other images both count from 3.110.3; a submitted
+     * file never does. SFAF_Media_Folder::offers() is that rule. */
+    if ( $thumb && ( ! $folder || SFAF_Media_Folder::offers( $thumb ) ) ) {
         $src = wp_get_attachment_image_url( $thumb, $size );
         if ( $src ) {
             return $src;
@@ -2960,7 +2962,8 @@ function sfaf_event_own_image_url( $post_id, $size = 'large' ) {
     if ( false === strpos( $own, '/wp-content/uploads/' ) ) {
         return $own;
     }
-    return ( false !== strpos( $own, '/wp-content/uploads/' . SFAF_Media_Folder::prefix() ) ) ? $own : '';
+    return ( false !== strpos( $own, '/wp-content/uploads/' . SFAF_Media_Folder::prefix() )
+        || false !== strpos( $own, '/wp-content/uploads/' . SFAF_Media_Folder::other_prefix() ) ) ? $own : '';
 }
 
 /**

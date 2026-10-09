@@ -128,6 +128,21 @@ class SFAF_Media {
      */
     const META_REMOVED = '_uc_media_removed';
 
+    /**
+     * On an attachment uploaded from an event's own screen (3.110.3): who, when
+     * and for which event, as array( 'by' => user id, 'at' => timestamp,
+     * 'event' => id ). META_UPLOAD_SENT marks that websites@ has been told, so
+     * the second save of the same picture sends nothing.
+     */
+    const META_UPLOAD      = '_uc_event_upload';
+    const META_UPLOAD_SENT = '_uc_event_upload_sent';
+
+    /** Where the one-off upload notice goes. */
+    const UPLOAD_NOTICE_TO = 'websites@sfaf.org';
+
+    /** active_ids(), once per request. */
+    private static $active = null;
+
     public static function register() {
         /*
          * AFTER SFAF_Series::register_taxonomy(), which is what creates the
@@ -217,9 +232,18 @@ class SFAF_Media {
      * filters all ask this, so "which images are the calendar's" is answered
      * in one place and cannot drift between a grid and a picker.
      *
+     * THREE PLACES FROM 3.110.3, and 'place' says which: 'series' (the
+     * calendar folder, the default every older caller already meant), 'other'
+     * (Other images), 'submitted' (calendar-submissions/), or 'all'.
+     * 'library' is series and other together. Nothing but the Images screen
+     * asks for 'submitted' or 'all'.
+     *
      * @param array $args {
+     *     @type string $place    series, other, library, submitted or all.
      *     @type int    $series   Term id to filter by, 0 for all.
      *     @type bool   $untagged True for images carrying no series at all.
+     *     @type string $search   Narrows to a file name or name containing this.
+     *     @type bool   $active   Only pictures an upcoming published event uses.
      *     @type int    $per_page 0 for everything.
      *     @type int    $paged
      * }
@@ -227,12 +251,35 @@ class SFAF_Media {
      */
     public static function pictures( $args = array() ) {
         $args = array_merge( array(
+            'place'    => 'series',
             'series'   => 0,
             'untagged' => false,
             'removed'  => false,
+            'search'   => '',
+            'active'   => false,
             'per_page' => self::PER_PAGE,
             'paged'    => 1,
         ), $args );
+
+        $prefixes = array(
+            'series'    => array( SFAF_Media_Folder::prefix() ),
+            'other'     => array( SFAF_Media_Folder::other_prefix() ),
+            'library'   => array( SFAF_Media_Folder::prefix(), SFAF_Media_Folder::other_prefix() ),
+            'submitted' => array( SFAF_Uploads::prefix() ),
+            'all'       => array( SFAF_Media_Folder::prefix(), SFAF_Media_Folder::other_prefix(), SFAF_Uploads::prefix() ),
+        );
+        $want = isset( $prefixes[ $args['place'] ] ) ? $prefixes[ $args['place'] ] : $prefixes['series'];
+        $pattern = '^(' . implode( '|', array_map( 'preg_quote', $want ) ) . ')';
+
+        /*
+         * SEARCH AND ACTIVE ARE ANSWERED HERE, AFTER THE QUERY, and the page is
+         * cut from what is left. A file name and a title are two places to
+         * look and WP_Query cannot OR a meta value with a title; the folder
+         * holds dozens of pictures, not thousands, so reading every id once is
+         * the cheaper thing to get right.
+         */
+        $after = ( '' !== trim( (string) $args['search'] ) || ! empty( $args['active'] ) );
+        $per   = (int) $args['per_page'];
 
         $q = array(
             'post_type'      => 'attachment',
@@ -240,13 +287,13 @@ class SFAF_Media {
             'post_mime_type' => 'image',
             'orderby'        => 'date',
             'order'          => 'DESC',
-            'posts_per_page' => $args['per_page'] > 0 ? (int) $args['per_page'] : -1,
-            'paged'          => max( 1, (int) $args['paged'] ),
+            'posts_per_page' => ( $per > 0 && ! $after ) ? $per : -1,
+            'paged'          => $after ? 1 : max( 1, (int) $args['paged'] ),
             'meta_query'     => array(
                 'relation' => 'AND',
                 array(
                     'key'     => '_wp_attached_file',
-                    'value'   => '^' . preg_quote( SFAF_Media_Folder::prefix() ),
+                    'value'   => $pattern,
                     'compare' => 'REGEXP',
                 ),
                 /*
@@ -288,11 +335,99 @@ class SFAF_Media {
         }
 
         $query = new WP_Query( $q );
-        return array(
-            'ids'   => array_map( 'intval', wp_list_pluck( $query->posts, 'ID' ) ),
-            'total' => (int) $query->found_posts,
-            'pages' => (int) $query->max_num_pages,
-        );
+        $ids   = array_map( 'intval', wp_list_pluck( $query->posts, 'ID' ) );
+        if ( ! $after ) {
+            return array(
+                'ids'   => $ids,
+                'total' => (int) $query->found_posts,
+                'pages' => (int) $query->max_num_pages,
+            );
+        }
+
+        $needle = strtolower( trim( preg_replace( '/\s+/', ' ', (string) $args['search'] ) ) );
+        $live   = ! empty( $args['active'] ) ? self::active_ids() : null;
+        $kept   = array();
+        foreach ( $ids as $id ) {
+            if ( null !== $live && ! isset( $live[ $id ] ) ) {
+                continue;
+            }
+            if ( '' !== $needle && false === strpos( self::search_text( $id ), $needle ) ) {
+                continue;
+            }
+            $kept[] = $id;
+        }
+        $total = count( $kept );
+        $pages = $per > 0 ? (int) ceil( $total / $per ) : ( $total ? 1 : 0 );
+        $page  = $per > 0 ? array_slice( $kept, ( max( 1, (int) $args['paged'] ) - 1 ) * $per, $per ) : $kept;
+        return array( 'ids' => $page, 'total' => $total, 'pages' => $pages );
+    }
+
+    /**
+     * What the search matches on one picture: its file name and its name, in
+     * lower case. The pickers write the same string into data-uc-filter-text,
+     * so typing finds the same pictures whether the page or the server looks.
+     *
+     * @param int $id
+     * @return string
+     */
+    public static function search_text( $id ) {
+        $file  = basename( (string) get_post_meta( (int) $id, '_wp_attached_file', true ) );
+        $title = trim( (string) get_the_title( (int) $id ) );
+        return strtolower( trim( preg_replace( '/\s+/', ' ', $file . ' ' . $title ) ) );
+    }
+
+    /**
+     * Pictures in use by an event that is published and not yet past, as
+     * attachment id => true. Asked once per request.
+     *
+     * ITS OWN PICTURE, NOT ITS SERIES' ONE. An event showing its series picture
+     * by fallback has not been given that picture, so a series picture counts
+     * as active only where some event chose it.
+     *
+     * @return array<int,bool>
+     */
+    public static function active_ids() {
+        if ( null !== self::$active ) {
+            return self::$active;
+        }
+        $memo  = array();
+        $today = class_exists( 'SFAF_Sources' ) ? SFAF_Sources::today() : gmdate( 'Y-m-d' );
+        $events = get_posts( array(
+            'post_type'      => 'uc_event',
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
+            'meta_query'     => array(
+                'relation' => 'AND',
+                array( 'key' => '_thumbnail_id', 'compare' => 'EXISTS' ),
+                array(
+                    'relation' => 'OR',
+                    array( 'key' => '_uc_event_date', 'value' => $today, 'compare' => '>=', 'type' => 'CHAR' ),
+                    array( 'key' => '_uc_end_date', 'value' => $today, 'compare' => '>=', 'type' => 'CHAR' ),
+                ),
+            ),
+        ) );
+        foreach ( (array) $events as $ev ) {
+            $ev = (int) ( is_object( $ev ) ? $ev->ID : $ev );
+            $date = (string) get_post_meta( $ev, '_uc_event_date', true );
+            $end  = (string) get_post_meta( $ev, '_uc_end_date', true );
+            $last = ( '' !== $end && $end >= $date ) ? $end : $date;
+            if ( '' === $last || $last < $today ) {
+                continue;
+            }
+            $att = (int) get_post_meta( $ev, '_thumbnail_id', true );
+            if ( $att ) {
+                $memo[ $att ] = true;
+            }
+        }
+        self::$active = $memo;
+        return $memo;
+    }
+
+    /** Forget active_ids() within this request, for a check that changes events. */
+    public static function forget_active() {
+        self::$active = null;
     }
 
     /**
@@ -315,8 +450,12 @@ class SFAF_Media {
             return null;
         }
 
-        $file  = basename( (string) get_post_meta( $id, '_wp_attached_file', true ) );
+        $rel   = ltrim( (string) get_post_meta( $id, '_wp_attached_file', true ), '/' );
+        $file  = basename( $rel );
         $title = trim( (string) get_the_title( $id ) );
+        $place = SFAF_Media_Folder::path_is_inside( $rel ) ? 'series'
+            : ( 0 === strpos( $rel, SFAF_Media_Folder::other_prefix() ) ? 'other'
+            : ( SFAF_Uploads::path_is_inside( $rel ) ? 'submitted' : '' ) );
 
         /*
          * A NAME SOMEBODY TYPED IS TRUSTED WITHOUT BEING ASKED ABOUT (3.78.0).
@@ -352,6 +491,9 @@ class SFAF_Media {
             'alt'   => (string) get_post_meta( $id, '_wp_attachment_image_alt', true ),
             'removed' => (bool) get_post_meta( $id, self::META_REMOVED, true ),
             'tags'  => self::tags_of( $id ),
+            /* series, other or submitted (3.110.3). */
+            'place' => $place,
+            'search' => self::search_text( $id ),
         );
     }
 
@@ -650,6 +792,247 @@ class SFAF_Media {
         return empty( $q->posts ) ? 0 : (int) $q->posts[0];
     }
 
+    /**
+     * Move a picture into series pictures or Other images (3.110.3).
+     *
+     * THE FILE MOVES, AND THE ATTACHMENT KEEPS ITS ID. Every event and series
+     * that chose it by id goes on pointing at it. Each size moves with the
+     * original, and a name already taken in the folder gets a number. A URL
+     * stored as text (an event's typed or copied picture URL, a series'
+     * picture URL) is rewritten to the new address, file by file.
+     *
+     * TO OTHER IMAGES, every series tag comes off, because an Other image
+     * belongs to no series; refused while a series has it as its picture,
+     * naming the series. TO SERIES PICTURES, $term_id is required and is added.
+     * From submissions it is the approval's move: see approve_event.
+     *
+     * @param int    $id
+     * @param string $to      'series' or 'other'.
+     * @param int    $term_id The series, for 'series'.
+     * @return true|WP_Error
+     */
+    public static function move( $id, $to, $term_id = 0 ) {
+        $id      = (int) $id;
+        $term_id = (int) $term_id;
+        if ( $id < 1 || 'attachment' !== get_post_type( $id ) ) {
+            return new WP_Error( 'uc_move', 'That picture is not there any more.' );
+        }
+        $from_ok = SFAF_Media_Folder::offers( $id ) || SFAF_Uploads::holds( $id );
+        if ( ! $from_ok || ! in_array( $to, array( 'series', 'other' ), true ) ) {
+            return new WP_Error( 'uc_move', 'That picture cannot be moved from here.' );
+        }
+        if ( 'series' === $to ) {
+            $term = $term_id ? get_term( $term_id, self::TAXONOMY ) : null;
+            if ( ! $term || is_wp_error( $term ) ) {
+                return new WP_Error( 'uc_move', 'Choose a series.' );
+            }
+        } else {
+            $giving = get_terms( array(
+                'taxonomy'   => self::TAXONOMY,
+                'hide_empty' => false,
+                'meta_query' => array( array( 'key' => SFAF_Series::META_IMAGE_ID, 'value' => (string) $id ) ),
+            ) );
+            if ( is_array( $giving ) && $giving ) {
+                return new WP_Error( 'uc_move', 'The ' . implode( ', ', wp_list_pluck( $giving, 'name' ) ) . ' series uses this as its picture. Give that series another picture first.' );
+            }
+        }
+
+        $dest = ( 'series' === $to ) ? SFAF_Media_Folder::FOLDER : SFAF_Media_Folder::OTHER;
+        $rel  = ltrim( (string) get_post_meta( $id, '_wp_attached_file', true ), '/' );
+        if ( 0 !== strpos( $rel, $dest . '/' ) ) {
+            $moved = self::move_files( $id, $rel, $dest );
+            if ( is_wp_error( $moved ) ) {
+                return $moved;
+            }
+        }
+
+        if ( 'series' === $to ) {
+            wp_set_object_terms( $id, array( $term_id ), self::TAXONOMY, true );
+        } else {
+            wp_delete_object_term_relationships( $id, self::TAXONOMY );
+        }
+        self::forget_active();
+        return true;
+    }
+
+    /**
+     * The disk half of move(): every file, then the attachment's own record,
+     * then any URL stored as text. All the renames or none.
+     *
+     * @return true|WP_Error
+     */
+    private static function move_files( $id, $rel, $dest ) {
+        $uploads = wp_upload_dir();
+        if ( ! empty( $uploads['error'] ) ) {
+            return new WP_Error( 'uc_move', 'The uploads folder is not writable.' );
+        }
+        $base_dir = rtrim( $uploads['basedir'], '/\\' );
+        $base_url = rtrim( $uploads['baseurl'], '/' );
+        $old_dir  = dirname( $rel );
+        $old_file = basename( $rel );
+        $to_dir   = $base_dir . '/' . $dest;
+        if ( ! is_dir( $to_dir ) && ! wp_mkdir_p( $to_dir ) ) {
+            return new WP_Error( 'uc_move', 'The folder could not be made.' );
+        }
+        if ( ! file_exists( $to_dir . '/index.html' ) ) {
+            @file_put_contents( $to_dir . '/index.html', '' );
+        }
+
+        $new_file = wp_unique_filename( $to_dir, $old_file );
+        $old_stem = pathinfo( $old_file, PATHINFO_FILENAME );
+        $new_stem = pathinfo( $new_file, PATHINFO_FILENAME );
+        $rename   = function ( $name ) use ( $old_stem, $new_stem ) {
+            return ( 0 === strpos( $name, $old_stem ) ) ? $new_stem . substr( $name, strlen( $old_stem ) ) : $name;
+        };
+
+        $meta  = wp_get_attachment_metadata( $id );
+        $meta  = is_array( $meta ) ? $meta : array();
+        $pairs = array( $old_file => $new_file );
+        if ( ! empty( $meta['sizes'] ) && is_array( $meta['sizes'] ) ) {
+            foreach ( $meta['sizes'] as $k => $size ) {
+                if ( ! empty( $size['file'] ) ) {
+                    $pairs[ $size['file'] ] = $rename( $size['file'] );
+                    $meta['sizes'][ $k ]['file'] = $pairs[ $size['file'] ];
+                }
+            }
+        }
+        if ( ! empty( $meta['original_image'] ) ) {
+            $pairs[ $meta['original_image'] ] = $rename( $meta['original_image'] );
+            $meta['original_image'] = $pairs[ $meta['original_image'] ];
+        }
+
+        $done = array();
+        foreach ( $pairs as $from => $to ) {
+            $src = $base_dir . '/' . $old_dir . '/' . $from;
+            if ( ! file_exists( $src ) ) {
+                continue;
+            }
+            if ( ! @rename( $src, $to_dir . '/' . $to ) ) {
+                foreach ( $done as $back_from => $back_to ) {
+                    @rename( $back_to, $back_from );
+                }
+                return new WP_Error( 'uc_move', 'The picture could not be moved. Nothing was changed.' );
+            }
+            $done[ $src ] = $to_dir . '/' . $to;
+        }
+
+        update_attached_file( $id, $dest . '/' . $new_file );
+        $meta['file'] = $dest . '/' . $new_file;
+        wp_update_attachment_metadata( $id, $meta );
+
+        /* URLs stored as text, rewritten file by file. The folder and the file
+         * together, so strut.jpg cannot catch big-strut.jpg. */
+        global $wpdb;
+        foreach ( $pairs as $from => $to ) {
+            $old_url = $base_url . '/' . $old_dir . '/' . $from;
+            $new_url = $base_url . '/' . $dest . '/' . $to;
+            $like    = '%' . $wpdb->esc_like( '/' . $old_dir . '/' . $from ) . '%';
+            $rows = $wpdb->get_results( $wpdb->prepare(
+                "SELECT post_id, meta_key, meta_value FROM {$wpdb->postmeta} WHERE meta_key IN ('_uc_image_url','_uc_image_url_typed') AND meta_value LIKE %s",
+                $like
+            ) );
+            foreach ( (array) $rows as $r ) {
+                update_post_meta( (int) $r->post_id, $r->meta_key, str_replace( $old_url, $new_url, (string) $r->meta_value ) );
+            }
+            $terms = $wpdb->get_results( $wpdb->prepare(
+                "SELECT term_id, meta_value FROM {$wpdb->termmeta} WHERE meta_key = %s AND meta_value LIKE %s",
+                SFAF_Series::META_IMAGE_URL,
+                $like
+            ) );
+            foreach ( (array) $terms as $t ) {
+                update_term_meta( (int) $t->term_id, SFAF_Series::META_IMAGE_URL, str_replace( $old_url, $new_url, (string) $t->meta_value ) );
+            }
+        }
+        return true;
+    }
+
+    /**
+     * The event a submitted picture came with, or null.
+     *
+     * @param int $id
+     * @return WP_Post|null
+     */
+    public static function submitted_with( $id ) {
+        $id = (int) $id;
+        /* The extras are a serialized list of ids, so the id is matched as the
+         * list writes it, i:501; rather than as 501, which 1501 contains. */
+        $asks = array(
+            array( 'key' => SFAF_Submit::META_IMAGE, 'value' => (string) $id, 'compare' => '=' ),
+            array( 'key' => SFAF_Submit::META_IMAGE_EXTRA, 'value' => 'i:' . $id . ';', 'compare' => 'LIKE' ),
+        );
+        foreach ( $asks as $ask ) {
+            $found = get_posts( array(
+                'post_type'      => 'uc_event',
+                // Every status, the trash included: a rejected event is trashed.
+                'post_status'    => array_keys( get_post_stati() ),
+                'posts_per_page' => 1,
+                'no_found_rows'  => true,
+                'meta_query'     => array( $ask ),
+            ) );
+            if ( $found ) {
+                return $found[0];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Tell websites@ about a picture uploaded from an event's own screen, once.
+     *
+     * Asked after every save of the event. Its picture is looked at: if it came
+     * through "+ Upload a picture for this event" and nobody has been told, one
+     * message goes, carrying the event, who uploaded it and when, the caladmin
+     * link and the picture itself, and the picture is marked. A second save
+     * with the same picture, or another event choosing it later, sends nothing.
+     *
+     * @param int $event_id
+     * @return bool Whether a message went.
+     */
+    public static function notify_event_upload( $event_id ) {
+        $event_id = (int) $event_id;
+        $att      = (int) get_post_thumbnail_id( $event_id );
+        if ( ! $att ) {
+            return false;
+        }
+        $up = get_post_meta( $att, self::META_UPLOAD, true );
+        if ( ! is_array( $up ) || get_post_meta( $att, self::META_UPLOAD_SENT, true ) ) {
+            return false;
+        }
+
+        $who   = ! empty( $up['by'] ) ? get_userdata( (int) $up['by'] ) : null;
+        $name  = $who ? (string) $who->display_name : 'Somebody';
+        $email = $who ? (string) $who->user_email : '';
+        $at    = ! empty( $up['at'] ) ? (int) $up['at'] : time();
+        $title = get_the_title( $event_id ) ?: '(untitled)';
+        $link  = SFAF_Portal::link( 'events/edit/' . $event_id );
+        $src   = (string) wp_get_attachment_image_url( $att, 'large' );
+        $path  = (string) get_attached_file( $att );
+        $when  = sfaf_ap_datetime( $at );
+        $by    = $name . ( '' !== $email ? ' (' . $email . ')' : '' );
+
+        $body  = SFAF_Email::heading( 'Picture uploaded for an event' );
+        $body .= SFAF_Email::details( array( 'Event' => $title, 'Uploaded by' => $by, 'When' => $when ) );
+        if ( '' !== $src ) {
+            $body .= '<p style="margin:0 0 14px 0;"><img src="' . esc_url( $src ) . '" alt="" width="540" style="display:block;width:100%;max-width:540px;height:auto;border:0;" /></p>';
+        }
+        $body .= SFAF_Email::button( $link, 'Open the event in caladmin' );
+        $text  = "A picture was uploaded for an event.\n\nEvent: " . $title . "\nUploaded by: " . $by . "\nWhen: " . $when
+            . "\n\nOpen the event in caladmin: " . $link . "\n\nThe picture is attached.";
+
+        $sent = SFAF_Email::send(
+            self::UPLOAD_NOTICE_TO,
+            'Picture uploaded: ' . $title,
+            SFAF_Email::shell( 'Picture uploaded for ' . $title, $body ),
+            $text,
+            '',
+            ( '' !== $path ) ? array( $path ) : array()
+        );
+        if ( $sent ) {
+            update_post_meta( $att, self::META_UPLOAD_SENT, time() );
+        }
+        return (bool) $sent;
+    }
+
     public static function tags_of( $id ) {
         $terms = get_the_terms( (int) $id, self::TAXONOMY );
         return ( is_array( $terms ) ) ? $terms : array();
@@ -781,7 +1164,20 @@ class SFAF_Media {
                event editor passes the inherited series picture's name, or a
                picture held only as a URL. Empty is "No picture chosen". */
             'current_name' => '',
+            /*
+             * TWO GROUPS, FOR THE EVENT EDITOR (3.110.3): the chosen series'
+             * pictures, then Other images. Pictures of other series are not
+             * offered, and a submitted file never is. A search over the file
+             * name and the name, newest first, and "Show active images only".
+             * The public forms keep the list below.
+             */
+            'groups' => false,
         ), $args );
+
+        if ( ! empty( $args['groups'] ) ) {
+            self::grouped_picker( $args );
+            return;
+        }
 
         $chosen = (int) $args['chosen'];
         $series = (int) $args['series'];
@@ -1027,6 +1423,142 @@ class SFAF_Media {
     }
 
     /**
+     * The event editor's picker: series pictures, then Other images (3.110.3).
+     *
+     * EVERY SERIES PICTURE IS WRITTEN OUT, carrying its series, and the
+     * script shows the ones in the series the dropdown names, which is how the
+     * group follows the dropdown with no save. With no series chosen the group
+     * is empty and says so. Other images are never narrowed by series.
+     *
+     * NOTHING FROM calendar-submissions/ IS EVER IN THIS LIST: the two queries
+     * name their places, and a submitted file is in neither.
+     *
+     * @param array $args As picker().
+     */
+    private static function grouped_picker( $args ) {
+        $chosen = (int) $args['chosen'];
+        $series = (int) $args['series'];
+        $limit  = max( (int) $args['limit'], 200 );
+        $pics   = self::rows( self::pictures( array( 'place' => 'series', 'per_page' => $limit ) )['ids'] );
+        $others = self::rows( self::pictures( array( 'place' => 'other', 'per_page' => $limit ) )['ids'] );
+        $live   = self::active_ids();
+
+        $current = null;
+        foreach ( array_merge( $pics, $others ) as $row ) {
+            if ( $row['id'] === $chosen ) {
+                $current = $row;
+                break;
+            }
+        }
+        $fallback = ( $series && '' === $args['series_thumb'] )
+            ? SFAF_Series::image_url( $series, 'medium' )
+            : (string) $args['series_thumb'];
+        ?>
+        <details class="uc-picker uc-image-picker" data-uc-image-picker data-uc-image-groups
+                 data-uc-image-series-fixed="<?php echo (int) $args['series_fixed']; ?>">
+            <summary class="uc-picker-toggle">
+                <span class="uc-picker-label"><?php echo esc_html( $args['label'] ); ?></span>
+                <?php self::summary_row( $current, (string) $args['current_name'] ); ?>
+                <span class="uc-disclosure-chevron" aria-hidden="true"><?php
+                    echo sfaf_icon( 'chevron', array( 'size' => '16px' ) );
+                ?></span>
+            </summary>
+
+            <div class="uc-picker-panel" data-uc-filter-scope>
+                <div class="uc-image-tools">
+                    <label class="uc-picker-filter uc-image-search">
+                        <span class="uc-visually-hidden">Search pictures by name</span>
+                        <?php // No name, so it posts nothing. It narrows the list under it. ?>
+                        <input type="search" placeholder="Search by name&hellip;"
+                               data-uc-filter data-uc-image-search autocomplete="off" />
+                    </label>
+                    <label class="uc-check uc-image-active-only">
+                        <input type="checkbox" data-uc-image-active-only />
+                        Show active images only
+                    </label>
+                </div>
+
+                <div class="uc-picker-options uc-image-options" data-uc-filter-list>
+                    <label class="uc-check uc-picker-option uc-image-option" data-uc-filter-text="no picture the series picture"
+                           data-uc-image-default>
+                        <input type="radio" name="<?php echo esc_attr( $args['name'] ); ?>" value="0" <?php checked( 0, $chosen ); ?>
+                               data-uc-image-option data-uc-image-name="<?php
+                                   echo esc_attr( '' !== $fallback ? 'The series picture' : 'No picture' );
+                               ?>" />
+                        <?php if ( '' !== $fallback ) : ?>
+                            <span class="uc-image-option-thumb uc-image-option-thumb-series" aria-hidden="true"
+                                  style="background-image: url('<?php echo esc_url( $fallback ); ?>');"></span>
+                            <span class="uc-image-option-text">
+                                <span class="uc-image-option-name">The series picture</span>
+                                <span class="uc-image-option-note">Used when you do not choose one</span>
+                            </span>
+                        <?php else : ?>
+                            <span class="uc-image-option-thumb uc-image-option-blank" aria-hidden="true"></span>
+                            <span class="uc-image-option-text">
+                                <span class="uc-image-option-name">No picture</span>
+                            </span>
+                        <?php endif; ?>
+                    </label>
+
+                    <p class="uc-image-group-head" data-uc-image-group-head="series">Series pictures</p>
+                    <?php foreach ( $pics as $row ) : ?>
+                        <?php
+                        $ids = array();
+                        foreach ( $row['tags'] as $term ) {
+                            $ids[] = (int) $term->term_id;
+                        }
+                        self::option( $row, $args['name'], $chosen, isset( $live[ $row['id'] ] ),
+                            ' data-uc-image-series="' . esc_attr( $ids ? ' ' . implode( ' ', $ids ) . ' ' : '' ) . '"' );
+                        ?>
+                    <?php endforeach; ?>
+                    <p class="uc-muted uc-image-group-none" data-uc-image-choose<?php echo $series ? ' hidden' : ''; ?>>Choose a series to see its pictures.</p>
+                    <p class="uc-muted uc-image-group-none" data-uc-image-none hidden>No pictures for this series yet.</p>
+
+                    <p class="uc-image-group-head" data-uc-image-group-head="other">Other images</p>
+                    <?php foreach ( $others as $row ) : ?>
+                        <?php self::option( $row, $args['name'], $chosen, isset( $live[ $row['id'] ] ), ' data-uc-image-group="other"' ); ?>
+                    <?php endforeach; ?>
+                    <?php if ( empty( $others ) ) : ?>
+                        <p class="uc-muted uc-image-group-none">No other images yet.</p>
+                    <?php endif; ?>
+                </div>
+                <p class="uc-muted uc-picker-empty" data-uc-filter-empty hidden>No pictures match that.</p>
+            </div>
+        </details>
+        <?php
+    }
+
+    /**
+     * One picture as a radio row, in either picker.
+     *
+     * @param array  $row    From row().
+     * @param string $name   The radio's name.
+     * @param int    $chosen The chosen attachment id.
+     * @param bool   $active In use by an upcoming published event.
+     * @param string $attrs  Extra attributes, already escaped.
+     */
+    private static function option( $row, $name, $chosen, $active, $attrs ) {
+        ?>
+        <label class="uc-check uc-picker-option uc-image-option"
+               data-uc-filter-text="<?php echo esc_attr( $row['search'] ); ?>"
+               data-uc-image-active="<?php echo $active ? '1' : '0'; ?>"<?php echo $attrs; ?>>
+            <input type="radio" name="<?php echo esc_attr( $name ); ?>" value="<?php echo (int) $row['id']; ?>"
+                   <?php checked( $row['id'], $chosen ); ?>
+                   data-uc-image-option
+                   data-uc-image-thumb="<?php echo esc_url( $row['thumb'] ); ?>"
+                   data-uc-image-full="<?php echo esc_url( $row['full'] ); ?>"
+                   data-uc-image-name="<?php echo esc_attr( '' !== $row['title'] ? $row['title'] : $row['file'] ); ?>" />
+            <img class="uc-image-option-thumb" src="<?php echo esc_url( $row['thumb'] ); ?>" alt="" loading="lazy" />
+            <span class="uc-image-option-text">
+                <span class="uc-image-option-name"><?php
+                    echo esc_html( '' !== $row['title'] ? $row['title'] : $row['file'] );
+                ?></span>
+            </span>
+        </label>
+        <?php
+    }
+
+    /**
      * What the closed trigger says: the picture chosen, or that none is.
      *
      * @param array|null $row A row from row(), or null.
@@ -1069,7 +1601,7 @@ class SFAF_Media {
      */
     public static function rename( $id, $title ) {
         $id = (int) $id;
-        if ( $id < 1 || 'attachment' !== get_post_type( $id ) || ! SFAF_Media_Folder::holds( $id ) ) {
+        if ( $id < 1 || 'attachment' !== get_post_type( $id ) || ! SFAF_Media_Folder::offers( $id ) ) {
             return false;
         }
         $clean = sanitize_text_field( (string) $title );
@@ -1122,7 +1654,7 @@ class SFAF_Media {
      */
     public static function set_alt( $id, $alt ) {
         $id = (int) $id;
-        if ( $id < 1 || 'attachment' !== get_post_type( $id ) || ! SFAF_Media_Folder::holds( $id ) ) {
+        if ( $id < 1 || 'attachment' !== get_post_type( $id ) || ! SFAF_Media_Folder::offers( $id ) ) {
             return false;
         }
         $clean = sanitize_text_field( (string) $alt );
