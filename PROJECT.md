@@ -5976,7 +5976,7 @@ team", Preview and Send, which is the Publish green.
   sent with the batch**, not a Cc, and none when they are already one of the
   above. A row with no email is sent nothing and is named.
 - **The line after Send** counts them apart: "Sent to 12 participants, 5 team
-  members, and a copy to Mark Sapoznikov." (`SFAF_Registrant_Mail::said()`).
+  members, and a copy to Pat Example." (`SFAF_Registrant_Mail::said()`).
 - **Preview** renders the first recipient's message and sends nothing. **Send**
   asks "Send to N people?" once, N counting every message the two ticks make,
   the organizer's copy included. A token the message cannot fill is refused

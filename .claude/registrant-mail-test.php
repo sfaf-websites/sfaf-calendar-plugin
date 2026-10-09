@@ -124,7 +124,7 @@ rm( 'A.1: See the event page is the button', (bool) preg_match( '#<a[^>]+href="[
 
 /* ---- 3.110.2: the event team and the organizer's copy -------------------- */
 mk_reset();
-$ORG  = mk_user( 'mark@sfaf.org', 'Mark Sapoznikov', 'admin' );
+$ORG  = mk_user( 'mark@sfaf.org', 'Pat Example', 'admin' );
 $T1   = mk_user( 'tia@sfaf.org', 'Tia Team', 'contributor' );
 $T2   = mk_user( 'ana@example.org', 'Ana Alvarez', 'contributor' );   // also registered: counted once, as a participant
 $NAMD = mk_user( 'ned@sfaf.org', 'Ned Named', 'editor' );
@@ -140,18 +140,18 @@ $GLOBALS['mk_mail'] = array();
 $out = SFAF_Registrant_Mail::send( $F, 'Hello', 'Hi {first_name}', false, $ORG, false );
 $to  = $to_of();
 rm( 'A.4: without the team, the participants and the organizer, once each', $to, array( 'ana@example.org', 'ben@example.org', 'mark@sfaf.org' ) );
-rm( 'A.4: the line', SFAF_Registrant_Mail::said( $out ), 'Sent to 2 participants and a copy to Mark Sapoznikov.' );
+rm( 'A.4: the line', SFAF_Registrant_Mail::said( $out ), 'Sent to 2 participants and a copy to Pat Example.' );
 
 $GLOBALS['mk_mail'] = array();
 $out = SFAF_Registrant_Mail::send( $F, 'Hello', 'Hi {first_name}', false, $ORG, true );
 $to  = $to_of();
 sort( $to );
 rm( 'A.3: with the team, its members and the named person, each address once', $to, array( 'ana@example.org', 'ben@example.org', 'mark@sfaf.org', 'ned@sfaf.org', 'tia@sfaf.org' ) );
-rm( 'A.3: the line counts them apart', SFAF_Registrant_Mail::said( $out ), 'Sent to 2 participants, 2 team members, and a copy to Mark Sapoznikov.' );
+rm( 'A.3: the line counts them apart', SFAF_Registrant_Mail::said( $out ), 'Sent to 2 participants, 2 team members, and a copy to Pat Example.' );
 $tia = mk_mail_to( 'tia@sfaf.org' );
 rm( 'A.3: a team member is greeted by their own first name', isset( $tia[0] ) && false !== strpos( $tia[0]['text'], 'Hi Tia' ), true );
 $log = SFAF_Registrant_Mail::log( $F );
-rm( 'A.3: the log counts them apart', array( $log[0]['sent'], $log[0]['team'], $log[0]['organizer'], $log[0]['count'] ), array( 2, 2, 'Mark Sapoznikov', 5 ) );
+rm( 'A.3: the log counts them apart', array( $log[0]['sent'], $log[0]['team'], $log[0]['organizer'], $log[0]['count'] ), array( 2, 2, 'Pat Example', 5 ) );
 
 /* The organizer already a recipient: on the team, so no second copy. */
 update_option( 'sfaf_teams', array( 'prog' => array( 'id' => 'prog', 'name' => 'Programs', 'users' => array( $T1, $ORG ), 'created' => 1, 'updated' => 1 ) ) );

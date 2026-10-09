@@ -237,7 +237,7 @@ class SFAF_Registrant_Mail {
     }
 
     /**
-     * "Sent to 12 participants, 5 team members, and a copy to Mark Sapoznikov."
+     * "Sent to 12 participants, 5 team members, and a copy to Pat Example."
      * Also the words for a log row, without "Sent to".
      */
     public static function said( $r, $lead = true ) {
