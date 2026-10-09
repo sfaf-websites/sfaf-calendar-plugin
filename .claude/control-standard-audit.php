@@ -496,8 +496,9 @@ foreach ( $php_files as $file ) {
             'line'   => $n + 1,
             /* AN OUTLINED BUTTON IS ITS OWN MARK (3.107.0). Insert image is a
              * <summary> drawn as the "+ Add question" button, and the brief
-             * took its chevron off: the outline already says "press this". */
-            'marked' => (bool) preg_match( '/uc-disclosure-chevron|class="uc-outline-btn/', $window ),
+             * took its chevron off: the outline already says "press this".
+             * The class may be any of several (3.110.2, "+ Add member"). */
+            'marked' => (bool) preg_match( '/uc-disclosure-chevron|class="(?:[^"]*\s)?uc-outline-btn[\s"]/', $window ),
             'text'   => trim( preg_replace( '/\s+/', ' ', substr( $window, 0, 110 ) ) ),
         );
     }

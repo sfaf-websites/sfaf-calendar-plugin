@@ -5317,5 +5317,5 @@ body.uc-modal-open { overflow: hidden; }
     .uc-portal summary { min-height: 44px; box-sizing: border-box; }
     .uc-portal .uc-icon-action { min-width: 44px; min-height: 44px; }
     .uc-portal .uc-link-ok, .uc-portal .uc-action-link, .uc-portal .uc-tpl-pick { min-height: 44px; }
-    .uc-portal .uc-tick-all, .uc-portal .uc-login-remember { min-height: 44px; display: inline-flex; align-items: center; }
+    .uc-portal .uc-tick-all, .uc-portal .uc-login-remember { min-height: 44px; display: inline-flex; }
 }

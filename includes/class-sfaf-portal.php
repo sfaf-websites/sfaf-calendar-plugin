@@ -21007,7 +21007,8 @@ class SFAF_Portal {
                 <p class="uc-empty" data-uc-user-filter-empty hidden>Nobody matches.</p>
                 <?php // Each row's form, and each Remove: the fields only. Their buttons are in the rows. ?>
                 <?php foreach ( $sorted as $m ) : ?>
-                    <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>" id="<?php echo esc_attr( 'uc-user-form-' . (int) $m->ID ); ?>" hidden>
+                    <?php $fid = 'uc-user-form-' . (int) $m->ID; ?>
+                    <form method="post" action="<?php echo esc_url( $this->url( 'users' ) ); ?>" id="<?php echo esc_attr( $fid ); ?>" hidden>
                         <input type="hidden" name="uc_action" value="set_user_role" />
                         <input type="hidden" name="user_id" value="<?php echo (int) $m->ID; ?>" />
                         <?php wp_nonce_field( 'uc_portal_set_user_role', 'uc_nonce' ); ?>
