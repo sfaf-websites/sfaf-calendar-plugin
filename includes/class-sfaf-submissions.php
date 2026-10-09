@@ -981,7 +981,6 @@ if ( $args['editor'] ) {
      * @param string $error
      */
     public static function image_field( $error = '' ) {
-        $mb = (int) round( SFAF_Uploads::MAX_BYTES / 1048576 );
         ?>
         <?php
         /*
@@ -998,11 +997,10 @@ if ( $args['editor'] ) {
         ?>
         <label class="uc-field uc-field-upload">
             <span class="uc-field-label">Or upload one</span>
-            <input type="file" name="uc_image" accept="image/jpeg,image/png,image/gif,image/webp" />
+            <input type="file" name="uc_image" accept="<?php echo esc_attr( SFAF_Uploads::picture_accept() ); ?>" />
             <span class="uc-hint">
-                JPEG, PNG, GIF or WebP, up to <?php echo (int) $mb; ?>MB, and at least
-                <?php echo (int) SFAF_Uploads::MIN_WIDTH; ?> pixels wide. Landscape works best.
-                A narrower one is still accepted. Leave this empty if you do not have one.
+                <?php echo esc_html( SFAF_Uploads::RULE_MESSAGE ); ?> JPEG, PNG or WebP.
+                Leave this empty if you do not have one.
             </span>
             <?php self::field_error( $error ); ?>
         </label>
@@ -1027,18 +1025,17 @@ if ( $args['editor'] ) {
      */
     public static function extra_images_field( $errors = array() ) {
         $fields = SFAF_Submit::extra_fields();
-        $mb     = (int) round( SFAF_Uploads::MAX_BYTES / 1048576 );
         ?>
         <div class="uc-field uc-field-upload uc-extra-images">
             <span class="uc-field-label">Any other pictures</span>
             <?php foreach ( $fields as $i => $field ) : ?>
                 <input type="file" name="<?php echo esc_attr( $field ); ?>"
-                       accept="image/jpeg,image/png,image/gif,image/webp"
+                       accept="<?php echo esc_attr( SFAF_Uploads::picture_accept() ); ?>"
                        aria-label="<?php echo esc_attr( 'Other picture ' . ( $i + 1 ) ); ?>" />
                 <?php self::field_error( isset( $errors[ $field ] ) ? $errors[ $field ] : '' ); ?>
             <?php endforeach; ?>
             <span class="uc-hint">
-                Up to <?php echo (int) SFAF_Submit::MAX_EXTRA; ?>, same formats and size limit as above.
+                Up to <?php echo (int) SFAF_Submit::MAX_EXTRA; ?>. <?php echo esc_html( SFAF_Uploads::RULE_MESSAGE ); ?>
                 These are not shown on the event page. Somebody adds one to the description by hand
                 with Insert image if it belongs there.
             </span>

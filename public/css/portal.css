@@ -5319,3 +5319,57 @@ body.uc-modal-open { overflow: hidden; }
     .uc-portal .uc-link-ok, .uc-portal .uc-action-link, .uc-portal .uc-tpl-pick { min-height: 44px; }
     .uc-portal .uc-tick-all, .uc-portal .uc-login-remember { min-height: 44px; display: inline-flex; }
 }
+/* ---------------------------------------------------------------------------
+   PICTURES IN THREE PLACES, THE UPLOAD, THE APPROVAL QUESTION, SET TEAM (3.110.3)
+   --------------------------------------------------------------------------- */
+/* The editor's picker tools: search and the active-only tick on one row, there
+   only once the script that drives them is (the search box's own rule). */
+.uc-image-tools { display: none; }
+.uc-image-picker-live .uc-image-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 8px; }
+.uc-image-tools .uc-picker-filter { flex: 1 1 220px; margin: 0; }
+.uc-image-picker-live .uc-image-tools .uc-image-search { display: block; }
+.uc-portal .uc-image-active-only { margin: 0; font-size: 13px; line-height: 1.4; }
+/* A group's name inside the list: the Field label step, 13/600, in --p-muted,
+   a hairline above, so the two groups read as two without a box each. */
+.uc-image-group-head { margin: 8px 0 2px; padding: 10px 0 0; border-top: 1px solid var(--p-border);
+    font-size: 13px; font-weight: 600; line-height: 1.45; color: var(--p-muted); }
+.uc-image-group-none { margin: 2px 0 6px; font-size: 13px; line-height: 1.45; }
+.uc-image-group-none[hidden] { display: none; }
+
+/* "+ Upload a picture for this event": the outlined control, its file input
+   inside it and hidden, the focus ring on the label while the input has it. */
+.uc-portal .uc-image-upload { position: relative; margin-top: 10px; }
+.uc-portal .uc-image-upload:focus-within { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; }
+.uc-portal .uc-image-upload-error[hidden] { display: none; }
+
+/* The approval dialog's picture question, a section of the panel under a
+   hairline: the picture at 160px, two choices, the series list under its own. */
+.uc-approve-picture { margin: 12px 0 0; padding: 12px 0 0; border: 0; border-top: 1px solid var(--p-border); min-width: 0; }
+.uc-approve-picture > legend { float: left; width: 100%; padding: 0; margin: 0 0 8px; }
+.uc-approve-picture-thumb { display: block; clear: both; width: 160px; max-width: 100%; height: auto; aspect-ratio: 16 / 9;
+    object-fit: cover; border-radius: 6px; border: 1px solid var(--p-border); margin: 0 0 10px; }
+.uc-approve-picture-choices { clear: both; }
+.uc-portal .uc-approve-picture-series { margin: 0 0 8px 24px; max-width: 280px; }
+
+/* The Images screen: search and the active tick join the filter row; a card
+   names its place in a pill, and "Active" in the success pair (6.08:1). */
+.uc-media-filters { align-items: center; }
+.uc-portal .uc-media-search { flex: 1 1 220px; max-width: 320px; margin: 0; }
+.uc-portal .uc-media-active { margin: 0; }
+.uc-media-place { display: flex; flex-wrap: wrap; gap: 5px; margin: 0; }
+.uc-media-pill { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px;
+    border: 1px solid var(--p-border); background: var(--p-bg); font-size: 12px; line-height: 1.4; color: var(--p-text); }
+.uc-media-pill-active { border-color: var(--p-ok-tint); background: var(--p-ok-tint); color: var(--p-ok-ink); }
+.uc-media-with { margin: 0; font-size: 13px; line-height: 1.45; }
+.uc-media-item[hidden] { display: none; }
+
+/* Set team on the events list: a row of its own under the other two, its
+   choices on the page tint when open. */
+.uc-bulk-team { flex: 1 1 100%; }
+.uc-bulk-team-body { margin-top: 10px; padding: 12px 14px; border-radius: 10px; background: var(--p-bg); }
+.uc-bulk-team-body .uc-access-people { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+
+@media (pointer: coarse), (max-width: 600px) {
+    .uc-portal .uc-image-upload { min-height: 44px; }
+    .uc-portal .uc-image-active-only, .uc-portal .uc-media-active { min-height: 44px; display: inline-flex; }
+}

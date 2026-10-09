@@ -437,6 +437,9 @@ class SFAF_Organizers { public static function all() { return array(); } public 
 
 require_once $root . '/includes/class-sfaf-request.php';
 require_once $root . '/includes/class-sfaf-uploads.php';
+// The approval dialog asks for a submitted picture (3.110.3).
+require_once $root . '/includes/class-sfaf-media-folder.php';
+require_once $root . '/includes/class-sfaf-media.php';
 require_once $root . '/includes/class-sfaf-submissions.php';
 require_once $root . '/includes/class-sfaf-submit.php';
 require_once $root . '/includes/class-sfaf-portal.php';

@@ -1656,8 +1656,6 @@ class SFAF_Portal {
                         $this->redirect( 'pending', array( 'msg' => 'approved_picture_failed' ) );
                     }
                     set_post_thumbnail( $event_id, $pic_id );
-                    delete_post_meta( $event_id, '_uc_image_url' );
-                    delete_post_meta( $event_id, self::META_IMAGE_TYPED );
                     update_post_meta( $event_id, '_uc_image_override', '1' );
                     delete_post_meta( $event_id, SFAF_Submit::META_IMAGE );
                     delete_post_meta( $event_id, SFAF_Submit::META_IMAGE_NOTE );
@@ -3571,9 +3569,9 @@ class SFAF_Portal {
             'at'    => time(),
             'event' => (int) $event_id,
         ) );
+        /* The picture outranks any stored URL at display, as a picker choice
+         * does, so the URL is left where it is. */
         set_post_thumbnail( $event_id, $att );
-        delete_post_meta( $event_id, '_uc_image_url' );
-        delete_post_meta( $event_id, self::META_IMAGE_TYPED );
         update_post_meta( $event_id, '_uc_image_override', '1' );
         return '';
     }
@@ -11259,6 +11257,9 @@ class SFAF_Portal {
             'paged'    => $paged,
         ) );
         $rows = SFAF_Media::rows( $found['ids'] );
+        foreach ( $rows as $ri => $one ) {
+            $rows[ $ri ]['place'] = SFAF_Media::place_of( $one['id'] );
+        }
         $live = SFAF_Media::active_ids();
         /* What each picture on this page is relied on by, in two queries rather
          * than two per row. A card whose picture is in use says so and offers no

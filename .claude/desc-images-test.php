@@ -188,7 +188,9 @@ check( (bool) preg_match( '/function ajax_description_image\(\)[\s\S]{0,700}?che
 /* THE ONE GUARD IS STILL IN FRONT OF IT. Being signed in does not make a
  * crafted image safe, so all eight of inspect()'s decisions run exactly as
  * they do for a stranger's file. */
-check( (bool) preg_match( '/SFAF_Uploads::inspect\( \$field \)/', $desc_src ),
+/* With the 'description' rule from 3.110.3: a picture in prose is not held to
+ * 1200 by 675, and every other check still runs. */
+check( (bool) preg_match( "/SFAF_Uploads::inspect\\( \\\$field, null, 'description' \\)/", $desc_src ),
     'the description upload skips the one guard between a file and the disk' );
 /* AND IT CONFIRMS WHERE THE FILE LANDED, rather than trusting the filter it
  * set: a plugin filtering upload_dir later would put it somewhere else. */

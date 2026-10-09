@@ -261,15 +261,28 @@ class SFAF_Media {
             'paged'    => 1,
         ), $args );
 
-        $prefixes = array(
-            'series'    => array( SFAF_Media_Folder::prefix() ),
-            'other'     => array( SFAF_Media_Folder::other_prefix() ),
-            'library'   => array( SFAF_Media_Folder::prefix(), SFAF_Media_Folder::other_prefix() ),
-            'submitted' => array( SFAF_Uploads::prefix() ),
-            'all'       => array( SFAF_Media_Folder::prefix(), SFAF_Media_Folder::other_prefix(), SFAF_Uploads::prefix() ),
-        );
-        $want = isset( $prefixes[ $args['place'] ] ) ? $prefixes[ $args['place'] ] : $prefixes['series'];
-        $pattern = '^(' . implode( '|', array_map( 'preg_quote', $want ) ) . ')';
+        switch ( $args['place'] ) {
+            case 'other':
+                $want = array( SFAF_Media_Folder::other_prefix() );
+                break;
+            case 'library':
+                $want = array( SFAF_Media_Folder::prefix(), SFAF_Media_Folder::other_prefix() );
+                break;
+            case 'submitted':
+                $want = array( SFAF_Uploads::prefix() );
+                break;
+            case 'all':
+                $want = array( SFAF_Media_Folder::prefix(), SFAF_Media_Folder::other_prefix(), SFAF_Uploads::prefix() );
+                break;
+            default:
+                $want = array( SFAF_Media_Folder::prefix() );
+        }
+        /* One folder is the pattern every caller has always sent; several are
+         * an alternation. preg_quote() with no delimiter, for the reason
+         * SFAF_Media_Folder::pattern() gives. */
+        $pattern = ( 1 === count( $want ) )
+            ? '^' . preg_quote( $want[0] )
+            : '^(' . implode( '|', array_map( 'preg_quote', $want ) ) . ')';
 
         /*
          * SEARCH AND ACTIVE ARE ANSWERED HERE, AFTER THE QUERY, and the page is
@@ -450,12 +463,8 @@ class SFAF_Media {
             return null;
         }
 
-        $rel   = ltrim( (string) get_post_meta( $id, '_wp_attached_file', true ), '/' );
-        $file  = basename( $rel );
+        $file  = basename( (string) get_post_meta( $id, '_wp_attached_file', true ) );
         $title = trim( (string) get_the_title( $id ) );
-        $place = SFAF_Media_Folder::path_is_inside( $rel ) ? 'series'
-            : ( 0 === strpos( $rel, SFAF_Media_Folder::other_prefix() ) ? 'other'
-            : ( SFAF_Uploads::path_is_inside( $rel ) ? 'submitted' : '' ) );
 
         /*
          * A NAME SOMEBODY TYPED IS TRUSTED WITHOUT BEING ASKED ABOUT (3.78.0).
@@ -491,10 +500,26 @@ class SFAF_Media {
             'alt'   => (string) get_post_meta( $id, '_wp_attachment_image_alt', true ),
             'removed' => (bool) get_post_meta( $id, self::META_REMOVED, true ),
             'tags'  => self::tags_of( $id ),
-            /* series, other or submitted (3.110.3). */
-            'place' => $place,
             'search' => self::search_text( $id ),
         );
+    }
+
+    /**
+     * Which of the three places a picture is in (3.110.3): 'series', 'other',
+     * 'submitted', or '' for anywhere else.
+     *
+     * @param int $id
+     * @return string
+     */
+    public static function place_of( $id ) {
+        $rel = ltrim( (string) get_post_meta( (int) $id, '_wp_attached_file', true ), '/' );
+        if ( SFAF_Media_Folder::path_is_inside( $rel ) ) {
+            return 'series';
+        }
+        if ( 0 === strpos( $rel, SFAF_Media_Folder::other_prefix() ) ) {
+            return 'other';
+        }
+        return SFAF_Uploads::path_is_inside( $rel ) ? 'submitted' : '';
     }
 
     /**

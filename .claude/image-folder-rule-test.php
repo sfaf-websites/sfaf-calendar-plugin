@@ -54,10 +54,17 @@ function is_wp_error( $t ) { return false; }
 
 class SFAF_Media_Folder {
     const FOLDER = 'calendar';
+    const OTHER  = 'calendar-other';
     public static function prefix() { return self::FOLDER . '/'; }
+    public static function other_prefix() { return self::OTHER . '/'; }
     public static function holds( $id ) {
         $f = isset( $GLOBALS['files'][ $id ] ) ? $GLOBALS['files'][ $id ] : '';
         return 0 === strpos( $f, self::prefix() );
+    }
+    /* The real rule from 3.110.3: series pictures and Other images. */
+    public static function offers( $id ) {
+        $f = isset( $GLOBALS['files'][ $id ] ) ? $GLOBALS['files'][ $id ] : '';
+        return 0 === strpos( $f, self::prefix() ) || 0 === strpos( $f, self::other_prefix() );
     }
 }
 class SFAF_Series {
@@ -118,6 +125,20 @@ check(
     'series' === sfaf_event_image_source( 2 ),
     'and the editor says series rather than claiming the event has its own'
 );
+
+/* OTHER IMAGES ARE PART OF THE RULE (3.110.3); a submitted file still is not. */
+scenario( 21, 'calendar-other/one-off-flyer.jpg', '', 'https://x/series.jpg' );
+check( false !== strpos( sfaf_event_image_url( 21 ), 'calendar-other/one-off-flyer.jpg' ),
+    'an Other image is used' );
+scenario( 22, 'calendar-submissions/submission-1.jpg', '', 'https://x/series.jpg' );
+check( 'https://x/series.jpg' === sfaf_event_image_url( 22 ),
+    'a submitted file is ignored and the series picture is used' );
+scenario( 23, null, 'https://resources.sfaf.org/wp-content/uploads/calendar-other/x.jpg', 'https://x/series.jpg' );
+check( false !== strpos( sfaf_event_image_url( 23 ), 'calendar-other/x.jpg' ),
+    'a stored URL into Other images is used' );
+scenario( 24, null, 'https://resources.sfaf.org/wp-content/uploads/calendar-submissions/x.jpg', 'https://x/series.jpg' );
+check( 'https://x/series.jpg' === sfaf_event_image_url( 24 ),
+    'a stored URL into submissions is not' );
 
 scenario( 3, 'programs/Damn-Daddy.jpg', '', '' );
 check( '' === sfaf_event_image_url( 3 ), 'with no series behind it, nothing is resolved and the placeholder shows' );

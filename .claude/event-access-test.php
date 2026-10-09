@@ -473,6 +473,9 @@ $ALLOWED = array(
     'POST:media_remove'           => array( 'role' ),
     'POST:media_save'             => array( 'role' ),
     'POST:media_upload'           => array( 'role' ),
+    // Moving a picture between series pictures and Other images (3.110.3):
+    // admins, because it moves a file; no event gate, it is an attachment.
+    'POST:media_move'             => array( 'caladmin' ),
     'POST:save_rsvp_settings'     => array( 'event' ),
     // Releasing one registration (3.105.0): the event gate, asked of the event
     // the ROW belongs to, looked up from the row rather than taken from the form.

@@ -216,8 +216,9 @@ foreach ( array( 'includes/class-sfaf-embed.php', 'includes/class-sfaf-shortcode
 $tf = file_get_contents( $root . '/includes/sfaf-template-functions.php' );
 if ( false === strpos( $tf, 'function sfaf_event_own_image_url' ) ) {
     $fails[] = 'sfaf_event_own_image_url() is gone, so nothing applies the calendar folder rule at resolution';
-} elseif ( false === strpos( $tf, 'SFAF_Media_Folder::holds' ) ) {
-    $fails[] = 'the resolution rule no longer asks SFAF_Media_Folder::holds(), so it is deciding the folder question some other way';
+} elseif ( false === strpos( $tf, 'SFAF_Media_Folder::offers' ) ) {
+    /* offers() from 3.110.3: holds() and Other images, the one folder rule. */
+    $fails[] = 'the resolution rule no longer asks SFAF_Media_Folder::offers(), so it is deciding the folder question some other way';
 }
 
 /* The portal marks the field and passes the flag; the script sends it on both
