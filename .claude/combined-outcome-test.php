@@ -244,6 +244,8 @@ class WP_Query {
 }
 function wp_reset_postdata() {}
 
+// The shortcode resolves an old slug through it (3.110.3).
+require_once $root . '/includes/class-sfaf-slug-aliases.php';
 require_once $root . '/includes/class-sfaf-shortcodes.php';
 
 /* ---------------------------------------------------------------------------

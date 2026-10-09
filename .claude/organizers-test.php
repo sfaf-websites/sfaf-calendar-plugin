@@ -48,6 +48,9 @@ function sanitize_title( $t ) {
 }
 function wp_strip_all_tags( $t, $b = false ) { return strip_tags( (string) $t ); }
 function is_wp_error( $t ) { return $t instanceof WP_Error; }
+// The slug aliases are an option (3.110.3).
+function get_option( $k, $d = false ) { return array_key_exists( $k, $GLOBALS['opts'] ?? array() ) ? $GLOBALS['opts'][ $k ] : $d; }
+function update_option( $k, $v, $a = null ) { $GLOBALS['opts'][ $k ] = $v; return true; }
 function esc_html( $t ) { return htmlspecialchars( (string) $t, ENT_QUOTES, 'UTF-8' ); }
 
 class WP_Error {
@@ -134,6 +137,8 @@ class WP_Query {
     }
 }
 
+// A changed slug goes through it (3.110.3).
+require_once $root . '/includes/class-sfaf-slug-aliases.php';
 require_once $root . '/includes/class-sfaf-organizers.php';
 
 function expect( $label, $got, $want ) {
@@ -186,6 +191,8 @@ expect( 'the slug did NOT', $t->slug, 'the-stonewall-project' );
 // And it CAN be changed deliberately, as its own field.
 SFAF_Organizers::save( $id, 'Stonewall Project', '', 'stonewall' );
 expect( 'an explicit slug is honoured', SFAF_Organizers::get( $id )->slug, 'stonewall' );
+// And the old one keeps answering, for an embed written before (3.110.3).
+expect( 'the old slug resolves to the new', SFAF_Slug_Aliases::resolve( 'uc_organizer', 'the-stonewall-project' ), 'stonewall' );
 
 /* ===========================================================================
  * 2. THE COUNT, AND THE DELETION RULE.

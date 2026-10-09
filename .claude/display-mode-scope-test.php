@@ -300,6 +300,8 @@ class WP_REST_Request {
     public function get_param( $key ) { return isset( $this->params[ $key ] ) ? $this->params[ $key ] : null; }
 }
 
+// The shortcode resolves an old slug through it (3.110.3).
+require_once $root . '/includes/class-sfaf-slug-aliases.php';
 require_once $root . '/includes/class-sfaf-shortcodes.php';
 require_once $root . '/includes/class-sfaf-embed.php';
 

@@ -114,6 +114,8 @@ class SFAF_Series {
 class SFAF_Closures { public static function covering( $d ) { return null; } public static function spans( $f = '', $t = '' ) { return array(); } public static function text( $r ) { return ''; } public static function name( $r ) { return ''; } public static function note( $r ) { return ''; } public static function note_short( $r, $l = 32 ) { return ''; } }
 class SFAF_Embed { const CACHE_VERSION_OPTION = 'sfaf_embed_cache_version'; public static function is_embed_request() { return false; } }
 
+// The shortcode resolves an old slug through it (3.110.3).
+require_once $root . '/includes/class-sfaf-slug-aliases.php';
 require_once $root . '/includes/class-sfaf-shortcodes.php';
 
 $sc  = new SFAF_Shortcodes();

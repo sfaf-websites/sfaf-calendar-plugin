@@ -285,6 +285,8 @@ class SFAF_Source_GFMP {
 require_once $root . '/includes/class-sfaf-online.php';
 
 require_once $root . '/includes/sfaf-template-functions.php';
+// The shortcode resolves an old slug through it (3.110.3).
+require_once $root . '/includes/class-sfaf-slug-aliases.php';
 require_once $root . '/includes/class-sfaf-shortcodes.php';
 
 /* =========================================================================

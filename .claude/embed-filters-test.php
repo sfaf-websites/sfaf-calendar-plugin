@@ -204,7 +204,9 @@ echo "The route and its caching\n";
  *    nothing with no error anywhere.
  * ------------------------------------------------------------------------ */
 foreach ( array( 's', 'active_organizer', 'active_groups', 'active_category', 'series', 'venue', 'month', 'view', 'mode' ) as $p ) {
-    if ( ! preg_match( "#get_param\(\s*'" . preg_quote( $p, '#' ) . "'\s*\)#", $php ) ) {
+    /* Or through $al(), which reads it and resolves an old slug (3.110.3). */
+    if ( ! preg_match( "#get_param\(\s*'" . preg_quote( $p, '#' ) . "'\s*\)#", $php )
+        && ! preg_match( "#\\\$al\(\s*'[a-z_]+',\s*'" . preg_quote( $p, '#' ) . "'\s*\)#", $php ) ) {
         $fails[] = 'the embed route no longer reads the ' . $p . ' parameter';
     }
 }
