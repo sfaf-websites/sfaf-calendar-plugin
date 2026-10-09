@@ -1573,6 +1573,18 @@ class SFAF_Portal {
                 $event_id = intval( $_POST['event_id'] );
 
                 /*
+                 * WHERE THE SUBMITTED PICTURE GOES (3.110.3), answered before
+                 * anything is published, so a series answer with no series
+                 * holds the whole approval rather than half of it.
+                 */
+                $pic_id     = SFAF_Media::submitted_picture( $event_id );
+                $pic_place  = ( isset( $_POST['picture_place'] ) && 'series' === $_POST['picture_place'] ) ? 'series' : 'other';
+                $pic_series = isset( $_POST['picture_series'] ) ? (int) $_POST['picture_series'] : 0;
+                if ( $pic_id && 'series' === $pic_place && ! SFAF_Series::exists( $pic_series ) ) {
+                    $this->redirect( 'pending', array( 'msg' => 'approve_picture_series' ) );
+                }
+
+                /*
                  * THE EDITOR'S PUBLISH RULE (3.103.0). Approve set the status
                  * past it, so a submission with no category went live from
                  * here while the editor would have held it. Held means nothing
@@ -1629,6 +1641,22 @@ class SFAF_Portal {
                     if ( ! empty( $_POST['tell_submitter'] ) ) {
                         SFAF_Submissions::send_published_notice( $event_id, $listed );
                     }
+                }
+
+                /* The picture moves where the dialog said and becomes the
+                 * event's own. A move that fails leaves it in submissions
+                 * and says so; the event is approved either way. */
+                if ( $pic_id ) {
+                    $filed = SFAF_Media::move( $pic_id, $pic_place, $pic_series );
+                    if ( is_wp_error( $filed ) ) {
+                        $this->redirect( 'pending', array( 'msg' => 'approved_picture_failed' ) );
+                    }
+                    set_post_thumbnail( $event_id, $pic_id );
+                    delete_post_meta( $event_id, '_uc_image_url' );
+                    delete_post_meta( $event_id, self::META_IMAGE_TYPED );
+                    update_post_meta( $event_id, '_uc_image_override', '1' );
+                    delete_post_meta( $event_id, SFAF_Submit::META_IMAGE );
+                    delete_post_meta( $event_id, SFAF_Submit::META_IMAGE_NOTE );
                 }
 
                 $this->redirect( 'pending', array( 'msg' => 'approved' ) );
@@ -4573,6 +4601,8 @@ class SFAF_Portal {
             'duplicate_failed' => 'That event could not be copied.',
             'approved'       => 'Event approved and published.',
             'approve_held'   => 'Not approved. It is still waiting, and nobody has been told.',
+            'approve_picture_series' => 'Not approved. Choose a series for the picture, or put it in Other images.',
+            'approved_picture_failed' => 'Event approved and published. Its picture could not be moved, so it is still in Submitted and the event shows its series picture.',
             'pending_bulk_none'   => 'Nothing was changed. Tick the events first, then press the button.',
             'pending_bulk_choose' => 'Nothing was changed. Choose a series, a category or an organizer, then press Apply.',
             'rejected'       => 'Event rejected.',
@@ -18812,7 +18842,58 @@ class SFAF_Portal {
                     on the morning of the event, with names and email addresses. Untick it if that is not right.
                 </p>
             <?php endif; ?>
+            <?php $this->render_approve_picture( $event_id, $form ); ?>
         </div>
+        <?php
+    }
+
+    /**
+     * Where a submitted picture goes, asked in the approval dialog (3.110.3).
+     *
+     * ONLY WHEN THE EVENT CARRIES ONE. Tag to a series, with the event's own
+     * series chosen, or Other images; approval moves the file there and makes
+     * it the event's picture. Rejecting leaves it in submissions.
+     *
+     * @param int    $event_id
+     * @param string $form The Approve form's id, for form=.
+     */
+    private function render_approve_picture( $event_id, $form ) {
+        $att = SFAF_Media::submitted_picture( $event_id );
+        if ( ! $att ) {
+            return;
+        }
+        $mine   = SFAF_Series::id_for_event( $event_id );
+        $series = SFAF_Series::all();
+        $thumb  = SFAF_Uploads::url( $att, 'thumbnail' );
+        $f      = esc_attr( $form );
+        ?>
+        <fieldset class="uc-approve-picture" data-uc-approve-picture>
+            <legend class="uc-field-label">Where does the picture go?</legend>
+            <?php if ( '' !== $thumb ) : ?>
+                <img class="uc-approve-picture-thumb" src="<?php echo esc_url( $thumb ); ?>" alt="" />
+            <?php endif; ?>
+            <div class="uc-approve-picture-choices">
+                <?php if ( ! empty( $series ) ) : ?>
+                    <label class="uc-check">
+                        <input type="radio" name="picture_place" value="series" form="<?php echo $f; ?>" <?php checked( (bool) $mine ); ?> />
+                        Tag to a series
+                    </label>
+                    <label class="uc-field uc-approve-picture-series">
+                        <span class="uc-visually-hidden">Series</span>
+                        <select name="picture_series" form="<?php echo $f; ?>">
+                            <option value="">Choose a series</option>
+                            <?php foreach ( $series as $term ) : ?>
+                                <option value="<?php echo (int) $term->term_id; ?>" <?php selected( (int) $mine, (int) $term->term_id ); ?>><?php echo esc_html( $term->name ); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                <?php endif; ?>
+                <label class="uc-check">
+                    <input type="radio" name="picture_place" value="other" form="<?php echo $f; ?>" <?php checked( ! $mine || empty( $series ) ); ?> />
+                    Other images
+                </label>
+            </div>
+        </fieldset>
         <?php
     }
 
@@ -19459,6 +19540,12 @@ class SFAF_Portal {
                     break;
 
                 case 'publish':
+                    /* A submitted picture is filed by the approval dialog
+                     * (3.110.3), which a bulk press never opens. */
+                    if ( SFAF_Media::submitted_picture( $id ) ) {
+                        $out['held'][ $id ] = 'it has a submitted picture, so approve it from its own row';
+                        break;
+                    }
                     $why = $this->publish_one( $id );
                     if ( '' === $why ) {
                         $out['did']++;

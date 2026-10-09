@@ -947,6 +947,22 @@ class SFAF_Media {
     }
 
     /**
+     * The submitted picture a pending event still carries, or 0 (3.110.3).
+     * Only while the file is in calendar-submissions/: once approval has
+     * filed it, it is the event's picture and not a submitted one.
+     *
+     * @param int $event_id
+     * @return int
+     */
+    public static function submitted_picture( $event_id ) {
+        $att = (int) get_post_meta( (int) $event_id, SFAF_Submit::META_IMAGE, true );
+        if ( ! $att || 'attachment' !== get_post_type( $att ) || ! SFAF_Uploads::holds( $att ) ) {
+            return 0;
+        }
+        return $att;
+    }
+
+    /**
      * The event a submitted picture came with, or null.
      *
      * @param int $id
