@@ -89,6 +89,8 @@ for f in .claude/*.php; do
     plant-31101.php) continue ;;       # a fault planter for the 3.110.1 checks, not a check
     release-31102-live.php) continue ;;  # run below with --run
     plant-31102.php) continue ;;       # a fault planter for the 3.110.2 checks, not a check
+    release-31103-live.php) continue ;;  # run below with --run
+    plant-31103.php) continue ;;       # a fault planter for the 3.110.3 checks, not a check
     login-check.php) continue ;;       # run last, after every capture is rewritten
     byline-live.php) continue ;;       # run below with --run; --live checks the site itself
   esac
@@ -334,6 +336,9 @@ run "release-3110-live --run" php .claude/release-3110-live.php --run
 run "release-31101-live --run" php .claude/release-31101-live.php --run
 # The rest of caladmin on a phone, the users table and Send (3.110.2).
 run "release-31102-live --run" php .claude/release-31102-live.php --run
+# The picker in two groups, the upload, Images in three places, the approval
+# question and Set team (3.110.3), at 1280px, 430px and 390px.
+run "release-31103-live --run" php .claude/release-31103-live.php --run
 
 echo
 # No real name or login in a tracked file (3.106.2). Last, because the browser
