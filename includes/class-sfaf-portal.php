@@ -1067,6 +1067,22 @@ class SFAF_Portal {
                 $this->handle_media_upload( $user );
                 break;
 
+            /* Between series pictures and Other images (3.110.3). Admins,
+             * because it moves a file; never a submitted one from here. */
+            case 'media_move':
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                $media_id = isset( $_POST['id'] ) ? (int) $_POST['id'] : 0;
+                $to       = ( isset( $_POST['to'] ) && 'series' === $_POST['to'] ) ? 'series' : 'other';
+                if ( ! SFAF_Media_Folder::offers( $media_id ) ) {
+                    $this->redirect( 'media', array( 'msg' => 'move_failed', 'why' => 'That picture cannot be moved from here.' ) );
+                }
+                $moved = SFAF_Media::move( $media_id, $to, isset( $_POST['term_id'] ) ? (int) $_POST['term_id'] : 0 );
+                if ( is_wp_error( $moved ) ) {
+                    $this->redirect( 'media', array( 'msg' => 'move_failed', 'why' => $moved->get_error_message() ) );
+                }
+                $this->redirect( 'media', array( 'msg' => 'series' === $to ? 'moved_series' : 'moved_other' ) );
+                break;
+
             case 'trash_event':
                 $event_id = intval( $_POST['event_id'] );
                 $post     = get_post( $event_id );
@@ -11079,12 +11095,33 @@ class SFAF_Portal {
         $can_upload = SFAF_Media::can_upload( $user );
 
         /* The controls, read from the URL and validated against the one list
-         * each of them has. An unknown value is not an error page. */
+         * each of them has. An unknown value is not an error page.
+         *
+         * THREE PLACES FROM 3.110.3: Series pictures, Other images and
+         * Submitted, which is an admin's alone, like the pending queue it
+         * belongs to. "All images" is every place this viewer may see. */
+        $is_admin     = $this->is_admin_role( $user );
         $raw          = isset( $_GET['tag'] ) ? sanitize_text_field( wp_unslash( $_GET['tag'] ) ) : '';
+        if ( 'submitted' === $raw && ! $is_admin ) {
+            $raw = '';
+        }
         $untagged     = ( SFAF_Media::UNTAGGED === $raw );
         $removed_view = ( SFAF_Media::REMOVED_VIEW === $raw );
-        $tag          = ( ! $untagged && ! $removed_view && '' !== $raw ) ? (int) $raw : 0;
+        $views        = array( 'series', 'other', 'submitted' );
+        $place_view   = in_array( $raw, $views, true ) ? $raw : '';
+        $tag          = ( ! $untagged && ! $removed_view && '' === $place_view && '' !== $raw ) ? (int) $raw : 0;
         $paged        = isset( $_GET['paged'] ) ? max( 1, (int) $_GET['paged'] ) : 1;
+        $search       = isset( $_GET['q'] ) ? sanitize_text_field( wp_unslash( $_GET['q'] ) ) : '';
+        $active_only  = ! empty( $_GET['active'] );
+        if ( '' !== $place_view ) {
+            $place = $place_view;
+        } elseif ( $untagged || $tag ) {
+            $place = 'series';
+        } elseif ( $removed_view ) {
+            $place = 'library';
+        } else {
+            $place = $is_admin ? 'all' : 'library';
+        }
 
         $series = SFAF_Series::all();
         if ( $tag ) {
@@ -11101,12 +11138,16 @@ class SFAF_Portal {
         }
 
         $found = SFAF_Media::pictures( array(
+            'place'    => $place,
             'series'   => $tag,
             'untagged' => $untagged,
             'removed'  => $removed_view,
+            'search'   => $search,
+            'active'   => $active_only,
             'paged'    => $paged,
         ) );
         $rows = SFAF_Media::rows( $found['ids'] );
+        $live = SFAF_Media::active_ids();
         /* What each picture on this page is relied on by, in two queries rather
          * than two per row. A card whose picture is in use says so and offers no
          * Remove; see the note at that button. */
@@ -11144,7 +11185,7 @@ class SFAF_Portal {
          */
         ?>
         <p class="uc-view-hint">
-            The pictures in the calendar folder. Tag one with a series to make it easy to find later.
+            Series pictures are offered on events in their series, and Other images on every event.
             <?php if ( $can_tag ) : ?>
                 A picture showing its file name has no name yet; type one in the box under it.
             <?php endif; ?>
@@ -11185,11 +11226,17 @@ class SFAF_Portal {
             </div>
         <?php endif; ?>
 
-        <form method="get" action="<?php echo esc_url( $this->url( 'media' ) ); ?>" class="uc-filters-bar">
+        <div data-uc-filter-scope>
+        <form method="get" action="<?php echo esc_url( $this->url( 'media' ) ); ?>" class="uc-filters-bar uc-media-filters">
             <label class="uc-field uc-media-filter">
                 <span class="uc-visually-hidden">Show</span>
-                <select name="tag">
+                <select name="tag" data-uc-autosubmit>
                     <option value="">All images</option>
+                    <option value="series" <?php selected( $place_view, 'series' ); ?>>Series pictures</option>
+                    <option value="other" <?php selected( $place_view, 'other' ); ?>>Other images</option>
+                    <?php if ( $is_admin ) : ?>
+                        <option value="submitted" <?php selected( $place_view, 'submitted' ); ?>>Submitted</option>
+                    <?php endif; ?>
                     <option value="<?php echo esc_attr( SFAF_Media::UNTAGGED ); ?>" <?php selected( $untagged ); ?>>Untagged</option>
                     <?php
                     /*
@@ -11207,6 +11254,16 @@ class SFAF_Portal {
                         </option>
                     <?php endforeach; ?>
                 </select>
+            </label>
+            <label class="uc-picker-filter uc-media-search">
+                <span class="uc-visually-hidden">Search pictures by name</span>
+                <?php // Narrows this page as you type; Show searches every page. ?>
+                <input type="search" name="q" value="<?php echo esc_attr( $search ); ?>"
+                       placeholder="Search by name&hellip;" data-uc-filter autocomplete="off" />
+            </label>
+            <label class="uc-check uc-media-active">
+                <input type="checkbox" name="active" value="1" <?php checked( $active_only ); ?> data-uc-autosubmit />
+                Show active images only
             </label>
             <button class="uc-btn" type="submit">Show</button>
         </form>
@@ -11301,11 +11358,10 @@ class SFAF_Portal {
                                 <img alt="" data-uc-upload-preview hidden />
                                 <span class="uc-upload-thumb-empty" data-uc-upload-empty>No picture chosen</span>
                             </div>
-                            <input type="file" name="uc_media" accept="image/jpeg,image/png,image/gif,image/webp"
+                            <input type="file" name="uc_media" accept="<?php echo esc_attr( SFAF_Uploads::picture_accept() ); ?>"
                                    data-uc-upload-input required />
                             <span class="uc-hint">
-                                JPEG, PNG, GIF or WebP, at least <?php echo (int) SFAF_Uploads::MIN_WIDTH; ?> pixels wide.
-                                Landscape works best: an event card crops to 16:9.
+                                <?php echo esc_html( SFAF_Uploads::RULE_MESSAGE ); ?> JPEG, PNG or WebP.
                             </span>
                         </div>
 
@@ -11323,9 +11379,9 @@ class SFAF_Portal {
                                 <span class="uc-hint">What somebody who cannot see the picture is told it shows.</span>
                             </label>
                             <label class="uc-field">
-                                <span class="uc-field-label">Series <span class="uc-muted">(optional)</span></span>
+                                <span class="uc-field-label">Series</span>
                                 <select name="term_id">
-                                    <option value="0">No series</option>
+                                    <option value="0">None: put it in Other images</option>
                                     <?php foreach ( $series as $term ) : ?>
                                         <option value="<?php echo (int) $term->term_id; ?>"><?php echo esc_html( $term->name ); ?></option>
                                     <?php endforeach; ?>
@@ -11390,15 +11446,49 @@ class SFAF_Portal {
 
             <?php if ( empty( $rows ) ) : ?>
                 <p class="uc-empty"><?php
-                    echo $untagged
-                        ? 'Every image in the folder carries a series.'
-                        : 'No images here yet.';
+                    if ( '' !== $search || $active_only ) {
+                        echo 'No pictures match that.';
+                    } elseif ( $untagged ) {
+                        echo 'Every series picture carries a series.';
+                    } else {
+                        echo 'No images here yet.';
+                    }
                 ?></p>
             <?php else : ?>
-                <ul class="uc-media-grid">
+                <ul class="uc-media-grid" data-uc-filter-list>
                     <?php foreach ( $rows as $row ) : ?>
-                        <li class="uc-media-item">
-                            <?php if ( $can_tag ) : ?>
+                        <?php
+                        $place_word = array( 'series' => 'Series picture', 'other' => 'Other image', 'submitted' => 'Submitted' );
+                        $row_place  = isset( $place_word[ $row['place'] ] ) ? $row['place'] : 'series';
+                        ?>
+                        <li class="uc-media-item uc-media-<?php echo esc_attr( $row_place ); ?>"
+                            data-uc-filter-text="<?php echo esc_attr( $row['search'] ); ?>"
+                            data-uc-media-place="<?php echo esc_attr( $row_place ); ?>">
+                            <?php if ( 'submitted' === $row_place ) : ?>
+                                <?php
+                                /* A SUBMITTED PICTURE (3.110.3): looked at, not
+                                 * edited. It is filed at approval, in the
+                                 * approval dialog, and nowhere else. */
+                                $with = SFAF_Media::submitted_with( $row['id'] );
+                                ?>
+                                <img class="uc-media-thumb" src="<?php echo esc_url( $row['thumb'] ); ?>" alt="" loading="lazy" />
+                                <p class="uc-media-place"><span class="uc-media-pill">Submitted</span></p>
+                                <p class="uc-media-name"><?php echo esc_html( $row['file'] ); ?></p>
+                                <p class="uc-media-with"><?php
+                                    if ( ! $with ) {
+                                        echo 'Its event is gone.';
+                                    } elseif ( 'trash' === $with->post_status ) {
+                                        echo esc_html( 'Came with "' . ( get_the_title( $with ) ?: '(untitled)' ) . '", rejected.' );
+                                    } else {
+                                        echo 'Came with <a href="' . esc_url( $this->url( 'events/edit/' . (int) $with->ID ) ) . '">'
+                                            . esc_html( get_the_title( $with ) ?: '(untitled)' ) . '</a>'
+                                            . ( 'pending' === $with->post_status ? ', waiting for approval.' : '.' );
+                                    }
+                                ?></p>
+                            </li>
+                            <?php continue; ?>
+                            <?php endif; ?>
+                            <?php if ( $can_tag && 'series' === $row_place ) : ?>
                                 <label class="uc-media-tick">
                                     <input type="checkbox" name="ids[]" value="<?php echo (int) $row['id']; ?>"
                                            form="uc-bulk-tag" data-uc-tick-one />
@@ -11409,6 +11499,12 @@ class SFAF_Portal {
                             <?php endif; ?>
 
                             <img class="uc-media-thumb" src="<?php echo esc_url( $row['thumb'] ); ?>" alt="" loading="lazy" />
+                            <p class="uc-media-place">
+                                <span class="uc-media-pill"><?php echo esc_html( $place_word[ $row_place ] ); ?></span>
+                                <?php if ( isset( $live[ $row['id'] ] ) ) : ?>
+                                    <span class="uc-media-pill uc-media-pill-active">Active</span>
+                                <?php endif; ?>
+                            </p>
 
                             <?php if ( ! empty( $row['tags'] ) ) : ?>
                                 <p class="uc-media-tags">
@@ -11518,7 +11614,7 @@ class SFAF_Portal {
                                                placeholder="Describe the picture" />
                                     </label>
 
-                                    <?php if ( ! empty( $series ) ) : ?>
+                                    <?php if ( ! empty( $series ) && 'series' === $row_place ) : ?>
                                         <label class="uc-field">
                                             <span class="uc-field-label">Add a series</span>
                                             <select name="term_id">
@@ -11529,9 +11625,29 @@ class SFAF_Portal {
                                             </select>
                                         </label>
                                     <?php endif; ?>
+                                    <?php if ( $is_admin && ! empty( $series ) && 'other' === $row_place ) : ?>
+                                        <?php // Moving it is how an Other image gets a series. Its form is under the grid. ?>
+                                        <label class="uc-field">
+                                            <span class="uc-field-label">Move to series pictures</span>
+                                            <select name="term_id" form="uc-media-move-<?php echo (int) $row['id']; ?>">
+                                                <option value="">Choose a series</option>
+                                                <?php foreach ( $series as $term ) : ?>
+                                                    <option value="<?php echo (int) $term->term_id; ?>"><?php echo esc_html( $term->name ); ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </label>
+                                    <?php endif; ?>
 
                                     <div class="uc-media-edit-go">
                                         <button type="submit" class="uc-btn uc-btn-sm">Save</button>
+                                        <?php if ( $is_admin && 'other' === $row_place && ! empty( $series ) ) : ?>
+                                            <button type="submit" class="uc-btn uc-btn-sm"
+                                                    form="uc-media-move-<?php echo (int) $row['id']; ?>">Move</button>
+                                        <?php elseif ( $is_admin && 'series' === $row_place ) : ?>
+                                            <button type="submit" class="uc-btn uc-btn-sm uc-btn-quiet"
+                                                    form="uc-media-move-<?php echo (int) $row['id']; ?>"
+                                                    data-uc-confirm="Move this picture to Other images? Its series come off, and it is offered on every event instead.">Move to Other images</button>
+                                        <?php endif; ?>
                                         <?php
                                         /*
                                          * REMOVE, AND PUT BACK (3.81.0).
@@ -11627,6 +11743,16 @@ class SFAF_Portal {
                 ?>
                 <?php if ( $can_tag ) : ?>
                     <?php foreach ( $rows as $row ) : ?>
+                        <?php if ( 'submitted' === $row['place'] ) { continue; } ?>
+                        <?php if ( $is_admin ) : ?>
+                            <form method="post" action="<?php echo esc_url( $this->url( 'media' ) ); ?>"
+                                  id="uc-media-move-<?php echo (int) $row['id']; ?>" hidden>
+                                <input type="hidden" name="uc_action" value="media_move" />
+                                <input type="hidden" name="id" value="<?php echo (int) $row['id']; ?>" />
+                                <input type="hidden" name="to" value="<?php echo 'other' === $row['place'] ? 'series' : 'other'; ?>" />
+                                <?php wp_nonce_field( 'uc_portal_media_move', 'uc_nonce' ); ?>
+                            </form>
+                        <?php endif; ?>
                         <?php // Remove and put back, one form each, for the same nesting reason. ?>
                         <form method="post" action="<?php echo esc_url( $this->url( 'media' ) ); ?>"
                               id="uc-media-remove-<?php echo (int) $row['id']; ?>" hidden>
@@ -11647,9 +11773,11 @@ class SFAF_Portal {
                     <?php endforeach; ?>
                 <?php endif; ?>
 
-                <?php $this->media_pagination( $paged, (int) $found['pages'], $raw ); ?>
+                <p class="uc-muted uc-picker-empty" data-uc-filter-empty hidden>No pictures on this page match that.</p>
+                <?php $this->media_pagination( $paged, (int) $found['pages'], $raw, $search, $active_only ); ?>
             <?php endif; ?>
         </div>
+        </div><?php // data-uc-filter-scope ?>
 
         <?php
         $this->chrome_close();
@@ -11699,7 +11827,18 @@ class SFAF_Portal {
          * however many events want it. Attaching it to one would make it look
          * like that event's own file on every screen WordPress draws.
          */
+        /* NO SERIES MEANS OTHER IMAGES (3.110.3). The form's flag sends the
+         * file to calendar/; this filter, later in the order, sends it to
+         * Other images instead, and is taken off again straight after. */
+        $term_id = isset( $_POST['term_id'] ) ? (int) $_POST['term_id'] : 0;
+        if ( $term_id && ! SFAF_Series::get( $term_id ) ) {
+            $term_id = 0;
+        }
+        if ( ! $term_id ) {
+            add_filter( 'upload_dir', array( 'SFAF_Media_Folder', 'upload_to_other' ), 20 );
+        }
         $id = media_handle_upload( 'uc_media', 0, array(), array( 'test_form' => false ) );
+        remove_filter( 'upload_dir', array( 'SFAF_Media_Folder', 'upload_to_other' ), 20 );
 
         if ( is_wp_error( $id ) ) {
             $this->redirect( 'media', array(
@@ -11717,14 +11856,13 @@ class SFAF_Portal {
          * somebody hunting for an image that uploaded successfully and cannot
          * be found.
          */
-        if ( ! SFAF_Media_Folder::holds( $id ) ) {
+        if ( $term_id ? ! SFAF_Media_Folder::holds( $id ) : ! SFAF_Media_Folder::in_other( $id ) ) {
             $this->redirect( 'media', array(
                 'msg' => 'upload_failed',
                 'why' => 'That went into the general media library rather than the calendar folder, so no picker will offer it. Tell whoever looks after the site.',
             ) );
         }
 
-        $term_id = isset( $_POST['term_id'] ) ? (int) $_POST['term_id'] : 0;
         if ( $term_id ) {
             SFAF_Media::add_tag( array( $id ), $term_id );
         }
@@ -11788,7 +11926,7 @@ class SFAF_Portal {
                 $said = 'Series taken off that image. The image itself is untouched.';
                 break;
             case 'uploaded':
-                $said = 'Uploaded, and it is in the folder every picker offers.';
+                $said = 'Uploaded. Event pickers offer it now.';
                 break;
             case 'media_removed':
                 $said = 'Taken out of the calendar folder. It is offered on no form and in no picker now. '
@@ -11818,6 +11956,16 @@ class SFAF_Portal {
                 $said = isset( $_GET['why'] ) ? sanitize_text_field( wp_unslash( $_GET['why'] ) ) : 'That file could not be uploaded.';
                 $tone = ' uc-flash-error';
                 break;
+            case 'moved_series':
+                $said = 'Moved to series pictures, under that series.';
+                break;
+            case 'moved_other':
+                $said = 'Moved to Other images. Every event can choose it now.';
+                break;
+            case 'move_failed':
+                $said = isset( $_GET['why'] ) ? sanitize_text_field( wp_unslash( $_GET['why'] ) ) : 'That picture could not be moved.';
+                $tone = ' uc-flash-error';
+                break;
         }
         if ( '' === $said ) {
             return;
@@ -11836,12 +11984,18 @@ class SFAF_Portal {
      * @param int    $pages
      * @param string $tag   The filter as it arrived, so it rides the links.
      */
-    private function media_pagination( $paged, $pages, $tag ) {
+    private function media_pagination( $paged, $pages, $tag, $search = '', $active = false ) {
         if ( $pages < 2 ) {
             return;
         }
         $base = $this->url( 'media' );
         $args = ( '' !== $tag ) ? array( 'tag' => $tag ) : array();
+        if ( '' !== (string) $search ) {
+            $args['q'] = (string) $search;
+        }
+        if ( $active ) {
+            $args['active'] = 1;
+        }
         ?>
         <?php // The events list's own pagination shell, so a pager reads the
               // same on both screens and neither needs a rule of its own. ?>
