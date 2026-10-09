@@ -52,6 +52,15 @@ bash .claude/lint-php.sh .          # PHP 8.3, every file, fails on first error
   more than half its lines since the last commit or in it (3.105.0). A
   deliberate cut is let through only by naming it:
   `bash .claude/build-zip.sh X.Y.Z --allow-shrink=includes/class-x.php`.
+- **The suite must be runnable on this machine with Claude Code open.** Not
+  on an idle machine, and not by closing things first. `run-all.sh` runs every
+  check that starts Chrome through `.claude/browser-guard.ps1`: one at a time,
+  in a job the system will not let past `BROWSER_CEILING_MB` (1024), started
+  only when that plus `BROWSER_RESERVE_MB` (512) is free, and the next one not
+  started until every process of the last has ended. A php check is routed
+  there by naming `chrome.exe`, so a new browser check needs no list entry.
+  When a check reaches the ceiling, make the check smaller; raise the ceiling
+  only if the machine still has the reserve to spare beside Claude Code.
 
 Release mechanics: bump the minor version in all four places (plugin header,
 `SFAF_VERSION`, readme `Stable tag`, and `EMBED_JS_VERSION` in
