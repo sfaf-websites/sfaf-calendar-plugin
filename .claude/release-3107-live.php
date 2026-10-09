@@ -364,7 +364,9 @@ foreach ( array_keys( $pages ) as $t ) {
         "PLANT D.5: $t: the FAQ set did not follow the series (none, Alpha, two Betas): " . json_encode( array( $v( $t, 'faqNone' ), $v( $t, 'faqAlpha' ), $v( $t, 'faqBeta' ) ) ) );
 
     /* F */
-    rv_check( array( '601', '602', '603' ) === $v( $t, 'picsNone' ), "PLANT F: $t: no series does not show the whole folder: " . json_encode( $v( $t, 'picsNone' ) ) );
+    /* 3.110.3 changed this rule: with no series chosen the series group is
+       empty and says so; Other images are a group of their own. */
+    rv_check( array() === $v( $t, 'picsNone' ), "PLANT F: $t: no series still shows series pictures: " . json_encode( $v( $t, 'picsNone' ) ) );
     rv_check( array( '601' ) === $v( $t, 'picsAlpha' ) && array( '602' ) === $v( $t, 'picsBeta' ), "PLANT F: $t: changing the series did not re-filter without a save: " . json_encode( array( $v( $t, 'picsAlpha' ), $v( $t, 'picsBeta' ) ) ) );
     rv_check( false === $v( $t, 'outsideAtBeta' ) && true === $v( $t, 'pickedKept' ) && array( '601', '602' ) === $v( $t, 'picsAfterPick' ) && true === $v( $t, 'outsideAtAlpha' )
         && 'Not in this series. It stays chosen until you pick another.' === $v( $t, 'outsideText' ),
