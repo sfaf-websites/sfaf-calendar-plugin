@@ -1293,6 +1293,13 @@ identically.
 
 ### A submitted picture that is too small is a warning, not a refusal (3.93.0)
 
+> **REVERSED IN 3.110.3 for every event picture.** The brief made 1200 by 675
+> and 500KB a rule for every upload, the public forms included, refused with one
+> sentence: see "Pictures in three places". The warning below now applies only
+> to a picture inserted into a description, which keeps the old checks as
+> `inspect()`'s 'description' rule. Kept because it is why a description
+> picture is not held to the size.
+
 `SFAF_Uploads::MIN_WIDTH` is 1200 and it used to refuse the upload, which
 refused the whole submission with it. **The reasoning was about the picture and
 ignored the submission**: somebody with only a 768px copy could not send the
@@ -1790,6 +1797,11 @@ old "Reset to series image" tick posted, so the save clears the thumbnail and
 any stored URL and the event falls back to the series picture, or to the
 placeholder with no series. Choosing a picture disables it again.
 
+**+ Upload a picture for this event** (3.110.3) sits under "Choose a picture" on
+both editors: a file that passes the rule is the preview, with Event-specific,
+until a row or Remove replaces it, and the chosen row stays chosen underneath so
+a refused file gives it back. See "Pictures in three places".
+
 **The pending queue keeps its URL box.** It draws the same control through
 `render_manager_control()`, and an approver still reads and corrects what a
 submitter typed; `'queue' === $ctx['screen']` is the switch. The series screen's
@@ -2279,15 +2291,18 @@ reason.
 **WHICH FOLDER A FILE LANDS IN IS THE WHOLE DECISION.**
 
 ```
-calendar/                curated, approved, offered by every FEATURED picker
-                         and by the Images screen
+calendar/                series pictures: curated, each tagged to a series,
+                         offered by every FEATURED picker and the Images screen
+calendar-other/          Other images (3.110.3): pictures that belong to no
+                         series, offered by the event editor's picker and the
+                         Images screen, never by a public form
 calendar-submissions/    working copies from people with no account, offered
-                         by no picker at all
+                         by no picker at all, filed at approval
 calendar-descriptions/   pictures that go INSIDE prose, offered only by the
                          Insert image chooser on the caladmin editor
 ```
 
-**THREE FOLDERS SINCE 3.96.0, AND EVERY ONE OF THEM IS A SIBLING.** None is
+**FOUR FOLDERS SINCE 3.110.3, AND EVERY ONE OF THEM IS A SIBLING.** None is
 inside another, and that is not tidiness: `SFAF_Media_Folder` matches on an
 ANCHORED `^calendar/`, so anything under `calendar/` is offered by the featured
 picker and by the Images screen. A folder named `calendar/descriptions/` would
@@ -2329,11 +2344,10 @@ handler asks the calendar role again rather than trusting the hook name.
 **A picture chosen from the calendar folder becomes the event's thumbnail
 straight away**, on both public forms, because it is already approved and already
 the right shape. **An uploaded one does not**, because it is a working copy in a
-folder meant to be emptied, and nothing may point at it permanently. **There is
-no button that promotes one**: "Use this image" was removed in 3.95.0 because it
-never worked and deleted a typed image URL on the way past, and the way to use a
-submitted picture is to download it, size it and add it on the Images screen.
-The entry below on where a submitted picture lives has the reasoning.
+folder meant to be emptied, and nothing may point at it permanently. "Use this
+image" was removed in 3.95.0 because it never worked and deleted a typed image
+URL on the way past. **From 3.110.3 approval files it**: see "Pictures in three
+places" below.
 
 **`SFAF_Uploads::inspect()` is the one guard between a form and the disk.** Is
 there a file, did PHP finish it, is it really an upload, is it small enough, do
@@ -2347,6 +2361,68 @@ what it is called and who it belongs to. A stranger's file name is discarded and
 replaced; a name somebody typed in caladmin is kept, because it is what the
 picker's search matches and what tells two photographs of the same event apart
 at 64px.
+
+### Pictures in three places (3.110.3)
+
+**SERIES PICTURES, OTHER IMAGES, SUBMITTED.** Three folders, each a sibling under
+uploads: `calendar/` (each picture tagged to a series), `calendar-other/` (no
+series: a picture uploaded for one event, or one moved there) and
+`calendar-submissions/` (from the public forms, unreviewed).
+`SFAF_Media_Folder::offers()` is the folder rule from now on: series pictures and
+Other images are pictures the calendar uses, and `sfaf_event_own_image_url()`,
+the editor's preselection and naming and alt text ask it. `holds()` still means
+series pictures alone, which is what tagging and a series' fallback want.
+`SFAF_Media::pictures()` takes `place`: series, other, library (both), submitted
+or all, and `search` and `active`, answered after the query because a file name
+and a title cannot be OR'd in one WP_Query and the folder holds dozens.
+
+**THE EDITOR'S PICKER IS TWO GROUPS**, `SFAF_Media::grouped_picker()`: the
+series' pictures (every one written out with its series, narrowed by the script
+to the dropdown's series, empty and saying so with none), then Other images,
+never narrowed. Pictures of another series are not offered, and nothing from
+`calendar-submissions/` is: the two queries name their places. "Show active
+images only" keeps a picture an upcoming published event has as its OWN
+picture; a series picture shown by fallback is not active through that. The
+pending queue draws the same control. The public forms keep the list they had.
+
+**THE UPLOAD RULE IS ONE FUNCTION.** `SFAF_Uploads::picture_rule_error()`:
+exactly `PICTURE_WIDTH` by `PICTURE_HEIGHT`, at most `PICTURE_BYTES` (512000),
+JPEG, PNG or WebP, and `RULE_MESSAGE` for every way of breaking it.
+`inspect()` asks it unless called with the 'description' rule, which only
+`SFAF_Desc_Images` uses. Every upload reaches `inspect()`: the Images screen,
+the event upload, both public forms (extras included), and the series screen's
+wp.media upload through `SFAF_Media_Folder::hold_to_picture_rule()` on
+`wp_handle_upload_prefilter`. The editor checks the same numbers in the browser,
+read from attributes the server writes. Nothing is resized or recompressed.
+
+**+ UPLOAD A PICTURE FOR THIS EVENT** is a file input inside the event form
+(multipart since 3.110.3), so the file goes up with Save and works with no
+script. `save_event_upload()` runs after the picker's own save, so a file wins
+over a radio; it lands in Other images under the name it was chosen with,
+belongs to the uploader, becomes the thumbnail, and carries
+`SFAF_Media::META_UPLOAD` (by, at, event). `notify_event_upload()` runs at the
+end of every save and sends websites@ one message the first time an event is
+saved with such a picture, then marks it `META_UPLOAD_SENT`: one per picture,
+not per save, and not again when another event chooses it. Any level that can
+edit the event; the route has already asked. Not on the pending queue.
+
+**APPROVAL FILES A SUBMITTED PICTURE.** `render_approve_picture()` adds the
+question to the approval dialog when the event still has a file in
+`calendar-submissions/` (`SFAF_Media::submitted_picture()`): Tag to a series,
+with the event's series chosen, or Other images. A series answer naming no
+series refuses the approval before anything is published. `SFAF_Media::move()`
+moves the file and every size, keeps the attachment id, rewrites any URL stored
+as text (`_uc_image_url`, its typed copy, a series' image URL), tags or untags,
+and the file becomes the thumbnail. Moving to Other images is refused while a
+series has the picture as its own. Bulk Publish on the queue holds a submission
+with a picture, because a bulk press never opens the dialog. Rejecting trashes
+the event and leaves the file where it is.
+
+**THE IMAGES SCREEN** lists all three places for an admin and the first two for
+an editor, with the place on each card and, on a submitted one, the event it came
+with (`submitted_with()`, which looks in the trash too). Moves are admins'
+(`media_move`, the caladmin gate). An Other image gets a series by moving; the
+tag controls stay on series pictures.
 
 ### The event editor's actions follow the event's state
 
@@ -3022,6 +3098,14 @@ it stripped by hand is still refused at the write.
 both against one `$today` so a press that straddles midnight judges every row
 against one date. The ticks narrow; they never widen.
 
+**SET TEAM IS THE THIRD VERB (3.110.3)**, `uc_do=team` on the same form and the
+same ticks. `bulk_plan()` decides whether it is offered (`can_view_all()`, so
+never to a contributor, who may not assign access), and `bulk_team_from_post()`
+asks `may_assign_access()` of every id again, writing `SFAF_Access::set()` and
+counting what it skipped. It replaces each event's Team and access and leaves the
+notification list alone. The teams and people are `render_access_choices()`, the
+card's own render, under `bulk_access_*` names.
+
 ### Schedule for a later date (3.110.0)
 
 **The action bar has "Schedule for a later date" beside Publish**, with a date
@@ -3450,6 +3534,33 @@ took its icon away.
 **A name map that has to be edited in PHP every time somebody invents a category
 is not a feature, it is a list of the categories that existed when it was
 written.** Color is a closed palette and every icon key is validated.
+
+### A changed slug keeps answering (3.110.3)
+
+**AN ORGANIZER, A CATEGORY AND A SERIES HAVE A SLUG FIELD**, reversing the "no
+slug field" rule the Organizers screen kept from 3.38.0. That rule existed
+because a changed slug emptied embeds on pages nobody here can edit. What makes
+the field safe is `SFAF_Slug_Aliases`: `rename()` is the only writer, and it
+leaves the old slug in `sfaf_slug_aliases` (taxonomy, old slug, term id). By id,
+so a slug changed twice takes both old ones to the newest, and a live slug
+always wins over an alias of the same spelling.
+
+**WHAT AN OLD SLUG DOES.** A public address carrying it redirects with a 301
+(`redirect()` on `template_redirect`): the archive (`/event-organizer/<old>/`,
+once WordPress has missed the term) and the filter parameters `uc_cat`,
+`uc_org` and `uc_group` on any page. Everything that names a slug without being
+an address resolves it: the shortcode's attributes and URL filters
+(`normalize_filters()` and the `requested_*()` readers), the embed's REST
+parameters before the cache key is made, and the community form's series link.
+The embed generators list live slugs, so they write the new one.
+
+**STRUT WAS SEEDED AS MAGNET.** The sample data made an organizer "Magnet", later
+renamed Strut with the slug left behind. `rename_magnet_once()` renames it to
+strut through `rename()`, once, guarded by its own option
+(`sfaf_slug_magnet_done`, which records what it found), and only when the
+organizer with slug magnet is named Strut. The sample data seeds Strut now.
+`not_their_name()` lists, on the Organizers and Series & Categories screens,
+every term whose slug is not its name, which is what a retired name looks like.
 
 ### Organizers, and which deletion rule a taxonomy gets
 

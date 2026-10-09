@@ -4,17 +4,17 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-08, at 3.110.2, released.
+**Last updated:** 2026-10-09, at 3.110.3, released.
 
 ---
 
 ## What shipped last
 
-**3.110.2**: Email registrants with the subject as heading, bold and links, the
-event team and one organizer copy; Users as a table, Approval for contributors
-only; a series' default team applied to upcoming events; no registration count
-in the feed; the rest of caladmin passed on a phone (`TESTING.md` 1.230 to
-1.234, 2.46, 2.47).
+**3.110.3**: pictures in three places (series, Other images, submitted), one
+upload size everywhere, + Upload a picture for this event, a submitted picture
+filed at approval, Set team, and Strut's slug from magnet with every changed slug
+redirecting (`TESTING.md` 1.235 to 1.244, 2.48 to 2.50). **3.110.2**: Email
+registrants with the team, Users as a table, caladmin on a phone.
 > **3.110.1: EDITORS NO LONGER HAVE EVERY EVENT.** A team decides which events a
 > person has; their level decides what they can do on them (CLAUDE.md 7,
 > `PROJECT.md` 5). An editor has what they created and what **Team and
@@ -22,8 +22,7 @@ in the feed; the rest of caladmin passed on a phone (`TESTING.md` 1.230 to
 > Check every editor's My events first: `TESTING.md` **1.225** and **2.44**.
 > Notification teams still grant nothing, on Mark's decision.
 **3.110.1** also: the RSVP list reordered, **Register on another site**, Email
-Opt-ins and every event's registrations an admin's alone.
-**3.110.0**: the agreement, a text opt-in, check-in, scheduling. **Schema 13**.
+Opt-ins and all registrations an admin's alone. **3.110.0**: check-in, **schema 13**.
 > **THE WAITLIST NO LONGER OFFERS** (3.110.0): old offers rejoin the queue, `TESTING.md` **2.37**.
 > **CAPACITY: an empty box is no limit, 0 is no places** (3.107.0); schema 12
 > emptied every stored 0 once: `TESTING.md` **1.200**, `PROJECT.md` 2.
@@ -47,8 +46,8 @@ Earlier releases, and the reasoning for all of it: **`readme.txt` is the changel
 > (**Mark's decision**, in `DESIGN.md`). **Delete must never be first in the
 > MARKUP**: Enter presses the first submit, and the order on screen is CSS `order`.
 
-**THREE FOLDERS OF PICTURES, NONE INSIDE ANOTHER**: `calendar/` for featured,
-`calendar-submissions/` for strangers, `calendar-descriptions/` for prose.
+**FOUR FOLDERS OF PICTURES, NONE INSIDE ANOTHER**: `calendar/` series pictures,
+`calendar-other/` Other images, `calendar-submissions/`, `calendar-descriptions/`.
 
 > **HYBRID EVENTS ARE SHIPPED, AND THREE THINGS ARE DELIBERATELY NOT IN THEM.**
 > A registrant cannot change format after registering, neither public form
@@ -57,8 +56,8 @@ Earlier releases, and the reasoning for all of it: **`readme.txt` is the changel
 > **EVERY PERSON OBJECT REACHING A MAIL BUILDER CARRIES `format` (3.97.3)**, or
 > the gates refuse the link to the one person it is for. `PROJECT.md` 2 and 7.
 
-> **UPLOADING A PICTURE FROM THE EVENT EDITOR IS GONE**, with its 3.87.0 tagging;
-> the public forms keep theirs. **CHECK THE INSTALLED VERSION BEFORE BUILDING
+> **EVERY UPLOAD IS 1200 BY 675 AND 500KB** from 3.110.3, the public forms too;
+> the editor uploads into Other images. **CHECK THE INSTALLED VERSION BEFORE BUILDING
 > ANYTHING REPORTED MISSING**: two 3.94.0 items were already built.
 
 ---
@@ -94,7 +93,8 @@ Earlier releases, and the reasoning for all of it: **`readme.txt` is the changel
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 280 items.** **1.225** first,
+**`TESTING.md` holds the manual testing backlog: 293 items.** **1.235** and
+**1.236** first (Strut's slug, and which slugs carry a retired name), then **1.225**,
 that editors have their events, then **1.218**,
 that schema 13 ran, then **2.37**, the old offers moved, then **1.200**, that
 schema 12 ran and no event became waitlist-only, then **1.197**, that

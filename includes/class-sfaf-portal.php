@@ -8913,9 +8913,9 @@ class SFAF_Portal {
              * out and the script narrows, so "All calendar images" has
              * something to reveal.
              *
-             * UPLOADING FROM HERE IS GONE WITH THE MODAL, deliberately, and the
-             * hint says where it went. That is Mark's decision and it is not a
-             * side effect: see the release notes for what goes with it.
+             * UPLOADING WENT WITH THE MODAL IN 3.94.0 AND CAME BACK IN 3.110.3
+             * as "+ Upload a picture for this event" below: a file input in
+             * the event form, into Other images, on the brief's instruction.
              */
             /*
              * TWO GROUPS FROM 3.110.3, the series' pictures and then Other

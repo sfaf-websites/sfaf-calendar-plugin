@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 280 items.** Quick 231, needs real conditions 45, blocked on other
+**Outstanding: 293 items.** Quick 241, needs real conditions 48, blocked on other
 people 4.
 
 ---
@@ -3273,6 +3273,98 @@ for the field.
 
 **Why it needs a person:** knowledge of sites outside this repository.
 
+### 1.235 Strut's slug, and the old one, on the site (3.110.3)
+
+After the update, open **Organizers**: Strut shows `strut`. Then open
+`/event-organizer/magnet/` and a calendar page with `?uc_org=magnet` added to
+its address: both land on the same address with `strut`, and show Strut's
+events. If Organizers says nothing changed (the organizer with slug magnet is not
+named Strut, or `strut` was taken), say what it shows.
+
+**Why it needs a person:** the term lives in the site's database.
+
+### 1.236 Read the "Slugs that are not their names" lists (3.110.3)
+
+Open **Organizers** and **Series & Categories**. Any organizer, category or
+series whose slug is not its own name is listed at the top of its section, as
+"Name (slug)". Report every one, and say which are left from a retired name; for
+those, change the slug under Edit. The old slug keeps working after the change.
+
+**Why it needs a person:** only the live database says which names were retired.
+
+### 1.237 An embed written with data-organizer="magnet" (3.110.3)
+
+If any page, here or on another site, carries a calendar block with
+`data-organizer="magnet"`, open it: it still shows Strut's events. A new block
+made with the embed generator says `strut`.
+
+**Why it needs a person:** embeds on pages outside this repository.
+
+### 1.238 The picker on Add and Edit event, with the real library (3.110.3)
+
+Open an event in a series and **Choose a picture**: that series' pictures, then
+Other images. Change the series dropdown: the first group follows it, and with no
+series it says to choose one. Type part of a file name: the list narrows. Tick
+**Show active images only**: only pictures an upcoming published event uses stay.
+No submitted picture is ever in the list.
+
+**Why it needs a person:** the real folders and events.
+
+### 1.239 Upload a picture from the event screen (3.110.3)
+
+On an event, press **+ Upload a picture for this event** and choose a file that is
+not 1200 by 675: it is refused with "Pictures must be 1200 by 675 pixels and
+under 500KB." Choose one that is, under 500KB: it shows in the preview as
+Event-specific. Save. On **Images**, under Other images, it is there with the
+name it was chosen with, and the event shows it on the calendar. Do it once as a
+contributor too.
+
+**Why it needs a person:** a real upload, a real server and its folders.
+
+### 1.240 The Images screen's three places, and moving a picture (3.110.3)
+
+On **Images**, choose Series pictures, Other images and Submitted in turn; each
+card says its place, a submitted one names its event. Search, and tick Show
+active images only. Move a picture an event uses to Other images and back under a
+series: the event still shows it after each move, and any event that held its
+address as text still does.
+
+**Why it needs a person:** a move renames files on the server's disk.
+
+### 1.241 A wrong-size picture on both public forms (3.110.3)
+
+On the staff request form and a community form, send an event with a picture that
+is not 1200 by 675, then with an extra picture that is not. Each is refused with
+"Pictures must be 1200 by 675 pixels and under 500KB." and nothing is lost from
+the rest of the form. A right one goes through.
+
+**Why it needs a person:** a real upload through the public forms.
+
+### 1.242 Upload through a series screen's Choose Image (3.110.3)
+
+On a series, **Choose Image**, Upload Files, and choose a file that is not
+1200 by 675. The media library refuses it with the same sentence.
+
+**Why it needs a person:** WordPress's media modal does not run here.
+
+### 1.243 Set team on the events list (3.110.3)
+
+As an admin, tick three events, open **Set team**, choose a team and a person,
+and press **Set team on 3 events**: the confirmation names 3, and the notice says
+3. Open one event's Team and access: it shows the choice. As an editor, the list
+shows only their events and Set team reaches only those. As a contributor, Set
+team is not there.
+
+**Why it needs a person:** real users at three levels.
+
+### 1.244 Change a category's slug and back (3.110.3)
+
+On **Series & Categories**, edit a category, change its slug and save. Its
+filter link with the old slug lands on the new one. Change it back: the first
+slug works again and nothing is listed twice.
+
+**Why it needs a person:** the live terms and addresses.
+
 ## 2. Needs real conditionsWaiting for an unattended job to fire, a real removal at source, or a real event
 with real registrations and real mail.
 
@@ -3963,6 +4055,33 @@ event is unchanged.
 
 **Why it needs real conditions:** a real series with real dates either side of
 today.
+
+### 2.48 The email to websites@ for an uploaded picture (3.110.3)
+
+Upload a picture on an event (1.239) and save. websites@sfaf.org gets one
+message: the event's title, who uploaded it and when, Open the event in caladmin,
+and the picture shown and attached. Save the event again: nothing more arrives.
+Choose the same picture on another event and save: nothing arrives.
+
+**Why it needs real conditions:** real mail.
+
+### 2.49 Approve a real submission that carries a picture (3.110.3)
+
+When a community or staff submission arrives with a picture, press **Approve**:
+the dialog asks Where does the picture go, with the event's series chosen. Keep
+it, approve, and check the picture is under that series on **Images**, is the
+event's picture on the calendar, and is gone from Submitted. Next time choose
+Other images.
+
+**Why it needs real conditions:** a real submission with a real file.
+
+### 2.50 WP Media Folder after a move (3.110.3)
+
+Move a picture between series pictures and Other images (1.240), then look for it
+in the WordPress media library's own folders. A move does not change which WP
+Media Folder folder holds it; say whether it should be filed somewhere else.
+
+**Why it needs real conditions:** WP Media Folder is not on the build machine.
 
 ## 3. Blocked on other peopleNothing here can move until somebody outside the build answers.
 

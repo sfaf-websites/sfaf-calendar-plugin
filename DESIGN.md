@@ -1371,6 +1371,56 @@ the same chip style.
 **The tour's Team and access step** comes after Notifications on both editors,
 though the card is in the side column.
 
+### Pictures in three places, the upload, the approval question and Set team (3.110.3)
+
+Measured in Chrome by `.claude/release-31103-live.php` at 1280px, 430px and
+390px. Screenshots in `.claude/screens/`, `caladmin-31103-<page>-<width>.png`,
+taken after the probe has run (the picker open, a refused file's sentence
+showing): `edit`, `add`, `images`, `imgseries`, `imgother`, `imgsub`, `pending`,
+`events`, each `-desktop`, `-wide` and `-phone`.
+
+**The editor's picker, two groups.** One list: the series picture row, then
+**Series pictures**, then **Other images**. A group's name is the Field label
+step, 13/600 at 1.45, in `--p-muted`, with a 1px `--p-border` hairline above and
+10px over it; no box per group. An empty group says so in one line, 13px muted
+("Choose a series to see its pictures.", "No other images yet."). Above the list,
+on one row that wraps: the search box (`.uc-picker-filter`, growing from 220px)
+and **Show active images only**, 13px, the standard tick. Both appear only once
+the script is live, like the search box before them.
+
+**+ Upload a picture for this event** is the outlined control, `.uc-outline-btn`
+(1px `--uc-accent-text` edge and text, `--uc-band` on hover), 10px under the
+picker, its file input hidden inside it and the 2px accent ring on the label
+while the input has focus. A refusal is `.uc-field-error` under it. The size line
+under the block now reads the rule's own sentence, bold.
+
+**The Images screen.** The filter row takes the place select, the search box
+(320px at most) and the active tick, then Show. Each card carries its place as a
+pill under the picture: Helper 12px, `--p-text` on `--p-bg`, 1px `--p-border`,
+99px radius, 2px 8px. **Active** is the same pill in the success pair,
+`--p-ok-ink` on `--p-ok-tint` (6.08:1). A submitted card is the picture, its
+pill, its file name and one line naming its event, with no controls.
+
+**The approval question** is a section of the approval panel under a hairline:
+"Where does the picture go?" as the field label, the picture at 160px wide,
+16:9, 6px radius, then the two choices as standard radios with the series select
+(280px at most) indented 24px under the first.
+
+**Set team** is a `summary.uc-outline-btn` on its own row of the events list's
+bulk bar; open, the Team and access choices sit on `--p-bg`, 12px 14px, 10px
+radius, people wrapping in rows, and the primary **Set team on N events** under
+them.
+
+**Slug** is a standard text field with one hint, under Name on an organizer, a
+category and a series. A list of slugs that are not their names is the amber
+`.uc-field-note-attention` line at the top of its section, the same mark and
+colour as every other step-in-the-job note.
+
+**44px, more of it.** Under `(pointer: coarse), (max-width: 600px)`: an Images
+card's tick and a tag's x, the editor's picture Remove and a chip's x reach 44px
+with an absolute `::after` hit area, the "?" buttons' method, so nothing changes
+size; the upload control and both active ticks have a 44px minimum height.
+
 ---
 
 ## 5. CSS discipline

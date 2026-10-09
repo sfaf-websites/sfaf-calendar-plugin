@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.110.2
+Stable tag: 3.110.3
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,32 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.110.3 =
+
+**Pictures in three places, one size for every upload, a picture uploaded from the event, a submitted picture filed at approval, Set team, and Strut's slug.**
+
+**THREE PLACES FOR PICTURES.** Series pictures (the calendar folder, each tagged to a series), Other images (a new folder, calendar-other, for pictures that belong to no series) and Submitted (unreviewed pictures from the public forms). An event's own picture may be a series picture or an Other image; a submitted one is never used until it is filed.
+
+**THE PICKER ON ADD AND EDIT EVENT** shows two groups: the chosen series' pictures, then Other images. With no series chosen the first group says to choose one. A search box narrows by file name or name as you type, newest first, and "Show active images only" keeps the pictures an upcoming published event uses. All calendar images is gone, and submitted pictures never appear.
+
+**THE IMAGES SCREEN** shows all three places, with Series pictures, Other images and Submitted in its filter, the same search and active tick, and a pill on each card naming its place. A submitted picture names the event it came with. Admins can move a picture to Other images, which takes its series off, or into series pictures under a series. Uploading with no series puts it in Other images.
+
+**ONE SIZE FOR EVERY UPLOAD.** From the Images screen, the event screen, both public forms (the extra pictures included) and the series screen's media library: exactly 1200 by 675 pixels, 500KB or less, JPEG, PNG or WebP. Anything else is refused with "Pictures must be 1200 by 675 pixels and under 500KB." Nothing is resized. A smaller picture on a public form is now refused rather than taken with a warning. Pictures inserted into a description keep their own rules.
+
+**+ UPLOAD A PICTURE FOR THIS EVENT**, under Choose a picture on Add and Edit event, for everybody who can edit the event. The file is checked as it is chosen, shown in the preview as Event-specific, and saved with the event into Other images under its own name. The first save that carries it emails websites@sfaf.org the event, who uploaded it and when, a link to the event in caladmin, and the picture; a later save sends nothing.
+
+**APPROVING A SUBMISSION WITH A PICTURE** asks where the picture goes: Tag to a series, with the event's series chosen, or Other images. The file moves there and becomes the event's picture. Rejecting leaves it in Submitted. Bulk Publish on the pending queue leaves a submission with a picture for its own Approve.
+
+**SET TEAM ON THE EVENTS LIST.** With events ticked, Set team opens the Team and access choices and applies them to every ticked event you may assign on; the button and the confirmation name the count. Calendar admins and editors; a contributor does not see it.
+
+**SLUGS.** The Strut organizer's slug changes from magnet to strut, once. An organizer, a category or a series now has a Slug field. A changed slug keeps the old one working: its archive and filter links redirect to the new address, and a shortcode, an embed's data-organizer or a community form link that names it still finds it. The embed generator writes the new one. The Organizers and Series & Categories screens list any slug that is not its name.
+
+**ON A PHONE** the Images cards' tick and tag x, and the editor's picture Remove and category chip x, reach 44px.
+
+**THE TEST SUITE** runs browser checks under a 768MB ceiling with 256MB kept free, so it starts with Edge, Claude Code and Asana open.
+
+**CHECKED.** The rule at 1200 by 675 and 500KB, refusing 1201 and 1199 wide, 676 tall, one byte over and GIF; every caller of the guard on the picture rule but the description one. The picker's two groups, its search and active tick, and no submitted file in it; the Images screen's places, filters, search and moves; the approval dialog's question; one email per uploaded picture; Set team reaching only events the person may assign on. Strut renamed once and only for Strut; the archive and filter links redirected; shortcodes, embeds and the community form resolving an old slug. In Chrome at 1280px, 430px and 390px: the picker following the series, a right file previewed and a 1201-wide one refused, the Images screen under each filter, the approval dialog and Set team, nothing off the edge and nothing under 44px on a phone. Planted and caught: a 1201-wide file accepted, by the server and by the editor; a second email on a second save; a submitted picture in the picker; Set team on an event the person may not edit; the series group not following the dropdown; an old slug forgotten, its archive or its filter link not redirected, and an embed not resolving it.
 
 = 3.110.2 =
 
