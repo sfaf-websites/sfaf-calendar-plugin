@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Users - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.110.1" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.110.1" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.110.1" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.110.2" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.110.2" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.110.2" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.110.1" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.110.2" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -176,14 +176,15 @@
                         </dd>
                         <dt>Editor</dt>
                         <dd>
-                            Sees and edits every event and can view every registration list. Cannot add or
-                            remove calendar users and cannot approve events.
+                            Edits the events they created and the ones Team and access gives them, with their
+                            registration lists, and manages series, categories, venues, organizers and FAQ sets.
+                            Cannot add or remove calendar users and cannot approve events.
                         </dd>
                         <dt>Contributor</dt>
                         <dd>
-                            Creates events and edits their own, plus any event owned by a team they are in,
-                            and sees the registrations for those. Every other event is read-only, showing
-                            what the public calendar already shows.
+                            Creates events and edits their own and the ones Team and access gives them, with
+                            their registration lists. Every other event is read-only, showing what the public
+                            calendar already shows.
                         </dd>
                     </dl>
                     <p class="uc-hint">
@@ -207,7 +208,7 @@
             </form>
         </div>
 
-        <div class="uc-card">
+                <div class="uc-card uc-users-card">
             <div class="uc-card-head"><h2>Calendar Users (0)</h2></div>
                             <p class="uc-empty">No calendar users yet.</p>
                     </div>
@@ -216,19 +217,13 @@
                 <section class="uc-section" id="uc-teams">
             <div class="uc-section-head">
                 <h2>Teams</h2>
-                <p class="uc-section-sub">Named groups of calendar users. An event can give a team access, so everybody on it can edit that event and see who has registered.</p>
+                <p class="uc-section-sub">Create a team, add people to it, then choose it under Team and access on an event.</p>
             </div>
 
             <div class="uc-card">
                 <div class="uc-card-head">
                     <h2>0 teams</h2>
                 </div>
-                <p class="uc-hint">
-                    A team is a name and a set of people, read fresh every time. Adding somebody gives them access to
-                    every event the team already has, including ones set up before they joined; taking somebody out
-                    removes it. Events can also email a team, which is a separate tick on the event and is off unless
-                    somebody sets it.
-                </p>
 
                 
                                     <p class="uc-empty">No teams yet. Create one below.</p>
@@ -241,8 +236,8 @@
                                 </main>
             </div>
         </div>
-        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.110.1"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.110.1"></script>
-<script src="../public/js/portal.js?ver=3.110.1"></script>
+        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.110.2"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.110.2"></script>
+<script src="../public/js/portal.js?ver=3.110.2"></script>
 <script>window.CS_PAGE="caladmin-users";(function () {
 var out = { page: window.CS_PAGE, errors: [], caps: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });

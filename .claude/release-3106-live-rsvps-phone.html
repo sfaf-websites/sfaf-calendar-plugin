@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Events - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.110.1" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.110.1" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.110.1" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.110.2" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.110.2" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.110.2" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.110.1" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.110.2" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -365,7 +365,7 @@
             </summary>
             <div class="uc-rsvp-settings-form uc-registrant-mail-body">
                                 <form method="post" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-registrant-mail-form" data-uc-rm-form
-                      data-uc-rm-to="2" data-uc-rm-to-wait="4"
+                      data-uc-rm-counts="{&quot;00&quot;:3,&quot;01&quot;:3,&quot;10&quot;:5,&quot;11&quot;:5}"
                       data-uc-rm-url="https://resources.sfaf.org/caladmin/rsvps"
                       data-uc-rm-preview-nonce="nonce"
                       data-uc-rm-tokens="{&quot;first_name&quot;:&quot;First name&quot;,&quot;title&quot;:&quot;Event title&quot;,&quot;date&quot;:&quot;Date&quot;,&quot;time&quot;:&quot;Time&quot;,&quot;location&quot;:&quot;Location&quot;,&quot;event_link&quot;:&quot;Event page link&quot;}">
@@ -379,24 +379,32 @@
                                                     <button type="button" class="uc-tpl-token" data-uc-tpl-token="time">Time</button>
                                                     <button type="button" class="uc-tpl-token" data-uc-tpl-token="location">Location</button>
                                                     <button type="button" class="uc-tpl-token" data-uc-tpl-token="event_link">Event page link</button>
-                                            </div>
+                                                                        <button type="button" class="uc-tpl-token uc-rm-format" data-uc-rm-bold aria-label="Bold"><strong>B</strong></button>
+                        <button type="button" class="uc-tpl-token uc-rm-format" data-uc-rm-link>Link</button>
+                    </div>
                     <label class="uc-field">
                         <span class="uc-field-label">Subject</span>
                         <textarea name="rm_subject" rows="1" data-uc-tpl-text="subject"></textarea>
                     </label>
                     <label class="uc-field">
                         <span class="uc-field-label">Message</span>
-                        <textarea name="rm_body" rows="7" data-uc-tpl-text="intro"></textarea>
-                        <span class="uc-hint">The first paragraph is the heading. Leave a blank line between paragraphs.</span>
+                        <textarea name="rm_body" rows="7" data-uc-tpl-text="intro" data-uc-tpl-rich></textarea>
+                        <span class="uc-hint">The subject is the heading. Leave a blank line between paragraphs.</span>
                     </label>
-                    <label class="uc-check">
-                        <input type="checkbox" name="rm_waitlist" value="1" data-uc-rm-waitlist />
-                        Include the waitlist
-                    </label>
+                    <div class="uc-rm-ticks">
+                        <label class="uc-check">
+                            <input type="checkbox" name="rm_waitlist" value="1" data-uc-rm-waitlist />
+                            Include the waitlist
+                        </label>
+                        <label class="uc-check">
+                            <input type="checkbox" name="rm_team" value="1" data-uc-rm-team />
+                            Include event team
+                        </label>
+                    </div>
                     <div class="uc-form-actions">
                         <button type="button" class="uc-btn" data-uc-rm-preview>Preview</button>
-                        <button type="submit" class="uc-btn uc-btn-primary" data-uc-rm-send
-                                data-uc-confirm="Send to 2 people?">Send</button>
+                        <button type="submit" class="uc-btn uc-btn-go uc-rm-send" data-uc-rm-send
+                                data-uc-confirm="Send to 3 people?"><span class="uc-rm-send-icon" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-mail" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/></svg></span><span class="uc-rm-send-label">Send</span></button>
                     </div>
                     <p class="uc-notice uc-notice-error" role="alert" data-uc-rm-error hidden></p>
                     <div class="uc-rm-preview" data-uc-rm-preview-box hidden>
@@ -589,8 +597,8 @@
                             </main>
             </div>
         </div>
-        <script src="../public/js/sfaf-email.js?ver=3.110.1"></script>
-<script src="../public/js/portal.js?ver=3.110.1"></script>
+        <script src="../public/js/sfaf-email.js?ver=3.110.2"></script>
+<script src="../public/js/portal.js?ver=3.110.2"></script>
 <script>window.RL_PAGE="rsvps-phone";window.RL_W=390;(function () {
 var P = window.RL_PAGE, W = window.RL_W, out = { page: P, errors: [], posted: null, dialogs: [] };
 window.__noReload = 'still here';
