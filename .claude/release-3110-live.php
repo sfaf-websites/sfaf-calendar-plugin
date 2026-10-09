@@ -147,6 +147,8 @@ function small(root) {
     if (!seen(el)) { return; }
     if (el.tagName === 'LABEL' && !q('input[type="checkbox"], input[type="radio"]', el)) { return; }
     if (el.closest('.uc-tpl-editor, [hidden], .uc-tour, #uc-sidebar')) { return; }
+    /* A visually hidden input inside a label is pressed through the label (3.110.3). */
+    if (el.tagName === 'INPUT' && el.classList.contains('uc-visually-hidden') && el.closest('label')) { return; }
     var r = el.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) { return; }
     var h = r.height, a = getComputedStyle(el, '::after');

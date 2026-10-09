@@ -7,7 +7,8 @@ pass=0
 # THE SUITE RUNS WITH CLAUDE CODE OPEN. Every check that starts Chrome, which is
 # every php check whose file names chrome.exe, runs through browser-guard.ps1:
 # one at a time, inside a job the system will not let past BROWSER_CEILING_MB
-# committed, and not started until the ceiling plus BROWSER_RESERVE_MB is free.
+# committed, and not started until the ceiling plus BROWSER_RESERVE_MB is free
+# (waiting up to ten minutes for it: free memory here swings by 600 MB).
 # The next check does not start until every process of the last one has ended.
 # Measured on 3.110.2: the heaviest check peaks at 472 MB, most near 380, and
 # nine of them left a Chrome process running after they returned. 1024 + 512
@@ -21,7 +22,7 @@ run() { # label, command...
   local out rc
   if [ "$1" = php ] && [ -f "$2" ] && grep -q 'chrome\.exe' "$2"; then
     set -- powershell.exe -NoProfile -ExecutionPolicy Bypass -File .claude/browser-guard.ps1 \
-      -CeilingMB "$BROWSER_CEILING_MB" -ReserveMB "$BROWSER_RESERVE_MB" -Command "$*"
+      -CeilingMB "$BROWSER_CEILING_MB" -ReserveMB "$BROWSER_RESERVE_MB" -WaitSeconds 600 -Command "$*"
   fi
   out="$("$@" 2>&1)"; rc=$?
   if [ $rc -eq 0 ]; then

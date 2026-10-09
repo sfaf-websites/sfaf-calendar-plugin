@@ -89,7 +89,7 @@ $plants = array(
 
     'the upload skips the one guard between a file and the disk' => array(
         'file' => 'includes/class-sfaf-desc-images.php',
-        'from' => "        \$seen = SFAF_Uploads::inspect( \$field );",
+        'from' => "        \$seen = SFAF_Uploads::inspect( \$field, null, 'description' );",
         'to'   => "        \$seen = array( 'ok' => true, 'error' => '', 'warning' => '' );",
     ),
 
