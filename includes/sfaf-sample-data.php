@@ -146,7 +146,7 @@ function sfaf_install_sample_data() {
         array(
             'title'      => 'HIV Testing & Sexual Health Services',
             'category'   => 'Health Services',
-            'organizer'  => 'Magnet',
+            'organizer'  => 'Strut',
             'venue'      => 'Strut',
             'location'   => 'Strut - 470 Castro St, San Francisco',
             'date'       => $tue,
@@ -156,8 +156,8 @@ function sfaf_install_sample_data() {
             'end_date'   => $plus( $tue, '+5 weeks' ),
             'rsvp'       => false,
             'capacity'   => '',
-            'excerpt'    => 'Free, confidential HIV/STI testing and sexual-health services at Magnet. Drop in, no appointment needed.',
-            'content'    => "Magnet at Strut offers free and confidential HIV and STI testing, PrEP/PEP services, and sexual-health care in a welcoming, sex-positive environment. Drop-in services are available Tuesday through Saturday, 10:00 AM to 7:00 PM. No appointment necessary.",
+            'excerpt'    => 'Free, confidential HIV/STI testing and sexual-health services at Strut. Drop in, no appointment needed.',
+            'content'    => "Strut offers free and confidential HIV and STI testing, PrEP/PEP services, and sexual-health care in a welcoming, sex-positive environment. Drop-in services are available Tuesday through Saturday, 10:00 AM to 7:00 PM. No appointment necessary.",
         ),
         array(
             'title'      => 'Volunteer Orientation',

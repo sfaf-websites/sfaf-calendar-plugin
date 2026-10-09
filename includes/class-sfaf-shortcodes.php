@@ -59,8 +59,10 @@ class SFAF_Shortcodes {
      */
     private function normalize_filters( $raw ) {
         return array(
-            'category'  => $this->slug_list( isset( $raw['category'] ) ? $raw['category'] : '' ),
-            'organizer' => $this->slug_list( isset( $raw['organizer'] ) ? $raw['organizer'] : '' ),
+            /* An old slug still answers, through its alias (3.110.3): an embed
+             * written before a rename keeps showing the same events. */
+            'category'  => SFAF_Slug_Aliases::resolve_list( 'uc_event_category', $this->slug_list( isset( $raw['category'] ) ? $raw['category'] : '' ) ),
+            'organizer' => SFAF_Slug_Aliases::resolve_list( 'uc_organizer', $this->slug_list( isset( $raw['organizer'] ) ? $raw['organizer'] : '' ) ),
             'venue'     => $this->slug_list( isset( $raw['venue'] ) ? $raw['venue'] : '' ),
             'series'    => isset( $raw['series'] ) ? absint( $raw['series'] ) : 0,
             /*
@@ -183,7 +185,7 @@ class SFAF_Shortcodes {
      * @return string
      */
     private function requested_category() {
-        return isset( $_GET['uc_cat'] ) ? $this->slug_list( wp_unslash( $_GET['uc_cat'] ) ) : '';
+        return isset( $_GET['uc_cat'] ) ? SFAF_Slug_Aliases::resolve_list( 'uc_event_category', $this->slug_list( wp_unslash( $_GET['uc_cat'] ) ) ) : '';
     }
 
     /**
@@ -302,7 +304,7 @@ class SFAF_Shortcodes {
 
     /** What the visitor asked for in the organizer dropdown, if anything. */
     private function requested_organizer() {
-        return isset( $_GET['uc_org'] ) ? $this->slug_list( wp_unslash( $_GET['uc_org'] ) ) : '';
+        return isset( $_GET['uc_org'] ) ? SFAF_Slug_Aliases::resolve_list( 'uc_organizer', $this->slug_list( wp_unslash( $_GET['uc_org'] ) ) ) : '';
     }
 
     /**
@@ -615,7 +617,7 @@ class SFAF_Shortcodes {
      * @return string
      */
     private function requested_groups() {
-        return isset( $_GET['uc_group'] ) ? $this->slug_list( wp_unslash( $_GET['uc_group'] ) ) : '';
+        return isset( $_GET['uc_group'] ) ? SFAF_Slug_Aliases::resolve_list( 'uc_series', $this->slug_list( wp_unslash( $_GET['uc_group'] ) ) ) : '';
     }
 
     /**

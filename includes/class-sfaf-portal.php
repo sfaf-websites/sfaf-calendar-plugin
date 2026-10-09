@@ -20,6 +20,9 @@ class SFAF_Portal {
     const LOGO_STACKED = 'https://resources.sfaf.org/wp-content/uploads/SFAF-heritage-logo_stacked-Yellow-15Gray-preview.webp';
     const LOGO_ALT     = 'San Francisco AIDS Foundation';
 
+    /** Set by save_series_from_post() when a typed slug was refused (3.110.3). */
+    private $series_slug_refused = false;
+
     /**
      * Post meta: the URL a person typed into the image box, stored as typed
      * (3.104.0). The folder rule exempts `_uc_image_url` only while it equals
@@ -1427,7 +1430,7 @@ class SFAF_Portal {
                 if ( ! $id ) {
                     $this->redirect( 'series', array( 'msg' => 'series_failed' ) );
                 }
-                $this->redirect( 'series/edit/' . $id, array( 'msg' => 'series_saved' ) );
+                $this->redirect( 'series/edit/' . $id, array( 'msg' => $this->series_slug_refused ? 'series_slug_refused' : 'series_saved' ) );
                 break;
 
             /* ---- The schedule. Four writes. ------------------------------
@@ -1482,6 +1485,14 @@ class SFAF_Portal {
                     isset( $_POST['category_color'] ) ? wp_unslash( $_POST['category_color'] ) : '',
                     isset( $_POST['category_icon'] ) ? sanitize_key( wp_unslash( $_POST['category_icon'] ) ) : ''
                 );
+                /* A changed slug keeps the old one answering (3.110.3). */
+                $cat_id = isset( $_POST['category_id'] ) ? intval( $_POST['category_id'] ) : 0;
+                if ( ! is_wp_error( $saved ) && $cat_id && isset( $_POST['category_slug'] ) ) {
+                    $moved = SFAF_Slug_Aliases::rename( $cat_id, SFAF_Categories::TAXONOMY, wp_unslash( $_POST['category_slug'] ) );
+                    if ( is_wp_error( $moved ) ) {
+                        $saved = $moved;
+                    }
+                }
                 if ( is_wp_error( $saved ) ) {
                     set_transient( 'sfaf_category_error_' . $user->ID, $saved->get_error_message(), 60 );
                     $this->redirect( 'series', array( 'msg' => 'category_failed' ) );
@@ -4624,6 +4635,7 @@ class SFAF_Portal {
             'team_saved'     => 'Team saved. Everybody in it can edit the events this team has access to, from now, including events set up before they joined.',
             'team_deleted'   => 'Team deleted. No event named it, so nobody lost access and no notification changed.',
             'series_saved'   => 'Series saved. Nothing about the events in it changed: a series groups them, it does not overwrite them.',
+            'series_slug_refused' => 'Series saved, and its slug was not changed: it was empty or another series has it.',
             'category_saved' => 'Category saved. Its color and icon are what a card and its placeholder are drawn from, so events in it change appearance straight away.',
             'category_failed'=> 'That category could not be saved. Give it a name and try again.',
             'series_failed'  => 'That series could not be saved. Give it a name and try again.',
@@ -9867,6 +9879,12 @@ class SFAF_Portal {
             if ( is_wp_error( $result ) ) {
                 return 0;
             }
+            /* A changed slug keeps the old one answering (3.110.3). A refused
+             * one leaves the rest of the save standing and says so. */
+            if ( isset( $_POST['series_slug'] ) ) {
+                $moved = SFAF_Slug_Aliases::rename( $term_id, SFAF_Series::TAXONOMY, wp_unslash( $_POST['series_slug'] ) );
+                $this->series_slug_refused = is_wp_error( $moved );
+            }
             $this->tag_series_image( $term_id, (int) $args['image_id'] );
             $this->save_series_agreement( $term_id );
             $this->save_series_access( $user, $term_id );
@@ -9993,6 +10011,7 @@ class SFAF_Portal {
                 <h2>Series</h2>
                 <p class="uc-section-sub">An event and all of its dates, with the pattern it runs on.</p>
             </div>
+            <?php $this->render_not_their_name( 'uc_series' ); ?>
 
         <p class="uc-help">
             <strong>A series is an event's schedule: the event, and all of its dates.</strong> Open one to see the
@@ -10167,6 +10186,7 @@ class SFAF_Portal {
                 <h2>Categories</h2>
                 <p class="uc-section-sub">What kind of event this is. The color and icon are what a card and its placeholder are drawn from.</p>
             </div>
+            <?php $this->render_not_their_name( 'uc_event_category' ); ?>
 
             <div class="uc-card">
                 <?php // The same fold and the same threshold as the series list above. ?>
@@ -10274,6 +10294,7 @@ class SFAF_Portal {
                 <input type="text" name="category_name" value="<?php echo esc_attr( $name ); ?>"
                        placeholder="e.g. Support Groups" required <?php echo $cat ? 'autofocus' : ''; ?> />
             </label>
+            <?php if ( $cat ) { $this->render_slug_field( 'category_slug', $cat->slug ); } ?>
 
             <div class="uc-field">
                 <span class="uc-field-label">Color</span>
@@ -10434,6 +10455,7 @@ class SFAF_Portal {
                     <span class="uc-field-label">Series name</span>
                     <input type="text" name="series_name" value="<?php echo esc_attr( $term ? $term->name : '' ); ?>" required />
                 </label>
+                <?php if ( $term ) { $this->render_slug_field( 'series_slug', $term->slug ); } ?>
 
                 <?php
                 /*
@@ -11004,6 +11026,7 @@ class SFAF_Portal {
         }
         ?>
         <div class="uc-page-head"><h1>Organizers</h1></div>
+        <?php $this->render_not_their_name( 'uc_organizer' ); ?>
 
         <p class="uc-help">
             Who is putting an event on. An event names one, and it appears on the event page as
@@ -11115,21 +11138,13 @@ class SFAF_Portal {
                                     </label>
                                     <?php
                                     /*
-                                     * NO SLUG FIELD, AND NO WARNING ABOUT ONE.
-                                     *
-                                     * The slug is what embed blocks on other sites resolve
-                                     * through and what the public archive URL is made of, and
-                                     * it is not something anybody managing events needs to
-                                     * read. An editable field invites a change that empties
-                                     * somebody else's calendar, and a warning beside it is a
-                                     * sentence explaining why a control exists rather than
-                                     * telling anybody what to do.
-                                     *
-                                     * SFAF_Organizers::save() pins the existing slug on every
-                                     * rename, so there is nothing here to warn about: the
-                                     * value cannot move from this screen.
+                                     * THE SLUG (3.110.3, reversing 3.38.0's "no slug field").
+                                     * A change leaves the old slug working: public addresses
+                                     * redirect, embeds and shortcodes resolve it as an alias.
+                                     * See SFAF_Slug_Aliases.
                                      */
                                     ?>
+                                    <?php $this->render_slug_field( 'organizer_slug', $org->slug ); ?>
                                     <div class="uc-form-actions">
                                         <button type="submit" class="uc-btn uc-btn-primary">Save</button>
                                     </div>
@@ -17027,6 +17042,48 @@ class SFAF_Portal {
                 </div>
             <?php endif; ?>
         </fieldset>
+        <?php
+    }
+
+    /**
+     * The Slug field, on an organizer, a category and a series (3.110.3). A
+     * change goes through SFAF_Slug_Aliases::rename(), so the old slug keeps
+     * answering.
+     *
+     * @param string $name  The field's name.
+     * @param string $value The current slug.
+     */
+    private function render_slug_field( $name, $value ) {
+        ?>
+        <label class="uc-field uc-slug-field">
+            <span class="uc-field-label">Slug</span>
+            <input type="text" name="<?php echo esc_attr( $name ); ?>" value="<?php echo esc_attr( $value ); ?>"
+                   maxlength="190" autocomplete="off" spellcheck="false" required />
+            <span class="uc-hint">In its web address and in embed code. Change it and the old one keeps working.</span>
+        </label>
+        <?php
+    }
+
+    /**
+     * The terms of one taxonomy whose slug is not their own name, which is
+     * what a slug left from a retired name looks like (3.110.3). Nothing when
+     * there are none.
+     *
+     * @param string $taxonomy
+     */
+    private function render_not_their_name( $taxonomy ) {
+        $odd = SFAF_Slug_Aliases::not_their_name( $taxonomy );
+        if ( empty( $odd ) ) {
+            return;
+        }
+        $said = array();
+        foreach ( $odd as $t ) {
+            $said[] = $t->name . ' (' . $t->slug . ')';
+        }
+        ?>
+        <p class="uc-field-note uc-field-note-attention" data-uc-slug-not-name="<?php echo esc_attr( $taxonomy ); ?>"><?php echo $this->icon_needs(); ?><span><?php
+            echo esc_html( 'Slugs that are not their names: ' . implode( ', ', $said ) . '. If one is left from an old name, change it under Edit.' );
+        ?></span></p>
         <?php
     }
 

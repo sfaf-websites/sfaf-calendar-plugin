@@ -107,6 +107,8 @@ $sfaf_includes = array(
     'includes/class-sfaf-media-folder.php',
     // The calendar's images, tagged by series. After the folder rule it reads.
     'includes/class-sfaf-media.php',
+    // A changed slug keeps answering, by redirect and by alias (3.110.3).
+    'includes/class-sfaf-slug-aliases.php',
     // Files sent by people with no account, and what the two public forms
     // share. Both load before the forms that call them.
     'includes/class-sfaf-uploads.php',
@@ -237,6 +239,7 @@ function sfaf_init() {
     // a later init than SFAF_Series registers it, so the taxonomy exists by the
     // time anything is added to it.
     SFAF_Media::register();
+    SFAF_Slug_Aliases::register();
 
     // The public event request form. A front-end query var, like the cancel
     // link, so no rewrite rule and no REST route: see the note in the class.

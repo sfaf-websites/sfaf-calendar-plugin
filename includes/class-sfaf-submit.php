@@ -401,7 +401,8 @@ class SFAF_Submit {
          * or a value that is not a series, gets the same short page: the link
          * is not right. No form is drawn, so there is nothing to post to.
          */
-        $slug   = sanitize_title( wp_unslash( $_GET[ self::QUERY_VAR ] ) );
+        // A link sent before the series' slug changed still opens its form (3.110.3).
+        $slug   = SFAF_Slug_Aliases::resolve( SFAF_Series::TAXONOMY, sanitize_title( wp_unslash( $_GET[ self::QUERY_VAR ] ) ) );
         $series = ( '' !== $slug ) ? get_term_by( 'slug', $slug, SFAF_Series::TAXONOMY ) : false;
 
         if ( ! $series || is_wp_error( $series ) ) {

@@ -32,6 +32,18 @@ $plants = array(
     'E: a bulk Set team touching an event the person may not edit' => array( $unit, 'PLANT E', array(
         array( 'includes/class-sfaf-portal.php', "            if ( ! \$this->may_assign_access( \$user, \$bulk_id ) ) {\n                \$refused++;", "            if ( false ) {\n                \$refused++;" ),
     ) ),
+    'F.1: the old slug is not remembered' => array( 'slug-aliases-test.php', 'PLANT F.1', array(
+        array( 'includes/class-sfaf-slug-aliases.php', "        \$all[ \$taxonomy ][ \$old ] = (int) \$term->term_id;\n", '' ),
+    ) ),
+    'F.2: the archive at the old slug is not redirected' => array( 'slug-aliases-test.php', 'PLANT F.2', array(
+        array( 'includes/class-sfaf-slug-aliases.php', "        if ( is_404() ) {", "        if ( false ) {" ),
+    ) ),
+    'F.3: a filter link with the old slug is not redirected' => array( 'slug-aliases-test.php', 'PLANT F.3', array(
+        array( 'includes/class-sfaf-slug-aliases.php', "        if ( \$changed ) {\n            \$url", "        if ( false ) {\n            \$url" ),
+    ) ),
+    'F.4: an embed with the old slug is not resolved' => array( 'slug-aliases-test.php', 'PLANT F.4', array(
+        array( 'includes/class-sfaf-embed.php', "            'organizer'    => \$al( 'uc_organizer', 'organizer' ),", "            'organizer'    => (string) \$request->get_param( 'organizer' )," ),
+    ) ),
     'B.JS: the editor lets a 1201-wide file through' => array( $live, 'PLANT B.JS', array(
         array( 'public/js/portal.js', 'var ok = (im.naturalWidth === w && im.naturalHeight === h);', 'var ok = (Math.abs(im.naturalWidth - w) <= 1 && im.naturalHeight === h);' ),
     ) ),

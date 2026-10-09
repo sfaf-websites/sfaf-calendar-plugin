@@ -375,9 +375,20 @@ class SFAF_Organizers {
              * in caladmin offers to change it, so in practice this is the only
              * path and the slug is now fixed for the life of the term.
              */
-            if ( ! isset( $args['slug'] ) ) {
-                $args['slug'] = $existing_term->slug;
+            /*
+             * A CHANGED SLUG GOES THROUGH SFAF_Slug_Aliases::rename() (3.110.3),
+             * which keeps the old one answering: a redirect for a public
+             * address, an alias for an embed. Then the name and description are
+             * written with the slug the term now has.
+             */
+            if ( isset( $args['slug'] ) && $args['slug'] !== $existing_term->slug ) {
+                $moved = SFAF_Slug_Aliases::rename( $term_id, self::TAXONOMY, $args['slug'] );
+                if ( is_wp_error( $moved ) ) {
+                    return $moved;
+                }
+                $existing_term = self::get( $term_id );
             }
+            $args['slug'] = $existing_term->slug;
 
             $done = wp_update_term( $term_id, self::TAXONOMY, $args );
         } else {

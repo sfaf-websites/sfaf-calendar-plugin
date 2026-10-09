@@ -446,8 +446,12 @@ class SFAF_Embed {
             $count = 10;
         }
 
-        $scope_category  = (string) $request->get_param( 'category' );
-        $active_category = (string) $request->get_param( 'active_category' );
+        /* An old slug still answers through its alias (3.110.3), so a block
+         * pasted before a rename keeps working, and the cache is keyed on the
+         * live slug. */
+        $al = function ( $tax, $key ) use ( $request ) { return SFAF_Slug_Aliases::resolve_list( $tax, (string) $request->get_param( $key ) ); };
+        $scope_category  = $al( 'uc_event_category', 'category' );
+        $active_category = $al( 'uc_event_category', 'active_category' );
 
         return array(
             'category'     => $scope_category,
@@ -455,9 +459,9 @@ class SFAF_Embed {
             // three modes below cannot disagree about it.
             'effective_category' => $this->shortcodes->effective_category( $scope_category, $active_category ),
             'active_category'    => $active_category,
-            'active_groups'      => (string) $request->get_param( 'active_groups' ),
-            'organizer'    => (string) $request->get_param( 'organizer' ),
-            'active_organizer'   => (string) $request->get_param( 'active_organizer' ),
+            'active_groups'      => $al( 'uc_series', 'active_groups' ),
+            'organizer'    => $al( 'uc_organizer', 'organizer' ),
+            'active_organizer'   => $al( 'uc_organizer', 'active_organizer' ),
             /* Which filter rows the snippet offers. Carried rather than
              * defaulted, so a redraw cannot hand back a control the block was
              * generated without. */
