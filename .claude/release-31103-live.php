@@ -237,7 +237,7 @@ window.addEventListener('load', function () { setTimeout(function () {
           out.goodName = text(q('[data-uc-image-current]', picker));
           picFile(1201, 675, function (bad) {
             setFile(up, bad);
-            setTimeout(function () { out.badErr = seen(err) ? text(err) : ''; out.badKept = up.files.length; finish(); }, 600);
+            setTimeout(function () { out.badErr = seen(err) ? text(err) : ''; out.badKept = up.files.length; out.badPill = text(pill); out.badName = text(q('[data-uc-image-current]', picker)); finish(); }, 600);
           });
         }, 600);
       });
@@ -342,6 +342,11 @@ foreach ( array( 'desktop', 'wide', 'phone' ) as $wn ) {
     rp( $u && '+ Upload a picture for this event' === $u['text'] && 0 === strpos( $u['border'], '1px solid' ), "C.1: $t: the upload is not the outlined control: " . json_encode( $u ) );
     rp( 'Event-specific' === $v( $t, 'goodPill' ) && 'blob:' === $v( $t, 'goodSrc' ) && false === $v( $t, 'goodErr' ) && 'clinic-1200.png' === $v( $t, 'goodName' ),
         "C.1: $t: a 1200 by 675 file does not show in the preview as Event-specific: " . json_encode( array( $v( $t, 'goodPill' ), $v( $t, 'goodSrc' ), $v( $t, 'goodErr' ), $v( $t, 'goodName' ) ) ) );
+    /* A refused file gives back what was there: the event's own picture,
+       under its own name, which is also what Save keeps. */
+    if ( 0 === strpos( $t, 'edit-' ) ) {
+        rp( 'Event-specific' === $v( $t, 'badPill' ) && 'alpha-clinic-drop-in.jpg' === $v( $t, 'badName' ), "C.1: $t: after a refused file the block does not show the event's own picture again: " . json_encode( array( $v( $t, 'badPill' ), $v( $t, 'badName' ) ) ) );
+    }
     rp( $rule === $v( $t, 'badErr' ) && 0 === $v( $t, 'badKept' ), "PLANT B.JS: $t: a 1201-wide file is not refused with the one sentence: " . json_encode( array( $v( $t, 'badErr' ), $v( $t, 'badKept' ) ) ) );
     rp( array( '605', '604' ) === $v( "add-$wn", 'rowsStart' ) && true === $v( "add-$wn", 'choose' ), "A: add-$wn: with no series Add event offers Other images and says to choose a series: " . json_encode( array( $v( "add-$wn", 'rowsStart' ), $v( "add-$wn", 'choose' ) ) ) );
 

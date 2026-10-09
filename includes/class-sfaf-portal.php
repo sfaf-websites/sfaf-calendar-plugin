@@ -11348,9 +11348,8 @@ class SFAF_Portal {
                     cannot see it, and it is what a search engine reads. Describe the picture, not
                     the programme: &ldquo;three cyclists on a coastal road&rdquo;, not
                     &ldquo;Cycle To Zero&rdquo;.</p>
-                <p><strong>Series</strong> files the picture under a programme. A picture with no
-                    series is offered on no form, because the request forms show only the pictures
-                    tagged to the series somebody chose.</p>
+                <p><strong>Series</strong> files the picture under a programme: that programme's
+                    events and request forms offer it. A picture with no series goes in Other images.</p>
             </div>
         <?php endif; ?>
 
