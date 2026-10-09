@@ -5372,4 +5372,13 @@ body.uc-modal-open { overflow: hidden; }
 @media (pointer: coarse), (max-width: 600px) {
     .uc-portal .uc-image-upload { min-height: 44px; }
     .uc-portal .uc-image-active-only, .uc-portal .uc-media-active { min-height: 44px; display: inline-flex; }
+    /* An Images card's tick (24px) and a tag's x (18px) reach 44px with the
+       hit area the "?" buttons use, so the card does not change size. */
+    .uc-portal .uc-media-tick::after { content: ""; position: absolute; top: -10px; right: -10px; bottom: -10px; left: -10px; }
+    .uc-portal .uc-media-tag-off { position: relative; }
+    .uc-portal .uc-media-tag-off::after { content: ""; position: absolute; top: -13px; right: -13px; bottom: -13px; left: -13px; }
+    /* The picture's Remove (26px) and a chip's x (16px) on the editor, the same way. */
+    .uc-portal .uc-image-block .uc-image-remove::after { content: ""; position: absolute; top: -9px; right: -9px; bottom: -9px; left: -9px; }
+    .uc-portal .uc-chip-remove { position: relative; }
+    .uc-portal .uc-chip-remove::after { content: ""; position: absolute; top: -14px; right: -6px; bottom: -14px; left: -6px; }
 }
