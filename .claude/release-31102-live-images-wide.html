@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Media - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.110.2" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.110.2" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.110.2" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.110.3" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.110.3" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.110.3" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.110.2" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.110.3" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -150,7 +150,7 @@
 
         
                         <p class="uc-view-hint">
-            The pictures in the calendar folder. Tag one with a series to make it easy to find later.
+            Series pictures are offered on events in their series, and Other images on every event.
                             A picture showing its file name has no name yet; type one in the box under it.
                     </p>
 
@@ -161,23 +161,35 @@
                     cannot see it, and it is what a search engine reads. Describe the picture, not
                     the programme: &ldquo;three cyclists on a coastal road&rdquo;, not
                     &ldquo;Cycle To Zero&rdquo;.</p>
-                <p><strong>Series</strong> files the picture under a programme. A picture with no
-                    series is offered on no form, because the request forms show only the pictures
-                    tagged to the series somebody chose.</p>
+                <p><strong>Series</strong> files the picture under a programme: that programme's
+                    events and request forms offer it. A picture with no series goes in Other images.</p>
             </div>
         
-        <form method="get" action="https://resources.sfaf.org/caladmin/media" class="uc-filters-bar">
+        <div data-uc-filter-scope>
+        <form method="get" action="https://resources.sfaf.org/caladmin/media" class="uc-filters-bar uc-media-filters">
             <label class="uc-field uc-media-filter">
                 <span class="uc-visually-hidden">Show</span>
-                <select name="tag">
+                <select name="tag" data-uc-autosubmit>
                     <option value="">All images</option>
-                    <option value="none" >Untagged</option>
+                    <option value="series" >Series pictures</option>
+                    <option value="other" >Other images</option>
+                                            <option value="submitted" >Submitted</option>
+                                        <option value="none" >Untagged</option>
                                         <option value="removed" >Removed</option>
                                             <option value="11" >
                             Alpha                        </option>
                                             <option value="12" >
                             Beta                        </option>
                                     </select>
+            </label>
+            <label class="uc-picker-filter uc-media-search">
+                <span class="uc-visually-hidden">Search pictures by name</span>
+                                <input type="search" name="q" value=""
+                       placeholder="Search by name&hellip;" data-uc-filter autocomplete="off" />
+            </label>
+            <label class="uc-check uc-media-active">
+                <input type="checkbox" name="active" value="1"  data-uc-autosubmit />
+                Show active images only
             </label>
             <button class="uc-btn" type="submit">Show</button>
         </form>
@@ -199,11 +211,10 @@
                                 <img alt="" data-uc-upload-preview hidden />
                                 <span class="uc-upload-thumb-empty" data-uc-upload-empty>No picture chosen</span>
                             </div>
-                            <input type="file" name="uc_media" accept="image/jpeg,image/png,image/gif,image/webp"
+                            <input type="file" name="uc_media" accept="image/jpeg,image/png,image/webp"
                                    data-uc-upload-input required />
                             <span class="uc-hint">
-                                JPEG, PNG, GIF or WebP, at least 1200 pixels wide.
-                                Landscape works best: an event card crops to 16:9.
+                                Pictures must be 1200 by 675 pixels and under 500KB. JPEG, PNG or WebP.
                             </span>
                         </div>
 
@@ -221,9 +232,9 @@
                                 <span class="uc-hint">What somebody who cannot see the picture is told it shows.</span>
                             </label>
                             <label class="uc-field">
-                                <span class="uc-field-label">Series <span class="uc-muted">(optional)</span></span>
+                                <span class="uc-field-label">Series</span>
                                 <select name="term_id">
-                                    <option value="0">No series</option>
+                                    <option value="0">None: put it in Other images</option>
                                                                             <option value="11">Alpha</option>
                                                                             <option value="12">Beta</option>
                                                                     </select>
@@ -245,12 +256,12 @@
             
                             <p class="uc-empty">No images here yet.</p>
                     </div>
-
+        </div>
                         </main>
             </div>
         </div>
-        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.110.2"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.110.2"></script>
-<script src="../public/js/portal.js?ver=3.110.2"></script>
+        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.110.3"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.110.3"></script>
+<script src="../public/js/portal.js?ver=3.110.3"></script>
 <script>window.RV_PAGE="images-wide";(function () {
 var P = window.RV_PAGE, out = { page: P, errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });

@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Organizers - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.110.2" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.110.2" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.110.2" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.110.3" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.110.3" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.110.3" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.110.2" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.110.3" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -145,7 +145,7 @@
                                     </header>
                 <main class="uc-portal-content">
                 <div class="uc-page-head"><h1>Organizers</h1></div>
-
+        
         <p class="uc-help">
             Who is putting an event on. An event names one, and it appears on the event page as
             &ldquo;Hosted by&rdquo;, on the public calendar&rsquo;s organizer filter, and in the
@@ -213,7 +213,13 @@
                                         <span class="uc-field-label">Description (optional)</span>
                                         <textarea name="organizer_description" rows="2"></textarea>
                                     </label>
-                                                                        <div class="uc-form-actions">
+                                                                                <label class="uc-field uc-slug-field">
+            <span class="uc-field-label">Slug</span>
+            <input type="text" name="organizer_slug" value="alpha"
+                   maxlength="190" autocomplete="off" spellcheck="false" required />
+            <span class="uc-hint">In its web address and in embed code. Change it and the old one keeps working.</span>
+        </label>
+                                            <div class="uc-form-actions">
                                         <button type="submit" class="uc-btn uc-btn-primary">Save</button>
                                     </div>
                                 </form>
@@ -262,7 +268,13 @@
                                         <span class="uc-field-label">Description (optional)</span>
                                         <textarea name="organizer_description" rows="2"></textarea>
                                     </label>
-                                                                        <div class="uc-form-actions">
+                                                                                <label class="uc-field uc-slug-field">
+            <span class="uc-field-label">Slug</span>
+            <input type="text" name="organizer_slug" value="beta"
+                   maxlength="190" autocomplete="off" spellcheck="false" required />
+            <span class="uc-hint">In its web address and in embed code. Change it and the old one keeps working.</span>
+        </label>
+                                            <div class="uc-form-actions">
                                         <button type="submit" class="uc-btn uc-btn-primary">Save</button>
                                     </div>
                                 </form>
@@ -286,8 +298,8 @@
                         </main>
             </div>
         </div>
-        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.110.2"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.110.2"></script>
-<script src="../public/js/portal.js?ver=3.110.2"></script>
+        <script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.110.3"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.110.3"></script>
+<script src="../public/js/portal.js?ver=3.110.3"></script>
 <script>window.CS_PAGE="caladmin-organizers";(function () {
 var out = { page: window.CS_PAGE, errors: [], caps: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });

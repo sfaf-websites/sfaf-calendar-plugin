@@ -175,6 +175,9 @@ function ucDismissOnBackdrop(dialog) {
         // before this runs.
         run('seriesImageFilter', initSeriesImageFilter);
         run('fixedSeriesImageFilter', initFixedSeriesImageFilter);
+        // After the series filter, so the first refilter sees both markers.
+        run('imageActiveOnly', initImageActiveOnly);
+        run('autoSubmit', initAutoSubmit);
         // Last of the three: it reads whatever the other two settled on.
         run('formBanner', initFormBanner);
         run('uploadPreview', initUploadPreview);
@@ -1669,6 +1672,11 @@ function ucDismissOnBackdrop(dialog) {
         }
 
         var narrowed = false;
+        /* TWO GROUPS (3.110.3): the series group follows the dropdown and is
+         * EMPTY with no series chosen, saying so; Other images carry no
+         * data-uc-image-series and are never narrowed here. */
+        var groups = picker.hasAttribute('data-uc-image-groups');
+        var choose = picker.querySelector('[data-uc-image-choose]');
 
         /* A CHOSEN PICTURE OUTSIDE THE SERIES STAYS CHOSEN, and the one line
          * under the picker says so. The default row is not a picture. */
@@ -1684,8 +1692,8 @@ function ucDismissOnBackdrop(dialog) {
         function apply(on) {
             var id = currentId();
             /* WITH NO SERIES THERE IS NOTHING TO NARROW TO: the whole folder,
-             * and the escape is pointless. */
-            var narrow = !!(on && id);
+             * and the escape is pointless. In groups it narrows to nothing. */
+            var narrow = !!(on && (id || groups));
             var shown = 0;
             Array.prototype.forEach.call(rows, function (opt) {
                 var keep = !narrow;
@@ -1712,7 +1720,8 @@ function ucDismissOnBackdrop(dialog) {
                     shown++;
                 }
             }
-            if (note) { note.hidden = !(narrow && 0 === shown); }
+            if (note) { note.hidden = !(narrow && id && 0 === shown); }
+            if (choose) { choose.hidden = !(groups && !id); }
             if (all) { all.hidden = !narrow; }
             sayOutside();
             scope.dispatchEvent(new CustomEvent('uc:refilter'));
@@ -1730,6 +1739,44 @@ function ucDismissOnBackdrop(dialog) {
         list.addEventListener('change', sayOutside);
 
         apply(true);
+    }
+
+    /* ---------------------------------------------------------------------
+     * "SHOW ACTIVE IMAGES ONLY" IN THE EDITOR'S PICKER (3.110.3)
+     *
+     * A row says whether an upcoming published event uses it, in
+     * data-uc-image-active, written by the server. The tick marks the rest
+     * data-uc-off-active and asks initFilterLists() to run, the one owner of
+     * `hidden`. The chosen picture is never marked.
+     * ------------------------------------------------------------------ */
+    function initImageActiveOnly() {
+        document.querySelectorAll('[data-uc-image-active-only]').forEach(function (tick) {
+            var scope = tick.closest('[data-uc-filter-scope]');
+            if (!scope) { return; }
+            function apply() {
+                scope.querySelectorAll('[data-uc-image-active]').forEach(function (row) {
+                    var radio = row.querySelector('input[type="radio"]');
+                    var off = tick.checked && row.getAttribute('data-uc-image-active') !== '1' && !(radio && radio.checked);
+                    if (off) { row.setAttribute('data-uc-off-active', ''); } else { row.removeAttribute('data-uc-off-active'); }
+                });
+                scope.dispatchEvent(new CustomEvent('uc:refilter'));
+            }
+            tick.addEventListener('change', apply);
+            apply();
+        });
+    }
+
+    /* A control on a GET filter form that applies itself when changed, such as
+     * the Images screen's active-only tick (3.110.3). The form's own button
+     * still works with no script. */
+    function initAutoSubmit() {
+        document.querySelectorAll('[data-uc-autosubmit]').forEach(function (el) {
+            el.addEventListener('change', function () {
+                var form = el.form || el.closest('form');
+                if (!form) { return; }
+                if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); }
+            });
+        });
     }
 
     /* ---------------------------------------------------------------------
@@ -2214,7 +2261,9 @@ function ucDismissOnBackdrop(dialog) {
                     function (opt) {
                         var hay = opt.getAttribute('data-uc-filter-text') || '';
                         var box = opt.querySelector('input[type="checkbox"]');
-                        var off = opt.hasAttribute('data-uc-off-series');
+                        /* Two markers, one owner (3.110.3): the series filter's
+                         * and the active-only tick's. */
+                        var off = opt.hasAttribute('data-uc-off-series') || opt.hasAttribute('data-uc-off-active');
                         var keep = !off && (!q || hay.indexOf(q) !== -1 || (box && box.checked));
                         opt.hidden = !keep;
                         if (keep) { shown++; }
@@ -2958,6 +3007,34 @@ function ucDismissOnBackdrop(dialog) {
      * carried on the pill. A block the server drew for an imported picture
      * ("From source", "Synced") is left as drawn until somebody chooses.
      * ------------------------------------------------------------------ */
+    /* THE PICTURE RULE, IN THE BROWSER (3.110.3), so a wrong file is refused
+     * the moment it is chosen. The numbers, the types and the sentence are the
+     * server's, read off the input; SFAF_Uploads::inspect() still decides at
+     * Save. done(ok, message, objectUrl). */
+    function checkPictureFile(file, input, done) {
+        var w = parseInt(input.getAttribute('data-uc-rule-width'), 10);
+        var h = parseInt(input.getAttribute('data-uc-rule-height'), 10);
+        var max = parseInt(input.getAttribute('data-uc-rule-bytes'), 10);
+        var msg = input.getAttribute('data-uc-rule-message') || '';
+        var types = (input.getAttribute('accept') || '').split(',');
+        if (!file || types.indexOf(file.type) === -1 || !(file.size > 0) || file.size > max || !window.URL || !URL.createObjectURL) {
+            done(false, msg, '');
+            return;
+        }
+        var url = URL.createObjectURL(file);
+        var im = new Image();
+        im.onload = function () {
+            var ok = (im.naturalWidth === w && im.naturalHeight === h);
+            if (!ok) { URL.revokeObjectURL(url); }
+            done(ok, ok ? '' : msg, ok ? url : '');
+        };
+        im.onerror = function () {
+            URL.revokeObjectURL(url);
+            done(false, msg, '');
+        };
+        im.src = url;
+    }
+
     function initImageBlock() {
         document.querySelectorAll('[data-uc-image-block]').forEach(function (block) {
             var preview = block.querySelector('[data-uc-image-preview]');
@@ -2988,6 +3065,23 @@ function ucDismissOnBackdrop(dialog) {
                picture outside the folder) is the event's own until Remove. */
             var kept = start === 'event' && !chosen();
 
+            /* "+ Upload a picture for this event" (3.110.3). A file that passes
+               the rule is the event's picture until a row or Remove replaces
+               it; the file itself goes up with Save. */
+            var upload = block.querySelector('[data-uc-event-upload]');
+            var upErr = block.querySelector('[data-uc-event-upload-error]');
+            var upSrc = '', upName = '';
+            function clearUpload() {
+                if (upSrc && window.URL && URL.revokeObjectURL) { URL.revokeObjectURL(upSrc); }
+                upSrc = ''; upName = '';
+                if (upload) { upload.value = ''; }
+            }
+            function sayUpload(text) {
+                if (!upErr) { return; }
+                upErr.textContent = text || '';
+                upErr.hidden = !text;
+            }
+
             function seriesId() {
                 return seriesSelect ? String(seriesSelect.value) : String(field.getAttribute('data-uc-media-series') || '0');
             }
@@ -3002,7 +3096,9 @@ function ucDismissOnBackdrop(dialog) {
 
             function render() {
                 var r = chosen(), state, src = '', name = '';
-                if (r) {
+                if (upSrc) {
+                    state = 'event'; src = upSrc; name = upName;
+                } else if (r) {
                     state = 'event';
                     src = r.getAttribute('data-uc-image-full') || r.getAttribute('data-uc-image-thumb') || '';
                 } else if (kept) {
@@ -3019,7 +3115,7 @@ function ucDismissOnBackdrop(dialog) {
                 ) || pill.textContent;
                 block.setAttribute('data-uc-image-state', state);
                 if (remove) { remove.hidden = (state !== 'event'); }
-                if (!r) { nameIt(name); }
+                if (!r || upSrc) { nameIt(name); } else { nameIt(r.getAttribute('data-uc-image-name') || ''); }
             }
 
             picker.addEventListener('change', function (e) {
@@ -3027,15 +3123,42 @@ function ucDismissOnBackdrop(dialog) {
                 if (!t || !t.hasAttribute || !t.hasAttribute('data-uc-image-option') || !t.checked) { return; }
                 known = true;
                 kept = false;
+                clearUpload();
+                sayUpload('');
                 reset.disabled = (t.value !== '0');
                 render();
             });
+
+            if (upload) {
+                upload.addEventListener('change', function () {
+                    var file = upload.files && upload.files[0];
+                    sayUpload('');
+                    if (!file) { return; }
+                    checkPictureFile(file, upload, function (ok, msg, url) {
+                        if (!ok) {
+                            clearUpload();
+                            sayUpload(msg);
+                            render();
+                            return;
+                        }
+                        if (upSrc && URL.revokeObjectURL) { URL.revokeObjectURL(upSrc); }
+                        upSrc = url;
+                        upName = file.name;
+                        /* The chosen row stays chosen: the file wins at Save,
+                           and a file refused after this one gives the row back. */
+                        known = true;
+                        reset.disabled = true;
+                        render();
+                    });
+                });
+            }
 
             if (remove) {
                 remove.addEventListener('click', function () {
                     var none = picker.querySelector('[data-uc-image-option][value="0"]');
                     known = true;
                     kept = false;
+                    clearUpload();
                     reset.disabled = false;
                     if (none) {
                         none.checked = true;

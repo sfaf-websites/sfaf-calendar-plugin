@@ -3088,7 +3088,7 @@ function ucDismissOnBackdrop(dialog) {
                 ) || pill.textContent;
                 block.setAttribute('data-uc-image-state', state);
                 if (remove) { remove.hidden = (state !== 'event'); }
-                if (!r || upSrc) { nameIt(name); }
+                if (!r || upSrc) { nameIt(name); } else { nameIt(r.getAttribute('data-uc-image-name') || ''); }
             }
 
             picker.addEventListener('change', function (e) {
@@ -3117,11 +3117,10 @@ function ucDismissOnBackdrop(dialog) {
                         if (upSrc && URL.revokeObjectURL) { URL.revokeObjectURL(upSrc); }
                         upSrc = url;
                         upName = file.name;
+                        /* The chosen row stays chosen: the file wins at Save,
+                           and a file refused after this one gives the row back. */
                         known = true;
-                        kept = false;
                         reset.disabled = true;
-                        var r = chosen();
-                        if (r) { r.checked = false; }
                         render();
                     });
                 });

@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Events - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.110.2" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.110.2" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.110.2" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.110.3" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.110.3" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.110.3" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.110.2" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.110.3" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -232,7 +232,51 @@
                                         <span class="uc-hint">Adds it. Nothing already on an event is removed or changed.</span>
                 </div>
             
-                                </form>
+                        
+                                            <details class="uc-bulk-team" data-uc-bulk-team>
+                    <summary class="uc-outline-btn">Set team</summary>
+                    <div class="uc-bulk-team-body">
+                        <input type="hidden" name="bulk_access_present" value="1" />
+                                <fieldset class="uc-access-group">
+            <legend class="uc-field-label">Teams</legend>
+                            <p class="uc-hint">Pick up to 2.</p>
+                <div class="uc-access-teams" data-uc-access-teams data-uc-access-max="2">
+                                            <label class="uc-check">
+                            <input type="checkbox" name="bulk_access_teams[]" value="prog"  />
+                            Programa Latino                            <span class="uc-muted">2 people</span>
+                        </label>
+                                    </div>
+                    </fieldset>
+
+        <fieldset class="uc-access-group">
+            <legend class="uc-field-label">People</legend>
+                            <div class="uc-access-people" data-uc-access-people>
+                                            <label class="uc-check">
+                            <input type="checkbox" name="bulk_access_people[]" value="3"  />
+                            Ben Young                        </label>
+                                            <label class="uc-check">
+                            <input type="checkbox" name="bulk_access_people[]" value="2"  />
+                            Zoe Adams                        </label>
+                                            <label class="uc-check">
+                            <input type="checkbox" name="bulk_access_people[]" value="4"  />
+                            Ana Martinez                        </label>
+                                    </div>
+                    </fieldset>
+                                <div class="uc-bulk-cat-go">
+                            <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary"
+                                    name="uc_do" value="team" formnovalidate
+                                    data-uc-tick-submit
+                                    data-uc-confirm="Set this team and access on the ticked events? It replaces what each of them had."
+                                    data-uc-tick-confirm="Set this team and access on {n} {noun}? It replaces what each of them had."
+                                    data-uc-tick-word="events"
+                                    data-uc-tick-word-one="event">
+                                Set team on <span data-uc-tick-count>0</span>
+                                <span data-uc-tick-noun>events</span>
+                            </button>
+                        </div>
+                    </div>
+                </details>
+                    </form>
                 <table class="uc-table uc-table-cards">
             <thead><tr>
                                                     <th class="uc-col-tick">
@@ -430,8 +474,8 @@
                             </main>
             </div>
         </div>
-        <script src="../public/js/sfaf-email.js?ver=3.110.2"></script>
-<script src="../public/js/portal.js?ver=3.110.2"></script>
+        <script src="../public/js/sfaf-email.js?ver=3.110.3"></script>
+<script src="../public/js/portal.js?ver=3.110.3"></script>
 <script>window.RV_PAGE="events-phone";(function () {
 var P = window.RV_PAGE, out = { page: P, errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
