@@ -120,9 +120,33 @@ class SFAF_Notifications {
      * nobody has configured gets all six.
      */
     public static function on( $event_id, $kind ) {
+        /*
+         * NOTHING IS SENT WHEN REGISTRATIONS ARE TAKEN ELSEWHERE (3.111.0):
+         * Register on another site, or an imported event that registers at
+         * its source. Every sender asks this, so one test here covers every
+         * kind; the switches themselves are left as they were, and come back
+         * when registrations come back here.
+         */
+        if ( self::registers_elsewhere( $event_id ) ) {
+            return false;
+        }
+        return self::stored_on( $event_id, $kind );
+    }
+
+    /** The event's own switch for a kind, whatever registration does (3.111.0). */
+    public static function stored_on( $event_id, $kind ) {
         $off = get_post_meta( (int) $event_id, self::OFF_META, true );
         $off = is_array( $off ) ? $off : array();
         return ! in_array( $kind, $off, true );
+    }
+
+    /** Whether this event's registrations are taken on another site (3.111.0). */
+    public static function registers_elsewhere( $event_id ) {
+        $event_id = (int) $event_id;
+        if ( class_exists( 'SFAF_Register_Elsewhere' ) && SFAF_Register_Elsewhere::is_on( $event_id ) ) {
+            return true;
+        }
+        return class_exists( 'SFAF_Sources' ) && SFAF_Sources::takes_rsvps_at_source( $event_id );
     }
 
     /** Store the set that is off. Pass every key the form offered. */

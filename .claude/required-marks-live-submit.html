@@ -5,18 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, nofollow" />
 <title>Submit an event: Cycle to Zero</title>
-<link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.110.5" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.110.5" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.110.5" />
-<link rel="stylesheet" href="../public/css/portal.css?ver=3.110.5" />
+<link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.111.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.111.0" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.111.0" />
+<link rel="stylesheet" href="../public/css/portal.css?ver=3.111.0" />
 </head>
 <body class="uc-portal uc-request-page uc-submit-page">
 <div class="uc-request-wrap">
                 <div class="uc-request-card">
                         <h1>Submit an event to Cycle to Zero</h1>
             <p class="uc-hint">
-                Tell us about your event. Somebody reviews every submission before it goes on the calendar.
-                Your name and email are not shown on the listing.
+                Tell us about your event, and somebody will review it before it goes on the calendar.
             </p>
 
             
@@ -28,14 +27,14 @@
                         <p class="uc-hint uc-required-note">Fields marked * are required.</p>                <script type="application/json" data-uc-required>[{"key":"street","inputs":["street"],"when":{"venue":""},"carry":"required"},{"key":"cost_other","inputs":["cost_other"],"when":{"cost":"other"},"carry":"required"},{"key":"age_other","inputs":["age_other"],"when":{"age_restriction":"other"},"carry":"required"},{"key":"contact_name","inputs":["contact_name"],"when":{"contact_same":""},"carry":"required"},{"key":"contact_email","inputs":["contact_email","contact_phone"],"when":{"contact_same":""},"carry":"aria"}]</script>
                 <fieldset class="uc-form-section-group">
                     <legend class="uc-field-group-title">About you</legend>
-                    <p class="uc-hint">Not shown on the calendar.</p>
+                    <p class="uc-hint">Give your own details here; they are not shown on the calendar.</p>
                     <label class="uc-field">
                         <span class="uc-field-label">Your name<span class="uc-req" data-uc-req-mark="submitter_name" aria-hidden="true">*</span></span>
                         <input type="text" name="submitter_name" required maxlength="120" value="" />
                                             </label>
                                         <div class="uc-field">
                         <span class="uc-field-label">Your email, and anybody else who should get RSVPs<span class="uc-req" data-uc-req-mark="submitter_email" aria-hidden="true">*</span></span>
-                        <span class="uc-hint">The first one is yours. Your copy of this submission goes there.</span>
+                        <span class="uc-hint">Put your own address first, because your copy of this submission goes there.</span>
                         <div class="uc-repeater uc-email-repeat" data-repeater
                              data-repeater-max="5">
                             <div class="uc-repeater-rows">
@@ -66,7 +65,7 @@
 
                 <div class="uc-field">
                     <span class="uc-field-label">Description<span class="uc-req" data-uc-req-mark="description" aria-hidden="true">*</span></span>
-                    <textarea aria-required="true" name="description" id="uc-submit-description"></textarea>                    <span class="uc-hint">What it is, who it is for, and what somebody should expect.</span>
+                    <textarea aria-required="true" name="description" id="uc-submit-description"></textarea>                    <span class="uc-hint">Say what it is, who it is for, and what somebody should expect.</span>
                                     </div>
                 </fieldset>
 
@@ -203,7 +202,7 @@
                             <span class="uc-field-label">Place name</span>
                             <input type="text" name="venue_name" maxlength="120" value=""
                                    placeholder="Strut" />
-                            <span class="uc-hint">Shown above the address on the event page. Leave it blank if the address is the whole answer.</span>
+                            <span class="uc-hint">Name the place as it should appear above the address, or leave it blank.</span>
                         </label>
                         <label class="uc-field">
                             <span class="uc-field-label">Street address<span class="uc-req" data-uc-req-mark="street" aria-hidden="true">*</span></span>
@@ -229,7 +228,7 @@
                     <label class="uc-field">
                         <span class="uc-field-label">Venue website</span>
                         <input type="url" name="venue_url" maxlength="500" value="" placeholder="https://" />
-                        <span class="uc-hint">Shown beside the address on the event page.</span>
+                        <span class="uc-hint">Add the place's website to show it beside the address.</span>
                                             </label>
                 </fieldset>
 
@@ -249,7 +248,7 @@
                                             </select>
                                         <label class="uc-field uc-reveal-target" id="uc-cost-other">
                         <span class="uc-field-label">What it costs<span class="uc-req" data-uc-req-mark="cost_other" aria-hidden="true" hidden>*</span></span>
-                        <input type="text" name="cost_other" maxlength="120" value=""
+                        <input type="text" name="cost_other" maxlength="40" value=""
                                placeholder="$15 at the door" />
                                             </label>
                 </div>
@@ -282,7 +281,7 @@
                 <label class="uc-field">
                     <span class="uc-field-label">Capacity</span>
                     <input type="number" name="capacity" min="0" max="100000" placeholder="No limit" value="" />
-                    <span class="uc-hint">Leave it blank for no limit; 0 sends everybody to the waitlist.</span>
+                    <span class="uc-hint">Leave it blank for no limit, or enter 0 to send everybody to the waitlist.</span>
                                     </label>
 
                 <label class="uc-field">
@@ -295,7 +294,7 @@
 
                                 <fieldset class="uc-form-section-group">
                     <legend class="uc-field-group-title">Contact for the event</legend>
-                    <p class="uc-hint"><strong>This appears on the public listing.</strong></p>
+                    <p class="uc-hint"><strong>Give a contact you are happy to see on the public listing.</strong></p>
                                         <label class="uc-check">
                         <input type="checkbox" name="contact_same" value="1"
                                data-uc-reveal="uc-contact-own" data-uc-reveal-when="unchecked"
@@ -320,7 +319,7 @@
                                 <input type="tel" name="contact_phone" aria-required="true" maxlength="40" value="" />
                             </label>
                         </div>
-                        <span class="uc-hint">Give an email address, a phone number, or both. The phone number is shown too.</span>
+                        <span class="uc-hint">Give an email address, a phone number or both to show on the listing.</span>
                     </div>
                 </fieldset>
 
@@ -331,29 +330,15 @@
             <span class="uc-field-label">Or upload one</span>
             <input type="file" name="uc_image" accept="image/jpeg,image/png,image/webp" />
             <span class="uc-hint">
-                Pictures must be 1200 by 675 pixels and under 500KB. JPEG, PNG or WebP.
-                Leave this empty if you do not have one.
+                Upload a JPEG, PNG or WebP that is 1200 by 675 pixels and under 500KB, or leave this empty.
             </span>
                     </label>
                             </div>
-                            <div class="uc-field uc-field-upload uc-extra-images">
-            <span class="uc-field-label">Any other pictures</span>
-                            <input type="file" name="uc_image_extra_1"
-                       accept="image/jpeg,image/png,image/webp"
-                       aria-label="Other picture 1" />
-                                            <input type="file" name="uc_image_extra_2"
-                       accept="image/jpeg,image/png,image/webp"
-                       aria-label="Other picture 2" />
-                                        <span class="uc-hint">
-                Up to 2. Pictures must be 1200 by 675 pixels and under 500KB.                These are not shown on the event page. Somebody adds one to the description by hand
-                with Insert image if it belongs there.
-            </span>
-        </div>
-                        </fieldset>
+                </fieldset>
 
                                 <fieldset class="uc-form-section-group">
                     <legend class="uc-field-group-title">Questions people often ask</legend>
-                    <p class="uc-hint">Parking, what to bring, whether to book. Leave it empty if there is nothing.</p>
+                    <p class="uc-hint">Add parking, what to bring or whether to book, or leave it empty.</p>
                     <div class="uc-repeater" data-repeater>
                         <div class="uc-repeater-rows">
                                                                 <div class="uc-repeater-row uc-faq-row">
@@ -382,7 +367,7 @@
                     <label class="uc-field">
                         <span class="uc-visually-hidden">Anything else we should know</span>
                         <textarea name="notes" rows="3" maxlength="2000"></textarea>
-                        <span class="uc-hint">Not shown on the listing.</span>
+                        <span class="uc-hint">Write anything for the reviewer here; it is not shown on the listing.</span>
                     </label>
                 </fieldset>
 
@@ -394,7 +379,7 @@
             </form>
         </div>
         </div>
-<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.110.5"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/portal.js?ver=3.110.5"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.111.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/portal.js?ver=3.111.0"></script>
 <script>window.RM_DATA = {"steps":[{"label":"as it opens","act":[]},{"label":"cost is Something else","act":[["cost","other"]]},{"label":"cost is Free again","act":[["cost","free"]]},{"label":"age is Something else","act":[["age_restriction","other"]]},{"label":"age is back on a real answer","act":[["age_restriction","all"]]},{"label":"use my details is ticked","act":[["contact_same",true]]},{"label":"use my details is unticked","act":[["contact_same",false]]},{"label":"a venue is chosen","act":[["venue","11"]]},{"label":"back to entering it by hand","act":[["venue","0"]]}],"inputs":{"submitter_name":["submitter_name"],"submitter_email":["submitter_email[]"],"title":["title"],"description":["description"],"date":["date"],"start_time":["start_time_h"],"end_time":["end_time_h"],"street":["street"],"cost":["cost"],"cost_other":["cost_other"],"age_other":["age_other"],"contact_name":["contact_name"],"contact_email":["contact_email","contact_phone"]}};</script><script>(function () {
 var DATA = window.RM_DATA, out = { steps: [], note: '', errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });

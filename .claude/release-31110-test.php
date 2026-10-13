@@ -362,8 +362,50 @@ foreach ( $forms as $name => $html ) {
     }
 }
 
+/* =========================================================================
+ * H. NOTIFICATIONS WITH REGISTRATION ELSEWHERE
+ * ====================================================================== */
+kit_reset();
+$GLOBALS['kit_options']['sfaf_teams'] = array();
+$GLOBALS['rt_mail'] = array();
+$away = rt_event( 'Taken elsewhere', 6, array( '_uc_rsvp_enabled' => '1', SFAF_Register_Elsewhere::META_MODE => 'elsewhere', SFAF_Register_Elsewhere::META_URL => 'https://tickets.example.org/x' ) );
+$imp  = rt_event( 'Imported', 6, array( SFAF_Sources::META_SOURCE => 'eventbrite' ) );
+$here = rt_event( 'Taken here', 6, array( '_uc_rsvp_enabled' => '1' ) );
+$kinds = array_keys( SFAF_Notifications::kinds() );
+rt( count( $kinds ) >= 5, 'H: fewer than five message kinds were read' );
+foreach ( $kinds as $kind ) {
+    rt( false === SFAF_Notifications::on( $away, $kind ), "PLANT H: $kind is sent for an event registering on another site" );
+    rt( false === SFAF_Notifications::on( $imp, $kind ), "PLANT H: $kind is sent for an imported event" );
+    rt( true === SFAF_Notifications::on( $here, $kind ) && true === SFAF_Notifications::stored_on( $away, $kind ), "H: $kind is off for an event registering here, or its stored switch was lost" );
+}
+$person = (object) array( 'name' => 'Ana Lee', 'first_name' => 'Ana', 'last_name' => 'Lee', 'email' => 'ana@example.org', 'token' => 't', 'format' => '', 'rsvp_id' => 1 );
+SFAF_Notifications::send_confirmation( $away, $person );
+SFAF_Notifications::send_alert( $away, $person );
+SFAF_Notifications::send_cancel_alert( $away, 'ana@example.org' );
+rt( empty( $GLOBALS['rt_mail'] ), 'PLANT H: a message went out for an event registering on another site: ' . json_encode( $GLOBALS['rt_mail'] ) );
+/* The two scheduled senders and the reminder ask on() too, by name. */
+$nsrc = file_get_contents( $GLOBALS['kit_root'] . '/includes/class-sfaf-notifications.php' ) . file_get_contents( $GLOBALS['kit_root'] . '/includes/class-sfaf-reminders.php' );
+foreach ( array( "self::on( \$id, 'summary' )", "self::on( \$id, 'day_before' )", "SFAF_Notifications::on( \$event_id, 'reminder' )" ) as $ask ) {
+    rt( false !== strpos( $nsrc, $ask ), "H: a scheduled sender no longer asks on(): $ask" );
+}
+/* The card: one line, the fields hidden but holding their values. */
+$portal = ( new ReflectionClass( 'SFAF_Portal' ) )->newInstanceWithoutConstructor();
+$hh = rt_capture( function () use ( $portal, $away ) { $_GET = array(); kit_call( 'SFAF_Portal', 'render_event_form', $portal, array( new WP_User(), $away ) ); } );
+$card = substr( $hh, strpos( $hh, 'data-uc-notifications-card' ) );
+$card = substr( $card, 0, strpos( $card, '</section>' ) );
+rt( (bool) preg_match( '/data-uc-notify-away>Registrations are taken on another site, so no registration emails are sent\.<\/p>/', $card )
+    && (bool) preg_match( '/data-uc-notify-fields hidden>/', $card ) && 0 < substr_count( $card, 'checked' ), 'H: with Register on another site the card is not the line over hidden, unchanged fields' );
+$hh2 = rt_capture( function () use ( $portal, $here ) { $_GET = array(); kit_call( 'SFAF_Portal', 'render_event_form', $portal, array( new WP_User(), $here ) ); } );
+$card2 = substr( $hh2, strpos( $hh2, 'data-uc-notifications-card' ), 600 );
+rt( (bool) preg_match( '/data-uc-notify-away hidden>/', $card2 ) && (bool) preg_match( '/data-uc-notify-fields>/', $card2 ), 'H: an event registering here hides its notification fields' );
+$hh3 = rt_capture( function () use ( $portal, $imp ) { $_GET = array(); kit_call( 'SFAF_Portal', 'render_event_form', $portal, array( new WP_User(), $imp ) ); } );
+$card3 = substr( $hh3, strpos( $hh3, 'data-uc-notifications-card' ) );
+$card3 = substr( $card3, 0, strpos( $card3, '</section>' ) );
+rt( false !== strpos( $card3, 'data-uc-notify-away>' ) && false === strpos( $card3, 'notify_kinds' ), 'H: an imported event\'s card is not the line alone' );
+rt( false !== strpos( file_get_contents( $GLOBALS['kit_root'] . '/public/js/portal.js' ), "if (awayLine && notifyFields) { awayLine.hidden = !away; notifyFields.hidden = away; }" ), 'H: switching where people register does not swap the card' );
+
 if ( $fails ) {
     echo 'RELEASE 3.111.0: ' . count( $fails ) . " FAILURE(S)\n  - " . implode( "\n  - ", $fails ) . "\n";
     exit( 1 );
 }
-echo "3.111.0: pins first and Featured, skipped when past, cancelled, private or unpublished, aside while a visitor narrows; no public count; reviewers from the series or the organizer, editors only, asked by the routes and the email; the registrant email's headings and lists; a PDF read from its bytes and kept while any event uses it; Cost, Age range and Contact on Add and Edit, the old keys moved and nothing lost; neither form offers other pictures, and every helper line is one sentence.\n";
+echo "3.111.0: pins first and Featured, skipped when past, cancelled, private or unpublished, aside while a visitor narrows; no public count; reviewers from the series or the organizer, editors only, asked by the routes and the email; the registrant email's headings and lists; a PDF read from its bytes and kept while any event uses it; Cost, Age range and Contact on Add and Edit, the old keys moved and nothing lost; neither form offers other pictures, and every helper line is one sentence; nothing is sent for an event registering elsewhere, and its Notifications card says so.\n";

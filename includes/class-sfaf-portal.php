@@ -14772,11 +14772,28 @@ class SFAF_Portal {
                  * appears here rather than nowhere. Native events only; on Add
                  * event as well as Edit event (3.106.2).
                  */
+                /*
+                 * REGISTRATIONS TAKEN ELSEWHERE SEND NOTHING (3.111.0). With
+                 * Register on another site chosen, the card is one line and the
+                 * picker, the ticks and the Reply-to are hidden, still posting
+                 * what they held, so switching back restores them. An imported
+                 * event, which registers at its source, has the line alone.
+                 * SFAF_Notifications::on() refuses every send for both.
+                 */
+                $notify_away_line = 'Registrations are taken on another site, so no registration emails are sent.';
                 if ( '' === $prov['source'] ) :
                     ?>
                     <section class="uc-bento-card" data-uc-card="notifications" data-uc-notifications-card>
                         <h2 class="uc-bento-title">Notifications</h2>
-                        <?php $this->render_rsvp_settings( $rsvp_ctx, null, $rsvp_placed ); ?>
+                        <p class="uc-hint uc-notify-away" data-uc-notify-away<?php echo $reg_away ? '' : ' hidden'; ?>><?php echo esc_html( $notify_away_line ); ?></p>
+                        <div class="uc-notify-fields" data-uc-notify-fields<?php echo $reg_away ? ' hidden' : ''; ?>>
+                            <?php $this->render_rsvp_settings( $rsvp_ctx, null, $rsvp_placed ); ?>
+                        </div>
+                    </section>
+                <?php else : ?>
+                    <section class="uc-bento-card" data-uc-card="notifications" data-uc-notifications-card>
+                        <h2 class="uc-bento-title">Notifications</h2>
+                        <p class="uc-hint uc-notify-away" data-uc-notify-away><?php echo esc_html( $notify_away_line ); ?></p>
                     </section>
                 <?php endif; ?>
 
@@ -17644,7 +17661,7 @@ class SFAF_Portal {
                         <?php foreach ( SFAF_Notifications::kinds() as $key => $kind ) : ?>
                             <label class="uc-check">
                                 <input type="checkbox" name="notify_kinds[]" value="<?php echo esc_attr( $key ); ?>"
-                                       <?php checked( SFAF_Notifications::on( $event_id, $key ) ); ?> />
+                                       <?php checked( SFAF_Notifications::stored_on( $event_id, $key ) ); ?> />
                                 <?php echo esc_html( $kind['label'] ); ?>
                             </label>
                             <p class="uc-hint uc-notify-kind-note"><?php echo esc_html( $kind['note'] ); ?></p>

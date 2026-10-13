@@ -5,18 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, nofollow" />
 <title>Request an event</title>
-<link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.110.5" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.110.5" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.110.5" />
-<link rel="stylesheet" href="../public/css/portal.css?ver=3.110.5" />
+<link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.111.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.111.0" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.111.0" />
+<link rel="stylesheet" href="../public/css/portal.css?ver=3.111.0" />
 </head>
 <body class="uc-portal uc-request-page">
 <div class="uc-request-wrap">
                 <div class="uc-request-card">
                         <h1>Request an event</h1>
                         <p class="uc-hint uc-request-who-line">
-                Asking as <strong>someone@sfaf.org</strong>.
-                <a href="https://resources.sfaf.org/?uc_event_request=1?uc_switch=1">Not you? Use a different address</a>
+                Asking as <strong>someone@sfaf.org</strong>; if that is not you,
+                <a href="https://resources.sfaf.org/?uc_event_request=1?uc_switch=1">use a different address</a>.
             </p>
             
             
@@ -46,7 +46,7 @@
                                             >
                                         Beta                                    </option>
                                                             </select>
-                            <span class="uc-hint">Choosing one uses that series' photo unless you pick a picture below.</span>
+                            <span class="uc-hint">Pick a picture below to use one other than the series' photo.</span>
                         </label>
 
                                                 <div class="uc-prefill" data-uc-request-prefill hidden>
@@ -59,7 +59,7 @@
                                 <button type="button" class="uc-btn uc-btn-sm" data-uc-prefill-none>Start from scratch</button>
                             </div>
                             <p class="uc-flash uc-prefill-said" data-uc-prefill-said role="status" hidden></p>
-                            <p class="uc-hint">The date is never filled in.</p>
+                            <p class="uc-hint">Choose the date yourself, because it is never filled in.</p>
                         </div>
 
                         <script type="application/json" data-uc-request-prefill-data>{"11":{"location_mode":"","venue":0,"venue_name":"","location":"","location_name":"","location_parts":{"street":"","city":"","state":"","zip":""},"start_time":"","end_time":"","description":"","image_url":"","image_id":0,"image_preview":"","categories":[],"category_names":[],"organizers":[],"organizer_name":"","faq_set":"","faq_set_name":"","from_event":0},"12":{"location_mode":"","venue":0,"venue_name":"","location":"","location_name":"","location_parts":{"street":"","city":"","state":"","zip":""},"start_time":"","end_time":"","description":"","image_url":"","image_id":0,"image_preview":"","categories":[],"category_names":[],"organizers":[],"organizer_name":"","faq_set":"","faq_set_name":"","from_event":0}}</script>
@@ -68,8 +68,7 @@
                                 <fieldset class="uc-form-section-group uc-request-images">
             <legend class="uc-field-group-title">Event Image</legend>
                             <p class="uc-hint">
-                    There are no calendar pictures to choose from yet. Ask Roxane Chicoine for an image for
-                    your event, or send this without a picture and say so in the notes.
+                    Ask Roxane Chicoine for an image for your event, or send this without a picture and say so in the notes.
                 </p>
             
                         <div class="uc-request-upload">
@@ -77,25 +76,11 @@
             <span class="uc-field-label">Or upload one</span>
             <input type="file" name="uc_image" accept="image/jpeg,image/png,image/webp" />
             <span class="uc-hint">
-                Pictures must be 1200 by 675 pixels and under 500KB. JPEG, PNG or WebP.
-                Leave this empty if you do not have one.
+                Upload a JPEG, PNG or WebP that is 1200 by 675 pixels and under 500KB, or leave this empty.
             </span>
                     </label>
                     </div>
-                    <div class="uc-field uc-field-upload uc-extra-images">
-            <span class="uc-field-label">Any other pictures</span>
-                            <input type="file" name="uc_image_extra_1"
-                       accept="image/jpeg,image/png,image/webp"
-                       aria-label="Other picture 1" />
-                                            <input type="file" name="uc_image_extra_2"
-                       accept="image/jpeg,image/png,image/webp"
-                       aria-label="Other picture 2" />
-                                        <span class="uc-hint">
-                Up to 2. Pictures must be 1200 by 675 pixels and under 500KB.                These are not shown on the event page. Somebody adds one to the description by hand
-                with Insert image if it belongs there.
-            </span>
-        </div>
-                </fieldset>
+        </fieldset>
         
                 <fieldset class="uc-form-section-group">
                 <legend class="uc-field-group-title">About the event</legend>
@@ -112,14 +97,14 @@
 
                 <div class="uc-field">
                     <span class="uc-field-label">Description<span class="uc-req" data-uc-req-mark="description" aria-hidden="true">*</span></span>
-                    <textarea aria-required="true" name="description" id="uc-request-description"></textarea>                    <span class="uc-hint">What it is, who it is for, and what somebody should expect.</span>
+                    <textarea aria-required="true" name="description" id="uc-request-description"></textarea>                    <span class="uc-hint">Say what it is, who it is for, and what somebody should expect.</span>
                                     </div>
 
                                 <label class="uc-field">
                     <span class="uc-field-label">Video</span>
                     <input type="url" name="video_url" maxlength="300" value=""
                            placeholder="https://www.youtube.com/watch?v=&hellip;" />
-                    <span class="uc-hint">A YouTube or Vimeo link. Paste the address from the browser bar, not embed code.</span>
+                    <span class="uc-hint">Paste a YouTube or Vimeo address from the browser bar, not embed code.</span>
                                     </label>
 
                                                     <fieldset class="uc-field">
@@ -306,13 +291,13 @@
                         </label>
                                             <label class="uc-day">
                             <input type="checkbox" name="repeat_days[]" value="2"
-                                    data-uc-repeat-day />
+                                    checked="checked" data-uc-repeat-day />
                             <span aria-hidden="true">T</span>
                             <span class="uc-visually-hidden">Tuesday</span>
                         </label>
                                             <label class="uc-day">
                             <input type="checkbox" name="repeat_days[]" value="3"
-                                    checked="checked" data-uc-repeat-day />
+                                    data-uc-repeat-day />
                             <span aria-hidden="true">W</span>
                             <span class="uc-visually-hidden">Wednesday</span>
                         </label>
@@ -358,8 +343,8 @@
                     <select name="repeat_nth_dow" aria-label="Which weekday">
                                                     <option value="0" >Sunday</option>
                                                     <option value="1" >Monday</option>
-                                                    <option value="2" >Tuesday</option>
-                                                    <option value="3"  selected="selected">Wednesday</option>
+                                                    <option value="2"  selected="selected">Tuesday</option>
+                                                    <option value="3" >Wednesday</option>
                                                     <option value="4" >Thursday</option>
                                                     <option value="5" >Friday</option>
                                                     <option value="6" >Saturday</option>
@@ -389,8 +374,7 @@
                     <span>occurrences</span>
                 </label>
                                 <p class="uc-hint">
-                    No end date creates a year of dates. Generation happens once, so there is no pattern left running
-                    afterwards; add more dates later from the series screen.
+                    Leave the end date empty for a year of dates, and add more later from the series screen.
                 </p>
             </div>
 
@@ -417,8 +401,7 @@
                                     </div>
 
                 <p class="uc-hint" data-uc-dates-hint>
-                    Every date here becomes its own event, at the same start and end time, in the same group as the
-                    rest. A date the pattern already covers is not added twice.
+                    Add any date the pattern misses, and each becomes its own event at the same times.
                 </p>
             </div>
 
@@ -445,7 +428,7 @@
                     <span class="uc-field-label">If somewhere else, the place name</span>
                     <input type="text" name="venue_name" maxlength="120" value=""
                            placeholder="Strut" />
-                    <span class="uc-hint">Shown above the address on the event page. It does not add the place to the venue list.</span>
+                    <span class="uc-hint">Name the place as it should appear above the address; it is not added to the venue list.</span>
                 </label>
                 <label class="uc-field">
                     <span class="uc-field-label">If somewhere else, the address</span>
@@ -464,13 +447,13 @@
                 <label class="uc-field">
                     <span class="uc-field-label">How many places, if there is a limit</span>
                     <input type="number" name="capacity" min="0" max="100000" placeholder="No limit" value="" />
-                    <span class="uc-hint">0 sends everybody to the waitlist.</span>
+                    <span class="uc-hint">Leave it empty for no limit, or enter 0 to send everybody to the waitlist.</span>
                                     </label>
                 </fieldset>
 
                                 <fieldset class="uc-form-section-group">
                     <legend class="uc-field-group-title">Questions people often ask</legend>
-                    <p class="uc-hint">Parking, what to bring, whether to book. Leave it empty if there is nothing.</p>
+                    <p class="uc-hint">Add parking, what to bring or whether to book, or leave it empty.</p>
 
                     
                     <div class="uc-repeater" data-repeater>
@@ -512,7 +495,7 @@
             </form>
         </div>
         </div>
-<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.110.5"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/portal.js?ver=3.110.5"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.111.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/portal.js?ver=3.111.0"></script>
 <script>window.RM_DATA = {"steps":[{"label":"as it opens","act":[]}],"inputs":{"requester_name":["requester_name"],"title":["title"],"description":["description"],"date":["date"],"start_time":["start_time_h"],"end_time":["end_time_h"]}};</script><script>(function () {
 var DATA = window.RM_DATA, out = { steps: [], note: '', errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });

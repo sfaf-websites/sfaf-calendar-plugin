@@ -6,7 +6,8 @@
  *
  * A.1 a cancelled event still pinned; B a count in the embed payload; C.3 an
  * editor outside the review team approving; E.1 a non-PDF accepted; F.3 a
- * migrated value lost; G.2 the field still rendered; and in the browser, A.1
+ * migrated value lost; G.2 the field still rendered; H a message sent for an
+ * event registering elsewhere; and in the browser, A.1
  * the Featured mark not drawn.
  *
  * Each replacement is written into the real file, the check is run, and every
@@ -36,6 +37,9 @@ $plants = array(
     ) ),
     'G.2: the field still rendered' => array( $unit, 'PLANT G.2', array(
         array( 'includes/class-sfaf-submissions.php', "            <input type=\"file\" name=\"uc_image\" accept=\"<?php echo esc_attr( SFAF_Uploads::picture_accept() ); ?>\" />\n", "            <input type=\"file\" name=\"uc_image\" accept=\"<?php echo esc_attr( SFAF_Uploads::picture_accept() ); ?>\" />\n            <span class=\"uc-field-label\">Any other pictures</span><input type=\"file\" name=\"uc_image_extra_1\" />\n" ),
+    ) ),
+    'H: a message sent for an event registering elsewhere' => array( $unit, 'PLANT H', array(
+        array( 'includes/class-sfaf-notifications.php', "        if ( self::registers_elsewhere( \$event_id ) ) {\n            return false;\n        }\n", '' ),
     ) ),
     'A.1 live: the Featured mark not drawn' => array( $live, 'PLANT A.1 LIVE', array(
         array( 'public/css/calendar.css', ".uc-featured-mark {\n    display: block;", ".uc-featured-mark {\n    display: none;" ),

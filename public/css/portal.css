@@ -5397,3 +5397,8 @@ body.uc-modal-open { overflow: hidden; }
    ------------------------------------------------------------------------ */
 .uc-draft-prompt { justify-content: space-between; }
 .uc-draft-prompt-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Registrations taken elsewhere (3.111.0): the Notifications card is one line,
+   and its fields wait hidden until registrations come back here. */
+.uc-portal .uc-notify-away[hidden],
+.uc-portal .uc-notify-fields[hidden] { display: none; }

@@ -447,6 +447,11 @@ function ucDismissOnBackdrop(dialog) {
                 var away = !!box.querySelector('[data-uc-reg-mode][value="elsewhere"]:checked');
                 if (urlBox) { urlBox.hidden = !away; }
                 if (here) { here.hidden = away; }
+                /* The Notifications card follows (3.111.0): one line while
+                   registrations are elsewhere, its fields back otherwise. */
+                var awayLine = document.querySelector('[data-uc-notify-away]');
+                var notifyFields = document.querySelector('[data-uc-notify-fields]');
+                if (awayLine && notifyFields) { awayLine.hidden = !away; notifyFields.hidden = away; }
             }
             radios.forEach(function (r) { r.addEventListener('change', function () { own = true; apply(); }); });
             var select = box.hasAttribute('data-uc-reg-series') ? document.querySelector('[data-uc-series-select]') : null;
