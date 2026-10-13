@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.110.3
+Stable tag: 3.110.4
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,24 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.110.4 =
+
+**See all events goes to the calendar home, Strut's slug for any name starting with Strut, rejected pictures deleted with the event, and two lines of copy.**
+
+**SEE ALL EVENTS** under a sidebar, and beside the month grid in the combined view, goes to the Calendar home URL in Settings, with the block's filter: uc_cat for a category, uc_org for an organizer, uc_group for a series. It went to the resources.sfaf.org events archive whatever the setting said, with uc_organizer and the other taxonomy names, which no calendar block reads. A venue has no filter on the calendar page and is not carried. With no Calendar home URL set, the link still goes to the archive. The list and month views have no See all events link.
+
+**AN EMBED READS THE FILTER IN ITS PAGE'S ADDRESS.** A page carrying the embed with ?uc_cat=, ?uc_org= or ?uc_group= opens filtered, as the calendar on this site already did, so See all events and the category chips land on the filtered calendar when the calendar home is an embed.
+
+**STRUT'S SLUG.** The organizer with the slug magnet becomes strut when its name starts with Strut, not only when it is exactly Strut. A site where 3.110.3 left magnet because of the name gets the rename once more.
+
+**A REJECTED SUBMISSION'S PICTURES** are deleted when the event is: the featured one and the extras, once WordPress empties its trash. A picture approval filed is never touched.
+
+**THE PUBLIC FORMS** no longer say somebody will size a sent picture. The size line under the upload box, "Pictures must be 1200 by 675 pixels and under 500KB.", was already there from 3.110.3.
+
+**THE PENDING QUEUE** says, beside Publish, that submissions with a picture are approved one at a time, from their own row.
+
+**CHECKED.** See all events with and without the setting, for a category, an organizer, a series, a venue and the combined view's bound month; calendar_url() reading the setting; an embed taking uc_cat, uc_org and uc_group from its page and leaving an organizer it was not given; Strut SF renamed, a 3.110.3 refusal run once more and a refusal under the new rule not run on every load; a rejected event's submitted pictures deleted and a filed one kept; the queue line and the upload rule rendered. Planted and caught: calendar_url() skipping the setting, uc_organizer sent to the calendar home, rejected pictures kept, pictures deleted from an event nobody rejected, an embed ignoring uc_org or clearing an organizer, the exact-name match, a 3.110.3 refusal never rerun, and a refusal rerun on every load.
 
 = 3.110.3 =
 

@@ -1733,6 +1733,50 @@ class SFAF_Shortcodes {
         return ( $count > 0 ) ? $count : 10;
     }
 
+    /**
+     * Where "See all events" goes: the calendar home, carrying the block's
+     * filter so the visitor lands on the programme they were looking at.
+     *
+     * THE SETTING FIRST, AND THE PUBLIC KEYS WITH IT (3.110.4). This used to
+     * ask SFAF_Embed::calendar_url(), which never read Calendar home URL, so
+     * every sidebar linked to the resources archive however the setting was
+     * filled in. It also wrote the taxonomy names, uc_organizer and the rest,
+     * which only the archive understands: a calendar block reads uc_cat,
+     * uc_org and uc_group (SFAF_Slug_Aliases::PARAMS) and nothing else.
+     *
+     * A venue has no public key, so it is not carried to the calendar home.
+     * With no home set, the archive still gets the taxonomy query vars it reads.
+     *
+     * @param array $filters Normalized filters.
+     * @return string
+     */
+    private function see_all_url( $filters ) {
+        $group = '';
+        if ( $filters['series'] ) {
+            $term  = get_term( SFAF_Series::resolve( $filters['series'] ), SFAF_Series::TAXONOMY );
+            $group = ( $term && ! is_wp_error( $term ) ) ? (string) $term->slug : '';
+        }
+
+        $home = sfaf_calendar_home_url();
+        if ( '' !== $home ) {
+            $qs = array_filter( array(
+                'uc_cat'   => $filters['category'],
+                'uc_org'   => $filters['organizer'],
+                'uc_group' => $group,
+            ) );
+            return empty( $qs ) ? $home : add_query_arg( $qs, $home );
+        }
+
+        $qs = array_filter( array(
+            'uc_event_category' => $filters['category'],
+            'uc_organizer'      => $filters['organizer'],
+            'uc_venue'          => $filters['venue'],
+            SFAF_Series::TAXONOMY => $group,
+        ) );
+        $all_url = SFAF_Embed::calendar_url();
+        return empty( $qs ) ? $all_url : add_query_arg( $qs, $all_url );
+    }
+
     public function render_sidebar( $filters, $count, $heading = null, $month = '' ) {
         $count = max( 1, min( 50, (int) $count ) );
 
@@ -1757,19 +1801,8 @@ class SFAF_Shortcodes {
         $events = $this->render_events( $count, 1, $filters, 'sidebar' );
         $head   = self::sidebar_heading( $heading );
 
-        // "See all" points at the calendar on this site, carrying the same
-        // filter so the visitor lands on the programme they were looking at.
         $filters = $this->normalize_filters( $filters );
-        $all_url = SFAF_Embed::calendar_url();
-        $qs      = array_filter( array(
-            'uc_category'  => $filters['category'],
-            'uc_organizer' => $filters['organizer'],
-            'uc_venue'     => $filters['venue'],
-            'uc_series'    => $filters['series'] ? $filters['series'] : '',
-        ) );
-        if ( ! empty( $qs ) ) {
-            $all_url = add_query_arg( $qs, $all_url );
-        }
+        $all_url = $this->see_all_url( $filters );
 
         ob_start();
         ?>

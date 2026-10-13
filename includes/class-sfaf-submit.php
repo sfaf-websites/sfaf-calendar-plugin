@@ -1839,7 +1839,6 @@ class SFAF_Submit {
                     ) );
                     ?>
                     <div class="uc-request-upload">
-                        <p class="uc-hint">Or send your own, and somebody will size it for the calendar.</p>
                         <?php SFAF_Submissions::image_field( $err( 'uc_image' ) ); ?>
                     </div>
                     <?php SFAF_Submissions::extra_images_field( $errors ); ?>

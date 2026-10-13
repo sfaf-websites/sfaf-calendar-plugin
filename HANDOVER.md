@@ -4,17 +4,18 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-09, at 3.110.3, released.
+**Last updated:** 2026-10-13, at 3.110.4, released.
 
 ---
 
 ## What shipped last
 
-**3.110.3**: pictures in three places (series, Other images, submitted), one
-upload size everywhere, + Upload a picture for this event, a submitted picture
-filed at approval, Set team, and Strut's slug from magnet with every changed slug
-redirecting (`TESTING.md` 1.235 to 1.244, 2.48 to 2.50). **3.110.2**: Email
-registrants with the team, Users as a table, caladmin on a phone.
+**3.110.4**: See all events goes to the Calendar home URL with `uc_cat`,
+`uc_org` or `uc_group`, and an embed reads them from its page; Strut for any
+name starting with Strut; rejected pictures deleted with the event (`TESTING.md`
+1.245 to 1.247, 2.51). **3.110.3**: pictures in three places, one upload size,
++ Upload a picture for this event, a submitted picture filed at approval, Set
+team, and every changed slug redirecting (`TESTING.md` 1.235 to 1.244, 2.48 to 2.50).
 > **3.110.1: EDITORS NO LONGER HAVE EVERY EVENT.** A team decides which events a
 > person has; their level decides what they can do on them (CLAUDE.md 7,
 > `PROJECT.md` 5). An editor has what they created and what **Team and
@@ -93,8 +94,8 @@ Earlier releases, and the reasoning for all of it: **`readme.txt` is the changel
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 293 items.** **1.235** and
-**1.236** first (Strut's slug, and which slugs carry a retired name), then **1.225**,
+**`TESTING.md` holds the manual testing backlog: 297 items.** **1.235**, **1.245**
+and **1.236** first (Strut's slug, See all events, retired names), then **1.225**,
 that editors have their events, then **1.218**,
 that schema 13 ran, then **2.37**, the old offers moved, then **1.200**, that
 schema 12 ran and no event became waitlist-only, then **1.197**, that
@@ -108,8 +109,6 @@ live. Assume everything else unverified.
 **Waiting on a decision or an address**, each with its reasoning in `PROJECT.md`
 8 unless another section is named:
 
-- **The calendar home URL.** Until it is set, "All Events" falls back to the
-  resources.sfaf.org archive, not a public surface. Settings, Display.
 - **Two pieces of public copy nobody has read**, the rejection notice and the
   "back on" message. Unticked, so nothing sends. `TESTING.md` 2.21 and 2.24.
 - **Español as a category** gives its colour and icon to every event it is on,

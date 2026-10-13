@@ -13,6 +13,8 @@
  *   PLANT F.2  the archive at the old slug is not redirected
  *   PLANT F.3  a filter link carrying the old slug is not redirected
  *   PLANT F.4  an embed's data-organizer with the old slug is not resolved
+ *   PLANT F.5  an organizer named "Strut SF" keeps magnet (3.110.4)
+ *   PLANT F.6  a site 3.110.3 refused on the name is never asked again
  */
 
 define( 'ABSPATH', __DIR__ . '/' );
@@ -69,6 +71,26 @@ $GLOBALS['opts'] = array(); st_term( 70, 'uc_organizer', 'Magnet Clinic', 'magne
 SFAF_Slug_Aliases::rename_magnet_once();
 sa( 'magnet' === get_term( 70 )->slug && false !== strpos( get_option( 'sfaf_slug_magnet_done' )['said'], 'Magnet Clinic' ), 'F: an organizer named something other than Strut was renamed' );
 unset( $GLOBALS['terms'][70] );
+
+/* A name that starts with Strut counts (3.110.4), and a site that took
+ * 3.110.3's refusal gets one more run, not one on every load. Term 50 holds
+ * strut by now, and a taken slug is refused, so it steps aside. */
+$held = $GLOBALS['terms'][50]; unset( $GLOBALS['terms'][50] );
+$GLOBALS['opts'] = array(); st_term( 71, 'uc_organizer', 'Strut SF', 'magnet' );
+SFAF_Slug_Aliases::rename_magnet_once();
+sa( 'strut' === get_term( 71 )->slug, 'PLANT F.5: an organizer named Strut SF kept magnet: ' . get_term( 71 )->slug );
+$GLOBALS['opts'] = array(); st_term( 71, 'uc_organizer', 'strut sf', 'magnet' );
+$GLOBALS['opts']['sfaf_slug_magnet_done'] = array( 'said' => 'the organizer with the slug magnet is named strut sf, not Strut', 'at' => '2026-10-09 09:00:00' );
+SFAF_Slug_Aliases::rename_magnet_once();
+sa( 'strut' === get_term( 71 )->slug, 'PLANT F.6: 3.110.3 refused on the name and the rename did not run again' );
+unset( $GLOBALS['terms'][71] );
+$GLOBALS['opts'] = array(); st_term( 72, 'uc_organizer', 'Magnet Clinic', 'magnet' );
+SFAF_Slug_Aliases::rename_magnet_once();
+$GLOBALS['opts']['sfaf_slug_magnet_done']['at'] = 'kept';
+SFAF_Slug_Aliases::rename_magnet_once();
+sa( 'kept' === get_option( 'sfaf_slug_magnet_done' )['at'] && 'magnet' === get_term( 72 )->slug, 'F: a refusal under the prefix rule runs again on every load' );
+unset( $GLOBALS['terms'][72] );
+$GLOBALS['terms'][50] = $held; $GLOBALS['opts'] = array();
 
 /* ---- rename(): refused, chained, and a live slug winning. ---- */
 $GLOBALS['opts'] = array();

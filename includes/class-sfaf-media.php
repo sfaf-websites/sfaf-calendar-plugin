@@ -137,6 +137,9 @@ class SFAF_Media {
     const META_UPLOAD      = '_uc_event_upload';
     const META_UPLOAD_SENT = '_uc_event_upload_sent';
 
+    /** On an event Reject trashed: when. See delete_rejected_pictures(). */
+    const META_REJECTED = '_uc_rejected';
+
     /** Where the one-off upload notice goes. */
     const UPLOAD_NOTICE_TO = 'websites@sfaf.org';
 
@@ -153,6 +156,33 @@ class SFAF_Media {
          */
         add_action( 'init', array( __CLASS__, 'attach_to_attachments' ), 20 );
         add_action( 'pre_get_posts', array( __CLASS__, 'keep_archive_to_events' ) );
+        add_action( 'before_delete_post', array( __CLASS__, 'delete_rejected_pictures' ) );
+    }
+
+    /**
+     * A REJECTED SUBMISSION'S PICTURES GO WITH IT (3.110.4).
+     *
+     * Reject trashes the event and marks it; this runs when the event is
+     * deleted for good, which is when WordPress empties its trash (30 days
+     * unless EMPTY_TRASH_DAYS says otherwise).
+     * Only files still in calendar-submissions/ are deleted, the featured one
+     * and the extras: nothing approval filed, and nothing on an event that was
+     * not rejected.
+     *
+     * @param int $post_id
+     */
+    public static function delete_rejected_pictures( $post_id ) {
+        $post_id = (int) $post_id;
+        if ( 'uc_event' !== get_post_type( $post_id ) || '' === (string) get_post_meta( $post_id, self::META_REJECTED, true ) ) {
+            return;
+        }
+        $ids   = (array) get_post_meta( $post_id, SFAF_Submit::META_IMAGE_EXTRA, true );
+        $ids[] = get_post_meta( $post_id, SFAF_Submit::META_IMAGE, true );
+        foreach ( array_unique( array_filter( array_map( 'intval', $ids ) ) ) as $att ) {
+            if ( 'attachment' === get_post_type( $att ) && SFAF_Uploads::holds( $att ) ) {
+                wp_delete_attachment( $att, true );
+            }
+        }
     }
 
     /**

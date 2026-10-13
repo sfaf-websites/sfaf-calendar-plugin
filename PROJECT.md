@@ -74,6 +74,24 @@ no path is now treated as no referrer, so the configured URL answers instead.
 > fall-through is the archive on resources.sfaf.org, which is not a public
 > surface. **Filling that setting in is the other half of this fix.**
 
+**EVERY LINK TO "THE CALENDAR" FROM A BLOCK IS THE SETTING FIRST, WITH THE
+PUBLIC FILTER KEYS** (3.110.4). "See all events" (`see_all_url()`, the one
+renderer, so the sidebar and the combined view's right column) and the category
+chips (`sfaf_category_filter_url()`) go to `calendar_home_url` carrying
+`uc_cat`, `uc_org` or `uc_group`, which are the only filter keys a calendar
+block reads (`SFAF_Slug_Aliases::PARAMS`). `SFAF_Embed::calendar_url()` reads
+the setting too. Until 3.110.4 it did not, and the sidebar linked to the
+archive with `uc_organizer=` whatever the setting said, so the setting looked
+ignored. A venue has no public key and is not carried. Only with no setting
+does the archive get the taxonomy query vars (`uc_organizer=` and the rest),
+because those are what it reads.
+
+**AN EMBED READS THOSE THREE KEYS FROM ITS HOST PAGE'S ADDRESS** (3.110.4,
+`pageParam()` in `init()`), as the shortcode reads `$_GET`. Without that, a
+filtered link to an embedded calendar home loaded unfiltered. The endpoint
+clamps each to the snippet's own scope, so the address can narrow a block and
+never widen it.
+
 > **A related quirk, recorded rather than changed.** The "is this an event page"
 > test applies THIS site's archive base to any allowed host, so a calendar page
 > at `sfaf.org/events/whatever` is refused as though it were one of our event
@@ -2415,8 +2433,13 @@ moves the file and every size, keeps the attachment id, rewrites any URL stored
 as text (`_uc_image_url`, its typed copy, a series' image URL), tags or untags,
 and the file becomes the thumbnail. Moving to Other images is refused while a
 series has the picture as its own. Bulk Publish on the queue holds a submission
-with a picture, because a bulk press never opens the dialog. Rejecting trashes
-the event and leaves the file where it is.
+with a picture, because a bulk press never opens the dialog, and the bar says
+so beside Publish. Rejecting trashes the event and stamps
+`SFAF_Media::META_REJECTED`; when the event is deleted for good, which is when
+WordPress empties its trash, `delete_rejected_pictures()` on
+`before_delete_post` deletes its featured and extra submitted pictures that are
+still in `calendar-submissions/` (3.110.4). The stamp is what limits it to
+rejections, and the folder is what keeps a filed picture safe.
 
 **THE IMAGES SCREEN** lists all three places for an admin and the first two for
 an editor, with the place on each card and, on a submitted one, the event it came
@@ -3558,7 +3581,10 @@ The embed generators list live slugs, so they write the new one.
 renamed Strut with the slug left behind. `rename_magnet_once()` renames it to
 strut through `rename()`, once, guarded by its own option
 (`sfaf_slug_magnet_done`, which records what it found), and only when the
-organizer with slug magnet is named Strut. The sample data seeds Strut now.
+organizer with slug magnet has a name starting with Strut (3.110.4; 3.110.3
+wanted exactly Strut). A record of 3.110.3 refusing on the name, which has no
+`prefix` key, gets one more run; a refusal under the prefix rule is final, so
+the option is not rewritten on every load. The sample data seeds Strut now.
 `not_their_name()` lists, on the Organizers and Series & Categories screens,
 every term whose slug is not its name, which is what a retired name looks like.
 

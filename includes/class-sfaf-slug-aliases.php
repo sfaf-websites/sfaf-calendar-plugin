@@ -32,6 +32,9 @@ class SFAF_Slug_Aliases {
 
     const OPTION = 'sfaf_slug_aliases';
 
+    /** How rename_magnet_once() records a refusal on the name. */
+    const NOT_STRUT = 'the organizer with the slug magnet is named ';
+
     /** The taxonomies a slug can be changed on, and their public filter key. */
     const PARAMS = array(
         'uc_event_category' => 'uc_cat',
@@ -199,22 +202,29 @@ class SFAF_Slug_Aliases {
      * is Strut becomes strut, leaving magnet as its alias. Anything else, a
      * Magnet that is not Strut or a strut already taken, is left alone and
      * recorded, so the Organizers screen's list can show it.
+     *
+     * A NAME THAT STARTS WITH STRUT COUNTS (3.110.4): "Strut SF" kept its
+     * magnet slug under 3.110.3's exact match. A run that was refused on the
+     * name runs once more under this rule, so a site that took 3.110.3 is not
+     * left with it.
      */
     public static function rename_magnet_once() {
-        if ( false !== get_option( 'sfaf_slug_magnet_done', false ) ) {
+        $done = get_option( 'sfaf_slug_magnet_done', false );
+        $refused_exact = is_array( $done ) && empty( $done['prefix'] ) && isset( $done['said'] ) && 0 === strpos( (string) $done['said'], self::NOT_STRUT );
+        if ( false !== $done && ! $refused_exact ) {
             return;
         }
         $term = get_term_by( 'slug', 'magnet', 'uc_organizer' );
         $said = 'no organizer has the slug magnet';
         if ( $term && ! is_wp_error( $term ) ) {
-            if ( 0 !== strcasecmp( trim( $term->name ), 'Strut' ) ) {
-                $said = 'the organizer with the slug magnet is named ' . $term->name . ', not Strut';
+            if ( 0 !== stripos( trim( $term->name ), 'Strut' ) ) {
+                $said = self::NOT_STRUT . $term->name . ', not Strut';
             } else {
                 $r    = self::rename( (int) $term->term_id, 'uc_organizer', 'strut' );
                 $said = is_wp_error( $r ) ? $r->get_error_message() : 'renamed';
             }
         }
-        update_option( 'sfaf_slug_magnet_done', array( 'said' => $said, 'at' => current_time( 'mysql' ) ), false );
+        update_option( 'sfaf_slug_magnet_done', array( 'said' => $said, 'at' => current_time( 'mysql' ), 'prefix' => 1 ), false );
     }
 
     /**

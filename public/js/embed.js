@@ -496,7 +496,7 @@
      * build if this string is not SFAF_VERSION. It cannot drift by being
      * forgotten at release time.
      */
-    var EMBED_JS_VERSION = '3.110.3';
+    var EMBED_JS_VERSION = '3.110.4';
     var staleReported = false;
 
     /**
@@ -1780,13 +1780,33 @@
      * Start-up
      * -------------------------------------------------------------------- */
 
+    /** One parameter from the host page's own address, or ''. */
+    function pageParam(name) {
+        var m = new RegExp('[?&]' + name + '=([^&#]*)').exec(window.location.search || '');
+        if (!m) {
+            return '';
+        }
+        try {
+            return decodeURIComponent(m[1].replace(/\+/g, ' '));
+        } catch (e) {
+            return '';
+        }
+    }
+
     function init(container) {
         if (container.getAttribute('data-sfaf-ready') === '1') {
             return;
         }
         container.setAttribute('data-sfaf-ready', '1');
-        container.setAttribute('data-active-category', 'all');
-        container.setAttribute('data-active-groups', '');
+        // A filter in the host page's address applies, as it does to a block
+        // on the calendar site: "See all events" and the category chips link
+        // to the calendar home with uc_cat, uc_org or uc_group. The endpoint
+        // clamps each to the snippet's own scope.
+        container.setAttribute('data-active-category', pageParam('uc_cat') || 'all');
+        container.setAttribute('data-active-groups', pageParam('uc_group'));
+        if (pageParam('uc_org')) {
+            container.setAttribute('data-active-organizer', pageParam('uc_org'));
+        }
         container.setAttribute('data-active-search', '');
 
         // Bound to the container itself, once, so they survive every re-render

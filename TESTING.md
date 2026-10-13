@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 293 items.** Quick 241, needs real conditions 48, blocked on other
+**Outstanding: 297 items.** Quick 244, needs real conditions 49, blocked on other
 people 4.
 
 ---
@@ -3281,6 +3281,11 @@ its address: both land on the same address with `strut`, and show Strut's
 events. If Organizers says nothing changed (the organizer with slug magnet is not
 named Strut, or `strut` was taken), say what it shows.
 
+From 3.110.4 a name that starts with Strut counts, such as "Strut SF", and a
+site where 3.110.3 refused on the name gets one more try after the update. The
+sidebar still linking with `magnet` on 2026-10-13 suggests the name is not
+exactly Strut, so check this after 3.110.4 is installed.
+
 **Why it needs a person:** the term lives in the site's database.
 
 ### 1.236 Read the "Slugs that are not their names" lists (3.110.3)
@@ -3364,6 +3369,41 @@ filter link with the old slug lands on the new one. Change it back: the first
 slug works again and nothing is listed twice.
 
 **Why it needs a person:** the live terms and addresses.
+
+### 1.245 "See all events" goes to the calendar home, filtered (3.110.4)
+
+On a page with the Strut sidebar, hover or press **See all events**. It must go
+to `https://www.sfaf.org/calendar/?uc_org=strut` (or `?uc_org=magnet` if 1.235
+says the rename did not run), not to resources.sfaf.org. The calendar that opens
+must show only Strut's events, with Strut chosen in its organizer filter. Then
+the same for a category sidebar (`?uc_cat=`) and a series sidebar
+(`?uc_group=`), if any page carries one, and for the combined view's link under
+the month grid.
+
+If the calendar opens unfiltered, say whether sfaf.org/calendar/ is an embed
+snippet or something else: an embed reads the filter from 3.110.4, and a page
+built any other way does not.
+
+**Why it needs a person:** the live sidebar, the live setting and the page on
+sfaf.org.
+
+### 1.246 The upload box on both public forms, before choosing a file (3.110.4)
+
+Open the community submit form and the staff request form. Under **Or upload
+one**, the line "Pictures must be 1200 by 675 pixels and under 500KB. JPEG, PNG
+or WebP." is there before anything is chosen, and neither form says anywhere
+that somebody will size the picture. Say whether the line is close enough to the
+box on a phone.
+
+**Why it needs a person:** the live forms on a real phone.
+
+### 1.247 The pending queue's line about pictures (3.110.4)
+
+With at least one event waiting, open **Pending Events**. Beside Publish and
+Dismiss: "Submissions with a picture are approved one at a time, from their own
+row." on one line at desk width.
+
+**Why it needs a person:** the live queue.
 
 ## 2. Needs real conditionsWaiting for an unattended job to fire, a real removal at source, or a real event
 with real registrations and real mail.
@@ -4082,6 +4122,18 @@ in the WordPress media library's own folders. A move does not change which WP
 Media Folder folder holds it; say whether it should be filed somewhere else.
 
 **Why it needs real conditions:** WP Media Folder is not on the build machine.
+
+### 2.51 A rejected submission's pictures go when its event does (3.110.4)
+
+Reject a submission that came with a picture (and, if one exists, extra
+pictures). On **Images**, under Submitted, the pictures are still there and name
+the event. When WordPress empties its trash (30 days after the rejection unless
+the site sets otherwise), they must be gone from Submitted and from
+`wp-content/uploads/calendar-submissions/`. A rejection from before 3.110.4
+carries no mark, so its pictures stay; say how many of those there are.
+
+**Why it needs real conditions:** a real rejection and the trash emptying on its
+own schedule.
 
 ## 3. Blocked on other peopleNothing here can move until somebody outside the build answers.
 

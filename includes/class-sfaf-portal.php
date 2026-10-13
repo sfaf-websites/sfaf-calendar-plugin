@@ -1791,6 +1791,8 @@ class SFAF_Portal {
                     SFAF_Submissions::send_rejected_notice( $event_id, $note );
                 }
 
+                // Its submitted pictures are deleted with it (3.110.4).
+                update_post_meta( $event_id, SFAF_Media::META_REJECTED, current_time( 'mysql' ) );
                 wp_trash_post( $event_id );
                 $this->redirect( 'pending', array( 'msg' => 'rejected' ) );
                 break;
@@ -19631,7 +19633,7 @@ class SFAF_Portal {
                             data-uc-tick-confirm="Dismiss {n} {noun}? A fetch never offers a dismissed import again.">
                         Dismiss <span data-uc-tick-count>0</span> <span data-uc-tick-noun>events</span>
                     </button>
-                    <span class="uc-hint">Dismiss takes imports only. Reject a submission from its own row.</span>
+                    <span class="uc-hint">Dismiss takes imports only. Reject a submission from its own row. Submissions with a picture are approved one at a time, from their own row.</span>
                 </div>
             </div>
         </form>

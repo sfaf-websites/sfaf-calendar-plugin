@@ -195,8 +195,16 @@ class SFAF_Embed {
        URLs it tries for itself, because it has to work from a remote page that
        cannot ask this plugin anything. */
 
-    /** Where to send a visitor when an embed can't load: the calendar here. */
+    /**
+     * The calendar: Calendar home URL when it is set, else the archive here.
+     * Until 3.110.4 this skipped the setting, and the sidebar's "See all
+     * events" went to the archive however it was filled in.
+     */
     public static function calendar_url() {
+        $home = sfaf_calendar_home_url();
+        if ( '' !== $home ) {
+            return $home;
+        }
         $archive = get_post_type_archive_link( 'uc_event' );
         return $archive ? $archive : home_url( '/' );
     }
