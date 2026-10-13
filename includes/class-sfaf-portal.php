@@ -3491,6 +3491,9 @@ class SFAF_Portal {
          * choice so the file wins over a radio left on. */
         $pic_refused = $this->save_event_upload( $user, $event_id, $is_locked );
 
+        /* Cost, Age range and Contact (3.111.0), Add and Edit alike. */
+        $this->save_listing_fields( $event_id );
+
         /* The PDF attachment and its label (3.111.0), Add and Edit alike. */
         $pdf_refused = SFAF_Attachments::save_from_post( $event_id, (int) $user->ID );
 
@@ -3748,6 +3751,108 @@ class SFAF_Portal {
             // 1 when an uploaded attachment broke the PDF rule (3.111.0).
             'pdf'     => '' !== $pdf_refused ? 1 : 0,
         );
+    }
+
+    /**
+     * COST, AGE RANGE AND CONTACT, ON EVERY EVENT (3.111.0).
+     *
+     * They were the "Listing detail" control in the Other details card, offered
+     * only when one already had a value, so an event nobody had submitted could
+     * not be given a cost. Cost is now in the Registration card and Age range
+     * and Contact in Event details, on Add event and Edit event alike. The keys
+     * are the ones the community form writes and the event page reads.
+     *
+     * EACH PART POSTS ITS OWN MARKER, so a screen that draws one of them cannot
+     * blank the other by saving; an emptied box deletes its key.
+     *
+     * @param int    $event_id 0 on Add event.
+     * @param string $part     'cost' or 'details'.
+     */
+    private function render_listing_fields( $event_id, $part ) {
+        $g = function ( $key ) use ( $event_id ) {
+            return $event_id ? (string) get_post_meta( (int) $event_id, $key, true ) : '';
+        };
+        if ( 'cost' === $part ) {
+            ?>
+            <input type="hidden" name="uc_cost_present" value="1" />
+            <label class="uc-field uc-cost-field">
+                <span class="uc-field-label">Cost</span>
+                <input type="text" name="listing_cost" maxlength="<?php echo (int) max( self::COST_MAX, strlen( $g( SFAF_Submit::META_COST ) ) ); ?>"
+                       value="<?php echo esc_attr( $g( SFAF_Submit::META_COST ) ); ?>" />
+                <span class="uc-hint">Leave it empty to show no cost.</span>
+            </label>
+            <?php
+            return;
+        }
+        ?>
+        <input type="hidden" name="uc_details_extra_present" value="1" />
+        <label class="uc-field">
+            <span class="uc-field-label">Age range</span>
+            <input type="text" name="listing_age" maxlength="120" value="<?php echo esc_attr( $g( SFAF_Submit::META_AGE ) ); ?>" />
+        </label>
+        <fieldset class="uc-field uc-contact-group">
+            <legend class="uc-field-label">Contact</legend>
+            <span class="uc-hint">Shown on the event page. Leave all three empty for no contact line.</span>
+            <label class="uc-field">
+                <span class="uc-field-label">Name</span>
+                <input type="text" name="contact_name" maxlength="120" value="<?php echo esc_attr( $g( SFAF_Submit::META_CONTACT_NAME ) ); ?>" />
+            </label>
+            <label class="uc-field">
+                <span class="uc-field-label">Email</span>
+                <input type="email" name="contact_email" maxlength="200" value="<?php echo esc_attr( $g( SFAF_Submit::META_CONTACT_EMAIL ) ); ?>" />
+            </label>
+            <label class="uc-field">
+                <span class="uc-field-label">Phone</span>
+                <input type="text" name="contact_phone" maxlength="60" value="<?php echo esc_attr( $g( SFAF_Submit::META_CONTACT_PHONE ) ); ?>" />
+            </label>
+        </fieldset>
+        <?php
+    }
+
+    /** Cost's length for anything typed from 3.111.0; a longer stored cost is kept until it is changed. */
+    const COST_MAX = 40;
+
+    /**
+     * Save what render_listing_fields() drew. Sanitised as the community form
+     * sanitises them, because they are printed on a public page.
+     *
+     * A COST LONGER THAN 40 THAT NOBODY CHANGED IS KEPT. Values from before
+     * 3.111.0 could be 120 characters, and cutting one because its event was
+     * saved for another reason would lose what the page says.
+     *
+     * @param int $event_id
+     */
+    private function save_listing_fields( $event_id ) {
+        $event_id = (int) $event_id;
+        /* One box: a value nobody changed is kept as stored, whatever its
+         * length; a changed one is cut to the box's length; empty deletes. */
+        $put = function ( $key, $field, $max ) use ( $event_id ) {
+            $was = (string) get_post_meta( $event_id, $key, true );
+            $now = SFAF_Submissions::line( isset( $_POST[ $field ] ) ? wp_unslash( $_POST[ $field ] ) : '', 2000 );
+            if ( '' !== $now && $now === SFAF_Submissions::line( $was, 2000 ) ) {
+                return;
+            }
+            $now = SFAF_Submissions::line( $now, $max );
+            if ( '' === $now ) {
+                delete_post_meta( $event_id, $key );
+            } else {
+                update_post_meta( $event_id, $key, $now );
+            }
+        };
+        if ( ! empty( $_POST['uc_cost_present'] ) ) {
+            $put( SFAF_Submit::META_COST, 'listing_cost', self::COST_MAX );
+        }
+        if ( ! empty( $_POST['uc_details_extra_present'] ) ) {
+            $put( SFAF_Submit::META_AGE, 'listing_age', 120 );
+            $put( SFAF_Submit::META_CONTACT_NAME, 'contact_name', 120 );
+            $put( SFAF_Submit::META_CONTACT_PHONE, 'contact_phone', 60 );
+            $email = isset( $_POST['contact_email'] ) ? sanitize_email( trim( (string) wp_unslash( $_POST['contact_email'] ) ) ) : '';
+            if ( '' === $email || ! is_email( $email ) ) {
+                delete_post_meta( $event_id, SFAF_Submit::META_CONTACT_EMAIL );
+            } else {
+                update_post_meta( $event_id, SFAF_Submit::META_CONTACT_EMAIL, $email );
+            }
+        }
     }
 
     /**
@@ -8734,7 +8839,7 @@ class SFAF_Portal {
      * @return string[]
      */
     private function manager_field_order() {
-        return array( 'image', 'description', 'category', 'organizer', 'listing_detail', 'fundraising_progress', 'private' );
+        return array( 'image', 'description', 'category', 'organizer', 'fundraising_progress', 'private' );
     }
 
     /**
@@ -8804,49 +8909,12 @@ class SFAF_Portal {
         $fields = array_diff( $fields, array( 'fundraising_progress' ) );
 
         /*
-         * THE FOUR LINES A COMMUNITY SUBMISSION PUTS ON THE LISTING (3.46.0).
-         *
-         * OFFERED WHEREVER ONE OF THEM HAS A VALUE, rather than wherever the
-         * event came from a submission. They are ordinary event fields once
-         * they exist, and a public value nobody can correct is worse than no
-         * value: a submitter's typo in the cost line would otherwise sit on the
-         * calendar permanently, because the form that wrote it is not somewhere
-         * they can go back to.
-         *
-         * NOT ON EVERY EVENT, because four empty boxes on every editor is four
-         * more things to read past on the screen this project already has a
-         * queued job to simplify.
+         * THE LISTING LINES ARE NOT MANAGER FIELDS FROM 3.111.0. Cost is in
+         * the Registration card and Age range and Contact in Event details, on
+         * every event, drawn and saved by render_listing_fields() and
+         * save_listing_fields() rather than offered here when one had a value.
          */
         $fields = array_diff( $fields, array( 'listing_detail' ) );
-        if ( $ctx['event_id'] ) {
-            /*
-             * ALL SEVEN KEYS, AND THE THREE CONTACT ONES WERE THE POINT OF
-             * 3.72.0 TOUCHING THIS LIST.
-             *
-             * The card is offered wherever one of the values it edits exists,
-             * so the list has to be every key it edits. Splitting the contact
-             * into a name, an address and a number and leaving this asking only
-             * about `_uc_public_contact` would have hidden the card from every
-             * community submission made since 3.47.0, which is all of them: the
-             * only event still carrying the old single key is one submitted on
-             * 3.46.0, and those are the ones this list already covered.
-             */
-            $detail_keys = array(
-                SFAF_Submit::META_COST,
-                SFAF_Submit::META_AGE,
-                SFAF_Submit::META_RSVP_URL,
-                SFAF_Submit::META_CONTACT_NAME,
-                SFAF_Submit::META_CONTACT_EMAIL,
-                SFAF_Submit::META_CONTACT_PHONE,
-                SFAF_Submit::META_CONTACT,
-            );
-            foreach ( $detail_keys as $detail_key ) {
-                if ( '' !== (string) get_post_meta( $ctx['event_id'], $detail_key, true ) ) {
-                    $fields[] = 'listing_detail';
-                    break;
-                }
-            }
-        }
 
         /*
          * PRIVATE IS ON EVERY EVENT, NATIVE OR IMPORTED, AND ONLY ONCE SAVED.
@@ -9672,118 +9740,6 @@ class SFAF_Portal {
                 <?php
                 break;
 
-            case 'listing_detail':
-                $d_cost  = (string) get_post_meta( $event_id, SFAF_Submit::META_COST, true );
-                $d_age   = (string) get_post_meta( $event_id, SFAF_Submit::META_AGE, true );
-                $d_rsvp  = (string) get_post_meta( $event_id, SFAF_Submit::META_RSVP_URL, true );
-                $d_name  = (string) get_post_meta( $event_id, SFAF_Submit::META_CONTACT_NAME, true );
-                $d_email = (string) get_post_meta( $event_id, SFAF_Submit::META_CONTACT_EMAIL, true );
-                $d_phone = (string) get_post_meta( $event_id, SFAF_Submit::META_CONTACT_PHONE, true );
-                /* The pre-3.47.0 single box, read only where the three-part
-                 * answer is empty. See below and sfaf_event_public_contact(). */
-                $d_old   = (string) get_post_meta( $event_id, SFAF_Submit::META_CONTACT, true );
-                ?>
-                <div class="uc-field uc-listing-detail">
-                    <span class="uc-field-label">Listing detail</span>
-                    <p class="uc-hint">These are on the event page. Empty a box to take that line off.</p>
-                    <?php
-                    /*
-                     * ONE MARKER FOR THE WHOLE CARD, AND IT NOW HAS TO COVER
-                     * SIX FIELDS (3.72.0).
-                     *
-                     * The marker is what makes an empty box mean empty rather
-                     * than "this screen did not ask", and the save deletes the
-                     * meta on empty rather than storing ''. That contract is
-                     * unchanged and it is why the marker travels with the
-                     * control: a screen that does not render this card posts no
-                     * marker, so its save cannot blank a public line it never
-                     * showed. Splitting one box into three means three more
-                     * fields depending on it, which is the same guarantee and
-                     * not a new one.
-                     */
-                    ?>
-                    <input type="hidden" name="uc_listing_detail_present" value="1" />
-                    <label class="uc-field">
-                        <span class="uc-field-label">Cost</span>
-                        <input type="text" name="listing_cost" maxlength="120" value="<?php echo esc_attr( $d_cost ); ?>" />
-                    </label>
-                    <label class="uc-field">
-                        <span class="uc-field-label">Age restriction</span>
-                        <input type="text" name="listing_age" maxlength="120" value="<?php echo esc_attr( $d_age ); ?>" />
-                    </label>
-
-                    <?php
-                    /*
-                     * THREE BOXES, BECAUSE THE ONE BOX WROTE THE WRONG KEY.
-                     *
-                     * WHAT WAS WRONG. "Contact shown publicly" wrote
-                     * `_uc_public_contact`, which is the single open box the
-                     * community form had before 3.47.0. Since 3.47.0 that form
-                     * has written three keys instead, and
-                     * sfaf_event_public_contact() prefers them: it composes the
-                     * three-part line and only falls back to the old key when
-                     * that line is empty. So on any community submission from
-                     * 3.47.0 onwards, which is all of them, a manager could
-                     * type into this box, save, reload and see their text still
-                     * sitting in the box while the event page showed something
-                     * else entirely. The value was stored. It was just never
-                     * read.
-                     *
-                     * WHY NOT MAKE THE ONE BOX WRITE THE NEW KEYS. Because
-                     * there is no way to split one line into a name, an address
-                     * and a number without guessing, and a guess here is
-                     * printed on a public page.
-                     *
-                     * WHY NOT DROP THE OLD KEY. Events submitted on 3.46.0 have
-                     * one and there is no migration. A stored value that
-                     * predates a change is not a value to throw away, and this
-                     * is the only screen that could ever show somebody what
-                     * theirs says.
-                     *
-                     * THE OLD ONE IS READ-ONLY AND ONLY APPEARS WHEN IT IS
-                     * DOING SOMETHING. An editable second control writing a key
-                     * that loses to the three above it is the same fault again
-                     * in a smaller box. Where the three are filled in, the old
-                     * value is not being read by anything, so it is not shown:
-                     * a field labelled "not in use" is an invitation to work
-                     * out why. Filling in any of the three is what retires it,
-                     * and the note says so.
-                     */
-                    $old_live = ( '' !== trim( $d_old ) && '' === trim( $d_name . $d_email . $d_phone ) );
-                    ?>
-                    <div class="uc-field uc-contact-group">
-                        <span class="uc-field-label">Contact shown publicly</span>
-                        <span class="uc-hint">On the event page, for anybody who wants to ask about it. Leave all three empty for no contact line.</span>
-                        <label class="uc-field">
-                            <span class="uc-field-label">Name</span>
-                            <input type="text" name="contact_name" maxlength="120" value="<?php echo esc_attr( $d_name ); ?>" />
-                        </label>
-                        <label class="uc-field">
-                            <span class="uc-field-label">Email</span>
-                            <input type="email" name="contact_email" maxlength="200" value="<?php echo esc_attr( $d_email ); ?>" />
-                        </label>
-                        <label class="uc-field">
-                            <span class="uc-field-label">Phone</span>
-                            <input type="text" name="contact_phone" maxlength="60" value="<?php echo esc_attr( $d_phone ); ?>" />
-                        </label>
-                        <?php if ( $old_live ) : ?>
-                            <div class="uc-field uc-contact-legacy">
-                                <span class="uc-field-label">What the event page shows now</span>
-                                <input type="text" value="<?php echo esc_attr( $d_old ); ?>" readonly />
-                                <span class="uc-hint">Submitted before the three boxes above existed. Fill any of them in and this stops being used.</span>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-
-                    <label class="uc-field">
-                        <span class="uc-field-label">Registration link</span>
-                        <input type="url" name="listing_rsvp_url" maxlength="500" value="<?php echo esc_attr( $d_rsvp ); ?>" />
-                        <span class="uc-hint">Somewhere else people sign up. Not this calendar's own registration.</span>
-                    </label>
-                </div>
-                <?php
-                break;
-
             case 'fundraising_progress':
                 $on     = ( '1' === (string) get_post_meta( $event_id, sfaf_fundraising_progress_meta_key(), true ) );
                 $goal   = (float) get_post_meta( $event_id, '_uc_gofundme_goal', true );
@@ -9947,65 +9903,6 @@ class SFAF_Portal {
          * off. And because the control always posts a hidden 0 beside the
          * checkbox, a screen that DOES offer it always says which way.
          */
-        /*
-         * LISTING DETAIL. Marker-gated like the two below it, so a screen that
-         * did not carry the control cannot blank four public lines by saving.
-         *
-         * SANITISED THE SAME WAY THE FORM DID. A manager is trusted more than a
-         * stranger, but these four values are printed on a public page, and the
-         * rule for what may be in one belongs to the field rather than to
-         * whoever last touched it. An emptied box DELETES the meta rather than
-         * storing '', so the template's single test for absence stays single.
-         */
-        if ( isset( $_POST['uc_listing_detail_present'] ) ) {
-            /*
-             * THE CONTACT IS THREE KEYS NOW (3.72.0), and `_uc_public_contact`
-             * IS NOT IN THIS LIST ON PURPOSE.
-             *
-             * The card writes the same three keys the community form writes,
-             * which is what makes what a manager types the thing the event page
-             * prints: sfaf_event_public_contact() composes those three and only
-             * falls back to the old single key when they are all empty. See the
-             * renderer for the whole of why.
-             *
-             * NOT LISTED HERE MEANS NEVER WRITTEN AND NEVER DELETED. The old
-             * key is shown read-only where it is still the value being used, so
-             * there is no control that could post it, and this save leaves it
-             * exactly where it is. That matters: an event on the pre-3.47.0
-             * shape whose manager saves this card without touching the contact
-             * must not lose its only public contact line. Filling any of the
-             * three above is what supersedes it, by the reader's own rule,
-             * rather than by anything deleting anything.
-             *
-             * THE EMAIL IS SANITISED AS AN EMAIL AND NOT AS A LINE. It is
-             * printed on a public page and is the one of the three that has a
-             * shape. An address that is not one is dropped rather than
-             * published, which is the same answer the community form gives.
-             */
-            $c_email = isset( $_POST['contact_email'] )
-                ? sanitize_email( trim( (string) wp_unslash( $_POST['contact_email'] ) ) )
-                : '';
-            if ( '' !== $c_email && ! is_email( $c_email ) ) {
-                $c_email = '';
-            }
-
-            $detail = array(
-                SFAF_Submit::META_COST          => SFAF_Submissions::line( isset( $_POST['listing_cost'] ) ? wp_unslash( $_POST['listing_cost'] ) : '', 120 ),
-                SFAF_Submit::META_AGE           => SFAF_Submissions::line( isset( $_POST['listing_age'] ) ? wp_unslash( $_POST['listing_age'] ) : '', 120 ),
-                SFAF_Submit::META_CONTACT_NAME  => SFAF_Submissions::line( isset( $_POST['contact_name'] ) ? wp_unslash( $_POST['contact_name'] ) : '', 120 ),
-                SFAF_Submit::META_CONTACT_EMAIL => $c_email,
-                SFAF_Submit::META_CONTACT_PHONE => SFAF_Submissions::line( isset( $_POST['contact_phone'] ) ? wp_unslash( $_POST['contact_phone'] ) : '', 60 ),
-                SFAF_Submit::META_RSVP_URL      => SFAF_Submissions::url( isset( $_POST['listing_rsvp_url'] ) ? wp_unslash( $_POST['listing_rsvp_url'] ) : '' ),
-            );
-            foreach ( $detail as $detail_key => $detail_value ) {
-                if ( '' === $detail_value ) {
-                    delete_post_meta( $event_id, $detail_key );
-                } else {
-                    update_post_meta( $event_id, $detail_key, $detail_value );
-                }
-            }
-        }
-
         if ( isset( $_POST['show_fund_progress'] ) ) {
             update_post_meta(
                 $event_id,
@@ -14325,7 +14222,7 @@ class SFAF_Portal {
              *
              * THE SIDE COLUMN IS RENDERED FIRST AND HELD IN A BUFFER, because
              * it comes second in the document and one of its cards claims a
-             * manager-owned field. The "Other details" catch-all has to be the
+             * manager-owned field. Until 3.111.0 the "Other details" catch-all had to be the
              * LAST render_manager_fields() call of the form or it would sweep
              * up a field a later card was going to draw. Rendering the side
              * column into a string first makes the PHP order right while
@@ -14364,7 +14261,7 @@ class SFAF_Portal {
              *
              * THE SIDE COLUMN IS STILL RENDERED FIRST AND HELD IN A BUFFER, for
              * the reason it always was: it comes second in the document, and
-             * the "Other details" catch-all has to be the LAST
+             * the "Other details" catch-all (gone in 3.111.0) had to be the LAST
              * render_manager_fields() call of the form. See
              * render_manager_fields().
              */
@@ -14681,6 +14578,8 @@ class SFAF_Portal {
                 ?>
                 <section class="uc-bento-card uc-registration-card" data-uc-card="registration" data-uc-registration>
                     <h2 class="uc-bento-title">Registration</h2>
+                    <?php // Cost (3.111.0), whatever the event does about registration. ?>
+                    <?php $this->render_listing_fields( $event_id, 'cost' ); ?>
                     <?php
                     /*
                      * WHERE PEOPLE REGISTER (3.110.1), above Accept RSVPs, on
@@ -14754,6 +14653,8 @@ class SFAF_Portal {
                     <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'description' ), $placed ) ); ?>
                     <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'image' ), $placed ) ); ?>
                     <?php $this->render_video_field( $user, $event_id ); ?>
+                    <?php // Age range and Contact (3.111.0), then the PDF attachment. ?>
+                    <?php $this->render_listing_fields( $event_id, 'details' ); ?>
                     <?php SFAF_Attachments::render_control( $event_id ); ?>
                 </section>
 
@@ -14782,14 +14683,14 @@ class SFAF_Portal {
 
                 <?php
                 /*
-                 * ANYTHING THE CARDS DID NOT CLAIM. This is what keeps the 3.2.0
-                 * guarantee true under a layout that places controls by name: a
-                 * field added to the shared list and given no card appears here
-                 * rather than vanishing from the editor.
+                 * NO CATCH-ALL CARD FROM 3.111.0. "Other details" drew whatever
+                 * the cards above had not claimed, and the only thing it ever
+                 * held was the Listing detail control, now three fields in two
+                 * cards. The 3.2.0 guarantee, that a field on the shared list
+                 * cannot vanish from the editor, is kept by
+                 * .claude/notifications-card-test.php instead: it fails when a
+                 * manager field the editor can offer is placed by no card.
                  */
-                ob_start();
-                $rest = $this->render_manager_fields( $mgr_ctx, null, $placed );
-                $rest_html = ob_get_clean();
                 ?>
 
                 <?php
@@ -14808,12 +14709,6 @@ class SFAF_Portal {
                     </section>
                 <?php endif; ?>
 
-                <?php if ( ! empty( $rest ) ) : ?>
-                    <section class="uc-bento-card" data-uc-card="other-details">
-                        <h2 class="uc-bento-title">Other details</h2>
-                        <?php echo $rest_html; ?>
-                    </section>
-                <?php endif; ?>
 
             </div><?php // .uc-bento-main ?>
 

@@ -24,7 +24,7 @@ define( 'SFAF_VERSION', '3.110.5' );
  * hook — still gets its new tables, instead of throwing "table doesn't exist"
  * the first time the runner looks for one.
  */
-define( 'SFAF_DB_VERSION', '13' );
+define( 'SFAF_DB_VERSION', '14' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -1154,6 +1154,8 @@ function sfaf_install_tables() {
     sfaf_migrate_source_rsvps();
     // Schema 12 (3.107.0): a stored 0 was "unlimited" and is now "no places".
     sfaf_migrate_capacity_zero();
+    // Schema 14 (3.111.0): the Other details card's two old keys find their new homes.
+    sfaf_migrate_other_details();
 
     update_option( 'sfaf_db_version', SFAF_DB_VERSION );
 }
@@ -1409,6 +1411,87 @@ function sfaf_migrate_capacity_zero() {
         'at'      => current_time( 'mysql' ),
     ), false );
 
+    return $touched;
+}
+/**
+ * THE OTHER DETAILS CARD'S TWO OLD KEYS, MOVED ONCE (schema 14, 3.111.0).
+ *
+ * Cost, Age range and Contact moved into the Registration and Event details
+ * cards and keep their keys. Two values had no home there:
+ *
+ *   _uc_public_contact  the single contact box from before 3.47.0. Copied into
+ *                       Contact's Name, whole, where all three are empty, so
+ *                       the page prints what it printed and it can be edited.
+ *   _uc_rsvp_url        the community form's registration link. It becomes the
+ *                       event's Register on another site link; the event is
+ *                       switched to another site only when it takes no RSVPs
+ *                       here and has made no choice of its own, so nothing
+ *                       taking registrations here stops.
+ *
+ * Each old key is deleted only after its value is written to the new one. An
+ * event that already has its own value in the new place keeps it, and the old
+ * key stays, so nothing is lost either way. Once, under its own option, like
+ * the capacity pass.
+ *
+ * @return int Events touched.
+ */
+function sfaf_migrate_other_details() {
+    if ( false !== get_option( 'sfaf_other_details_migration', false ) ) {
+        return 0;
+    }
+    $touched = 0;
+    $find = function ( $key ) {
+        $q = new WP_Query( array(
+            'post_type'      => 'uc_event',
+            'post_status'    => 'any',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
+            'meta_query'     => array( array( 'key' => $key, 'compare' => 'EXISTS' ) ),
+        ) );
+        return array_map( 'intval', (array) $q->posts );
+    };
+
+    foreach ( $find( '_uc_public_contact' ) as $id ) {
+        $old = trim( (string) get_post_meta( $id, '_uc_public_contact', true ) );
+        $has = trim( get_post_meta( $id, '_uc_contact_name', true ) . get_post_meta( $id, '_uc_contact_email', true ) . get_post_meta( $id, '_uc_contact_phone', true ) );
+        if ( '' === $old ) {
+            delete_post_meta( $id, '_uc_public_contact' );
+            continue;
+        }
+        if ( '' !== $has ) {
+            continue;
+        }
+        update_post_meta( $id, '_uc_contact_name', $old );
+        if ( $old === (string) get_post_meta( $id, '_uc_contact_name', true ) ) {
+            delete_post_meta( $id, '_uc_public_contact' );
+            $touched++;
+        }
+    }
+
+    foreach ( $find( '_uc_rsvp_url' ) as $id ) {
+        $url = SFAF_Register_Elsewhere::clean_url( get_post_meta( $id, '_uc_rsvp_url', true ) );
+        if ( '' === $url ) {
+            continue;
+        }
+        if ( '' !== (string) get_post_meta( $id, SFAF_Register_Elsewhere::META_URL, true ) ) {
+            continue;
+        }
+        update_post_meta( $id, SFAF_Register_Elsewhere::META_URL, $url );
+        $here = ( '1' === (string) get_post_meta( $id, '_uc_rsvp_enabled', true ) );
+        if ( ! $here && '' === (string) get_post_meta( $id, SFAF_Register_Elsewhere::META_MODE, true ) ) {
+            update_post_meta( $id, SFAF_Register_Elsewhere::META_MODE, 'elsewhere' );
+        }
+        if ( $url === (string) get_post_meta( $id, SFAF_Register_Elsewhere::META_URL, true ) ) {
+            delete_post_meta( $id, '_uc_rsvp_url' );
+            $touched++;
+        }
+    }
+
+    update_option( 'sfaf_other_details_migration', array(
+        'touched' => $touched,
+        'at'      => current_time( 'mysql' ),
+    ), false );
     return $touched;
 }
 /**

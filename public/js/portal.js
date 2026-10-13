@@ -151,6 +151,7 @@ function ucDismissOnBackdrop(dialog) {
         run('users-table', initUsersTable);
         run('table-cards', initTableCards);
         run('registrantMail', initRegistrantMail);
+        run('attachment', initAttachment);
         run('checkin', initCheckin);
         run('rsvpFilter', initRsvpFilter);
     });
@@ -162,6 +163,34 @@ function ucDismissOnBackdrop(dialog) {
      * shows it as it will arrive. Send is the form's own submit, through the
      * one confirm every confirm in caladmin goes through.
      * ------------------------------------------------------------------ */
+    /* ---------------------------------------------------------------------
+     * THE PDF ATTACHMENT (3.111.0). A chosen file is named under the button,
+     * and one that is not a PDF or is over 5MB is refused here with the rule's
+     * sentence and cleared, so Save does not carry it. The server asks the
+     * same rule of the bytes; this only saves somebody a round trip.
+     * ------------------------------------------------------------------ */
+    function initAttachment() {
+        document.querySelectorAll('[data-uc-attachment-field]').forEach(function (box) {
+            var input = box.querySelector('[data-uc-attachment-file]');
+            var chosen = box.querySelector('[data-uc-attachment-chosen]');
+            var err = box.querySelector('[data-uc-attachment-error]');
+            if (!input) { return; }
+            input.addEventListener('change', function () {
+                var f = input.files && input.files[0];
+                if (err) { err.hidden = true; err.textContent = ''; }
+                if (chosen) { chosen.hidden = true; chosen.textContent = ''; }
+                if (!f) { return; }
+                var max = parseInt(input.getAttribute('data-uc-max-bytes'), 10) || 0;
+                var pdf = /\.pdf$/i.test(f.name) && (!f.type || f.type === 'application/pdf');
+                if (!pdf || (max && f.size > max)) {
+                    input.value = '';
+                    if (err) { err.textContent = input.getAttribute('data-uc-rule-message') || ''; err.hidden = false; }
+                    return;
+                }
+                if (chosen) { chosen.textContent = 'Chosen: ' + f.name + '. Save to attach it.'; chosen.hidden = false; }
+            });
+        });
+    }
     function initRegistrantMail() {
         document.querySelectorAll('[data-uc-rm-form]').forEach(function (form) {
             var labels = {};

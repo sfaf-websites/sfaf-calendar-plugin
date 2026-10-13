@@ -90,63 +90,10 @@ class SFAF_Submit {
     const META_IMAGE_EXTRA      = '_uc_submitted_image_extra';
     const META_IMAGE_EXTRA_NOTE = '_uc_submitted_image_extra_note';
 
-    /** How many extras a form offers. Two, and the forms render this many. */
-    const MAX_EXTRA = 2;
-
-    /**
-     * The file input names for the extra pictures.
-     *
-     * TWO SEPARATE SINGLE-FILE INPUTS, NOT ONE MULTIPLE. SFAF_Uploads::inspect()
-     * reads $_FILES[ $field ] as one file, and a `multiple` input gives it
-     * arrays in every slot. Two inputs mean the whole upload path, every one of
-     * its thirteen checks, runs exactly as it does for the featured picture
-     * with nothing changed and nothing duplicated.
-     *
-     * @return string[]
-     */
-    public static function extra_fields() {
-        $out = array();
-        for ( $i = 1; $i <= self::MAX_EXTRA; $i++ ) {
-            $out[] = 'uc_image_extra_' . $i;
-        }
-        return $out;
-    }
-
-    /**
-     * Put the extra pictures through the same upload code the featured one uses.
-     *
-     * THE SAME LIMITER, DELIBERATELY. Three files is three uploads, and the
-     * rate limit counts uploads. Somebody attaching three pictures uses three
-     * of their allowance, which is the honest accounting; sharing one slot
-     * across a submission would let a form be the unit and a form can carry
-     * three files.
-     *
-     * A REFUSED EXTRA DOES NOT REFUSE THE SUBMISSION. The error is returned
-     * against its own field so the form can say which picture it was.
-     *
-     * @param callable|null $limiter
-     * @return array{ids:int[],warnings:string[],errors:array<string,string>}
-     */
-    public static function store_extras( $limiter = null ) {
-        $ids      = array();
-        $warnings = array();
-        $errors   = array();
-
-        foreach ( self::extra_fields() as $field ) {
-            $up = SFAF_Uploads::store( $field, $limiter );
-            if ( '' !== $up['error'] ) {
-                $errors[ $field ] = $up['error'];
-                continue;
-            }
-            if ( ! $up['id'] ) {
-                continue;   // Nothing was attached to this input.
-            }
-            $ids[]      = (int) $up['id'];
-            $warnings[] = (string) $up['warning'];
-        }
-
-        return array( 'ids' => $ids, 'warnings' => $warnings, 'errors' => $errors );
-    }
+    /* THE FORMS NO LONGER ASK FOR THEM (3.111.0). "Any other pictures" came
+     * off both forms; pictures already sent through it stay in the
+     * submissions folder, listed on the Images screen under Submitted, and
+     * are read by extras() and extra_notes() below. */
 
     /**
      * The extra pictures on an event, as attachment ids.
@@ -171,26 +118,6 @@ class SFAF_Submit {
     public static function extra_notes( $event_id ) {
         $raw = get_post_meta( (int) $event_id, self::META_IMAGE_EXTRA_NOTE, true );
         return is_array( $raw ) ? array_values( array_map( 'strval', $raw ) ) : array();
-    }
-
-    /**
-     * Store what store_extras() produced, and say nothing when there is nothing.
-     *
-     * @param int      $event_id
-     * @param int[]    $ids
-     * @param string[] $warnings
-     */
-    public static function save_extras( $event_id, $ids, $warnings ) {
-        $event_id = (int) $event_id;
-        if ( ! $event_id || empty( $ids ) ) {
-            return;
-        }
-        update_post_meta( $event_id, self::META_IMAGE_EXTRA, array_values( array_map( 'intval', $ids ) ) );
-        // Only when one of them has something to say, so an absent key means
-        // every extra was fine.
-        if ( array_filter( $warnings ) ) {
-            update_post_meta( $event_id, self::META_IMAGE_EXTRA_NOTE, array_values( $warnings ) );
-        }
     }
 
     /**
@@ -662,7 +589,8 @@ class SFAF_Submit {
          */
         $cost_key        = isset( $post['cost'] ) ? sanitize_key( wp_unslash( $post['cost'] ) ) : '';
         $clean['cost']   = array_key_exists( $cost_key, self::cost_options() ) ? $cost_key : '';
-        $clean['cost_other'] = ( 'other' === $clean['cost'] ) ? $line( 'cost_other', 120 ) : '';
+        // 40, the editor's Cost box (3.111.0).
+        $clean['cost_other'] = ( 'other' === $clean['cost'] ) ? $line( 'cost_other', 40 ) : '';
 
         $age_key       = isset( $post['age_restriction'] ) ? sanitize_key( wp_unslash( $post['age_restriction'] ) ) : '';
         $clean['age']  = array_key_exists( $age_key, self::age_options() ) ? $age_key : '';
@@ -878,37 +806,21 @@ class SFAF_Submit {
             $checked['errors']['uc_image'] = $upload['error'];
         }
 
-        // The extras, through the same upload code and the same limiter.
-        $extra = self::store_extras( function () {
-            return SFAF_Submissions::allow( 'upload_ip', SFAF_Submissions::client(), 10, HOUR_IN_SECONDS );
-        } );
-        if ( ! empty( $extra['errors'] ) ) {
-            $checked['errors'] = array_merge( $checked['errors'], $extra['errors'] );
-        }
-
         if ( ! empty( $checked['errors'] ) ) {
             /*
              * A REJECTED SUBMISSION THAT UPLOADED A FILE DOES NOT KEEP IT. The
              * form cannot put a file back into a file input, so the visitor has
              * to choose it again anyway, and keeping the first one would leave
              * an orphan on disk for every failed attempt.
-             *
-             * THE EXTRAS GO THE SAME WAY, for the same reason and with the same
-             * force: every one of them is a file this submission uploaded and
-             * no submission exists to own them.
              */
             if ( $upload['id'] ) {
                 wp_delete_attachment( $upload['id'], true );
-            }
-            foreach ( $extra['ids'] as $extra_id ) {
-                wp_delete_attachment( $extra_id, true );
             }
             self::render_form( $series, $checked['clean'], $checked['errors'] );
             return;
         }
 
         $event_id = self::create_event( $checked['clean'], $series, (int) $upload['id'] );
-        self::save_extras( $event_id, $extra['ids'], $extra['warnings'] );
         /* THE WARNING IS KEPT, NOT SHOWN TO THE SUBMITTER. They have already
          * sent it and cannot act on it from the thank-you page; the person
          * who can act on it is the approver, looking at the picture. */
@@ -918,9 +830,6 @@ class SFAF_Submit {
         if ( ! $event_id ) {
             if ( $upload['id'] ) {
                 wp_delete_attachment( $upload['id'], true );
-            }
-            foreach ( $extra['ids'] as $extra_id ) {
-                wp_delete_attachment( $extra_id, true );
             }
             self::render_form( $series, $checked['clean'], array(
                 'form' => 'Something went wrong saving that. Try once more, and if it happens again let the organizers know.',
@@ -1016,7 +925,6 @@ class SFAF_Submit {
             self::META_CONTACT_NAME  => $c['contact_name'],
             self::META_CONTACT_EMAIL => $c['contact_email'],
             self::META_CONTACT_PHONE => $c['contact_phone'],
-            self::META_RSVP_URL      => $c['rsvp_url'],
             self::META_VENUE_URL     => $c['venue_url'],
             '_uc_location_name'      => $c['venue_name'],
             self::META_STREET        => $c['street'],
@@ -1027,6 +935,16 @@ class SFAF_Submit {
             if ( '' !== $value ) {
                 update_post_meta( $event_id, $key, $value );
             }
+        }
+
+        /* THE REGISTRATION LINK IS REGISTER ON ANOTHER SITE (3.111.0), the
+         * editor's own control for it, so an approver sees and corrects it
+         * there and the page shows the Register button. A submission takes no
+         * RSVPs here, so it is switched to another site outright. */
+        $reg_url = SFAF_Register_Elsewhere::clean_url( $c['rsvp_url'] );
+        if ( '' !== $reg_url ) {
+            update_post_meta( $event_id, SFAF_Register_Elsewhere::META_URL, $reg_url );
+            update_post_meta( $event_id, SFAF_Register_Elsewhere::META_MODE, 'elsewhere' );
         }
 
         // Any number, 0 included (3.107.0); blank stores nothing, which is no limit.
@@ -1666,7 +1584,7 @@ class SFAF_Submit {
                     <?php SFAF_Submissions::field_error( $err( 'cost' ) ); ?>
                     <label class="uc-field uc-reveal-target" id="uc-cost-other">
                         <span class="uc-field-label">What it costs<?php echo $mark( 'cost_other' ); ?></span>
-                        <input type="text" name="cost_other"<?php echo $attr( 'cost_other' ); ?> maxlength="120" value="<?php echo esc_attr( $v( 'cost_other' ) ); ?>"
+                        <input type="text" name="cost_other"<?php echo $attr( 'cost_other' ); ?> maxlength="40" value="<?php echo esc_attr( $v( 'cost_other' ) ); ?>"
                                placeholder="$15 at the door" />
                         <?php SFAF_Submissions::field_error( $err( 'cost_other' ) ); ?>
                     </label>
@@ -1841,7 +1759,6 @@ class SFAF_Submit {
                     <div class="uc-request-upload">
                         <?php SFAF_Submissions::image_field( $err( 'uc_image' ) ); ?>
                     </div>
-                    <?php SFAF_Submissions::extra_images_field( $errors ); ?>
                 </fieldset>
 
                 <?php

@@ -2606,6 +2606,9 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
 .uc-single .uc-single-facts { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 12px; }
 .uc-single .uc-single-facts li { display: flex; gap: 10px; font-size: 14px; color: var(--uc-text); align-items: flex-start; }
 .uc-fact-icon { flex-shrink: 0; }
+/* The word before a value on the three detail lines (3.111.0): Cost, Ages,
+   Contact. Weight separates it; the colour is the value's own. */
+.uc-single .uc-fact-label { font-weight: 700; }
 /* The series page's "no dates yet" line. A <p>, so `.uc-single p { margin: 0 }`
    reaches it and it needs its own spacing back. */
 .uc-single .uc-empty { margin: 0; font-size: 14px; line-height: 1.5; color: var(--uc-secondary); }

@@ -327,7 +327,8 @@ while ( have_posts() ) :
                             <?php endif; ?>
                             <?php
                             /*
-                             * WHAT A COMMUNITY SUBMISSION ADDS (3.46.0).
+                             * COST, AGES AND CONTACT (3.46.0; labelled, and on any
+                             * event's editor, from 3.111.0).
                              *
                              * Each is blank by default and BLANK MEANS THE LINE
                              * IS NOT THERE, rather than a line saying nothing is
@@ -349,19 +350,19 @@ while ( have_posts() ) :
                             <?php if ( '' !== $cost ) : ?>
                                 <li>
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'ticket' ); ?></span>
-                                    <span><?php echo esc_html( $cost ); ?></span>
+                                    <span data-uc-fact="cost"><span class="uc-fact-label">Cost</span> <?php echo esc_html( $cost ); ?></span>
                                 </li>
                             <?php endif; ?>
                             <?php if ( '' !== $ages ) : ?>
                                 <li>
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'users' ); ?></span>
-                                    <span><?php echo esc_html( $ages ); ?></span>
+                                    <span data-uc-fact="ages"><span class="uc-fact-label">Ages</span> <?php echo esc_html( $ages ); ?></span>
                                 </li>
                             <?php endif; ?>
                             <?php if ( '' !== $contact ) : ?>
                                 <li>
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'mail' ); ?></span>
-                                    <span><?php echo esc_html( $contact ); ?></span>
+                                    <span data-uc-fact="contact"><span class="uc-fact-label">Contact</span> <?php echo esc_html( $contact ); ?></span>
                                 </li>
                             <?php endif; ?>
                             <?php if ( '' !== $signup ) : ?>
