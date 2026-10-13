@@ -1374,7 +1374,8 @@ class SFAF_Request {
          * everybody with Admin, which is what this method used to ask for
          * directly. See that method for why the fallback goes that way.
          */
-        $to = SFAF_Submissions::alert_recipients();
+        // The setting's list, then this submission's reviewers (3.111.0).
+        $to = SFAF_Submissions::arrival_recipients( $event_id );
         if ( empty( $to ) ) {
             return;
         }
@@ -1417,7 +1418,12 @@ class SFAF_Request {
          * request goes to the person who asked rather than to a mailbox.
          */
         foreach ( $to as $address ) {
-            SFAF_Email::send( $address, $subject, $shell, $text, $email );
+            /* A REVIEWER IS SENT TO THEIR ROW (3.111.0). An editor on the review
+             * team cannot open the editor, so their link goes to this
+             * submission's row in Pending instead. */
+            $mine = in_array( $address, SFAF_Submissions::alert_recipients(), true );
+            $row  = SFAF_Portal::link( 'pending' ) . '#uc-q-' . (int) $event_id;
+            SFAF_Email::send( $address, $subject, $mine ? $shell : str_replace( esc_url( $edit ), esc_url( $row ), $shell ), $mine ? $text : str_replace( $edit, $row, $text ), $email );
         }
     }
 

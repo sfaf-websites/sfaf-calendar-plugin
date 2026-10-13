@@ -280,6 +280,21 @@ class SFAF_Teams {
             );
         }
 
+        /* AN ORGANIZER'S REVIEW TEAM IS A USE TOO (3.111.0): its submissions
+         * would go to admins alone, with the deletion reporting success. */
+        $reviewing = class_exists( 'SFAF_Submissions' ) ? SFAF_Submissions::organizers_reviewed_by( $id ) : array();
+        if ( ! empty( $reviewing ) ) {
+            $names = wp_list_pluck( $reviewing, 'name' );
+            return new WP_Error(
+                'sfaf_team_in_use',
+                sprintf(
+                    'This team reviews the submissions of %s. Choose another Review team on the Organizers screen first, then delete it.',
+                    implode( ', ', $names )
+                ),
+                array( 'organizers' => $names )
+            );
+        }
+
         $in_use = self::events_using( $id );
         if ( ! empty( $in_use ) ) {
             return new WP_Error(

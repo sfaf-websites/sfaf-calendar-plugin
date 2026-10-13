@@ -121,6 +121,139 @@ class SFAF_Submissions {
     }
 
     /* =====================================================================
+     * Who reviews a submission (3.111.0)
+     * ================================================================== */
+
+    /** On an organizer term: the id of the team that reviews its submissions. */
+    const REVIEW_TEAM_META = '_sfaf_review_team';
+
+    /** The organizer's Review team id, '' when none or the team has gone. */
+    public static function organizer_review_team( $term_id ) {
+        $id = (string) get_term_meta( (int) $term_id, self::REVIEW_TEAM_META, true );
+        return ( '' !== $id && SFAF_Teams::get( $id ) ) ? $id : '';
+    }
+
+    /** Set or clear an organizer's Review team. An unknown team clears it. */
+    public static function set_organizer_review_team( $term_id, $team_id ) {
+        $team_id = (string) $team_id;
+        if ( '' === $team_id || ! SFAF_Teams::get( $team_id ) ) {
+            delete_term_meta( (int) $term_id, self::REVIEW_TEAM_META );
+            return;
+        }
+        update_term_meta( (int) $term_id, self::REVIEW_TEAM_META, $team_id );
+    }
+
+    /** The organizers whose Review team is this team, for the deletion refusal. */
+    public static function organizers_reviewed_by( $team_id ) {
+        $out = array();
+        foreach ( SFAF_Organizers::all() as $term ) {
+            if ( (string) get_term_meta( (int) $term->term_id, self::REVIEW_TEAM_META, true ) === (string) $team_id ) {
+                $out[] = $term;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * The teams that review this submission.
+     *
+     * A SUBMISSION'S ORGANIZER DECIDES IT. With no organizer, nobody but the
+     * admins. With one, the default teams of the submission's series where the
+     * series has any, else every organizer's Review team. Read live, like every
+     * team: changing a series default or an organizer's Review team moves the
+     * submissions already waiting.
+     *
+     * @param int $event_id
+     * @return string[] Team ids.
+     */
+    public static function review_teams( $event_id ) {
+        $event_id = (int) $event_id;
+        $orgs     = wp_get_object_terms( $event_id, 'uc_organizer', array( 'fields' => 'ids' ) );
+        if ( is_wp_error( $orgs ) || empty( $orgs ) ) {
+            return array();
+        }
+        $series = (int) SFAF_Series::id_for_event( $event_id );
+        $teams  = $series ? SFAF_Access::series_teams( $series ) : array();
+        if ( empty( $teams ) ) {
+            foreach ( $orgs as $org ) {
+                $team = self::organizer_review_team( (int) $org );
+                if ( '' !== $team && ! in_array( $team, $teams, true ) ) {
+                    $teams[] = $team;
+                }
+            }
+        }
+        return array_values( array_filter( array_map( 'strval', $teams ), function ( $id ) {
+            return (bool) SFAF_Teams::get( $id );
+        } ) );
+    }
+
+    /**
+     * WHO REVIEWS A SUBMISSION (3.111.0). THE ONE ANSWER, asked by the pending
+     * queue, the "new submission" email, and the approve and reject routes.
+     *
+     * The editors on its review teams, as user ids; a calendar admin reviews
+     * everything and is never in this list, because may_review() answers for
+     * them first. Only a staff request or a community submission that is still
+     * pending has reviewers: an import, a draft and a published event have none.
+     *
+     * @param int $event_id
+     * @return int[]
+     */
+    public static function reviewers( $event_id ) {
+        $event_id = (int) $event_id;
+        if ( 'pending' !== get_post_status( $event_id )
+            || ! in_array( self::kind( $event_id ), array( self::KIND_STAFF, self::KIND_COMMUNITY ), true ) ) {
+            return array();
+        }
+        $out = array();
+        foreach ( self::review_teams( $event_id ) as $team_id ) {
+            $team = SFAF_Teams::get( $team_id );
+            foreach ( $team ? $team['users'] : array() as $uid ) {
+                $uid = (int) $uid;
+                if ( 'editor' === SFAF_Portal::get_role( $uid ) && ! in_array( $uid, $out, true ) ) {
+                    $out[] = $uid;
+                }
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * May this person approve or reject this pending event? A calendar admin,
+     * always; otherwise only somebody reviewers() names.
+     *
+     * @param WP_User|int $user
+     * @param int         $event_id
+     * @return bool
+     */
+    public static function may_review( $user, $event_id ) {
+        $uid = is_object( $user ) ? (int) $user->ID : (int) $user;
+        if ( 'admin' === SFAF_Portal::get_role( $uid ) ) {
+            return true;
+        }
+        return $uid > 0 && in_array( $uid, self::reviewers( (int) $event_id ), true );
+    }
+
+    /**
+     * The addresses told a submission has arrived: alert_recipients(), and
+     * then every reviewer's own address. Additional, never a replacement.
+     *
+     * @param int $event_id
+     * @return string[]
+     */
+    public static function arrival_recipients( $event_id ) {
+        $out = self::alert_recipients();
+        foreach ( self::reviewers( (int) $event_id ) as $uid ) {
+            $u   = get_userdata( $uid );
+            $one = $u ? strtolower( trim( (string) $u->user_email ) ) : '';
+            if ( '' !== $one && is_email( $one ) && ! in_array( $one, $out, true ) ) {
+                $out[] = $one;
+            }
+        }
+        return $out;
+    }
+
+    /* =====================================================================
      * What kind of pending event is this
      * ================================================================== */
 

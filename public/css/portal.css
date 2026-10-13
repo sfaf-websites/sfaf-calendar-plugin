@@ -776,6 +776,9 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 .uc-stat-num { display: block; font-size: 32px; font-weight: 800; color: var(--uc-accent-text); }
 .uc-stat-label { font-size: 13px; color: var(--p-muted); }
 .uc-stat-accent .uc-stat-num { color: var(--uc-accent-text); }
+/* To review (3.111.0) is a link to the reviewer's Pending screen, drawn as a stat. */
+a.uc-stat { display: block; color: inherit; text-decoration: none; }
+a.uc-stat:hover, a.uc-stat:focus-visible { border-color: var(--uc-accent-text); }
 
 /* ---------- Cards / tables ---------- */
 /* ---------------------------------------------------------------------------

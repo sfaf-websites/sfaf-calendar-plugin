@@ -1661,6 +1661,10 @@ class SFAF_Portal {
                     set_transient( 'sfaf_organizer_error_' . $user->ID, $saved->get_error_message(), 60 );
                     $this->redirect( 'organizers', array( 'msg' => 'organizer_failed' ) );
                 }
+                // The Review team (3.111.0), only when its control was on the form.
+                if ( isset( $_POST['organizer_review_team'] ) ) {
+                    SFAF_Submissions::set_organizer_review_team( (int) $saved, sanitize_text_field( wp_unslash( $_POST['organizer_review_team'] ) ) );
+                }
                 $this->redirect( 'organizers', array( 'msg' => 'organizer_saved' ) );
                 break;
 
@@ -1685,8 +1689,9 @@ class SFAF_Portal {
                 break;
 
             case 'approve_event':
-                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
                 $event_id = intval( $_POST['event_id'] );
+                /* An admin, or an editor on the submission's review team (3.111.0). */
+                if ( ! SFAF_Submissions::may_review( $user, $event_id ) ) { wp_die( 'Denied' ); }
 
                 /*
                  * WHERE THE SUBMITTED PICTURE GOES (3.110.3), answered before
@@ -1860,8 +1865,9 @@ class SFAF_Portal {
                 break;
 
             case 'reject_event':
-                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
                 $event_id = intval( $_POST['event_id'] );
+                /* An admin, or an editor on the submission's review team (3.111.0). */
+                if ( ! SFAF_Submissions::may_review( $user, $event_id ) ) { wp_die( 'Denied' ); }
 
                 /*
                  * TOLD BEFORE IT IS TRASHED, AND THAT ORDER IS THE POINT
@@ -4761,6 +4767,12 @@ class SFAF_Portal {
             // The words of every registrant message (3.106.0). Admin only.
             $nav['email-templates'] = array( 'Email Templates', 'email-templates', 'mail' );
         }
+        /* PENDING FOR A REVIEWER (3.111.0): an editor with submissions to
+         * review gets the screen, showing only those. */
+        $review_ids = $is_admin ? array() : $this->review_queue_ids( $user );
+        if ( ! $is_admin && $review_ids ) {
+            $nav['pending'] = array( 'Pending', 'pending', 'clock' );
+        }
         // Everybody's own, last (3.102.0).
         $nav['preferences'] = array( 'Preferences', 'preferences', 'bell' );
 
@@ -4773,8 +4785,8 @@ class SFAF_Portal {
          * because a manager reading "4" has to be able to trust that it is
          * everything waiting, not just the locally submitted half.
          */
-        $pending_count = 0;
-        if ( isset( $nav['pending'] ) ) {
+        $pending_count = count( $review_ids );
+        if ( isset( $nav['pending'] ) && $is_admin ) {
             /* The same arguments the screen itself uses, or the badge counts a
              * different set from the list it links to. */
             $pending_count  = count( $this->query_events( $user, $this->pending_query_args() ) );
@@ -5731,6 +5743,15 @@ class SFAF_Portal {
             <div class="uc-stat"><span class="uc-stat-num"><?php echo (int) $rsvp_total; ?></span><span class="uc-stat-label"><?php echo $rsvps_are_own ? 'RSVPs to my events' : 'Total RSVPs'; ?></span></div>
             <?php if ( $is_admin ) : ?>
                 <div class="uc-stat uc-stat-accent"><span class="uc-stat-num"><?php echo (int) $pending; ?></span><span class="uc-stat-label">Pending Review</span></div>
+            <?php else : ?>
+                <?php
+                /* An editor on a review team with submissions waiting (3.111.0):
+                 * the count, linked to their Pending screen. Nothing when none. */
+                $to_review = count( $this->review_queue_ids( $user ) );
+                ?>
+                <?php if ( $to_review ) : ?>
+                    <a class="uc-stat uc-stat-accent" href="<?php echo esc_url( $this->url( 'pending' ) ); ?>" data-uc-to-review><span class="uc-stat-num"><?php echo (int) $to_review; ?></span><span class="uc-stat-label">To review</span></a>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
 
@@ -11172,6 +11193,29 @@ class SFAF_Portal {
      * screen.
      * ================================================================== */
 
+    /**
+     * REVIEW TEAM (3.111.0): the team whose editors review this organizer's
+     * submissions, when its series names no default team. See
+     * SFAF_Submissions::review_teams().
+     *
+     * @param string $current Team id, '' for none.
+     */
+    private function render_review_team_field( $current ) {
+        $teams = SFAF_Teams::all();
+        ?>
+        <label class="uc-field">
+            <span class="uc-field-label">Review team</span>
+            <select name="organizer_review_team">
+                <option value="">None, admins only</option>
+                <?php foreach ( $teams as $team ) : ?>
+                    <option value="<?php echo esc_attr( $team['id'] ); ?>" <?php selected( (string) $current, (string) $team['id'] ); ?>><?php echo esc_html( $team['name'] ); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <span class="uc-hint">Choose the team whose editors approve this organizer's submissions, unless the series has a default team.</span>
+        </label>
+        <?php
+    }
+
     private function render_organizers( $user ) {
         if ( ! $this->can_view_all( $user ) ) {
             $this->render_dashboard( $user );
@@ -11228,6 +11272,7 @@ class SFAF_Portal {
                         <textarea name="organizer_description" rows="2"></textarea>
                         <span class="uc-hint uc-hint-spec">Not shown on the event page. It is here for whoever reads this list next.</span>
                     </label>
+                    <?php $this->render_review_team_field( '' ); ?>
                     <div class="uc-form-actions">
                         <button type="submit" class="uc-btn uc-btn-primary">Add organizer</button>
                     </div>
@@ -11256,6 +11301,10 @@ class SFAF_Portal {
                             </span>
                             <?php if ( '' !== trim( (string) $org->description ) ) : ?>
                                 <span class="uc-muted"><?php echo esc_html( $org->description ); ?></span>
+                            <?php endif; ?>
+                            <?php $rt = SFAF_Submissions::organizer_review_team( $org->term_id ); ?>
+                            <?php if ( '' !== $rt ) : $rt_team = SFAF_Teams::get( $rt ); ?>
+                                <span class="uc-muted" data-uc-review-team><?php echo esc_html( 'Review team: ' . $rt_team['name'] ); ?></span>
                             <?php endif; ?>
                         </div>
 
@@ -11304,6 +11353,7 @@ class SFAF_Portal {
                                      * See SFAF_Slug_Aliases.
                                      */
                                     ?>
+                                    <?php $this->render_review_team_field( SFAF_Submissions::organizer_review_team( $org->term_id ) ); ?>
                                     <?php $this->render_slug_field( 'organizer_slug', $org->slug ); ?>
                                     <div class="uc-form-actions">
                                         <button type="submit" class="uc-btn uc-btn-primary">Save</button>
@@ -19555,6 +19605,10 @@ class SFAF_Portal {
      */
     private function render_pending( $user ) {
         if ( ! $this->is_admin_role( $user ) ) {
+            if ( $this->review_queue_ids( $user ) ) {
+                $this->render_review_queue( $user );
+                return;
+            }
             $this->render_dashboard( $user );
             return;
         }
@@ -19684,6 +19738,135 @@ class SFAF_Portal {
         <?php $this->render_dismissed_queue(); ?>
         <?php
         $this->chrome_close();
+    }
+
+    /**
+     * The submissions this person reviews, newest first: pending staff
+     * requests and community submissions SFAF_Submissions::may_review()
+     * answers yes for. Empty for anybody who reviews nothing.
+     *
+     * @param WP_User $user
+     * @return int[]
+     */
+    private function review_queue_ids( $user ) {
+        if ( 'editor' !== self::get_role( $user->ID ) ) {
+            return array();
+        }
+        $out = array();
+        foreach ( $this->query_events( $user, $this->pending_query_args() ) as $id ) {
+            if ( in_array( (int) $user->ID, SFAF_Submissions::reviewers( (int) $id ), true ) ) {
+                $out[] = (int) $id;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * PENDING FOR AN EDITOR ON A REVIEW TEAM (3.111.0).
+     *
+     * A SEPARATE RENDERER, NEVER A FLAG ON render_pending(). That screen holds
+     * imports, Fetch updates, the bulk bar, Dismiss and Add to venues, all an
+     * admin's; this one has no code path to any of them. It lists only the
+     * submissions this person reviews, each with what was sent and Approve and
+     * Reject, through the same dialogs and the same routes as the admin's.
+     *
+     * NO EDIT LINK: reviewing a submission does not make it this person's
+     * event, so the editor gate still decides who opens it.
+     *
+     * @param WP_User $user
+     */
+    private function render_review_queue( $user ) {
+        $ids = $this->review_queue_ids( $user );
+        $this->chrome_open( $user, 'pending' );
+        ?>
+        <div class="uc-page-head">
+            <h1>Pending Events</h1>
+        </div>
+        <div class="uc-card" data-uc-review-queue>
+            <div class="uc-card-head">
+                <h2>To review</h2>
+                <span class="uc-count-badge"><?php echo count( $ids ); ?></span>
+            </div>
+            <ul class="uc-queue-list">
+                <?php foreach ( $ids as $id ) : ?>
+                    <?php $this->review_row( $id ); ?>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+        <?php
+        $this->chrome_close();
+    }
+
+    /**
+     * One submission on a reviewer's screen. What arrived, read only, then
+     * Approve and Reject with their dialogs.
+     *
+     * @param int $id
+     */
+    private function review_row( $id ) {
+        $id    = (int) $id;
+        $kind  = SFAF_Submissions::kind( $id );
+        $who   = SFAF_Submissions::submitter( $id );
+        $date  = (string) get_post_meta( $id, '_uc_event_date', true );
+        $shot_id = (int) get_post_meta( $id, SFAF_Submit::META_IMAGE, true );
+        $shot  = SFAF_Uploads::url( $shot_id, 'thumbnail' );
+        $where = sfaf_event_location_short( $id );
+        $desc  = (string) get_post_field( 'post_content', $id );
+        ?>
+        <li class="uc-queue-item" id="uc-q-<?php echo $id; ?>" data-uc-id="<?php echo $id; ?>" data-uc-kind="<?php echo esc_attr( $kind ); ?>" data-uc-review-row>
+            <div class="uc-queue-row">
+                <?php if ( '' !== $shot ) : ?>
+                    <div class="uc-submitted-shot">
+                        <a class="uc-submitted-thumb" href="<?php echo esc_url( SFAF_Uploads::url( $shot_id, 'full' ) ); ?>" target="_blank" rel="noopener">
+                            <img src="<?php echo esc_url( $shot ); ?>" alt="" loading="lazy" /><span class="uc-visually-hidden">Open the picture (opens in a new tab)</span>
+                        </a>
+                    </div>
+                <?php endif; ?>
+                <div class="uc-queue-id">
+                    <h3 class="uc-queue-title">
+                        <?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?>
+                        <span class="uc-source-badge uc-badge-<?php echo esc_attr( $kind ); ?>"><?php echo esc_html( SFAF_Submissions::kind_label( $kind ) ); ?></span>
+                    </h3>
+                    <p class="uc-queue-meta">
+                        <span><?php echo esc_html( $this->pending_when( $id, $date, SFAF_Sources::provenance( $id ) ) ); ?></span>
+                        <?php if ( '' !== $where ) : ?><span><?php echo esc_html( $where ); ?></span><?php endif; ?>
+                        <span><?php echo esc_html( 'From ' . ( '' !== $who['name'] ? $who['name'] : 'somebody with no account' ) ); ?></span>
+                        <span class="uc-muted"><?php echo esc_html( 'Received ' . sfaf_ap_date( $this->pending_received( $id ), 'short_year' ) ); ?></span>
+                    </p>
+                    <?php if ( '' !== trim( $desc ) ) : ?>
+                        <details class="uc-review-desc" data-uc-disclosure>
+                            <summary aria-expanded="false">
+                                <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '15px' ) ); ?></span>
+                                Read the description
+                            </summary>
+                            <div class="uc-review-desc-body"><?php echo wp_kses_post( wpautop( $desc ) ); ?></div>
+                        </details>
+                    <?php endif; ?>
+                </div>
+                <div class="uc-queue-actions">
+                    <div class="uc-actions">
+                        <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" id="uc-approve-<?php echo $id; ?>">
+                            <input type="hidden" name="uc_action" value="approve_event" />
+                            <input type="hidden" name="event_id" value="<?php echo $id; ?>" />
+                            <?php wp_nonce_field( 'uc_portal_approve_event', 'uc_nonce' ); ?>
+                            <button class="uc-link-ok" type="submit" data-uc-approve-ask="uc-approve-ask-<?php echo $id; ?>">Approve</button>
+                        </form>
+                        <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" id="uc-reject-<?php echo $id; ?>">
+                            <input type="hidden" name="uc_action" value="reject_event" />
+                            <input type="hidden" name="event_id" value="<?php echo $id; ?>" />
+                            <?php wp_nonce_field( 'uc_portal_reject_event', 'uc_nonce' ); ?>
+                            <button class="uc-link-danger" type="submit"
+                                    data-uc-approve-ask="uc-reject-ask-<?php echo $id; ?>"
+                                    data-uc-ask-title="Reject this event?"
+                                    data-uc-ask-confirm="Reject" data-uc-ask-danger>Reject</button>
+                        </form>
+                    </div>
+                    <?php $this->render_approve_ask( $id, $who ); ?>
+                    <?php $this->render_reject_ask( $id, $who ); ?>
+                </div>
+            </div>
+        </li>
+        <?php
     }
 
     /**

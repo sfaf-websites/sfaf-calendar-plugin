@@ -1093,7 +1093,8 @@ class SFAF_Submit {
      */
     private static function notify_admins( $event_id, $c, $series ) {
         /* One resolver for both forms. See SFAF_Submissions::alert_recipients(). */
-        $to = SFAF_Submissions::alert_recipients();
+        // The setting's list, then this submission's reviewers (3.111.0).
+        $to = SFAF_Submissions::arrival_recipients( $event_id );
         if ( empty( $to ) ) {
             return;
         }
@@ -1162,7 +1163,12 @@ class SFAF_Submit {
          * address is internal to this message; it is never on the listing.
          */
         foreach ( $to as $address ) {
-            SFAF_Email::send( $address, $subject, $shell, $text, $c['submitter_email'] );
+            /* A REVIEWER IS SENT TO THEIR ROW (3.111.0). An editor on the review
+             * team cannot open the editor, so their link goes to this
+             * submission's row in Pending instead. */
+            $mine = in_array( $address, SFAF_Submissions::alert_recipients(), true );
+            $row  = SFAF_Portal::link( 'pending' ) . '#uc-q-' . (int) $event_id;
+            SFAF_Email::send( $address, $subject, $mine ? $shell : str_replace( esc_url( $edit ), esc_url( $row ), $shell ), $mine ? $text : str_replace( $edit, $row, $text ), $c['submitter_email'] );
         }
     }
 

@@ -525,9 +525,12 @@ $ALLOWED = array(
     'GET:organizers'              => array( 'viewall' ),
     'GET:series'                  => array( 'viewall' ),
 
+    // --- A submission's reviewers (3.111.0): an admin, or an editor on the ---
+    // review team its organizer or series names. One function decides.
+    'POST:approve_event'          => array( 'review' ),
+    'POST:reject_event'           => array( 'review' ),
+
     // --- Administrator only. ------------------------------------------------
-    'POST:approve_event'          => array( 'caladmin' ),
-    'POST:reject_event'           => array( 'caladmin' ),
     /*
      * MAKING A VENUE OUT OF A TYPED PLACE (3.93.0). Administrators only, and
      * for the same reason as the picture above: this WRITES A ROW EVERY FUTURE
@@ -631,6 +634,9 @@ function gate_keys( $code ) {
     if ( preg_match( '#\b(can_view_all|user_can_view_all)\s*\(#', $code ) )       { $out[] = 'viewall'; }
     if ( preg_match( '#\bis_admin_role\s*\(#', $code ) )                          { $out[] = 'caladmin'; }
     if ( preg_match( '#\bcan_create\s*\(#', $code ) )                             { $out[] = 'create'; }
+    /* Who reviews a submission (3.111.0): a calendar admin, or an editor on its
+     * review team. SFAF_Submissions::may_review() is the one answer. */
+    if ( preg_match( '#\bSFAF_Submissions::may_review\s*\(#', $code ) )          { $out[] = 'review'; }
     /*
      * THE CALENDAR ROLE, ASKED DIRECTLY (3.74.0). The image library's three
      * routes act on attachments, which no event gate has anything to say
