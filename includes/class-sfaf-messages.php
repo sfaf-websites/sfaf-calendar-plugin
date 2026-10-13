@@ -543,6 +543,78 @@ class SFAF_Messages {
         return $out;
     }
 
+    /**
+     * A body from the description's editor as blocks, in order (3.111.0).
+     *
+     * A paragraph comes back as its inline markup, a line break as a newline,
+     * so it takes the path every rich paragraph takes; a heading as
+     * array( 'tag' => 'h3', 'inner' ), a list as array( 'tag' => 'ul'|'ol',
+     * 'items' ). A list inside a list item is flattened into that item. Text
+     * outside any block is a paragraph of its own. A paragraph needing a link
+     * nobody has is dropped, as paragraphs() drops it.
+     *
+     * @param string $html Already cleaned to SFAF_Registrant_Mail::allowed_tags().
+     * @param array  $values
+     * @return array
+     */
+    public static function rich_blocks( $html, $values ) {
+        $out   = array();
+        $html  = (string) $html;
+        $plain = function ( $inner ) {
+            $inner = preg_replace( '#<br\s*/?>#i', "\n", (string) $inner );
+            return trim( preg_replace( '#</?(p|h3|ul|ol|li)\b[^>]*>#i', ' ', $inner ) );
+        };
+        $para = function ( $inner ) use ( &$out, $values, $plain ) {
+            $p = $plain( $inner );
+            if ( '' === trim( wp_strip_all_tags( $p ) ) && false === strpos( $p, '{' ) ) {
+                return;
+            }
+            foreach ( self::link_tokens() as $lt ) {
+                if ( false !== strpos( $p, '{' . $lt . '}' ) && '' === (string) ( isset( $values[ $lt ] ) ? $values[ $lt ] : '' ) ) {
+                    return;
+                }
+            }
+            $out[] = $p;
+        };
+        $at = 0;
+        if ( preg_match_all( '#<(p|h3|ul|ol)\b[^>]*>(.*?)</\1>#is', $html, $m, PREG_SET_ORDER | PREG_OFFSET_CAPTURE ) ) {
+            foreach ( $m as $block ) {
+                $start = $block[0][1];
+                if ( $start > $at ) {
+                    $para( substr( $html, $at, $start - $at ) );
+                }
+                $at    = $start + strlen( $block[0][0] );
+                $tag   = strtolower( $block[1][0] );
+                $inner = $block[2][0];
+                if ( 'p' === $tag ) {
+                    $para( $inner );
+                } elseif ( 'h3' === $tag ) {
+                    $h = $plain( $inner );
+                    if ( '' !== $h ) {
+                        $out[] = array( 'tag' => 'h3', 'inner' => $h );
+                    }
+                } else {
+                    $items = array();
+                    if ( preg_match_all( '#<li\b[^>]*>(.*?)(?=<li\b|</li>|$)#is', $inner, $li ) ) {
+                        foreach ( $li[1] as $item ) {
+                            $item = $plain( $item );
+                            if ( '' !== $item ) {
+                                $items[] = $item;
+                            }
+                        }
+                    }
+                    if ( $items ) {
+                        $out[] = array( 'tag' => $tag, 'items' => $items );
+                    }
+                }
+            }
+        }
+        if ( $at < strlen( $html ) ) {
+            $para( substr( $html, $at ) );
+        }
+        return $out;
+    }
+
     /** Grammar a missing name leaves: ", ." and a paragraph opening on ", ". */
     private static function tidy( $s ) {
         $s = preg_replace( '/\s*,\s*([.!?])/u', '$1', $s );
@@ -702,7 +774,12 @@ class SFAF_Messages {
          */
         $rich = ! empty( $parts['rich_intro'] );
         if ( $rich ) {
-            $intro = self::paragraphs( $t['intro'], $values );
+            /* From the description's editor (3.111.0) the body is blocks:
+             * paragraphs, the one heading and two kinds of list. A body
+             * written before that is blank-line paragraphs, as it always was. */
+            $intro = preg_match( '#<(p|h3|ul|ol)\b#i', (string) $t['intro'] )
+                ? self::rich_blocks( $t['intro'], $values )
+                : self::paragraphs( $t['intro'], $values );
             $head  = (string) $t['subject'];
         }
 
@@ -724,6 +801,25 @@ class SFAF_Messages {
         }
 
         foreach ( $intro as $p ) {
+            /* A heading or a list from the description's editor (3.111.0),
+             * its items filled and escaped as a rich paragraph is. */
+            if ( is_array( $p ) ) {
+                if ( 'h3' === $p['tag'] ) {
+                    $html .= '<h3 style="margin:20px 0 8px 0; font-family:' . SFAF_Email::FONT . '; font-size:18px; line-height:1.3; font-weight:700; color:' . SFAF_Email::C_INK . ';">'
+                        . self::fill_rich_html( $key, $p['inner'], $values, $lang ) . '</h3>';
+                    $text .= self::fill_text( $key, self::rich_to_text( $p['inner'] ), $values, $lang ) . "\n\n";
+                    continue;
+                }
+                $tag   = ( 'ol' === $p['tag'] ) ? 'ol' : 'ul';
+                $html .= '<' . $tag . ' style="margin:0 0 14px 0; padding:0 0 0 24px; font-family:' . SFAF_Email::FONT . '; font-size:16px; line-height:1.5; color:' . SFAF_Email::C_INK . ';">';
+                foreach ( $p['items'] as $n => $item ) {
+                    $html .= '<li style="margin:0 0 6px 0;">' . self::fill_rich_html( $key, $item, $values, $lang ) . '</li>';
+                    $text .= ( 'ol' === $tag ? ( $n + 1 ) . '. ' : '- ' ) . self::fill_text( $key, self::rich_to_text( $item ), $values, $lang ) . "\n";
+                }
+                $html .= '</' . $tag . '>';
+                $text .= "\n";
+                continue;
+            }
             if ( $raw_override ) {
                 foreach ( preg_split( "/\n\s*\n/", trim( $p ) ) as $q ) {
                     $html .= '<p style="margin:0 0 14px 0; font-family:' . SFAF_Email::FONT . '; font-size:16px; line-height:1.5; color:' . SFAF_Email::C_INK . ';">' . nl2br( esc_html( trim( $q ) ) ) . '</p>';

@@ -18353,6 +18353,11 @@ class SFAF_Portal {
             return;
         }
 
+        /* Email registrants writes in the description's editor (3.111.0). */
+        if ( $event_id ) {
+            $this->load_editor = true;
+            SFAF_Rich_Text::enqueue();
+        }
         $this->chrome_open( $user, 'events' );
         $search   = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
         $rsvps    = SFAF_RSVP::get_all_rsvps( array(
@@ -18941,19 +18946,24 @@ class SFAF_Portal {
                         <?php foreach ( $tokens as $tk => $tlabel ) : ?>
                             <button type="button" class="uc-tpl-token" data-uc-tpl-token="<?php echo esc_attr( $tk ); ?>"><?php echo esc_html( $tlabel ); ?></button>
                         <?php endforeach; ?>
-                        <?php // Bold and a link, in the message only (3.110.2). ?>
-                        <button type="button" class="uc-tpl-token uc-rm-format" data-uc-rm-bold aria-label="Bold"><strong>B</strong></button>
-                        <button type="button" class="uc-tpl-token uc-rm-format" data-uc-rm-link>Link</button>
                     </div>
                     <label class="uc-field">
                         <span class="uc-field-label">Subject</span>
                         <textarea name="rm_subject" rows="1" data-uc-tpl-text="subject"></textarea>
                     </label>
-                    <label class="uc-field">
-                        <span class="uc-field-label">Message</span>
-                        <textarea name="rm_body" rows="7" data-uc-tpl-text="intro" data-uc-tpl-rich></textarea>
-                        <span class="uc-hint">The subject is the heading. Leave a blank line between paragraphs.</span>
-                    </label>
+                    <?php
+                    /*
+                     * THE DESCRIPTION'S EDITOR (3.111.0): bold, italic, lists, links
+                     * and the one heading, from SFAF_Rich_Text, the only place a
+                     * toolbar is defined. A token chip puts its {token} where the
+                     * cursor is. Images are refused at the save, as in the templates.
+                     */
+                    ?>
+                    <div class="uc-field uc-rm-body" data-uc-rm-body>
+                        <label class="uc-field-label" for="uc-rm-body">Message</label>
+                        <?php SFAF_Rich_Text::render( 'uc-rm-body', 'rm_body', '', array( 'rows' => 8 ) ); ?>
+                        <span class="uc-hint">Type the message under the subject, which is its heading.</span>
+                    </div>
                     <div class="uc-rm-ticks">
                         <label class="uc-check">
                             <input type="checkbox" name="rm_waitlist" value="1" data-uc-rm-waitlist />

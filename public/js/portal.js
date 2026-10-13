@@ -196,7 +196,56 @@ function ucDismissOnBackdrop(dialog) {
             var labels = {};
             try { labels = JSON.parse(form.getAttribute('data-uc-rm-tokens') || '{}') || {}; } catch (e) { labels = {}; }
             var chips = chipEditors(form, form, labels);
-            form.addEventListener('submit', chips.syncAll);
+            /*
+             * THE MESSAGE IS THE DESCRIPTION'S EDITOR (3.111.0), TinyMCE from
+             * SFAF_Rich_Text, or its textarea when TinyMCE did not start. A token
+             * chip goes into whichever of the subject and the message was used
+             * last: the subject's chip editor, or {token} at the message's
+             * cursor. Captured first, so the subject's own handler only runs
+             * when the subject was the last one used.
+             */
+            var bodyArea = form.querySelector('textarea[name="rm_body"]');
+            var lastWasSubject = false;
+            function bodyEditor() {
+                var ed = window.tinymce && bodyArea && window.tinymce.get(bodyArea.id);
+                return (ed && !ed.isHidden()) ? ed : null;
+            }
+            function saveBody() {
+                var ed = bodyEditor();
+                if (ed) { ed.save(); }
+            }
+            var subjectEd = chips.editors.subject;
+            if (subjectEd) { subjectEd.addEventListener('focus', function () { lastWasSubject = true; }); }
+            if (bodyArea) { bodyArea.addEventListener('focus', function () { lastWasSubject = false; }); }
+            function hookTiny() {
+                var ed = bodyEditor();
+                if (ed) { ed.on('focus', function () { lastWasSubject = false; }); return true; }
+                return false;
+            }
+            if (!hookTiny() && window.tinymce && window.tinymce.on) {
+                window.tinymce.on('AddEditor', function () { setTimeout(hookTiny, 0); });
+            }
+            Array.prototype.forEach.call(form.querySelectorAll('[data-uc-tpl-token]'), function (btn) {
+                btn.addEventListener('click', function (e) {
+                    if (lastWasSubject) { return; }
+                    e.stopImmediatePropagation();
+                    var token = '{' + btn.getAttribute('data-uc-tpl-token') + '}';
+                    var ed = bodyEditor();
+                    if (ed) {
+                        ed.focus();
+                        ed.insertContent(token);
+                        ed.save();
+                        return;
+                    }
+                    if (!bodyArea) { return; }
+                    var at = typeof bodyArea.selectionStart === 'number' ? bodyArea.selectionStart : bodyArea.value.length;
+                    var end = typeof bodyArea.selectionEnd === 'number' ? bodyArea.selectionEnd : at;
+                    bodyArea.value = bodyArea.value.slice(0, at) + token + bodyArea.value.slice(end);
+                    bodyArea.focus();
+                    bodyArea.selectionStart = bodyArea.selectionEnd = at + token.length;
+                }, true);
+            });
+            form.addEventListener('submit', function () { chips.syncAll(); saveBody(); });
 
             var tick = form.querySelector('[data-uc-rm-waitlist]');
             var team = form.querySelector('[data-uc-rm-team]');
@@ -213,23 +262,6 @@ function ucDismissOnBackdrop(dialog) {
             if (team) { team.addEventListener('change', confirmText); }
             confirmText();
 
-            // Bold and Link act on the message's selection; pressing them keeps it.
-            var bodyEd = chips.editors.intro;
-            Array.prototype.forEach.call(form.querySelectorAll('[data-uc-rm-bold], [data-uc-rm-link]'), function (b) {
-                b.addEventListener('mousedown', function (e) { e.preventDefault(); });
-                b.addEventListener('click', function () {
-                    if (!bodyEd) { return; }
-                    if (!bodyEd.contains(document.activeElement) && document.activeElement !== bodyEd) { bodyEd.focus(); }
-                    if (b.hasAttribute('data-uc-rm-bold')) {
-                        document.execCommand('bold');
-                    } else {
-                        var url = window.prompt('Link address', 'https://');
-                        if (!url || !/^(https?:\/\/|mailto:)/i.test(url.trim())) { return; }
-                        document.execCommand('createLink', false, url.trim());
-                    }
-                    chips.syncAll();
-                });
-            });
 
             var btn = form.querySelector('[data-uc-rm-preview]');
             var box = form.querySelector('[data-uc-rm-preview-box]');
@@ -237,6 +269,7 @@ function ucDismissOnBackdrop(dialog) {
             if (!btn || !box || !window.fetch) { return; }
             btn.addEventListener('click', function () {
                 chips.syncAll();
+                saveBody();
                 var body = new URLSearchParams();
                 body.append('uc_action', 'registrant_mail_preview');
                 body.append('uc_ajax', '1');

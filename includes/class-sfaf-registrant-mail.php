@@ -37,9 +37,16 @@ class SFAF_Registrant_Mail {
         return array( 'first_name', 'title', 'date', 'time', 'location', 'event_link' );
     }
 
-    /** The markup a body may keep: bold, italics and links. Everything else goes. */
+    /**
+     * The markup a body may keep (3.111.0): what the description's toolbar
+     * makes, paragraphs, the one heading, two lists, bold, italics and links.
+     * Everything else goes, an image included, as in the Email Templates.
+     */
     public static function allowed_tags() {
-        return array( 'strong' => array(), 'b' => array(), 'em' => array(), 'i' => array(), 'a' => array( 'href' => array() ) );
+        return array(
+            'p' => array(), 'br' => array(), 'h3' => array(), 'ul' => array(), 'ol' => array(), 'li' => array(),
+            'strong' => array(), 'b' => array(), 'em' => array(), 'i' => array(), 'a' => array( 'href' => array() ),
+        );
     }
 
     /** A body as typed, with only the markup it may keep, paragraphs intact. */
