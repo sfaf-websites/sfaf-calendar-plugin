@@ -131,7 +131,8 @@ $up = file_get_contents( dirname( __DIR__ ) . '/includes/class-sfaf-uploads.php'
 $inspect = substr( $up, strpos( $up, 'public static function inspect(' ) );
 $inspect = substr( $inspect, 0, strpos( $inspect, 'public static function store(' ) );
 pt( false !== strpos( $inspect, 'self::picture_rule_error(' ), 'B: inspect() does not ask picture_rule_error()' );
-pt( (bool) preg_match( "/\\\$picture = \\( 'description' !== \\\$rule \\);/", $inspect ), 'B: the picture rule is not the default of inspect()' );
+/* 3.111.0 added the 'pdf' rule beside 'description'; the picture rule is still every other caller's. */
+pt( false !== strpos( $inspect, "\$picture = ( 'description' !== \$rule && 'pdf' !== \$rule );" ), 'B: the picture rule is not the default of inspect()' );
 /* Every caller of inspect() is the picture rule but the description one. */
 foreach ( glob( dirname( __DIR__ ) . '/includes/*.php' ) as $f ) {
     $src = file_get_contents( $f );
@@ -145,9 +146,8 @@ foreach ( glob( dirname( __DIR__ ) . '/includes/*.php' ) as $f ) {
 
 /* The size lines: both public forms' fields, the Images screen, the editor. */
 $field  = pt_capture( function () { SFAF_Submissions::image_field(); } );
-$extras = pt_capture( function () { SFAF_Submissions::extra_images_field(); } );
-pt( false !== strpos( $field, SFAF_Uploads::RULE_MESSAGE ) && false !== strpos( $field, 'accept="image/jpeg,image/png,image/webp"' ), 'B: the forms\' picture field does not say the rule or accepts GIF: ' . $field );
-pt( false !== strpos( $extras, SFAF_Uploads::RULE_MESSAGE ), 'B: the forms\' other pictures do not say the rule' );
+/* The hint is one instruction from 3.111.0 (G.3), and still states the rule. */
+pt( false !== strpos( $field, '1200 by 675 pixels and under 500KB' ) && false !== strpos( $field, 'accept="image/jpeg,image/png,image/webp"' ), 'B: the forms\' picture field does not say the rule or accepts GIF: ' . $field );
 
 /* =========================================================================
  * A and D. THE PICKER, THE IMAGES SCREEN, THE APPROVAL DIALOG

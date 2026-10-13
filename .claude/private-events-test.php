@@ -570,6 +570,13 @@ $WHITELIST = array(
      * seeing a private event here discloses nothing.
      */
     'sfaf-calendar.php::sfaf_migrate_source_rsvps' => 'the 3.97.0 third-party RSVP pass, which must reach every imported event including private ones',
+    /* THE 3.111.0 OTHER DETAILS PASS: a private event's old contact or
+     * registration link must move too. It selects ids and writes meta. */
+    'sfaf-calendar.php::sfaf_migrate_other_details' => 'the 3.111.0 pass moving two old keys, which must reach every event including private ones',
+    /* A PDF ATTACHMENT IS DELETED WITH THE LAST EVENT USING IT (3.111.0): the
+     * question is whether ANY event still points at the file, private ones
+     * included, or a private event would lose its flyer. It renders nothing. */
+    'class-sfaf-attachments.php::delete_with_event' => 'whether any other event, private included, still uses an attachment before it is deleted',
     /*
      * THE 3.107.0 CAPACITY PASS, for the same reason: a private event with a
      * stored 0 left behind would turn waitlist-only on the update, and nobody

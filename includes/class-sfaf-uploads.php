@@ -421,7 +421,7 @@ class SFAF_Uploads {
             if ( '%PDF-' !== $head ) {
                 return $no( self::PDF_RULE_MESSAGE );
             }
-            if ( function_exists( 'finfo_open' ) && 'application/pdf' !== self::sniff( $tmp ) ) {
+            if ( 'application/pdf' !== self::pdf_type( $tmp ) ) {
                 return $no( self::PDF_RULE_MESSAGE );
             }
             return array( 'ok' => true, 'error' => '', 'warning' => '', 'type' => 0, 'mime' => 'application/pdf', 'width' => 0, 'height' => 0 );
@@ -604,6 +604,27 @@ class SFAF_Uploads {
             return ( is_array( $info ) && ! empty( $info[2] ) && isset( $allowed[ (int) $info[2] ] ) )
                 ? $allowed[ (int) $info[2] ]
                 : '';
+        }
+        $finfo = @finfo_open( FILEINFO_MIME_TYPE );
+        if ( ! $finfo ) {
+            return '';
+        }
+        $mime = @finfo_file( $finfo, $path );
+        finfo_close( $finfo );
+        return is_string( $mime ) ? strtolower( trim( $mime ) ) : '';
+    }
+
+    /**
+     * What finfo says a PDF is (3.111.0), or 'application/pdf' when finfo is
+     * missing, in which case the signature read before this is the only reader,
+     * as sniff() falls back for an image.
+     *
+     * @param string $path
+     * @return string
+     */
+    private static function pdf_type( $path ) {
+        if ( ! function_exists( 'finfo_open' ) ) {
+            return 'application/pdf';
         }
         $finfo = @finfo_open( FILEINFO_MIME_TYPE );
         if ( ! $finfo ) {

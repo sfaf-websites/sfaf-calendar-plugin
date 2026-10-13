@@ -304,6 +304,7 @@ class WP_REST_Request {
 /* No Calendar home URL, so See all events takes the archive (3.110.4). */
 if ( ! function_exists( 'sfaf_calendar_home_url' ) ) { function sfaf_calendar_home_url() { return ''; } }
 require_once $root . '/includes/class-sfaf-slug-aliases.php';
+require_once $root . '/includes/class-sfaf-attachments.php'; // the list row's PDF button (3.111.0)
 require_once $root . '/includes/class-sfaf-shortcodes.php';
 require_once $root . '/includes/class-sfaf-embed.php';
 

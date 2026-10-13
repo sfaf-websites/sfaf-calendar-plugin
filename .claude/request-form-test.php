@@ -956,8 +956,24 @@ foreach ( array( 'is_uploaded_file', 'getimagesize', 'finfo_file', 'image_type_t
         $fails[] = "the upload handler never calls $needed(), so one of the numbered checks is missing";
     }
 }
+/* WHAT A PUBLIC FORM MAY SEND: store() and the two type lists. From 3.111.0
+ * inspect() also has a 'pdf' rule, for the editor's attachment only (logged
+ * in, SFAF_Attachments); store() never asks for it. */
+$public_src = '';
+foreach ( array( 'public static function store(', 'public static function allowed_types(', 'public static function picture_types(' ) as $fn_head ) {
+    $at = strpos( $uploads_src, $fn_head );
+    if ( false === $at ) {
+        $fails[] = "the upload handler has no $fn_head, so the type list was not read";
+        continue;
+    }
+    $end = strpos( $uploads_src, "\n    }\n", $at );
+    $public_src .= substr( $uploads_src, $at, false === $end ? 2000 : $end - $at );
+}
+if ( false !== strpos( $public_src, "'pdf'" ) ) {
+    $fails[] = 'store() asks inspect() for the pdf rule, so a public form would accept a PDF';
+}
 foreach ( array( 'svg', 'image/svg', 'application/pdf' ) as $never ) {
-    if ( false !== stripos( $uploads_src, "=> '" . $never ) ) {
+    if ( false !== stripos( $public_src, "=> '" . $never ) ) {
         $fails[] = "the upload handler lists $never as an accepted type";
     }
 }

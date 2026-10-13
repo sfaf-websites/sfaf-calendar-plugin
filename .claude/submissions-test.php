@@ -515,8 +515,10 @@ if ( preg_match( '/SFAF_Submissions::allow\(\s*[\'"]([a-z_]+)[\'"]\s*,\s*([^,]+)
  * when there is no file, and the rate limit is step 3, so somebody who attaches
  * one picture spends one of their ten rather than three.
  */
-if ( preg_match_all( '/SFAF_Submissions::allow\(/', $submit_rate_src ) !== 4 ) {
-    fail( 'the submission form no longer makes exactly four rate-limited calls; check none is per address' );
+/* THREE FROM 3.111.0: "Any other pictures" came off the form, and its limiter
+ * call with it. Two gate the post, one limits the featured upload. */
+if ( preg_match_all( '/SFAF_Submissions::allow\(/', $submit_rate_src ) !== 3 ) {
+    fail( 'the submission form no longer makes exactly three rate-limited calls; check none is per address' );
 }
 
 /* =========================================================================

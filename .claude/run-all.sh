@@ -217,12 +217,6 @@ echo "=== the event video ==="
 run "video --self-test" php .claude/video-test.php --self-test
 
 echo
-# The two extra pictures a submission may send, and the much longer list of
-# things they are not.
-echo "=== extra submitted pictures ==="
-run "extra-images --self-test" php .claude/extra-images-test.php --self-test
-
-echo
 # The third format: three modes, two capacities, and the rule that no message
 # carries both the address and the meeting link.
 echo "=== hybrid events ==="

@@ -91,7 +91,7 @@ ob_start();
 SFAF_Submissions::image_field();
 $field = ob_get_clean();
 st_check( 'S: the upload box states the rule before a file is chosen',
-    (bool) preg_match( '/<input type="file"[^>]*>\s*<span class="uc-hint">\s*Pictures must be 1200 by 675 pixels and under 500KB\./', $field ), true );
+    (bool) preg_match( '/<input type="file"[^>]*>\s*<span class="uc-hint">\s*Upload a JPEG, PNG or WebP that is 1200 by 675 pixels and under 500KB/', $field ), true ); // one instruction from 3.111.0 (G.3)
 foreach ( array( 'class-sfaf-request.php', 'class-sfaf-submit.php' ) as $f ) {
     st_check( 'S: ' . $f . ' no longer says somebody will size it',
         false === strpos( file_get_contents( $GLOBALS['kit_root'] . '/includes/' . $f ), 'size it for the calendar' ), true );
