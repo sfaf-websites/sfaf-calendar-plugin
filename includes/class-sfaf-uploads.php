@@ -140,6 +140,11 @@ class SFAF_Uploads {
     const PICTURE_BYTES  = 512000; // 500KB.
     const RULE_MESSAGE   = 'Pictures must be 1200 by 675 pixels and under 500KB.';
 
+    /* THE ATTACHMENT RULE (3.111.0): a PDF, 5MB or less, read from its own
+     * bytes. Every way a file can fail it gets this one sentence. */
+    const PDF_BYTES        = 5242880; // 5MB.
+    const PDF_RULE_MESSAGE = 'Attachments must be a PDF under 5MB.';
+
     /** The types the picture rule takes. GIF is not one of them. */
     public static function picture_types() {
         return array(
@@ -355,14 +360,15 @@ class SFAF_Uploads {
      *
      * @param string        $field   The $_FILES key.
      * @param callable|null $limiter Returns false when the caller is over its rate limit.
-     * @param string        $rule    'picture' or 'description'.
+     * @param string        $rule    'picture', 'description' or 'pdf' (3.111.0).
      * @return array{ok:bool,error:string,warning:string,type:int,mime:string,width:int,height:int}
      */
     public static function inspect( $field, $limiter = null, $rule = 'picture' ) {
         $no = function ( $error ) {
             return array( 'ok' => false, 'error' => $error, 'warning' => '', 'type' => 0, 'mime' => '', 'width' => 0, 'height' => 0 );
         };
-        $picture = ( 'description' !== $rule );
+        $picture = ( 'description' !== $rule && 'pdf' !== $rule );
+        $pdf     = ( 'pdf' === $rule );
 
         /* 1. Is there a file at all. An empty field is not an error. */
         if ( empty( $_FILES[ $field ] ) || ! is_array( $_FILES[ $field ] ) ) {
@@ -380,9 +386,9 @@ class SFAF_Uploads {
         /* 2. What PHP says went wrong. */
         if ( UPLOAD_ERR_OK !== $code ) {
             if ( UPLOAD_ERR_INI_SIZE === $code || UPLOAD_ERR_FORM_SIZE === $code ) {
-                return $no( $picture ? self::RULE_MESSAGE : self::too_big() );
+                return $no( $pdf ? self::PDF_RULE_MESSAGE : ( $picture ? self::RULE_MESSAGE : self::too_big() ) );
             }
-            return $no( 'That image did not finish uploading. Try it again.' );
+            return $no( ( $pdf ? 'That file' : 'That image' ) . ' did not finish uploading. Try it again.' );
         }
 
         /* 3. Rate limit, before the file is touched. */
@@ -393,13 +399,32 @@ class SFAF_Uploads {
         /* 4. Is it really an upload. */
         $tmp = ( isset( $file['tmp_name'] ) && is_string( $file['tmp_name'] ) ) ? $file['tmp_name'] : '';
         if ( '' === $tmp || ! is_uploaded_file( $tmp ) ) {
-            return $no( 'That image did not arrive. Try it again.' );
+            return $no( ( $pdf ? 'That file' : 'That image' ) . ' did not arrive. Try it again.' );
         }
 
         /* 5. The size ceiling, from the file rather than from the browser. */
         $bytes = @filesize( $tmp );
         if ( false === $bytes || $bytes <= 0 ) {
-            return $no( 'That image arrived empty. Try it again.' );
+            return $no( ( $pdf ? 'That file' : 'That image' ) . ' arrived empty. Try it again.' );
+        }
+        /*
+         * 5a. A PDF IS READ FROM ITS OWN BYTES (3.111.0), and this is the whole
+         * of its rule: under the cap, opening with the PDF signature, and finfo
+         * agreeing. The name and the claimed type are never asked, so a
+         * renamed image or a script called flyer.pdf is refused here.
+         */
+        if ( $pdf ) {
+            if ( $bytes > self::PDF_BYTES ) {
+                return $no( self::PDF_RULE_MESSAGE );
+            }
+            $head = (string) @file_get_contents( $tmp, false, null, 0, 5 );
+            if ( '%PDF-' !== $head ) {
+                return $no( self::PDF_RULE_MESSAGE );
+            }
+            if ( function_exists( 'finfo_open' ) && 'application/pdf' !== self::sniff( $tmp ) ) {
+                return $no( self::PDF_RULE_MESSAGE );
+            }
+            return array( 'ok' => true, 'error' => '', 'warning' => '', 'type' => 0, 'mime' => 'application/pdf', 'width' => 0, 'height' => 0 );
         }
         if ( $bytes > ( $picture ? self::PICTURE_BYTES : self::MAX_BYTES ) ) {
             return $no( $picture ? self::RULE_MESSAGE : self::too_big() );

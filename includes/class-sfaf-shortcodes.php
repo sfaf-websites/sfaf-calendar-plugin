@@ -4568,6 +4568,8 @@ class SFAF_Shortcodes {
                         <span class="uc-lrow-byline"><?php echo esc_html( $byline ); ?></span>
                     <?php endif; ?>
                 </span>
+                <?php // The event's PDF (3.111.0), here and in every embed of the list. ?>
+                <?php echo SFAF_Attachments::button_html( $post_id, 'uc-attachment-row' ); ?>
             </div>
 
             <div class="uc-lrow-when">

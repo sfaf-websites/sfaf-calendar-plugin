@@ -930,6 +930,7 @@ class SFAF_Portal {
                     'told'       => (int) $result['told'],
                     'needs'      => isset( $result['needs'] ) ? $result['needs'] : '',
                     'pic'        => ! empty( $result['pic'] ) ? 1 : 0,
+                    'pdf'        => ! empty( $result['pdf'] ) ? 1 : 0,
                 ) );
                 break;
 
@@ -3490,6 +3491,9 @@ class SFAF_Portal {
          * choice so the file wins over a radio left on. */
         $pic_refused = $this->save_event_upload( $user, $event_id, $is_locked );
 
+        /* The PDF attachment and its label (3.111.0), Add and Edit alike. */
+        $pdf_refused = SFAF_Attachments::save_from_post( $event_id, (int) $user->ID );
+
         /*
          * SERIES. A term assignment and nothing else.
          *
@@ -3741,6 +3745,8 @@ class SFAF_Portal {
             'needs'   => $org_held ? implode( ',', $pub_missing ) : '',
             // 1 when an uploaded picture broke the rule (3.110.3).
             'pic'     => '' !== $pic_refused ? 1 : 0,
+            // 1 when an uploaded attachment broke the PDF rule (3.111.0).
+            'pdf'     => '' !== $pdf_refused ? 1 : 0,
         );
     }
 
@@ -3975,6 +3981,8 @@ class SFAF_Portal {
             // next, which is exactly what leaving this out would produce.
             sfaf_fundraising_progress_meta_key(),
             sfaf_faq_meta_key(),
+            // The PDF attachment travels with the group (3.111.0); the file is shared.
+            SFAF_Attachments::META_ID, SFAF_Attachments::META_LABEL,
         );
         $meta_keys = array_merge( $meta_keys, SFAF_Online::meta_keys() );
         if ( ! isset( $locked['capacity'] ) ) {
@@ -4190,6 +4198,8 @@ class SFAF_Portal {
             // Copying them copies "tell Philanthropy about this", not the six
             // people who happen to be in Philanthropy today.
             SFAF_Teams::EVENT_META,
+            // The PDF attachment (3.111.0): the copy points at the same file.
+            SFAF_Attachments::META_ID, SFAF_Attachments::META_LABEL,
         );
 
         foreach ( $copy_keys as $key ) {
@@ -4920,6 +4930,11 @@ class SFAF_Portal {
         if ( ! empty( $_GET['pic'] ) ) {
             echo '<div class="uc-flash uc-flash-error">'
                 . esc_html( 'Saved without the uploaded picture. ' . SFAF_Uploads::RULE_MESSAGE )
+                . '</div>';
+        }
+        if ( ! empty( $_GET['pdf'] ) ) {
+            echo '<div class="uc-flash uc-flash-error">'
+                . esc_html( 'Saved without the attachment. ' . SFAF_Uploads::PDF_RULE_MESSAGE )
                 . '</div>';
         }
 
@@ -14739,6 +14754,7 @@ class SFAF_Portal {
                     <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'description' ), $placed ) ); ?>
                     <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'image' ), $placed ) ); ?>
                     <?php $this->render_video_field( $user, $event_id ); ?>
+                    <?php SFAF_Attachments::render_control( $event_id ); ?>
                 </section>
 
                 <?php

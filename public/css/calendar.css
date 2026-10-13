@@ -1993,6 +1993,12 @@
     background: var(--uc-green-tint); color: var(--uc-green-ink); border-color: var(--uc-green-ink);
 }
 .uc-single .uc-volunteer { margin-top: 16px; }
+/* THE PDF ATTACHMENT (3.111.0): the secondary, outlined shape, under the
+   description on the event page and under the byline on a list row. */
+.uc-single .uc-attachment-single { margin: 20px 0 0; }
+.uc-calendar .uc-attachment-row { margin-top: 8px; }
+.uc-calendar .uc-attachment-row .uc-actionbtn,
+.uc-single .uc-attachment-single .uc-actionbtn { white-space: normal; max-width: 100%; }
 .uc-calendar .uc-actionbtn-primary:hover, .uc-calendar .uc-actionbtn-primary:focus-visible,
 .uc-single .uc-actionbtn-primary:hover, .uc-single .uc-actionbtn-primary:focus-visible,
 .uc-sidebar .uc-actionbtn-primary:hover, .uc-sidebar .uc-actionbtn-primary:focus-visible {

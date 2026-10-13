@@ -192,6 +192,16 @@ while ( have_posts() ) :
                     </div>
 
                     <?php
+                    /*
+                     * THE PDF ATTACHMENT (3.111.0), under the description: the
+                     * typed label, Register's outlined shape, a new tab. On a
+                     * phone the columns stack, so it sits above the share
+                     * buttons in the sidebar below.
+                     */
+                    echo SFAF_Attachments::button_html( $post_id, 'uc-attachment-single' );
+                    ?>
+
+                    <?php
                     // Galaxy Digital volunteer signup (imported needs only).
                     echo sfaf_galaxy_block( $post_id );
 

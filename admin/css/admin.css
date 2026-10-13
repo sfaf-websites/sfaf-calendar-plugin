@@ -567,7 +567,7 @@
 /* Pin an event (3.111.0): a scrolling list of upcoming events, one per row. */
 .uc-embed-pins { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; margin-top: 8px; padding: 8px; border: 1px solid var(--uc-border); border-radius: 6px; }
 .uc-embed-pin[hidden] { display: none; }
-.uc-embed-pin-date { margin-left: auto; padding-left: 12px; color: var(--uc-secondary); white-space: nowrap; }
+.uc-embed-pin-date { margin-left: auto; padding-left: 12px; color: var(--uc-text); white-space: nowrap; }
 
 .uc-checkbox-grid { display: flex; flex-wrap: wrap; gap: 8px 16px; }
 .uc-check { display: inline-flex; align-items: flex-start; gap: 7px; font-size: 13px; color: var(--uc-text); cursor: pointer; }

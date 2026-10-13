@@ -112,6 +112,7 @@ $sfaf_includes = array(
     // Files sent by people with no account, and what the two public forms
     // share. Both load before the forms that call them.
     'includes/class-sfaf-uploads.php',
+    'includes/class-sfaf-attachments.php',
     // Pictures that go INSIDE a description: a third folder, beside the other
     // two rather than inside either. After SFAF_Uploads, whose inspect() is the
     // one guard it puts in front of its own upload.
@@ -239,6 +240,7 @@ function sfaf_init() {
     // a later init than SFAF_Series registers it, so the taxonomy exists by the
     // time anything is added to it.
     SFAF_Media::register();
+    SFAF_Attachments::register();
     SFAF_Uploads::register();
     SFAF_Slug_Aliases::register();
 

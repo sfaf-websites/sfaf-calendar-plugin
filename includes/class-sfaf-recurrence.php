@@ -112,6 +112,8 @@ class SFAF_Recurrence {
         // FAQs travel with the copy. One key, no inheritance — see
         // sfaf_faq_meta_key().
         '_uc_faqs',
+        // The PDF attachment and its label (3.111.0): every occurrence shares the one file.
+        '_uc_attachment_id', '_uc_attachment_label',
     );
 
     /**
