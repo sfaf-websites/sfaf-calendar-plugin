@@ -1477,6 +1477,9 @@ dialogs. **To review** on the dashboard is a stat card that is a link: the
 accent number and label, the card's edge turning `--uc-accent-text` on hover and
 focus.
 
+**The Notifications card, registrations elsewhere**, is one `.uc-hint` line in
+place of its fields, nothing else; the fields are hidden, not removed.
+
 **The generator's Pin an event** is a search box over a list of upcoming events,
 220px tall at most and scrolling, one standard tick per event with its date at
 the right of the row.

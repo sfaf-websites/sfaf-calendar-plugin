@@ -5681,6 +5681,23 @@ saves them. `.claude/notifications-card-test.php` renders both screens and
 compares the card's fields, and saves a new event with chosen recipients and
 ticks.
 
+### Registrations taken elsewhere send nothing (3.111.0)
+
+**An event with Register on another site chosen, and an imported event, which
+registers at its source, sends none of the notification kinds.**
+`SFAF_Notifications::on()` answers no for both before it reads the event's own
+switches, and every sender asks it: the confirmation, the alert, the
+cancellation alert, the day-before count, the morning-of reminder and the
+two-hour summary. `stored_on()` is the switch alone, and is what the ticks are
+drawn from, so nothing is rewritten.
+
+**The Notifications card says so.** While Register on another site is chosen
+it is one line, "Registrations are taken on another site, so no registration
+emails are sent," and the recipient picker, the message ticks and the Reply-to
+are hidden but still post what they hold, so switching back restores them as
+they were. portal.js swaps the two as the choice changes. An imported event's
+card is the line alone; it never had those fields.
+
 ### The notification list, and why two messages ask different questions
 
 The list is gated on **nothing**. It holds calendar contributors, people reached

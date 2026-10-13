@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 314 items.** Quick 258, needs real conditions 52, blocked on other
+**Outstanding: 315 items.** Quick 259, needs real conditions 52, blocked on other
 people 4.
 
 ---
@@ -3565,6 +3565,19 @@ community form's registration link and venue website now land on the editor's
 Registration and Location cards: submit one with both and look.
 
 **Why it needs a person:** the live forms, read by somebody.
+
+### 1.257 Notifications on an event registering elsewhere (3.111.0)
+
+On Edit event, choose **Register on another site** with a link. The
+Notifications card becomes one line, "Registrations are taken on another site,
+so no registration emails are sent." Choose registrations here again without
+saving: the recipients, the ticks and the Reply-to are back as they were. Save
+with another site chosen, then switch back and save: they are still as they
+were. Open an imported event: its Notifications card is the line alone. On an
+event registering elsewhere that still has old registrations, no reminder,
+count or summary arrives the next morning.
+
+**Why it needs a person:** the live editor, and a real morning's sends.
 
 ## 2. Needs real conditionsWaiting for an unattended job to fire, a real removal at source, or a real event
 with real registrations and real mail.
