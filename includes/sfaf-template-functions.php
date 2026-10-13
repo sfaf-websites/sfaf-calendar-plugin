@@ -1184,9 +1184,9 @@ function sfaf_follow_series_button( $post_id ) {
 /**
  * RSVP block (capacity bar + button). Shared by card and single template.
  *
- * Only aggregate counts are ever rendered here — no attendee name, email or
- * phone reaches the markup, which is what makes this block safe to serve over
- * the public embed endpoint. In an embed the RSVP button becomes a link to the
+ * No count is rendered here (3.111.0), and no attendee name, email or phone
+ * reaches the markup, which is what makes this block safe to serve over the
+ * public embed endpoint. In an embed the RSVP button becomes a link to the
  * event page, where the modal can talk to admin-ajax.
  */
 function sfaf_rsvp_block( $post_id ) {
@@ -1260,9 +1260,12 @@ function sfaf_rsvp_block( $post_id ) {
         return '';
     }
 
-    $capacity   = (int) sfaf_event_capacity( $post_id );
-    $limited    = sfaf_capacity_limited( $post_id );
-    $rsvp_count = sfaf_get_rsvp_count( $post_id );
+    /*
+     * NO COUNT ON A PUBLIC PAGE (3.111.0). The button says Register, or Join
+     * the waitlist when every place is taken, and nothing says how many have
+     * registered or how many places there are: the size of a group is itself
+     * worth not saying here (PROJECT.md 5). Counts are caladmin's.
+     */
 
     // In an embed the modal cannot post cross-origin, so the control becomes a
     // link to the event page where the form works. Same button family either
@@ -1275,7 +1278,7 @@ function sfaf_rsvp_block( $post_id ) {
      * with one format still open the button stays RSVP, and the form offers
      * the waitlist for the full one when it is picked.
      */
-    $rsvp_label = sfaf_event_full( $post_id ) ? 'Join the waitlist' : 'RSVP';
+    $rsvp_label = sfaf_event_full( $post_id ) ? 'Join the waitlist' : 'Register';
     $button = sfaf_is_embed_context()
         ? sfaf_action_button( array(
             'label'   => $rsvp_label,
@@ -1336,14 +1339,6 @@ function sfaf_rsvp_block( $post_id ) {
     ob_start();
     ?>
     <div class="uc-card-rsvp">
-        <?php if ( $limited ) : ?>
-            <div class="uc-capacity-bar">
-                <div class="uc-capacity-fill" style="width: <?php echo esc_attr( $capacity > 0 ? min( ( $rsvp_count / $capacity ) * 100, 100 ) : 100 ); ?>%"></div>
-            </div>
-            <span class="uc-capacity-text"><?php echo (int) $rsvp_count; ?>/<?php echo (int) $capacity; ?> spots filled</span>
-        <?php else : ?>
-            <span class="uc-capacity-text"><?php echo (int) $rsvp_count; ?> registered</span>
-        <?php endif; ?>
         <?php echo $button; ?>
     </div>
     <?php
@@ -3944,12 +3939,12 @@ function sfaf_day_event_thumb( $post_id ) {
 
 
 /**
- * How many RSVP places are left, phrased for a visitor, or ''.
+ * "Full" when every place is taken, or ''.
  *
- * "12 of 20 spots left" rather than "8/20 spots filled": the number somebody
- * is deciding on is what remains, and making them subtract is a small tax on
- * every card. Only events with a capacity we hold produce a sentence: an
- * imported event's remaining places live on the platform that sold them.
+ * NO NUMBER (3.111.0). This said "12 of 20 spots left", which published the
+ * size of a group on every card; a card now says only that an event is full.
+ * Only events with a capacity we hold can be: an imported event's places live
+ * on the platform that sold them.
  *
  * @param int $post_id
  * @return string
@@ -3958,20 +3953,7 @@ function sfaf_rsvp_spots_text( $post_id ) {
     if ( ! sfaf_event_takes_rsvps( $post_id ) ) {
         return '';
     }
-    // No limit, no sentence. A limit of 0 is "Fully booked" from the start (3.107.0).
-    if ( ! sfaf_capacity_limited( $post_id ) ) {
-        return '';
-    }
-    $capacity = (int) sfaf_event_capacity( $post_id );
-    $left = max( 0, $capacity - sfaf_get_rsvp_count( $post_id ) );
-    if ( $left < 1 ) {
-        return 'Fully booked';
-    }
-    return sprintf(
-        '%s of %s spots left',
-        number_format_i18n( $left ),
-        number_format_i18n( $capacity )
-    );
+    return sfaf_event_full( $post_id ) ? 'Full' : '';
 }
 
 /**

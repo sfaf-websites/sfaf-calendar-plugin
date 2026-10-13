@@ -130,6 +130,8 @@
             active_groups: container.getAttribute('data-active-groups') || '',
             active_organizer: container.getAttribute('data-active-organizer') || '',
             filters: container.getAttribute('data-filters') || '',
+            // Event ids shown first (3.111.0); the endpoint drops any it cannot show.
+            pin: container.getAttribute('data-pin') || '',
             organizer: container.getAttribute('data-organizer') || '',
             series: container.getAttribute('data-series') || '',
             venue: container.getAttribute('data-venue') || '',

@@ -488,7 +488,7 @@ class SFAF_RSVP {
                 // No address, so no confirmation: the screen does not say to
                 // look for one.
                 'no_email'   => ( '' === $data['email'] ),
-                'count'      => sfaf_get_rsvp_count( $data['event_id'] ),
+                // No count (3.111.0): a public response never says how many have registered.
                 // The same two add-to-calendar destinations the confirmation
                 // email carries, built by the same two helpers, so the modal
                 // and the email cannot offer different links. Either can be an

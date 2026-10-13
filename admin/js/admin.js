@@ -828,7 +828,9 @@
                  * summary below cannot disagree about the order. */
                 filterRows: ['category', 'organizer', 'series'].filter(function (row) {
                     return $('#uc-embed-filter-' + row).is(':checked');
-                })
+                }),
+                // Pinned event ids, in the order ticked down the list (3.111.0).
+                pin: $('.uc-embed-pin-id:checked').map(function () { return this.value; }).get().join(',')
             };
         }
 
@@ -888,6 +890,10 @@
             if (choices.sourceLinks) {
                 summary += ', opening imported events at their source';
             }
+            if (choices.pin && choices.view !== 'combined') {
+                var pins = choices.pin.split(',').length;
+                summary += ', with ' + pins + ' pinned event' + (pins === 1 ? '' : 's') + ' first';
+            }
 
             // Nothing here may close the comment early.
             return summary.replace(/--+/g, '-').replace(/[<>]/g, '');
@@ -932,6 +938,11 @@
              * flipped later without re-pasting anything.
              */
             attrs['data-source-links'] = choices.sourceLinks ? 'yes' : 'no';
+
+            // Only when something is pinned, and never on the combined view (3.111.0).
+            if (choices.pin && choices.view !== 'combined') {
+                attrs['data-pin'] = choices.pin;
+            }
 
             return attrs;
         }
@@ -984,6 +995,14 @@
         }
 
         $screen.on('change input', 'input, select', update);
+
+        /* The pin list's search: narrows the list by title, ticks untouched (3.111.0). */
+        $('#uc-embed-pin-search').on('input', function () {
+            var q = $.trim(this.value).toLowerCase();
+            $('.uc-embed-pin').each(function () {
+                $(this).prop('hidden', q !== '' && ($(this).attr('data-uc-pin-title') || '').indexOf(q) === -1);
+            });
+        });
 
         $('#uc-embed-copy').on('click', function () {
             var $note = $('#uc-embed-copied');

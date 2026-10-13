@@ -730,6 +730,8 @@
             series:         $block.attr('data-filter-series') || '',
             venue:          $block.attr('data-filter-venue') || '',
             s:              $block.attr('data-filter-s') || '',
+            // The pins this page drew, so the next page leaves them out (3.111.0).
+            pin:            $block.attr('data-filter-pin') || '',
             render:         $block.attr('data-render') || 'card'
         };
     }
@@ -1167,6 +1169,8 @@
             series:          $block.attr('data-filter-series') || '',
             venue:           $block.attr('data-filter-venue') || '',
             s:               $block.attr('data-filter-s') || '',
+            // The block's own pins; the server sets them aside while a visitor narrows.
+            pin:             $block.attr('data-pin') || '',
             layout:          ($block.attr('data-render') === 'compact') ? 'compact' : 'cards',
             view:            $block.attr('data-view') || 'list',
             month:           $block.find('.uc-month').attr('data-month') || $block.attr('data-month') || '',
@@ -2192,25 +2196,6 @@
                     $('.uc-rsvp-form-view').hide();
                     $('#uc-rsvp-success').show();
 
-                    // Update the capacity bar and count on the card
-                    if (response.count !== undefined) {
-                        var card = $('.uc-rsvp-btn[data-event-id="' + currentEventId + '"]').closest('.uc-event-card');
-                        var capacityText = card.find('.uc-capacity-text');
-                        var capacityFill = card.find('.uc-capacity-fill');
-                        
-                        if (capacityText.length) {
-                            var text = capacityText.text();
-                            // Update count in "X/Y spots filled" or "X registered"
-                            if (text.indexOf('/') > -1) {
-                                var parts = text.split('/');
-                                var total = parseInt(parts[1]);
-                                capacityText.text(response.count + '/' + total + ' spots filled');
-                                capacityFill.css('width', Math.min((response.count / total) * 100, 100) + '%');
-                            } else {
-                                capacityText.text(response.count + ' registered');
-                            }
-                        }
-                    }
                 } else {
                     $('#uc-rsvp-error').text(response.message || 'Something went wrong.').show();
                     btn.prop('disabled', false).text(submitLabel());

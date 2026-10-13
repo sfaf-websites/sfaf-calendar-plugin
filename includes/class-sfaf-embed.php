@@ -342,6 +342,8 @@ class SFAF_Embed {
                  */
                 'active_organizer' => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
                 'filters'          => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
+                // 3.111.0: event ids shown first, from data-pin. Same route, for the CORS reason above.
+                'pin'              => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
             ),
         ) );
     }
@@ -474,6 +476,7 @@ class SFAF_Embed {
              * defaulted, so a redraw cannot hand back a control the block was
              * generated without. */
             'filters'            => (string) $request->get_param( 'filters' ),
+            'pin'                => SFAF_Shortcodes::pin_list( (string) $request->get_param( 'pin' ) ),
             'venue'        => (string) $request->get_param( 'venue' ),
             'series'       => absint( $request->get_param( 'series' ) ),
             /*
@@ -543,6 +546,10 @@ class SFAF_Embed {
          * mode does its own, because it also has to draw the row.
          */
         $resolved['groups'] = $this->shortcodes->clamp_groups( $resolved, $params['active_groups'] );
+        /* Pins stand aside while a visitor narrows, as in render_calendar_block(). */
+        if ( '' !== $params['active_category'] || '' !== $params['active_organizer'] || '' !== $params['active_groups'] || '' !== trim( (string) $params['s'] ) ) {
+            $resolved['pin'] = '';
+        }
 
         try {
             if ( $params['mode'] === 'month' ) {
@@ -1155,6 +1162,8 @@ class SFAF_Embed {
             // mean a cached unsearched page being served to a search, and one
             // visitor's search results being served to the next visitor.
             's'         => isset( $params['s'] ) ? $params['s'] : '',
+            // Two blocks pinning different events are two payloads (3.111.0).
+            'pin'       => isset( $params['pin'] ) ? $params['pin'] : '',
         );
 
         if ( 'month' === $params['mode'] ) {

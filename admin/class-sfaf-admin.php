@@ -1757,6 +1757,37 @@ class SFAF_Admin {
                         </select>
                     </div>
 
+                    <?php
+                    /*
+                     * PIN AN EVENT (3.111.0). Upcoming events only, searched by
+                     * title, written into the block as data-pin. Nothing is
+                     * stored on the event: the pin is the snippet's, so another
+                     * block is unaffected and an event that has gone simply
+                     * stops showing. The list view and the sidebar draw pins;
+                     * the combined view's column is bound to a month, so it is
+                     * not offered there.
+                     */
+                    $pin_events = $this->pin_choices();
+                    ?>
+                    <div class="uc-embed-field" data-when-view="list calendar sidebar">
+                        <label class="uc-embed-label" for="uc-embed-pin-search">Pin an event</label>
+                        <?php if ( empty( $pin_events ) ) : ?>
+                            <p class="description">No upcoming events to pin.</p>
+                        <?php else : ?>
+                            <input type="search" id="uc-embed-pin-search" class="uc-input" placeholder="Search by title" autocomplete="off" />
+                            <div class="uc-embed-pins" id="uc-embed-pins" role="group" aria-label="Upcoming events">
+                                <?php foreach ( $pin_events as $pin ) : ?>
+                                    <label class="uc-embed-check uc-embed-pin" data-uc-pin-title="<?php echo esc_attr( strtolower( $pin['title'] ) ); ?>">
+                                        <input type="checkbox" class="uc-embed-pin-id" value="<?php echo (int) $pin['id']; ?>" />
+                                        <?php echo esc_html( $pin['title'] ); ?>
+                                        <span class="uc-embed-pin-date"><?php echo esc_html( $pin['date'] ); ?></span>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                            <p class="description">Ticked events show first, marked Featured, in the list and the sidebar.</p>
+                        <?php endif; ?>
+                    </div>
+
                     <div class="uc-embed-field" data-when-view="list calendar">
                         <label class="uc-embed-label" for="uc-embed-per-page">Events per page</label>
                         <input type="number" id="uc-embed-per-page" class="uc-input uc-input-narrow"
@@ -1814,6 +1845,39 @@ class SFAF_Admin {
             </div>
         </div>
         <?php
+    }
+
+    /**
+     * The events the generator offers to pin: upcoming, published, public and
+     * not cancelled, soonest first, at most 300. The same test the block
+     * applies, SFAF_Shortcodes::pinned_ids(), decides each one.
+     *
+     * @return array<int,array{id:int,title:string,date:string}>
+     */
+    private function pin_choices() {
+        $args = array(
+            'post_type'      => 'uc_event',
+            'post_status'    => 'publish',
+            'posts_per_page' => 300,
+            'fields'         => 'ids',
+            'meta_key'       => '_uc_event_date',
+            'orderby'        => 'meta_value',
+            'order'          => 'ASC',
+            'meta_query'     => array(
+                array( 'key' => '_uc_event_date', 'value' => current_time( 'Y-m-d' ), 'compare' => '>=', 'type' => 'DATE' ),
+            ),
+        );
+        SFAF_Privacy::exclude( $args );
+        $ids = SFAF_Shortcodes::pinned_ids( implode( ',', array_map( 'intval', (array) get_posts( $args ) ) ) );
+        $out = array();
+        foreach ( $ids as $id ) {
+            $out[] = array(
+                'id'    => (int) $id,
+                'title' => (string) get_the_title( $id ),
+                'date'  => sfaf_ap_date( (string) get_post_meta( $id, '_uc_event_date', true ), 'short_year' ),
+            );
+        }
+        return $out;
     }
 
     /**

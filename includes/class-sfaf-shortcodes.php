@@ -116,7 +116,59 @@ class SFAF_Shortcodes {
              * list like category, organizer and venue. See group_pills().
              */
             'groups'    => $this->slug_list( isset( $raw['groups'] ) ? $raw['groups'] : '' ),
+            /* Pinned event ids, as the snippet wrote them (3.111.0). See pinned_ids(). */
+            'pin'       => self::pin_list( isset( $raw['pin'] ) ? $raw['pin'] : '' ),
         );
+    }
+
+    /**
+     * A comma-separated list of event ids, cleaned: positive integers, each
+     * once, in the order written, at most 10. '' when none.
+     *
+     * @param mixed $raw
+     * @return string
+     */
+    public static function pin_list( $raw ) {
+        $out = array();
+        foreach ( preg_split( '/[\s,]+/', (string) $raw ) as $one ) {
+            $id = absint( $one );
+            if ( $id && ! in_array( $id, $out, true ) ) {
+                $out[] = $id;
+            }
+        }
+        return implode( ',', array_slice( $out, 0, 10 ) );
+    }
+
+    /**
+     * PINNED EVENTS (3.111.0): the ids a block pins that can be shown, in the
+     * order written.
+     *
+     * A PIN THAT CANNOT BE SHOWN IS SKIPPED SILENTLY: an event that is not a
+     * published calendar event, is private, is cancelled, or is over. The pin
+     * lives only in the embed code, so an event that has gone simply stops
+     * being pinned and nobody has to edit the snippet.
+     *
+     * @param string $csv From pin_list().
+     * @return int[]
+     */
+    public static function pinned_ids( $csv ) {
+        $today = current_time( 'Y-m-d' );
+        $out   = array();
+        foreach ( array_filter( array_map( 'intval', explode( ',', (string) $csv ) ) ) as $id ) {
+            $post = get_post( $id );
+            if ( ! $post || 'uc_event' !== $post->post_type || 'publish' !== $post->post_status ) {
+                continue;
+            }
+            if ( SFAF_Privacy::is_private( $id ) || SFAF_Cancellation::is_cancelled( $id ) ) {
+                continue;
+            }
+            $date = (string) get_post_meta( $id, '_uc_event_date', true );
+            if ( '' === $date || $date < $today ) {
+                continue;
+            }
+            $out[] = (int) $id;
+        }
+        return $out;
     }
 
     /**
@@ -370,6 +422,14 @@ class SFAF_Shortcodes {
         // question about the same query, applied at the same place so the
         // two cannot be excluded from one builder and not the other.
         SFAF_Cancellation::exclude( $args );
+
+        /* A PINNED EVENT IS NOT LISTED TWICE (3.111.0): it is drawn first, on
+         * page one, and left out of the list on every page. Only the pins that
+         * can be shown; a skipped one stays where it would have been. */
+        $pinned = ( '' === $filters['bound_month'] ) ? self::pinned_ids( $filters['pin'] ) : array();
+        if ( $pinned ) {
+            $args['post__not_in'] = $pinned;
+        }
 
         /*
          * BOUND TO ONE MONTH, when the caller asked for that.
@@ -1906,7 +1966,7 @@ class SFAF_Shortcodes {
      * @param int $post_id
      * @return string
      */
-    private function render_sidebar_row( $post_id ) {
+    private function render_sidebar_row( $post_id, $featured = false ) {
         $date  = (string) get_post_meta( $post_id, '_uc_event_date', true );
         $start = (string) get_post_meta( $post_id, '_uc_start_time', true );
         $end   = (string) get_post_meta( $post_id, '_uc_end_time', true );
@@ -1940,12 +2000,15 @@ class SFAF_Shortcodes {
 
         ob_start();
         ?>
-        <a class="uc-sidebar-row<?php echo $off ? ' is-cancelled' : ''; ?>" href="<?php echo esc_url( sfaf_event_link( $post_id ) ); ?>"<?php echo sfaf_new_tab_attrs(); ?>
+        <a class="uc-sidebar-row<?php echo $off ? ' is-cancelled' : ''; ?><?php echo $featured ? ' is-featured' : ''; ?>" href="<?php echo esc_url( sfaf_event_link( $post_id ) ); ?>"<?php echo sfaf_new_tab_attrs(); ?>
            data-category="<?php echo esc_attr( $slugs ); ?>">
             <span class="uc-sidebar-thumb"><?php echo sfaf_thumb_media( $post_id ); ?></span>
             <span class="uc-sidebar-body">
                 <?php if ( $off ) : ?>
                     <span class="uc-sidebar-off">Cancelled</span>
+                <?php endif; ?>
+                <?php if ( $featured ) : ?>
+                    <span class="uc-featured-mark" data-uc-featured>Featured</span>
                 <?php endif; ?>
                 <span class="uc-sidebar-title"><?php echo esc_html( get_the_title( $post_id ) ); ?></span>
                 <?php if ( '' !== $when || '' !== $clock ) : ?>
@@ -2843,12 +2906,33 @@ class SFAF_Shortcodes {
     public function render_events( $per_page, $paged, $filters, $render = 'card' ) {
         $query = new WP_Query( $this->build_query_args( $per_page, $paged, $filters ) );
 
+        /*
+         * PINNED EVENTS FIRST (3.111.0), on page one of the list and the
+         * sidebar, each with its Featured mark. build_query_args() has already
+         * taken them out of the list, so nothing is drawn twice. Never in a
+         * list bound to a month: that is the combined view's column, and a
+         * pin from another month would not belong to it.
+         */
+        $norm   = $this->normalize_filters( $filters );
+        $pinned = ( '' === $norm['bound_month'] ) ? self::pinned_ids( $norm['pin'] ) : array();
+
         // One query for every card's RSVP count rather than one per card.
-        sfaf_prime_rsvp_counts( wp_list_pluck( $query->posts, 'ID' ) );
+        sfaf_prime_rsvp_counts( array_merge( $pinned, wp_list_pluck( $query->posts, 'ID' ) ) );
 
         ob_start();
         // 'none' is a caller that wants found_posts and no markup. The combined
         // mode's count line is the only one, and it has no list to fill.
+        if ( 'none' !== $render && $pinned && max( 1, (int) $paged ) === 1 ) {
+            foreach ( $pinned as $pin_id ) {
+                if ( 'compact' === $render ) {
+                    echo $this->render_compact_card( $pin_id, true );
+                } elseif ( 'sidebar' === $render ) {
+                    echo $this->render_sidebar_row( $pin_id, true );
+                } else {
+                    echo $this->render_event_card( $pin_id, true );
+                }
+            }
+        }
         if ( 'none' !== $render ) {
             /*
              * CLOSURES ARE WOVEN IN BY DATE, and only into the full card list.
@@ -2894,7 +2978,8 @@ class SFAF_Shortcodes {
 
         return array(
             'html'      => ob_get_clean(),
-            'total'     => (int) $query->found_posts,
+            // The pinned events are events in this block too.
+            'total'     => (int) $query->found_posts + count( $pinned ),
             'max_pages' => (int) $query->max_num_pages,
             'page'      => max( 1, (int) $paged ),
         );
@@ -3118,6 +3203,8 @@ class SFAF_Shortcodes {
              * sidebar_heading().
              */
             'heading'      => null,
+            // Event ids to show first, comma separated (3.111.0). See pinned_ids().
+            'pin'          => '',
         ), $atts );
 
         $block = $this->render_calendar_block( $atts );
@@ -3261,6 +3348,18 @@ class SFAF_Shortcodes {
         $filters['groups'] = $this->effective_groups( $available_groups, $requested_groups );
         $active_groups     = $filters['groups'];
 
+        /*
+         * PINS STAND ASIDE WHILE A VISITOR NARROWS (3.111.0). Somebody who
+         * searched or chose a category, an organizer or a group asked for
+         * those events; a pinned one at the top would answer a question they
+         * did not ask. The data-filter-pin attribute keeps the block's pins, so
+         * clearing the choice brings them back.
+         */
+        $block_pin = $filters['pin'];
+        if ( '' !== $active_category || '' !== $active_organizer || '' !== $active_groups || '' !== trim( (string) $filters['s'] ) ) {
+            $filters['pin'] = '';
+        }
+
         // Sidebar is a different shape entirely: no filter bar, no pagination,
         // no toggle, a count rather than a page size. It returns early rather
         // than threading "unless sidebar" through everything below.
@@ -3392,6 +3491,9 @@ class SFAF_Shortcodes {
              data-filter-venue="<?php echo esc_attr( $filters['venue'] ); ?>"
              <?php // Carried so paging and "load more" keep the search applied. ?>
              data-filter-s="<?php echo esc_attr( $filters['s'] ); ?>"
+             <?php // The block's pins, and the ones this render drew (none while a visitor narrows). ?>
+             data-pin="<?php echo esc_attr( $block_pin ); ?>"
+             data-filter-pin="<?php echo esc_attr( $filters['pin'] ); ?>"
              data-pagination="<?php echo esc_attr( $style ); ?>"
              data-page="<?php echo (int) $paged; ?>"
              <?php // data-view is declared once, at the top of this tag. It was
@@ -4032,6 +4134,12 @@ class SFAF_Shortcodes {
             isset( $_POST['groups'] ) ? sanitize_text_field( wp_unslash( $_POST['groups'] ) ) : ''
         );
 
+        /* Pinned events, unless the visitor has narrowed the list (3.111.0). */
+        $scope_cat      = isset( $_POST['scope_category'] ) ? sanitize_text_field( wp_unslash( $_POST['scope_category'] ) ) : '';
+        $filters['pin'] = ( '' === $filters['groups'] && '' === trim( $filters['s'] ) && $filters['category'] === $this->slug_list( $scope_cat ) )
+            ? ( isset( $_POST['pin'] ) ? self::pin_list( wp_unslash( $_POST['pin'] ) ) : '' )
+            : '';
+
         if ( $per_page <= 0 ) {
             wp_send_json( array( 'html' => '', 'has_more' => false, 'total' => 0, 'max_pages' => 1 ) );
         }
@@ -4080,6 +4188,7 @@ class SFAF_Shortcodes {
             'venue'           => isset( $_POST['venue'] ) ? sanitize_text_field( wp_unslash( $_POST['venue'] ) ) : '',
             'series'          => isset( $_POST['series'] ) ? absint( $_POST['series'] ) : 0,
             's'               => isset( $_POST['s'] ) ? sanitize_text_field( wp_unslash( $_POST['s'] ) ) : '',
+            'pin'             => isset( $_POST['pin'] ) ? self::pin_list( wp_unslash( $_POST['pin'] ) ) : '',
             'per_page'        => isset( $_POST['per_page'] ) ? intval( $_POST['per_page'] ) : '',
             'layout'          => ( isset( $_POST['layout'] ) && 'compact' === $_POST['layout'] ) ? 'compact' : 'cards',
             'view'            => isset( $_POST['view'] ) ? sanitize_text_field( wp_unslash( $_POST['view'] ) ) : 'list',
@@ -4238,7 +4347,7 @@ class SFAF_Shortcodes {
      * @param int $post_id
      * @return string
      */
-    private function render_event_card( $post_id ) {
+    private function render_event_card( $post_id, $featured = false ) {
         $date       = get_post_meta( $post_id, '_uc_event_date', true );
         $start_time = get_post_meta( $post_id, '_uc_start_time', true );
         $end_time   = get_post_meta( $post_id, '_uc_end_time', true );
@@ -4409,7 +4518,7 @@ class SFAF_Shortcodes {
          * grid places them; it does not reorder them.
          */
         ?>
-        <div class="uc-event-card uc-lrow<?php echo $cancelled ? ' is-cancelled' : ''; ?>" data-category="<?php echo esc_attr( $cat_slugs ); ?>"
+        <div class="uc-event-card uc-lrow<?php echo $cancelled ? ' is-cancelled' : ''; ?><?php echo $featured ? ' is-featured' : ''; ?>" data-category="<?php echo esc_attr( $cat_slugs ); ?>"
              style="--uc-cat: <?php echo esc_attr( $cat_color ); ?>; --uc-cat-tint: <?php echo esc_attr( $shades['tint'] ); ?>; --uc-cat-media: <?php echo esc_attr( $shades['media'] ); ?>; --uc-cat-ink: <?php echo esc_attr( $shades['ink'] ); ?>">
 
             <?php
@@ -4425,6 +4534,9 @@ class SFAF_Shortcodes {
                tabindex="-1" aria-hidden="true"><?php echo sfaf_list_card_media( $post_id ); ?></a>
 
             <div class="uc-lrow-main">
+                <?php if ( $featured ) : ?>
+                    <span class="uc-featured-mark" data-uc-featured>Featured</span>
+                <?php endif; ?>
                 <h3 class="uc-card-title uc-lrow-title">
                     <a href="<?php echo esc_url( $permalink ); ?>"<?php echo sfaf_new_tab_attrs(); ?>><?php
                         echo esc_html( get_the_title( $post_id ) );
@@ -4520,7 +4632,7 @@ class SFAF_Shortcodes {
     /**
      * Render a compact card for the upcoming events widget
      */
-    private function render_compact_card( $post_id ) {
+    private function render_compact_card( $post_id, $featured = false ) {
         $date       = get_post_meta( $post_id, '_uc_event_date', true );
         $start_time = get_post_meta( $post_id, '_uc_start_time', true );
         $location   = sfaf_event_location( $post_id );
@@ -4557,6 +4669,9 @@ class SFAF_Shortcodes {
                 <span class="uc-compact-day"><?php echo esc_html( sfaf_ap_date( $date_ts, 'daynum' ) ); ?></span>
             </div>
             <div class="uc-compact-info">
+                <?php if ( $featured ) : ?>
+                    <span class="uc-featured-mark" data-uc-featured>Featured</span>
+                <?php endif; ?>
                 <div class="uc-compact-title"><?php echo esc_html( get_the_title( $post_id ) ); ?></div>
                 <div class="uc-compact-meta">
                     <?php if ( $start_time ) : ?>
