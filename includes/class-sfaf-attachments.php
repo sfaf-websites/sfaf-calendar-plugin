@@ -276,7 +276,8 @@ class SFAF_Attachments {
                     Remove
                 </label>
             <?php endif; ?>
-            <label class="uc-btn uc-btn-outline uc-attachment-upload">
+            <?php // The picture upload's outlined control and its hidden input (3.110.3). ?>
+            <label class="uc-outline-btn uc-image-upload uc-attachment-upload">
                 <span><?php echo '' !== $name ? 'Replace the PDF' : '+ Upload a PDF'; ?></span>
                 <input type="file" name="<?php echo esc_attr( self::FIELD ); ?>" accept="application/pdf,.pdf"
                        class="uc-visually-hidden" data-uc-attachment-file
