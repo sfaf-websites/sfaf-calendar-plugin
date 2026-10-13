@@ -3766,12 +3766,23 @@ class SFAF_Portal {
      * blank the other by saving; an emptied box deletes its key.
      *
      * @param int    $event_id 0 on Add event.
-     * @param string $part     'cost' or 'details'.
+     * @param string $part     'cost', 'details' or 'venue_site'.
      */
     private function render_listing_fields( $event_id, $part ) {
         $g = function ( $key ) use ( $event_id ) {
             return $event_id ? (string) get_post_meta( (int) $event_id, $key, true ) : '';
         };
+        if ( 'venue_site' === $part ) {
+            ?>
+            <input type="hidden" name="uc_venue_site_present" value="1" />
+            <label class="uc-field">
+                <span class="uc-field-label">Venue website</span>
+                <input type="url" name="venue_website" maxlength="500" placeholder="https://" value="<?php echo esc_attr( $g( SFAF_Submit::META_VENUE_URL ) ); ?>" />
+                <span class="uc-hint">Shown beside the address. Not shown on an online event.</span>
+            </label>
+            <?php
+            return;
+        }
         if ( 'cost' === $part ) {
             ?>
             <input type="hidden" name="uc_cost_present" value="1" />
@@ -3841,6 +3852,14 @@ class SFAF_Portal {
         };
         if ( ! empty( $_POST['uc_cost_present'] ) ) {
             $put( SFAF_Submit::META_COST, 'listing_cost', self::COST_MAX );
+        }
+        if ( ! empty( $_POST['uc_venue_site_present'] ) ) {
+            $site = SFAF_Submissions::url( isset( $_POST['venue_website'] ) ? wp_unslash( $_POST['venue_website'] ) : '' );
+            if ( '' === $site ) {
+                delete_post_meta( $event_id, SFAF_Submit::META_VENUE_URL );
+            } else {
+                update_post_meta( $event_id, SFAF_Submit::META_VENUE_URL, $site );
+            }
         }
         if ( ! empty( $_POST['uc_details_extra_present'] ) ) {
             $put( SFAF_Submit::META_AGE, 'listing_age', 120 );
@@ -14558,6 +14577,8 @@ class SFAF_Portal {
                 <section class="uc-bento-card" data-uc-card="location">
                     <h2 class="uc-bento-title">Location<?php echo $this->publish_mark( 'location' ); ?></h2>
                     <?php $this->render_location_field( $event_id, $s_loc, $prov ); ?>
+                    <?php // The place's website (3.111.0), which the community form asks for. ?>
+                    <?php $this->render_listing_fields( $event_id, 'venue_site' ); ?>
                 </section>
 
                 <?php

@@ -999,8 +999,7 @@ if ( $args['editor'] ) {
             <span class="uc-field-label">Or upload one</span>
             <input type="file" name="uc_image" accept="<?php echo esc_attr( SFAF_Uploads::picture_accept() ); ?>" />
             <span class="uc-hint">
-                <?php echo esc_html( SFAF_Uploads::RULE_MESSAGE ); ?> JPEG, PNG or WebP.
-                Leave this empty if you do not have one.
+                Upload a JPEG, PNG or WebP that is 1200 by 675 pixels and under 500KB, or leave this empty.
             </span>
             <?php self::field_error( $error ); ?>
         </label>

@@ -1355,8 +1355,7 @@ class SFAF_Submit {
             <?php self::banner( $series ); ?>
             <h1>Submit an event to <?php echo esc_html( self::series_name( $series ) ); ?></h1>
             <p class="uc-hint">
-                Tell us about your event. Somebody reviews every submission before it goes on the calendar.
-                Your name and email are not shown on the listing.
+                Tell us about your event, and somebody will review it before it goes on the calendar.
             </p>
 
             <?php if ( '' !== $err( 'form' ) ) : ?>
@@ -1373,7 +1372,7 @@ class SFAF_Submit {
 
                 <fieldset class="uc-form-section-group">
                     <legend class="uc-field-group-title">About you</legend>
-                    <p class="uc-hint">Not shown on the calendar.</p>
+                    <p class="uc-hint">Give your own details here; they are not shown on the calendar.</p>
                     <label class="uc-field">
                         <span class="uc-field-label">Your name<?php echo $mark( 'submitter_name' ); ?></span>
                         <input type="text" name="submitter_name"<?php echo $attr( 'submitter_name' ); ?> maxlength="120" value="<?php echo esc_attr( $v( 'submitter_name' ) ); ?>" />
@@ -1412,7 +1411,7 @@ class SFAF_Submit {
                     ?>
                     <div class="uc-field">
                         <span class="uc-field-label">Your email, and anybody else who should get RSVPs<?php echo $mark( 'submitter_email' ); ?></span>
-                        <span class="uc-hint">The first one is yours. Your copy of this submission goes there.</span>
+                        <span class="uc-hint">Put your own address first, because your copy of this submission goes there.</span>
                         <div class="uc-repeater uc-email-repeat" data-repeater
                              data-repeater-max="<?php echo (int) self::MAX_EMAILS; ?>">
                             <div class="uc-repeater-rows">
@@ -1460,7 +1459,7 @@ class SFAF_Submit {
                         array( 'rows' => 8, 'required' => SFAF_Submissions::is_required( $req, 'description', $req_vals ) )
                     );
                     ?>
-                    <span class="uc-hint">What it is, who it is for, and what somebody should expect.</span>
+                    <span class="uc-hint">Say what it is, who it is for, and what somebody should expect.</span>
                     <?php SFAF_Submissions::field_error( $err( 'description' ) ); ?>
                 </div>
                 </fieldset>
@@ -1524,7 +1523,7 @@ class SFAF_Submit {
                             <span class="uc-field-label">Place name</span>
                             <input type="text" name="venue_name" maxlength="120" value="<?php echo esc_attr( $v( 'venue_name' ) ); ?>"
                                    placeholder="Strut" />
-                            <span class="uc-hint">Shown above the address on the event page. Leave it blank if the address is the whole answer.</span>
+                            <span class="uc-hint">Name the place as it should appear above the address, or leave it blank.</span>
                         </label>
                         <label class="uc-field">
                             <span class="uc-field-label">Street address<?php echo $mark( 'street' ); ?></span>
@@ -1551,7 +1550,7 @@ class SFAF_Submit {
                     <label class="uc-field">
                         <span class="uc-field-label">Venue website</span>
                         <input type="url" name="venue_url" maxlength="500" value="<?php echo esc_attr( $v( 'venue_url' ) ); ?>" placeholder="https://" />
-                        <span class="uc-hint">Shown beside the address on the event page.</span>
+                        <span class="uc-hint">Add the place's website to show it beside the address.</span>
                         <?php SFAF_Submissions::field_error( $err( 'venue_url' ) ); ?>
                     </label>
                 </fieldset>
@@ -1625,7 +1624,7 @@ class SFAF_Submit {
                 <label class="uc-field">
                     <span class="uc-field-label">Capacity</span>
                     <input type="number" name="capacity" min="0" max="100000" placeholder="No limit" value="<?php echo esc_attr( (string) $v( 'capacity' ) ); ?>" />
-                    <span class="uc-hint">Leave it blank for no limit; 0 sends everybody to the waitlist.</span>
+                    <span class="uc-hint">Leave it blank for no limit, or enter 0 to send everybody to the waitlist.</span>
                     <?php SFAF_Submissions::field_error( $err( 'capacity' ) ); ?>
                 </label>
 
@@ -1650,7 +1649,7 @@ class SFAF_Submit {
                 ?>
                 <fieldset class="uc-form-section-group">
                     <legend class="uc-field-group-title">Contact for the event</legend>
-                    <p class="uc-hint"><strong>This appears on the public listing.</strong></p>
+                    <p class="uc-hint"><strong>Give a contact you are happy to see on the public listing.</strong></p>
                     <?php
                     /*
                      * ONE SET OF DETAILS FOR MOST PEOPLE (3.74.0).
@@ -1701,7 +1700,7 @@ class SFAF_Submit {
                                 <input type="tel" name="contact_phone"<?php echo $attr( 'contact_email' ); ?> maxlength="40" value="<?php echo esc_attr( $v( 'contact_phone' ) ); ?>" />
                             </label>
                         </div>
-                        <span class="uc-hint">Give an email address, a phone number, or both. The phone number is shown too.</span>
+                        <span class="uc-hint">Give an email address, a phone number or both to show on the listing.</span>
                     </div>
                 </fieldset>
 
@@ -1836,7 +1835,7 @@ class SFAF_Submit {
                 ?>
                 <fieldset class="uc-form-section-group">
                     <legend class="uc-field-group-title">Questions people often ask</legend>
-                    <p class="uc-hint">Parking, what to bring, whether to book. Leave it empty if there is nothing.</p>
+                    <p class="uc-hint">Add parking, what to bring or whether to book, or leave it empty.</p>
                     <div class="uc-repeater" data-repeater>
                         <div class="uc-repeater-rows">
                             <?php foreach ( $faq_rows as $i => $row ) : ?>
@@ -1860,7 +1859,7 @@ class SFAF_Submit {
                     <label class="uc-field">
                         <span class="uc-visually-hidden">Anything else we should know</span>
                         <textarea name="notes" rows="3" maxlength="2000"><?php echo esc_textarea( $v( 'notes' ) ); ?></textarea>
-                        <span class="uc-hint">Not shown on the listing.</span>
+                        <span class="uc-hint">Write anything for the reviewer here; it is not shown on the listing.</span>
                     </label>
                 </fieldset>
 

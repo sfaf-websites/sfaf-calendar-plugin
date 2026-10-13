@@ -2198,8 +2198,7 @@ class SFAF_Recurrence {
                  */
                 ?>
                 <p class="uc-hint">
-                    No end date creates a year of dates. Generation happens once, so there is no pattern left running
-                    afterwards; add more dates later from the series screen.
+                    Leave the end date empty for a year of dates, and add more later from the series screen.
                 </p>
             </div>
 
@@ -2257,8 +2256,7 @@ class SFAF_Recurrence {
                 </div>
 
                 <p class="uc-hint" data-uc-dates-hint>
-                    Every date here becomes its own event, at the same start and end time, in the same group as the
-                    rest. A date the pattern already covers is not added twice.
+                    Add any date the pattern misses, and each becomes its own event at the same times.
                 </p>
             </div>
 

@@ -1644,13 +1644,12 @@ class SFAF_Request {
              */
             ?>
             <p class="uc-hint uc-request-who-line">
-                Asking as <strong><?php echo esc_html( $email ); ?></strong>.
-                <a href="<?php echo esc_url( add_query_arg( 'uc_switch', '1', self::start_url() ) ); ?>">Not you? Use a different address</a>
+                Asking as <strong><?php echo esc_html( $email ); ?></strong>; if that is not you,
+                <a href="<?php echo esc_url( add_query_arg( 'uc_switch', '1', self::start_url() ) ); ?>">use a different address</a>.
             </p>
             <?php if ( $remembered ) : ?>
                 <p class="uc-hint">
-                    This browser will remember you for <?php echo (int) self::COOKIE_DAYS; ?> days, so you can come
-                    straight back to this form.
+                    Come straight back to this form from this browser for the next <?php echo (int) self::COOKIE_DAYS; ?> days.
                 </p>
             <?php endif; ?>
 
@@ -1775,7 +1774,7 @@ class SFAF_Request {
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                            <span class="uc-hint">Choosing one uses that series' photo unless you pick a picture below.</span>
+                            <span class="uc-hint">Pick a picture below to use one other than the series' photo.</span>
                         </label>
 
                         <?php
@@ -1830,7 +1829,7 @@ class SFAF_Request {
                                 <button type="button" class="uc-btn uc-btn-sm" data-uc-prefill-none>Start from scratch</button>
                             </div>
                             <p class="uc-flash uc-prefill-said" data-uc-prefill-said role="status" hidden></p>
-                            <p class="uc-hint">The date is never filled in.</p>
+                            <p class="uc-hint">Choose the date yourself, because it is never filled in.</p>
                         </div>
 
                         <script type="application/json" data-uc-request-prefill-data><?php
@@ -1880,7 +1879,7 @@ class SFAF_Request {
                         array( 'rows' => 6, 'required' => SFAF_Submissions::is_required( $req, 'description', $req_vals ) )
                     );
                     ?>
-                    <span class="uc-hint">What it is, who it is for, and what somebody should expect.</span>
+                    <span class="uc-hint">Say what it is, who it is for, and what somebody should expect.</span>
                     <?php self::field_error( $err( 'description' ) ); ?>
                 </div>
 
@@ -1898,7 +1897,7 @@ class SFAF_Request {
                     <span class="uc-field-label">Video</span>
                     <input type="url" name="video_url" maxlength="300" value="<?php echo esc_attr( $v( 'video' ) ); ?>"
                            placeholder="https://www.youtube.com/watch?v=&hellip;" />
-                    <span class="uc-hint">A YouTube or Vimeo link. Paste the address from the browser bar, not embed code.</span>
+                    <span class="uc-hint">Paste a YouTube or Vimeo address from the browser bar, not embed code.</span>
                     <?php self::field_error( $err( 'video_url' ) ); ?>
                 </label>
 
@@ -2012,7 +2011,7 @@ class SFAF_Request {
                     <span class="uc-field-label">If somewhere else, the place name</span>
                     <input type="text" name="venue_name" maxlength="120" value="<?php echo esc_attr( $v( 'venue_name' ) ); ?>"
                            placeholder="Strut" />
-                    <span class="uc-hint">Shown above the address on the event page. It does not add the place to the venue list.</span>
+                    <span class="uc-hint">Name the place as it should appear above the address; it is not added to the venue list.</span>
                 </label>
                 <label class="uc-field">
                     <span class="uc-field-label">If somewhere else, the address</span>
@@ -2031,7 +2030,7 @@ class SFAF_Request {
                 <label class="uc-field">
                     <span class="uc-field-label">How many places, if there is a limit</span>
                     <input type="number" name="capacity" min="0" max="100000" placeholder="No limit" value="<?php echo esc_attr( (string) $v( 'capacity' ) ); ?>" />
-                    <span class="uc-hint">0 sends everybody to the waitlist.</span>
+                    <span class="uc-hint">Leave it empty for no limit, or enter 0 to send everybody to the waitlist.</span>
                     <?php self::field_error( $err( 'capacity' ) ); ?>
                 </label>
                 </fieldset>
@@ -2064,7 +2063,7 @@ class SFAF_Request {
                 ?>
                 <fieldset class="uc-form-section-group">
                     <legend class="uc-field-group-title">Questions people often ask</legend>
-                    <p class="uc-hint">Parking, what to bring, whether to book. Leave it empty if there is nothing.</p>
+                    <p class="uc-hint">Add parking, what to bring or whether to book, or leave it empty.</p>
 
                     <?php if ( ! empty( $faq_sets ) ) : ?>
                         <label class="uc-field uc-faq-set-pick">
@@ -2079,7 +2078,7 @@ class SFAF_Request {
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                            <span class="uc-hint">Its questions are copied in, ahead of any you add below. Editing the set later does not change this event.</span>
+                            <span class="uc-hint">Add your own questions below; the set's are copied in first, and later edits to the set do not change them.</span>
                         </label>
 
                         <?php
@@ -2216,8 +2215,7 @@ class SFAF_Request {
         <fieldset class="uc-form-section-group uc-request-teams">
             <legend class="uc-field-group-title">Who should be able to edit it</legend>
             <p class="uc-hint">
-                Choose up to <?php echo (int) $cap; ?>. Anyone on a team you choose can open this event in the
-                calendar tool. Leave it empty and only the MarCom team can.
+                Choose up to <?php echo (int) $cap; ?> teams whose members may open this event in the calendar tool, or none to leave it with the MarCom team.
             </p>
             <?php self::field_error( $error ); ?>
             <div class="uc-picker-options">
@@ -2263,8 +2261,7 @@ class SFAF_Request {
             <legend class="uc-field-group-title">Event Image</legend>
             <?php if ( ! $any ) : ?>
                 <p class="uc-hint">
-                    There are no calendar pictures to choose from yet. Ask Roxane Chicoine for an image for
-                    your event, or send this without a picture and say so in the notes.
+                    Ask Roxane Chicoine for an image for your event, or send this without a picture and say so in the notes.
                 </p>
             <?php else : ?>
                 <?php SFAF_Media::picker( array(
@@ -2273,7 +2270,7 @@ class SFAF_Request {
                     'series' => (int) $series,
                 ) ); ?>
                 <p class="uc-hint">
-                    Nothing here suitable? Ask <strong>Roxane Chicoine</strong> for an image for your event.
+                    Ask <strong>Roxane Chicoine</strong> for an image if nothing here suits your event.
                 </p>
             <?php endif; ?>
 
