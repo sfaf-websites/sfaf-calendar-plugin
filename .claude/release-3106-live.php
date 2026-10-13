@@ -426,7 +426,8 @@ if ( in_array( '--run', array_slice( $argv, 1 ), true ) ) {
     }
     rl_check( 'Join the waitlist' === $v( 'vol-desktop', 'reg' )['text'] ? false : true, 'vol-desktop: an event with room says Join the waitlist' );
     $hr = (array) $v( 'wait-hybrid', 'reg' );
-    rl_check( isset( $hr['text'] ) && 'RSVP' === $hr['text'], 'wait-hybrid: a hybrid event with online open does not say RSVP: ' . json_encode( isset( $hr['text'] ) ? $hr['text'] : null ) );
+    // Register since 3.111.0, which took RSVP off every public button.
+    rl_check( isset( $hr['text'] ) && 'Register' === $hr['text'], 'wait-hybrid: a hybrid event with online open does not say Register: ' . json_encode( isset( $hr['text'] ) ? $hr['text'] : null ) );
     rl_check( array( 'heading' => 'Join the waitlist', 'submit' => 'Join the waitlist' ) === $v( 'wait-hybrid', 'inPerson' ), 'wait-hybrid: picking the full in person does not offer the waitlist: ' . json_encode( $v( 'wait-hybrid', 'inPerson' ) ) );
     rl_check( array( 'heading' => 'Register for this Event', 'submit' => 'Register Now' ) === $v( 'wait-hybrid', 'online' ), 'wait-hybrid: picking online with room does not offer Register: ' . json_encode( $v( 'wait-hybrid', 'online' ) ) );
 

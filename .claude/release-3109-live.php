@@ -208,7 +208,8 @@ foreach ( array( 'desktop', 'phone' ) as $wn ) {
         && 'That is not your current password.' === $pwd['error'], "C.2: prefs-$wn: " . json_encode( $pwd ) );
 }
 $lo = $v( 'listed-desktop', 'other' );
-rn_check( is_array( $lo ) && ! in_array( 'uc_private', $lo, true ) && count( $lo ) > 0, 'A.3: an event with listing details lost Other details, or it still holds the private tick: ' . json_encode( $lo ) );
+/* 3.111.0: no Other details card at all; the listing details are in Registration and Event details. */
+rn_check( null === $lo, 'A.3: an event with listing details still has an Other details card: ' . json_encode( $lo ) );
 
 if ( $shots ) {
     @mkdir( __DIR__ . '/screens' );

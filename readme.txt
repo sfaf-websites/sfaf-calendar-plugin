@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.110.5
+Stable tag: 3.111.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -548,6 +548,7 @@ restriction is what makes a key that is visible by design safe to have visible.
 **COST, AGE RANGE AND CONTACT** are on every event: Cost in the Registration card, 40 characters, and Age range and Contact in Event details. The event page labels them Cost, Ages and Contact, after the place. The Other details card is gone. Schema 14 moves an old single contact line into Contact's Name and a community form's registration link into Register on another site, once.
 
 **THE PUBLIC FORMS.** Any other pictures is off both forms; pictures already sent stay under Submitted on Images. The community form's registration link becomes Register on another site, its venue website has a box on the editor's Location card, and its typed cost is 40 characters. Every helper line on both forms is one sentence that says what to do.
+
 = 3.110.5 =
 
 **Nothing typed into caladmin is lost to an expired sign-in.**
