@@ -414,15 +414,9 @@ class SFAF_Uploads {
          * renamed image or a script called flyer.pdf is refused here.
          */
         if ( $pdf ) {
-            if ( $bytes > self::PDF_BYTES ) {
-                return $no( self::PDF_RULE_MESSAGE );
-            }
-            $head = (string) @file_get_contents( $tmp, false, null, 0, 5 );
-            if ( '%PDF-' !== $head ) {
-                return $no( self::PDF_RULE_MESSAGE );
-            }
-            if ( 'application/pdf' !== self::pdf_type( $tmp ) ) {
-                return $no( self::PDF_RULE_MESSAGE );
+            $broken = self::pdf_rule_error( $tmp, (int) $bytes );
+            if ( '' !== $broken ) {
+                return $no( $broken );
             }
             return array( 'ok' => true, 'error' => '', 'warning' => '', 'type' => 0, 'mime' => 'application/pdf', 'width' => 0, 'height' => 0 );
         }
@@ -612,6 +606,28 @@ class SFAF_Uploads {
         $mime = @finfo_file( $finfo, $path );
         finfo_close( $finfo );
         return is_string( $mime ) ? strtolower( trim( $mime ) ) : '';
+    }
+
+    /**
+     * THE ATTACHMENT RULE, decided on the file itself (3.111.0): at most
+     * PDF_BYTES, opening with the PDF signature, and finfo agreeing. '' when
+     * the file passes, PDF_RULE_MESSAGE when it does not.
+     *
+     * @param string $path  The file on disk.
+     * @param int    $bytes Its size, measured from the disk.
+     * @return string
+     */
+    public static function pdf_rule_error( $path, $bytes ) {
+        if ( $bytes < 1 || $bytes > self::PDF_BYTES ) {
+            return self::PDF_RULE_MESSAGE;
+        }
+        if ( '%PDF-' !== (string) @file_get_contents( $path, false, null, 0, 5 ) ) {
+            return self::PDF_RULE_MESSAGE;
+        }
+        if ( 'application/pdf' !== self::pdf_type( $path ) ) {
+            return self::PDF_RULE_MESSAGE;
+        }
+        return '';
     }
 
     /**

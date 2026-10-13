@@ -55,7 +55,11 @@ class WP_Error { public $m; public $c; function __construct( $c = '', $m = '' ) 
 class WP_Post { public $ID = 0; public $post_title = ''; public $post_type = 'uc_event'; public $post_status = 'draft'; public $post_content = ''; public $post_author = 0; public $post_name = ''; public $post_parent = 0; public $post_date = '2026-09-01 00:00:00'; }
 class WP_User { public $ID = 1; public $user_login = 'admin'; public $user_pass = '$P$kit'; public $user_email = 'admin@sfaf.org'; public $display_name = 'Admin'; public $roles = array( 'administrator' ); function has_cap( $c ) { return true; } function exists() { return true; } }
 class WP_Term { public $term_id; public $name; public $slug; public $taxonomy; public $count = 0; public $description = ''; public $parent = 0; public $term_taxonomy_id; }
-class WP_Query { public $posts = array(); public $found_posts = 0; public $max_num_pages = 0; function __construct( $a = array() ) { if ( ! empty( $GLOBALS['kit_query'] ) ) { $this->posts = (array) call_user_func( $GLOBALS['kit_query'], $a ); $this->found_posts = count( $this->posts ); } } function have_posts() { return false; } }
+/* THE LOOP IS OPT-IN (3.111.0): with $GLOBALS['kit_loop'] true, have_posts()
+   and the_post() walk the rows and get_the_ID() answers, so a list renders its
+   cards; off, as every check before it was written, no row is drawn. */
+class WP_Query { public $posts = array(); public $found_posts = 0; public $max_num_pages = 0; private $at = -1; function __construct( $a = array() ) { if ( ! empty( $GLOBALS['kit_query'] ) ) { $this->posts = (array) call_user_func( $GLOBALS['kit_query'], $a ); $this->found_posts = count( $this->posts ); $this->max_num_pages = ( ! empty( $GLOBALS['kit_loop'] ) && $this->posts ) ? 1 : 0; } } function have_posts() { return ! empty( $GLOBALS['kit_loop'] ) && $this->at + 1 < count( $this->posts ); } function the_post() { $this->at++; $p = $this->posts[ $this->at ]; $GLOBALS['kit_current'] = is_object( $p ) ? (int) $p->ID : (int) $p; } }
+if ( ! function_exists( 'get_the_ID' ) ) { function get_the_ID() { return isset( $GLOBALS['kit_current'] ) ? (int) $GLOBALS['kit_current'] : 0; } }
 class wpdb {
     public $prefix = 'wp_'; public $posts = 'wp_posts'; public $postmeta = 'wp_postmeta'; public $terms = 'wp_terms';
     public $term_taxonomy = 'wp_term_taxonomy'; public $term_relationships = 'wp_term_relationships';
@@ -272,7 +276,8 @@ function get_post_thumbnail_id( $id = 0 ) { return empty( $GLOBALS['kit_thumbs']
 function set_post_thumbnail( $id, $t ) { if ( ! empty( $GLOBALS['kit_thumbs'] ) ) { update_post_meta( (int) $id, '_thumbnail_id', (int) $t ); } return true; }
 function delete_post_thumbnail( $id ) { if ( ! empty( $GLOBALS['kit_thumbs'] ) ) { delete_post_meta( (int) $id, '_thumbnail_id' ); } return true; }
 function wp_get_attachment_image_url( $i, $s = '' ) { return isset( $GLOBALS['kit_images'][ (int) $i ] ) ? $GLOBALS['kit_images'][ (int) $i ] : ''; }
-function wp_get_attachment_url( $i ) { return ''; }
+/* A file's address when $GLOBALS['kit_files'] names one (3.111.0), else ''. */
+function wp_get_attachment_url( $i ) { return isset( $GLOBALS['kit_files'][ (int) $i ] ) ? $GLOBALS['kit_files'][ (int) $i ] : ''; }
 function get_attached_file( $i ) { return ''; }
 function get_transient( $k ) { return isset( $GLOBALS['kit_trans'][ $k ] ) ? $GLOBALS['kit_trans'][ $k ] : false; }
 function set_transient( $k, $v, $e = 0 ) { $GLOBALS['kit_trans'][ $k ] = $v; return true; }
