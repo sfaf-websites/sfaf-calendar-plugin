@@ -171,7 +171,14 @@
                         <textarea name="organizer_description" rows="2"></textarea>
                         <span class="uc-hint uc-hint-spec">Not shown on the event page. It is here for whoever reads this list next.</span>
                     </label>
-                    <div class="uc-form-actions">
+                            <label class="uc-field">
+            <span class="uc-field-label">Review team</span>
+            <select name="organizer_review_team">
+                <option value="">None, admins only</option>
+                            </select>
+            <span class="uc-hint">Choose the team whose editors approve this organizer's submissions, unless the series has a default team.</span>
+        </label>
+                            <div class="uc-form-actions">
                         <button type="submit" class="uc-btn uc-btn-primary">Add organizer</button>
                     </div>
                 </form>
@@ -189,7 +196,7 @@
                             <span class="uc-muted">
                                 1 event                                &middot; <code>alpha</code>
                             </span>
-                                                    </div>
+                                                                                                            </div>
 
                         <div class="uc-organizer-actions">
                                                                                             <a class="uc-btn uc-btn-sm"
@@ -213,7 +220,14 @@
                                         <span class="uc-field-label">Description (optional)</span>
                                         <textarea name="organizer_description" rows="2"></textarea>
                                     </label>
-                                                                                <label class="uc-field uc-slug-field">
+                                                                                <label class="uc-field">
+            <span class="uc-field-label">Review team</span>
+            <select name="organizer_review_team">
+                <option value="">None, admins only</option>
+                            </select>
+            <span class="uc-hint">Choose the team whose editors approve this organizer's submissions, unless the series has a default team.</span>
+        </label>
+                                                    <label class="uc-field uc-slug-field">
             <span class="uc-field-label">Slug</span>
             <input type="text" name="organizer_slug" value="alpha"
                    maxlength="190" autocomplete="off" spellcheck="false" required />
@@ -244,7 +258,7 @@
                             <span class="uc-muted">
                                 1 event                                &middot; <code>beta</code>
                             </span>
-                                                    </div>
+                                                                                                            </div>
 
                         <div class="uc-organizer-actions">
                                                                                             <a class="uc-btn uc-btn-sm"
@@ -268,7 +282,14 @@
                                         <span class="uc-field-label">Description (optional)</span>
                                         <textarea name="organizer_description" rows="2"></textarea>
                                     </label>
-                                                                                <label class="uc-field uc-slug-field">
+                                                                                <label class="uc-field">
+            <span class="uc-field-label">Review team</span>
+            <select name="organizer_review_team">
+                <option value="">None, admins only</option>
+                            </select>
+            <span class="uc-hint">Choose the team whose editors approve this organizer's submissions, unless the series has a default team.</span>
+        </label>
+                                                    <label class="uc-field uc-slug-field">
             <span class="uc-field-label">Slug</span>
             <input type="text" name="organizer_slug" value="beta"
                    maxlength="190" autocomplete="off" spellcheck="false" required />

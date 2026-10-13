@@ -1015,12 +1015,11 @@ Retaken for 3.107.1 with the series card first in the main column.
 | | Title | `title` |
 | | Schedule | `schedule` |
 | | Location | `location` |
-| | Registration | `registration` |
-| | Event details | `details` |
+| | Registration (Cost first, from 3.111.0) | `registration` |
+| | Event details (Age range, Contact and the Attachment last, from 3.111.0) | `details` |
 | | FAQs | `faqs` |
 | | Classification | `classification` |
 | | Notifications (native events) | `notifications` |
-| | Other details (the catch-all: since 3.109.0 only the listing details of a submitted event, and drawn only then) | `other-details` |
 | Side | Links | `links` |
 | | Display | `display` |
 | | Who can find this event (3.110.0) | `privacy` |
@@ -1437,6 +1436,50 @@ colour as every other step-in-the-job note.
 card's tick and a tag's x, the editor's picture Remove and a chip's x reach 44px
 with an absolute `::after` hit area, the "?" buttons' method, so nothing changes
 size; the upload control and both active ticks have a 44px minimum height.
+
+### Pins, the PDF, three detail lines, a reviewer's Pending (3.111.0)
+
+Measured in Chrome by `.claude/release-31110-live.php` at 1280px, 430px and
+390px: the sidebar and the list with a pinned event, the event page with an
+attachment and the three detail lines, both public forms, Edit event and a
+reviewer's Pending. Screenshots in `.claude/screens/`,
+`release-31110-<page>-<width>.png`.
+
+**Featured** is the Cancelled label's shape in the teal ink: Montserrat 12/800,
+0.04em tracking, uppercase, `--uc-teal-text` (5.4:1 on white), a block above the
+title of the sidebar row, the list row or the compact card. The word carries it;
+no tint, edge, badge or icon is added, because DESIGN.md's decoration rule keeps
+colour where colour is the sole carrier, and here the word is.
+
+**The attachment button** is the secondary action button, `.uc-actionbtn-secondary`:
+1px `--uc-teal-text` edge and label on white, the teal fill on hover, Register's
+height (34px on a desktop, 44px under the phone rule). Under the description on
+the event page, 20px above it; under the byline on a list row, 8px above it. It
+wraps rather than running off a narrow column.
+
+**Cost, Ages and Contact** are three more lines of the event card's fact list,
+each with its word in 700 before the value in the value's own colour, after the
+place. Nothing else changed in the list.
+
+**No count.** The capacity bar and its line are gone from the event card; the
+card is the button alone. A list row's note says "Full" in the note's existing
+style, and nothing when there are places.
+
+**The Attachment control** in Event details is the picture upload's outlined
+label, `.uc-outline-btn.uc-image-upload` with the file input hidden inside it,
+"+ Upload a PDF" or "Replace the PDF", then the rule's sentence as a hint and a
+standard text field for the label. A chosen file is named in a hint under it.
+
+**A reviewer's Pending** is the queue's own row with no tick, no edit link and
+no manager panel: the picture, the title and its badge, the meta line, "Read the
+description" as a standard disclosure, and Approve and Reject with their
+dialogs. **To review** on the dashboard is a stat card that is a link: the
+accent number and label, the card's edge turning `--uc-accent-text` on hover and
+focus.
+
+**The generator's Pin an event** is a search box over a list of upcoming events,
+220px tall at most and scrolling, one standard tick per event with its date at
+the right of the row.
 
 ---
 

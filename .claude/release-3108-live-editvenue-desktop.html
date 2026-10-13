@@ -464,8 +464,7 @@
                     <span>occurrences</span>
                 </label>
                                 <p class="uc-hint">
-                    No end date creates a year of dates. Generation happens once, so there is no pattern left running
-                    afterwards; add more dates later from the series screen.
+                    Leave the end date empty for a year of dates, and add more later from the series screen.
                 </p>
             </div>
 
@@ -492,8 +491,7 @@
                                     </div>
 
                 <p class="uc-hint" data-uc-dates-hint>
-                    Every date here becomes its own event, at the same start and end time, in the same group as the
-                    rest. A date the pattern already covers is not added twice.
+                    Add any date the pattern misses, and each becomes its own event at the same times.
                 </p>
             </div>
 
@@ -595,11 +593,24 @@
                 </div>
                                             </div>
             </div>                    </div>
-                        </section>
+                                                            <input type="hidden" name="uc_venue_site_present" value="1" />
+            <label class="uc-field">
+                <span class="uc-field-label">Venue website</span>
+                <input type="url" name="venue_website" maxlength="500" placeholder="https://" value="" />
+                <span class="uc-hint">Shown beside the address. Not shown on an online event.</span>
+            </label>
+                            </section>
 
                                 <section class="uc-bento-card uc-registration-card" data-uc-card="registration" data-uc-registration>
                     <h2 class="uc-bento-title">Registration</h2>
-                    <div class="uc-reg-choice" data-uc-reg-choice data-uc-reg-series="{&quot;11&quot;:{&quot;mode&quot;:&quot;here&quot;,&quot;url&quot;:&quot;&quot;},&quot;12&quot;:{&quot;mode&quot;:&quot;here&quot;,&quot;url&quot;:&quot;&quot;}}" data-uc-reg-own="0">        <fieldset class="uc-reg-where" data-uc-reg-where>
+                                                    <input type="hidden" name="uc_cost_present" value="1" />
+            <label class="uc-field uc-cost-field">
+                <span class="uc-field-label">Cost</span>
+                <input type="text" name="listing_cost" maxlength="40"
+                       value="" />
+                <span class="uc-hint">Leave it empty to show no cost.</span>
+            </label>
+                                <div class="uc-reg-choice" data-uc-reg-choice data-uc-reg-series="{&quot;11&quot;:{&quot;mode&quot;:&quot;here&quot;,&quot;url&quot;:&quot;&quot;},&quot;12&quot;:{&quot;mode&quot;:&quot;here&quot;,&quot;url&quot;:&quot;&quot;}}" data-uc-reg-own="0">        <fieldset class="uc-reg-where" data-uc-reg-where>
             <legend class="uc-field-label">Where people register</legend>
             <input type="hidden" name="reg_mode_present" value="1" />
             <div class="uc-seg" role="radiogroup" aria-label="Where people register">
@@ -1006,6 +1017,46 @@
             <input type="checkbox" name="video_none" value="1"  data-uc-video-none />
             Don't show the series video on this event
         </label>
+                                                        <input type="hidden" name="uc_details_extra_present" value="1" />
+        <label class="uc-field">
+            <span class="uc-field-label">Age range</span>
+            <input type="text" name="listing_age" maxlength="120" value="" />
+        </label>
+        <fieldset class="uc-field uc-contact-group">
+            <legend class="uc-field-label">Contact</legend>
+            <span class="uc-hint">Shown on the event page. Leave all three empty for no contact line.</span>
+            <label class="uc-field">
+                <span class="uc-field-label">Name</span>
+                <input type="text" name="contact_name" maxlength="120" value="" />
+            </label>
+            <label class="uc-field">
+                <span class="uc-field-label">Email</span>
+                <input type="email" name="contact_email" maxlength="200" value="" />
+            </label>
+            <label class="uc-field">
+                <span class="uc-field-label">Phone</span>
+                <input type="text" name="contact_phone" maxlength="60" value="" />
+            </label>
+        </fieldset>
+                                    <fieldset class="uc-field uc-attachment-field" data-uc-attachment-field>
+            <legend class="uc-field-label">Attachment</legend>
+            <input type="hidden" name="uc_attachment_present" value="1" />
+                                    <label class="uc-outline-btn uc-image-upload uc-attachment-upload">
+                <span>+ Upload a PDF</span>
+                <input type="file" name="uc_attachment_file" accept="application/pdf,.pdf"
+                       class="uc-visually-hidden" data-uc-attachment-file
+                       data-uc-max-bytes="5242880"
+                       data-uc-rule-message="Attachments must be a PDF under 5MB." />
+            </label>
+            <p class="uc-hint" data-uc-attachment-chosen hidden></p>
+            <p class="uc-hint uc-hint-error" role="alert" data-uc-attachment-error hidden></p>
+            <p class="uc-hint">Attachments must be a PDF under 5MB.</p>
+            <label class="uc-field">
+                <span class="uc-field-label">Button label</span>
+                <input type="text" name="attachment_label" maxlength="60"
+                       value="" placeholder="Download event flyer" />
+            </label>
+        </fieldset>
                         </section>
 
                                 <section class="uc-bento-card uc-faq-card" data-uc-card="faqs">
@@ -1232,7 +1283,7 @@
                 </div>
                                     </section>
                 
-                
+
             </div>
                         <div class="uc-bento-side">                                                <section class="uc-bento-card" data-uc-card="links" data-uc-donate>
                     <h2 class="uc-bento-title">Links</h2>

@@ -32,9 +32,11 @@
              data-filter-series="0"
              data-filter-venue=""
                           data-filter-s=""
+                          data-pin=""
+             data-filter-pin=""
              data-pagination="load_more"
              data-page="1"
-                                       data-month="2026-10-14 18:58:57"
+                                       data-month="2026-10-13 21:43:34"
              data-max-pages="1">
 
                                                 <form class="uc-filter-form" method="get" action="" data-uc-filter-form>
@@ -77,12 +79,12 @@
                 <span class="uc-who-label" data-uc-who-label>Organizers and groups</span>
                 <svg class="sfaf-icon sfaf-icon-chevron uc-who-chevron" width="1em" height="1em" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg>            </summary>
 
-            <div class="uc-who-panel" id="uc-who-9564" data-uc-who-panel>
+            <div class="uc-who-panel" id="uc-who-6818" data-uc-who-panel>
                                 <button type="button" class="uc-who-clear" data-uc-who-clear>Clear all</button>
                                 <div class="uc-who-cols">
                                             <section class="uc-who-col uc-who-col-org">
-                            <p class="uc-who-heading" id="uc-who-9564-org">Organizers</p>
-                            <div class="uc-who-list" role="group" aria-labelledby="uc-who-9564-org">
+                            <p class="uc-who-heading" id="uc-who-6818-org">Organizers</p>
+                            <div class="uc-who-list" role="group" aria-labelledby="uc-who-6818-org">
                                                                     <label class="uc-who-opt">
                                         <input type="checkbox" name="uc_org[]"
                                                value="sfaf"
@@ -888,6 +890,8 @@ jQuery.ajax = function () {
             series:         $block.attr('data-filter-series') || '',
             venue:          $block.attr('data-filter-venue') || '',
             s:              $block.attr('data-filter-s') || '',
+            // The pins this page drew, so the next page leaves them out (3.111.0).
+            pin:            $block.attr('data-filter-pin') || '',
             render:         $block.attr('data-render') || 'card'
         };
     }
@@ -1325,6 +1329,8 @@ jQuery.ajax = function () {
             series:          $block.attr('data-filter-series') || '',
             venue:           $block.attr('data-filter-venue') || '',
             s:               $block.attr('data-filter-s') || '',
+            // The block's own pins; the server sets them aside while a visitor narrows.
+            pin:             $block.attr('data-pin') || '',
             layout:          ($block.attr('data-render') === 'compact') ? 'compact' : 'cards',
             view:            $block.attr('data-view') || 'list',
             month:           $block.find('.uc-month').attr('data-month') || $block.attr('data-month') || '',
@@ -2350,25 +2356,6 @@ jQuery.ajax = function () {
                     $('.uc-rsvp-form-view').hide();
                     $('#uc-rsvp-success').show();
 
-                    // Update the capacity bar and count on the card
-                    if (response.count !== undefined) {
-                        var card = $('.uc-rsvp-btn[data-event-id="' + currentEventId + '"]').closest('.uc-event-card');
-                        var capacityText = card.find('.uc-capacity-text');
-                        var capacityFill = card.find('.uc-capacity-fill');
-                        
-                        if (capacityText.length) {
-                            var text = capacityText.text();
-                            // Update count in "X/Y spots filled" or "X registered"
-                            if (text.indexOf('/') > -1) {
-                                var parts = text.split('/');
-                                var total = parseInt(parts[1]);
-                                capacityText.text(response.count + '/' + total + ' spots filled');
-                                capacityFill.css('width', Math.min((response.count / total) * 100, 100) + '%');
-                            } else {
-                                capacityText.text(response.count + ' registered');
-                            }
-                        }
-                    }
                 } else {
                     $('#uc-rsvp-error').text(response.message || 'Something went wrong.').show();
                     btn.prop('disabled', false).text(submitLabel());

@@ -4,37 +4,38 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-14, at 3.110.5, released ahead of 3.111.0.
+**Last updated:** 2026-10-14, at 3.111.0, rebased on 3.110.5 and not yet released.
 
 ---
 
 ## What shipped last
 
-**3.110.5, from the 3.110.4 code**: nothing typed into caladmin is lost to an
-expired sign-in: browser drafts, a check before every post, a session-ended page,
-and a keepalive, so **an open caladmin tab never signs out on its own**
-(`PROJECT.md` 5, `TESTING.md` 1.248 to 1.252, 2.52). **3.110.4**: See all events
-to the Calendar home, filtered; Strut by prefix (1.245 to 1.247, 2.51).
+**3.111.0**: pinned events on an embed; **no registration count on any public
+page**; submissions reviewed by the editors of a review team (Review team on
+Organizers, `PROJECT.md` 5); Email registrants in the description's editor; one
+PDF per event in `calendar-files/`; Cost, Age range and Contact on every event,
+the Other details card gone and **schema 14** moving two old keys; Any other
+pictures off both forms (`TESTING.md` 1.253 to 1.261, 2.53, 2.54). **3.110.5**,
+released first: nothing typed into caladmin is lost to an expired sign-in, and
+**an open caladmin tab never signs out on its own** (`PROJECT.md` 5, 1.248 to
+1.252, 2.52). **3.110.4**, **3.110.3**: See all events, Strut, pictures (1.235 to 1.247).
 > **3.110.1: EDITORS NO LONGER HAVE EVERY EVENT.** A team decides which events a
 > person has; their level decides what they can do on them (CLAUDE.md 7,
 > `PROJECT.md` 5). An editor has what they created and what **Team and
 > access** gives them, by team or by name, on the event or its series default.
 > Check every editor's My events first: `TESTING.md` **1.225** and **2.44**.
 > Notification teams still grant nothing, on Mark's decision.
-**3.110.1** also: the RSVP list reordered, **Register on another site**, Email
-Opt-ins and all registrations an admin's alone. **3.110.0**: check-in, **schema 13**.
+**3.110.1** also: **Register on another site**; Opt-ins an admin's. **3.110.0**: check-in, **schema 13**.
 > **THE WAITLIST NO LONGER OFFERS** (3.110.0): old offers rejoin the queue, `TESTING.md` **2.37**.
 > **CAPACITY: an empty box is no limit, 0 is no places** (3.107.0); schema 12
 > emptied every stored 0 once: `TESTING.md` **1.200**, `PROJECT.md` 2.
-**3.106.x**: Questions for registrants (schema 11), a waitlist, Email
-Templates, a Language, no author on public pages (`PROJECT.md` 3).
+**3.106.x**: questions (schema 11), waitlist, Email Templates, Language (`PROJECT.md` 3).
 > **THE SPANISH HAS NOT BEEN READ BY A SPANISH SPEAKER.** `EMAILS.md` is for that
 > review (`TESTING.md` 3); nothing is Spanish until an event or series is set to it.
 > **A BUILD NEEDS `.claude/fixtures/bylines/people.local.json`**, ignored by git,
 > holding the real name, logins and Windows account; without it the build
 > refuses. `PROJECT.md` 3.
-Earlier releases, and the reasoning for all of it: **`readme.txt` is the changelog**.
-**3.101.0 IMPORTS EVERYACTION**, with **Auto-Import off**.
+Earlier: **`readme.txt` is the changelog**. **3.101.0 IMPORTS EVERYACTION**, **Auto-Import off**.
 
 > **AN IMPORTED EVENT NEVER TAKES RSVPS HERE (3.97.0).** The tick is locked off,
 > a one-time pass switched it off where it was on, and **it deleted nobody**. A
@@ -47,7 +48,8 @@ Earlier releases, and the reasoning for all of it: **`readme.txt` is the changel
 > MARKUP**: Enter presses the first submit, and the order on screen is CSS `order`.
 
 **FOUR FOLDERS OF PICTURES, NONE INSIDE ANOTHER**: `calendar/` series pictures,
-`calendar-other/` Other images, `calendar-submissions/`, `calendar-descriptions/`.
+`calendar-other/` Other images, `calendar-submissions/`, `calendar-descriptions/`;
+and from 3.111.0 `calendar-files/` for PDFs, beside them.
 
 > **HYBRID EVENTS ARE SHIPPED, AND THREE THINGS ARE DELIBERATELY NOT IN THEM.**
 > A registrant cannot change format after registering, neither public form
@@ -83,8 +85,8 @@ Earlier releases, and the reasoning for all of it: **`readme.txt` is the changel
 
 ## In flight
 
-- **3.111.0 is built and unreleased**, on `wip-3.111.0` until it is rebased on
-  3.110.5; its own TESTING items follow 3.110.5's.
+- **3.111.0 is rebased on 3.110.5 and unreleased**, on `wip-3.111.0`; it needs
+  a build, the suite and a release from there.
 - **Following a series is half built.** 3.53.0 established the followers; nothing
   sends them. `PROJECT.md` 8, then `TESTING.md` 1.22.
 - **Automated fetching is ON and its own copy says it should not be**, and only
@@ -95,9 +97,10 @@ Earlier releases, and the reasoning for all of it: **`readme.txt` is the changel
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 303 items.** **1.249** (signed out
-with a form open) first, then **1.235**, **1.245**
-and **1.236** first (Strut's slug, See all events, retired names), then **1.225**,
+**`TESTING.md` holds the manual testing backlog: 314 items.** **1.249** (signed out
+with a form open) first, then **1.260** (that schema 14 ran), **1.255** (no count
+anywhere public) and **1.256** (a review team), then **1.235**, **1.245**
+and **1.236** (Strut's slug, See all events, retired names), then **1.225**,
 that editors have their events, then **1.218**,
 that schema 13 ran, then **2.37**, the old offers moved, then **1.200**, that
 schema 12 ran and no event became waitlist-only, then **1.197**, that

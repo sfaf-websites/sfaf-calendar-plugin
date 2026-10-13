@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 303 items.** Quick 249, needs real conditions 50, blocked on other
+**Outstanding: 314 items.** Quick 258, needs real conditions 52, blocked on other
 people 4.
 
 ---
@@ -3397,6 +3397,9 @@ box on a phone.
 
 **Why it needs a person:** the live forms on a real phone.
 
+**From 3.111.0 the line reads** "Upload a JPEG, PNG or WebP that is 1200 by 675
+pixels and under 500KB, or leave this empty." Look for that sentence instead.
+
 ### 1.247 The pending queue's line about pictures (3.110.4)
 
 With at least one event waiting, open **Pending Events**. Beside Publish and
@@ -3455,6 +3458,113 @@ download. You must get the same page saying "Your session had ended, so the
 download did not start. Sign in and start it again." and no file.
 
 **Why it needs a person:** the live download route.
+### 1.248 A pinned event on an embed and the shortcode (3.111.0)
+
+On a test page, paste a sidebar block and a list block from **Embed Code** with
+one upcoming event ticked under **Pin an event**. Both open on that event with
+"Featured" above its title, and it is not listed again further down. Load more
+on the list: it does not come back on page two. Search for something that does
+not match it: it goes, and clearing the search brings it back. Then pin a past
+or cancelled event by editing `data-pin` by hand: nothing breaks and nothing is
+marked. The same with `[sfaf_calendar view="sidebar" pin="ID"]`.
+
+**Why it needs a person:** a real embed on another page, and real events.
+
+### 1.249 The generator's Pin an event (3.111.0)
+
+On **Events > Embed Code**, under each display mode: **Pin an event** shows for
+List, Calendar and Sidebar and not for Combined. Type part of a title: the list
+narrows. Tick two: the block gains `data-pin="ID,ID"` and the comment above it
+says "with 2 pinned events first", and the preview draws them first. Say whether
+the list of upcoming events is usable at the real number.
+
+**Why it needs a person:** wp-admin on the live site with its real events.
+
+### 1.250 No registration count anywhere public (3.111.0)
+
+Find an event taking RSVPs with a limit and some registrations. On its event
+page the card shows **Register** (or **Join the waitlist** when full) and no
+bar and no number. Its list row says nothing about places, or "Full" when full.
+The sidebar, the month grid and its hover preview show no number either, on
+this site and in an embed. Register for it yourself: the confirmation shows no
+count. Then open caladmin: the counts are still on the events list and the RSVP
+list.
+
+**Why it needs a person:** a real event with real registrations, on the live
+pages.
+
+### 1.251 A submission reviewed by its team (3.111.0)
+
+On **Organizers**, give one organizer a **Review team** whose members include an
+editor you can sign in as. Submit a community event in a series whose events
+have that organizer and whose series has no default team. Signed in as that
+editor: **Pending** is in the sidebar with a count, the dashboard says **To
+review**, and Pending shows that submission alone, with no imports, Fetch, bulk
+bar or Edit link. Approve it, answering the dialog: the same notice an admin
+gets. Repeat with Reject. Then, as an editor not on that team, Pending is not
+in the sidebar, and posting an approval for that event by hand is refused.
+Try to delete the team on **Users & Teams**: refused, naming the organizer.
+
+**Why it needs a person:** two real accounts and a real submission.
+
+### 1.252 Email registrants in the description's editor (3.111.0)
+
+On an event's RSVP list, open **Email registrants**. The message box is the
+description's editor: Paragraph and Heading, bold, italic, both lists, link.
+Press a token chip with the cursor in the message: `{first_name}` lands there.
+Click the subject, then a chip: it lands in the subject. Paste an image into the
+message, then **Preview**: no image, and the heading and lists render in the
+wrapper. Send it to yourself only (an event where you are the one registrant):
+check it in Gmail and Outlook, and that the plain-text part has the list items
+on lines of their own.
+
+**Why it needs a person:** TinyMCE starting inside caladmin, and real mail
+clients.
+
+### 1.253 A PDF attachment, from upload to the public page (3.111.0)
+
+On Edit event, under Event details, **+ Upload a PDF**: choose a JPEG renamed to
+.pdf, then a PDF over 5MB. Both are refused with "Attachments must be a PDF under
+5MB." before Save. Choose a real PDF, type a label, Save. The event page shows
+the button under the description, with your label, opening the PDF in a new tab;
+the event's row in the list and in an embed shows it too. With no label it
+reads "Download event flyer". Then Remove and Save: the button goes, and the
+file is still in `wp-content/uploads/calendar-files/`. On a repeating event,
+attach on one and use **Apply to all upcoming**: every date shows it.
+
+**Why it needs a person:** a real upload on the live site.
+
+### 1.254 Cost, Age range and Contact on any event (3.111.0)
+
+On Add event: **Cost** is first in the Registration card whatever registration
+is set to; **Age range** and **Contact** are in Event details; there is no Other
+details card. Fill all three on a new event and publish: the event page's card
+shows "Cost", "Ages" and "Contact" lines after the place, and an emptied field
+takes its line away. On an event submitted before 3.111.0 with a long cost, save
+something else: the cost is unchanged.
+
+**Why it needs a person:** the live editor and event page.
+
+### 1.255 That schema 14 ran (3.111.0)
+
+After updating, check the option `sfaf_other_details_migration` exists (Tools
+or a database view) and note its `touched`. Open an event that had an old
+single contact line (submitted on 3.46.0): Contact's Name holds it and the page
+shows the same line. Open a community submission that gave a registration link:
+the Registration card says Register on another site with that link, and its
+page shows Register going there, unless it takes RSVPs here, in which case the
+link waits in the card.
+
+**Why it needs a person:** the live database and its old events.
+
+### 1.256 The two public forms, read (3.111.0)
+
+On both forms: there is no **Any other pictures**, and each grey helper line is
+one sentence telling somebody what to do. Say any that reads oddly. The
+community form's registration link and venue website now land on the editor's
+Registration and Location cards: submit one with both and look.
+
+**Why it needs a person:** the live forms, read by somebody.
 
 ## 2. Needs real conditionsWaiting for an unattended job to fire, a real removal at source, or a real event
 with real registrations and real mail.
@@ -4197,6 +4307,23 @@ new sign-in, and say so.
 
 **Why it needs real conditions:** two days of an open tab, and the site's own
 plugins watching cookies.
+### 2.52 A review team's editor gets the "new submission" email (3.111.0)
+
+When a real submission arrives for an organizer with a Review team, the
+team's editors get the email as well as the addresses on Settings, each their
+own copy, and the editors' "Or go straight to this submission" link opens their
+row in Pending rather than the editor. A submission with no organizer reaches
+the Settings addresses alone.
+
+**Why it needs real conditions:** a real submission and real mail.
+
+### 2.53 A PDF goes when the last event using it does (3.111.0)
+
+Trash a one-off event with an attachment, and one date of a repeating event
+whose dates share one. When WordPress empties its trash, the one-off's PDF is
+gone from `calendar-files/` and the shared one is still there.
+
+**Why it needs real conditions:** the trash emptying on its own schedule.
 
 ## 3. Blocked on other peopleNothing here can move until somebody outside the build answers.
 

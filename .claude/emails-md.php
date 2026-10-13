@@ -68,7 +68,7 @@ function emd_render() {
      */
     $out[] = '## Email registrants (a sample message)';
     $out[] = '';
-    $out[] = 'The organizer writes the subject and the message on the registrations list for each send. The subject is the heading; the message follows, then the event details and See the event page. This sample shows the layout around their words.';
+    $out[] = 'The organizer writes the subject and the message on the registrations list for each send, the message in the same editor as an event description: bold, italics, links, a heading and lists. The subject is the heading; the message follows, then the event details and See the event page. This sample shows the layout around their words.';
     $out[] = '';
     $rm = array();
     foreach ( array( 'en', 'es' ) as $lang ) {
@@ -77,7 +77,8 @@ function emd_render() {
             'email' => 'alex@example.org', 'token' => 'SAMPLE', 'format' => '' );
         $rm[ $lang ] = SFAF_Notifications::build( 'registrant_message', 0, $person, array( 'sample' => $smp,
             'subject' => 'Meeting point for {title}',
-            'body'    => "Hi {first_name},\n\nWe will meet at the <strong>front desk</strong>. The route is on <a href=\"https://www.sfaf.org/\">sfaf.org</a>." ) );
+            /* As the description's editor writes it (3.111.0): paragraphs, the one heading, a list. */
+            'body'    => '<p>Hi {first_name},</p><h3>Where to meet</h3><p>We will meet at the <strong>front desk</strong>.</p><ul><li>Bring water</li><li>Wear walking shoes</li></ul><p>The route is on <a href="https://www.sfaf.org/">sfaf.org</a>.</p>' ) );
     }
     $out[] = '| | English | Spanish |';
     $out[] = '|---|---|---|';

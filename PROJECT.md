@@ -449,8 +449,10 @@ third kind arrived: a community submission is a third badge, not a third queue.
 Chasing is a person's job, and a system that nags on somebody's behalf teaches
 people to filter it.
 
-**NOTHING DECIDES WHO COUNTS AS AN APPROVER EXCEPT THE ADMIN ROLE**, and
-there deliberately is no second list. Whoever holds Admin on the Users screen is
+**AN APPROVER IS AN ADMIN, OR AN EDITOR ON THE SUBMISSION'S REVIEW TEAM (3.111.0).**
+See "A submission's reviewers" in section 5; until then nothing but the admin
+role decided it, and the reasoning below is why the review team is a team and
+not a list of addresses. There deliberately is no second list. Whoever holds Admin on the Users screen is
 notified about requests and can approve them; adding somebody means giving them
 Admin, and removing them means taking it away. A separate list of approvers
 would be a second answer to the same question, free to disagree with the first
@@ -671,106 +673,104 @@ place to put the picture is a second place for it to be wrong.
 **THE PUBLIC CONTACT IS STORED TWICE AND ONE READER DECIDES.** 3.47.0 replaced
 `_uc_public_contact`, a single open box, with `_uc_contact_name`,
 `_uc_contact_email` and `_uc_contact_phone`. The old key is still read, because
-events submitted on 3.46.0 have one and there is no migration.
-`sfaf_event_public_contact()` is the single reader: **the three-part answer
+events submitted on 3.46.0 had one, and schema 14 (3.111.0) copied each into
+Contact's Name where the three were empty. `sfaf_event_public_contact()` is the single reader: **the three-part answer
 wins where it exists**, and anything that wants to show what a submitter gave
 asks that function rather than a meta key. The pending row read the old key
 directly for nineteen releases and rendered an empty line for it.
 
-> **caladmin's "Listing detail" card still reads and writes the OLD key**, in
-> `render_field()` and `save_event_from_post()`. On a submission from 3.47.0
-> onwards its "Contact shown publicly" box is therefore empty while the event
-> page shows a contact, and typing into it stores a value the page will not
-> prefer. **Reported, not changed:** whether that box edits the three fields or
-> stays a fourth is a decision, and its save path carries the `$offered`
-> guarantee. See "Open decisions" in `HANDOVER.md`.
+### Cost, Age range and Contact, on every event (3.111.0; the Listing detail card until then)
 
-### The Listing detail card, and its contact box
+**Cost is in the Registration card, and Age range and Contact (name, email,
+phone) are in Event details, on Add event and Edit event alike.** Until 3.111.0
+they were the "Listing detail" control in the Other details card, drawn only
+when one of them already had a value, so an event nobody had submitted could not
+be given a cost at all. The keys are the ones the community form writes and the
+event page reads: `_uc_cost`, `_uc_age_restriction`, `_uc_contact_name`,
+`_uc_contact_email`, `_uc_contact_phone`.
 
-**What the card is.** Four text fields, in the shared manager panel, so they
-appear identically on the **pending queue** and in the **event editor**: one
-render, one save, one list. They are the four lines a **community submission**
-puts on the public event page, offered so a manager can correct them, because
-the form that wrote them is not somewhere a stranger can go back to and a public
-typo would otherwise sit on the calendar permanently.
+| Field | Card | Meta | On the event page |
+|---|---|---|---|
+| Cost | Registration, first, whatever the event does about registering | `_uc_cost` | "Cost" line |
+| Age range | Event details | `_uc_age_restriction` | "Ages" line |
+| Contact | Event details | the three `_uc_contact_*` keys | "Contact" line, through `sfaf_event_public_contact()` |
+| Venue website | Location | `_uc_venue_website` | "Venue website", not on an online event |
 
-| Box | Meta | Where it is read |
-|---|---|---|
-| Cost | `_uc_cost` | `sfaf_event_cost()`, the event page's fact list |
-| Age restriction | `_uc_age_restriction` | `sfaf_event_age_restriction()`, same list |
-| **Contact shown publicly** | **`_uc_public_contact`** | **`sfaf_event_public_contact()`, but only as a fallback** |
-| Registration link | `_uc_rsvp_url` | `sfaf_event_rsvp_url()`, the "Register for this event" link |
+- **`render_listing_fields()` and `save_listing_fields()` in `SFAF_Portal`** draw
+  and save them. Each part posts its own marker (`uc_cost_present`,
+  `uc_details_extra_present`, `uc_venue_site_present`), so a screen that draws
+  one cannot blank another; an emptied box deletes its key.
+- **Cost is 40 characters, and a longer stored cost that nobody changed is
+  kept.** Values from before could be 120, and cutting one because its event
+  was saved for another reason would change what the page says. A changed value
+  is cut to 40. The community form's "Something else" box is 40 too.
+- **The email is sanitised as an email**, and one that is not an address is
+  dropped rather than published.
+- **The event page labels the three lines** "Cost", "Ages" and "Contact", after
+  the place, and a blank field draws no line: an event with no cost given is
+  not a free event.
 
-**When it is offered.** Only on a saved event, and only when **at least one of
-those four keys already has a value**, tested in `manager_panel_fields()`. Four
-empty boxes on every event would be four more things to read past. In practice
-**Cost is what makes it appear on a community submission**, because the form
-requires cost, so the card is present with an empty contact box rather than
-absent.
+**THE OTHER DETAILS CARD IS GONE, AND SO IS THE CATCH-ALL.** It drew whatever no
+card claimed, and the only thing it ever held was this control. The 3.2.0
+guarantee, that a field on the shared list cannot vanish from the editor, is
+held by `.claude/notifications-card-test.php` instead: it fails when a manager
+field the editor can offer is placed by no card.
 
-**The defect.** 3.47.0 replaced the single open contact box with three fields,
-`_uc_contact_name`, `_uc_contact_email` and `_uc_contact_phone`, and no public
-form has written `_uc_public_contact` since. `sfaf_event_public_contact()`
-prefers the three where they exist. So on every community submission from 3.47.0
-onwards, **the box is empty while the event page shows a contact**, and anything
-typed into it is stored and then not preferred: a manager corrects a typo, saves,
-and the page is unchanged, with nothing saying why. **A control that appears to
-work and silently discards what somebody typed is the worst shape this can
-take**, and it is worse than the pending panel's version of the same fault,
-which 3.67.0 fixed, because that one only failed to show.
+**SCHEMA 14 MOVED THE TWO OLD KEYS, ONCE** (`sfaf_migrate_other_details()`,
+under its own option like the capacity pass):
 
-**The three options, and the one that shipped.**
+- `_uc_public_contact`, the single box from before 3.47.0, is copied whole into
+  Contact's Name where all three are empty, then deleted. The page prints what
+  it printed, and it can be edited. Where the three already had a value, both
+  are left alone.
+- `_uc_rsvp_url`, the community form's registration link, becomes the event's
+  Register on another site link (`_uc_reg_url`), and the event is switched to
+  another site when it takes no RSVPs here and has made no choice of its own.
+  **An event taking RSVPs here keeps doing so**, with the link waiting in the
+  Registration card. The old key is deleted only once the new one holds the
+  value.
 
-1. **Make it edit the three fields.** One box in, three keys out, which means
-   parsing a line back into a name, an address and a phone number. Guessing
-   where a person's name stops is exactly what the 3.47.0 split was for.
-   Rejected.
-2. **Make it three boxes.** Honest and unambiguous: Name, Email, Phone in the
-   card, writing the three keys, with `_uc_public_contact` kept read-only as the
-   pre-3.47.0 fallback. **BUILT IN 3.72.0**, which is the state described below.
-3. **Take the box out and show the contact instead.** The three fields are
-   already visible on the pending panel from 3.67.0, so removing this box loses
-   the ability to CORRECT them, which is the reason the card exists.
+The community form's registration link has been written as Register on another
+site since 3.111.0, so nothing writes `_uc_rsvp_url`; `sfaf_event_rsvp_url()`
+still reads it and finds nothing.
 
-**Why 2 rather than the others.** The card's whole purpose is that a public value
-somebody outside SFAF wrote can be corrected, and the contact is the line most
-likely to need it. 1 cannot be done correctly and 3 gives up the purpose. The
-cost is one card row becoming three, which the simplification job can take up
-later.
+### What the public forms collect, and where each lands (3.111.0)
 
-**AS BUILT.** Three boxes writing `_uc_contact_name`, `_uc_contact_email` and
-`_uc_contact_phone`, which are the keys the community form has written since
-3.47.0 and the keys `sfaf_event_public_contact()` prefers. So what a manager
-types is what the event page prints, which is the whole of what was wrong.
+**The rule: every field a form collects has a home on the editor and a place it
+is shown, or it comes off the form.** Audited field by field in 3.111.0.
 
-**THE OLD KEY IS NEVER WRITTEN AND NEVER DELETED BY THIS SAVE**, and that is not
-timidity. Events submitted on 3.46.0 carry one and there is no migration; a
-manager saving this card without touching the contact must not lose an event's
-only public contact line. It is shown READ-ONLY, and **only where it is still the
-value being read**, which is where the three above it are all empty. Where they
-are filled in, the old value is doing nothing and a box labelled "not in use" is
-an invitation to work out why, so it is not drawn at all. Filling any of the
-three in is what supersedes it, by the reader's own preference rather than by
-anything deleting anything.
+| Field | Staff request | Community | Editor | Shown |
+|---|---|---|---|---|
+| Title, description, date, times | yes | yes | Title, Event details, Schedule | event page |
+| Series | chosen | from the URL | the series card | event page |
+| Categories, organizers | yes | organizers from the series | Classification | event page, filters |
+| Team | yes | no | Team and access | caladmin |
+| Place, venue, address | yes | yes | Location | event page |
+| Venue website | no | yes | Location, from 3.111.0 | event page |
+| Picture | picker or upload | picker or upload | Event details; an upload is filed at approval | event page |
+| Any other pictures | removed in 3.111.0 | removed in 3.111.0 | none | none |
+| Video | yes | no | Event details | event page |
+| RSVP, capacity | yes | capacity only | Registration | Register, Full |
+| Registration link | no | yes | Registration, Register on another site, from 3.111.0 | Register button |
+| Cost, age range, contact | no | yes | Registration and Event details, from 3.111.0 | Cost, Ages, Contact |
+| FAQs | set and rows | rows | FAQs | event page |
+| Repeat | yes | no | the series screen's schedule; read-only on the request panel | event page, once generated |
+| Notes | yes | yes | read-only on the request panel | caladmin only |
+| Who sent it | name, email | name, up to five emails | read-only on the request panel; the approval dialog | caladmin only |
 
-**THE EMAIL IS SANITISED AS AN EMAIL**, not as a line. It is printed on a public
-page and it is the one of the three that has a shape; an address that is not one
-is dropped rather than published, which is the answer the community form already
-gives.
+**Kept different, on purpose:** notes, the sender and the repeat are messages
+to whoever approves, not facts about the event, so the editor shows them
+read-only rather than as fields. **The staff form has never asked for cost, age
+range or contact**, and 3.111.0 did not add them: the brief said "as today", and
+today they are the community form's.
 
-> **THE SAVE PATH CARRIES THE `$offered` GUARANTEE, AND IT NOW COVERS SIX
-> FIELDS.** `uc_listing_detail_present` is the marker that makes an empty box
-> mean empty rather than "this screen did not ask", and an emptied box DELETES
-> the meta rather than storing `''`. One marker travels with the whole card, so
-> splitting one box into three added three fields depending on it rather than a
-> new guarantee. A screen that does not render the card posts no marker and its
-> save cannot blank a public line it never showed.
+**"Any other pictures" came off both forms.** Nothing used them: no picker
+offered them and approval filed none. Pictures already sent through it stay in
+`calendar-submissions/`, listed on the Images screen under Submitted and deleted
+with a rejected submission; `SFAF_Submit::extras()` still reads them.
 
-> **AND THE CARD'S OWN TRIGGER LIST HAD TO GROW WITH IT.**
-> `manager_panel_fields()` decides whether to offer the card by looking for a
-> value in the keys it edits, so the list has to BE the keys it edits. Leaving it
-> asking only about `_uc_public_contact` would have hidden the card from every
-> community submission made since 3.47.0, which is all of them.
+**Every helper line on both forms is one sentence that says what to do**, which
+`.claude/release-31110-test.php` reads off the rendered forms.
 
 ### Approving a submission asks two questions, once
 
@@ -1544,6 +1544,33 @@ it still pays for no query.
 > `effective_groups()` and `uc_group` all read that way while querying
 > `SFAF_Series::TAXONOMY`.
 
+### Pinned events (3.111.0)
+
+**A block can pin events: `data-pin="12,40"` on an embed, `pin="12,40"` on the
+shortcode.** On page one of the list and the sidebar the pinned events come
+first, each with a "Featured" mark, then the ordinary list without them. The
+pin lives only in the snippet; nothing is stored on the event, so another block
+is unaffected.
+
+- **A pin that cannot be shown is skipped silently**: not a published calendar
+  event, private, cancelled, or over. `SFAF_Shortcodes::pinned_ids()` decides,
+  and the generator's list asks the same function. A skipped pin stays where it
+  would have been in the list.
+- **No event is drawn twice.** `build_query_args()` leaves the pins it can show
+  out of the list on every page, so page two does not repeat them; the block's
+  total counts them.
+- **Pins stand aside while a visitor narrows.** A search, a category, an
+  organizer or a group chosen from the filter bar asked for those events, and a
+  pinned one at the top would answer a question nobody asked. The block keeps
+  `data-pin` for the next redraw and draws with `data-filter-pin` empty.
+- **Not in the combined view's column or the month grid.** That column is bound
+  to the month the grid shows, and a pin from another month would not belong to
+  it, so the generator does not offer pins on the combined view.
+- **At most ten**, in the order written (`pin_list()`).
+- **The generator's "Pin an event"** lists upcoming, public, published events
+  with their dates, searched by title, and writes the ticked ids into the
+  block.
+
 ### The combined view is one calendar
 
 The month grid and the sidebar sit in one container: one border, a divider
@@ -1775,7 +1802,9 @@ toolbar written into `portal.js` would be the same drift in a new place.
 > answers displaying raw markup: they are not one mechanism, and nothing about
 > the first one working says anything about the second.
 
-**Email bodies do not get it.** An HTML email is not a browser: clients strip
+**Email bodies do not get it, with one exception from 3.111.0**: Email
+registrants, a message written once for one send, which renders its blocks
+itself (see section 4). The template bodies stay plain. An HTML email is not a browser: clients strip
 `<style>`, ignore most of what they do not strip, and the plain text
 alternative has to carry the same message with no markup at all. The bodies are
 also token templates, and a token wrapped in markup by an editor stops matching.
@@ -2412,7 +2441,7 @@ exactly `PICTURE_WIDTH` by `PICTURE_HEIGHT`, at most `PICTURE_BYTES` (512000),
 JPEG, PNG or WebP, and `RULE_MESSAGE` for every way of breaking it.
 `inspect()` asks it unless called with the 'description' rule, which only
 `SFAF_Desc_Images` uses. Every upload reaches `inspect()`: the Images screen,
-the event upload, both public forms (extras included), and the series screen's
+the event upload, both public forms, and the series screen's
 wp.media upload through `SFAF_Media_Folder::hold_to_picture_rule()` on
 `wp_handle_upload_prefilter`. The editor checks the same numbers in the browser,
 read from attributes the server writes. Nothing is resized or recompressed.
@@ -2450,6 +2479,32 @@ an editor, with the place on each card and, on a submitted one, the event it cam
 with (`submitted_with()`, which looks in the trash too). Moves are admins'
 (`media_move`, the caladmin gate). An Other image gets a series by moving; the
 tag controls stay on series pictures.
+
+### One PDF attachment per event (3.111.0)
+
+**Event details, on Add event and Edit event, has an Attachment: a PDF upload,
+a label (placeholder "Download event flyer") and Remove.** The event page shows
+a button with the label under the description, and the event's row in a list,
+on this site and in an embed, shows it under the byline: Register's outlined
+variant, in a new tab, with the hidden "(opens in a new tab)".
+
+- **`calendar-files/`, a fifth folder beside the four picture folders**, inside
+  none of them, so no picker, the Images screen or Insert image offers a PDF.
+  Told apart by the file path (`SFAF_Attachments::holds()`), with the same guard
+  files as the submissions folder.
+- **The rule is `SFAF_Uploads::pdf_rule_error()`**, asked by `inspect()` under
+  its 'pdf' rule: 5MB or less, opening with the PDF signature, and finfo agreeing
+  where finfo exists. Every failure is one sentence, "Attachments must be a PDF
+  under 5MB." The browser checks the name and size first and says the same.
+  **No public form takes a PDF**: `store()` never asks for the rule.
+- **The event points at the file** (`_uc_attachment_id`, `_uc_attachment_label`).
+  Both keys travel with a repeating event, through generation, Apply to all
+  upcoming and Duplicate, so every occurrence shares one file. A series has no
+  attachment and nothing is inherited.
+- **Remove takes it off the event and deletes nothing.** The file is deleted
+  when WordPress deletes the last event using it for good, which is when the
+  trash is emptied (`SFAF_Attachments::delete_with_event()`), private events
+  included in the question "does anything still use it".
 
 ### The event editor's actions follow the event's state
 
@@ -2612,10 +2667,9 @@ a published event, in a series, with FAQ sets: every control outside a marked
 action must be on both, keyed by its card and its kind, name and value or its
 words, and a marker outside those names fails too. Against the published event
 the save buttons are left out, because Save changes stands in for Save draft
-and Publish there. **The listing details** of a submitted event (cost, age,
-RSVP link, contact) are drawn only when the event has them and are still in
-Other details, the only thing left there; no event made on Add event can have
-them.
+and Publish there. **Cost, Age range, Contact, the venue website and the
+Attachment are on both from 3.111.0**, and there is no Other details card; the
+same test fails when a manager field the editor can offer is placed by no card.
 
 ### Descriptions are rich text, with a deliberately short toolbar
 
@@ -5955,8 +6009,8 @@ the two are told apart by whether anything is stored, not by the number:
 | `sfaf_event_capacity( $id, $format )` | the number, 0 when there is none; never read on its own as "has a limit" |
 | `sfaf_format_full()` | false with no limit; otherwise places taken, or anybody waiting, against the limit, so 0 is always full |
 
-**Every reader asks `sfaf_capacity_limited()`**: the RSVP button and its
-capacity bar, the "spots left" line, the waitlist (`applies()`), the
+**Every reader asks `sfaf_capacity_limited()`**: the RSVP button, a card's
+"Full" note, the waitlist (`applies()`), the
 registration alert, cancellation alert, two-hour summary, day-before count and
 digest ("x of y places taken" against "x registered"), the reminders' cancel
 page, the registrations screen's summary and the JSON-LD `SoldOut`, which now
@@ -6096,19 +6150,26 @@ consent wording reviewed.
 **One event's RSVP list has a closed "Email registrants" panel**, under the
 Registration settings panel and built from it (3.110.1), with the log of
 sends inside it, for site admins and anybody who can edit that event (the routes ask
-`user_can_edit_event()`): a subject, a body in the Email Templates editor with
-its protected token chips (first name, event title, date, time, location,
-event page link) and Bold and Link, "Include the waitlist", "Include event
-team", Preview and Send, which is the Publish green.
+`user_can_edit_event()`): a subject with its protected token chips, **a body in
+the description's editor from 3.111.0** (`SFAF_Rich_Text::render()`: bold,
+italic, lists, links and the one heading), the token chips (first name, event
+title, date, time, location, event page link), which put `{token}` at the
+message's cursor or into the subject when that was used last, "Include the
+waitlist", "Include event team", Preview and Send, which is the Publish green.
 
 - **The message is `SFAF_Notifications::build( 'registrant_message' )`**: the
   subject is the heading, the body's paragraphs follow in the body type keeping
   their bold, italics and links (`rich_intro`, `SFAF_Messages::fill_rich_html()`),
   then the details block and See the event page as the primary button, in the
   standard wrapper, in the event's language, with the event's Reply-To, through
-  `SFAF_Email::send()`. **The body keeps `<strong>`, `<em>` and `<a href>` and
-  nothing else** (`SFAF_Registrant_Mail::clean_body()`, `wp_kses`); those tags
-  are rebuilt from scratch for the email, the rest escaped. No images.
+  `SFAF_Email::send()`. **The body keeps paragraphs, `<h3>`, `<ul>`, `<ol>`,
+  `<li>`, `<strong>`, `<em>` and `<a href>` and nothing else**
+  (`SFAF_Registrant_Mail::clean_body()`, `wp_kses`), so an image is refused as
+  in the templates. `SFAF_Messages::rich_blocks()` reads the body as paragraphs,
+  a heading and lists, each rendered inside the wrapper with inline styles and
+  carried into the plain text as lines and "- " or "1. " items; the inline tags
+  are rebuilt from scratch, the rest escaped. A body from before 3.111.0, blank
+  lines between paragraphs, renders as it did.
 - **Who it reaches, each address once** (`SFAF_Registrant_Mail::plan()`):
   participants, everybody `confirmed` with an email and everybody waiting when
   ticked; with "Include event team", every person Team and access gives the
@@ -6668,6 +6729,43 @@ question the picker asks.
 
 Access is never written as a side effect. No `set_role`, `add_cap` or
 `wp_capabilities` write except from a control whose only purpose is that.
+
+### A submission's reviewers (3.111.0)
+
+**A staff request or community submission is reviewed by the admins and by the
+editors on its review team.** `SFAF_Submissions::reviewers()` is the one answer,
+asked by the Pending queue, the "new submission" email and the approve and
+reject routes (through `may_review()`, which answers yes for a calendar admin
+first).
+
+- **The review team comes from the submission's organizer.** With no organizer,
+  nobody but the admins. With one, the default teams of the submission's series
+  (Team and access) where it has any, else every organizer's **Review team**,
+  chosen on the Organizers screen (`_sfaf_review_team` on the term).
+- **Editors only.** A contributor on the team reviews nothing; an admin reviews
+  everything and is never in the list. Read live, like every team.
+- **The email adds them, never replaces anybody.** `arrival_recipients()` is
+  `alert_recipients()`, as it was, then each reviewer's own address. A
+  reviewer's copy links to their row in Pending rather than the editor.
+- **A reviewer's Pending is a separate renderer** (`render_review_queue()`): only
+  their submissions, what was sent read-only, and Approve and Reject with the
+  same dialogs, routes and notices as an admin's. No imports, Fetch, bulk bar,
+  Dismiss or Add to venues, and **no Edit link: reviewing a submission does not
+  make it their event**, so the event gate is unchanged. A submission the
+  publish rule holds waits for an admin.
+- **The dashboard says "To review" with the count** for an editor who has any.
+- **A team named as an organizer's Review team cannot be deleted**, and the
+  refusal names the organizers.
+
+### No registration count on a public page (3.111.0)
+
+**The event page, list cards, the month grid, the sidebar and the embed payload
+say Register, Full, Join the waitlist or Register on another site, and never a
+number.** The capacity bar, "8/20 spots filled", "N registered" and "12 of 20
+spots left" are gone, and the registration response no longer returns the
+count, so the modal cannot draw one. Counts stay in caladmin and in staff
+email. The reason is the one at the end of this section: the size of a group is
+itself worth not saying.
 
 ### This is a known weak point. Five defects, same family.
 

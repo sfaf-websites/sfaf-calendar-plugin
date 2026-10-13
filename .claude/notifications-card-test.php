@@ -174,6 +174,29 @@ foreach ( $pages as $st => $eid ) {
     }
 }
 
+/* =========================================================================
+ * NO CATCH-ALL CARD FROM 3.111.0, SO NOTHING MAY NEED ONE.
+ *
+ * "Other details" drew whatever no card claimed. It is gone, so the 3.2.0
+ * guarantee, that a field on the shared list cannot vanish from the editor,
+ * is held here: every manager field the editor can offer, on Add event and on
+ * both saved events, must be named by a card's render_manager_fields() call.
+ * ======================================================================== */
+$portal_src = file_get_contents( $GLOBALS['kit_root'] . '/includes/class-sfaf-portal.php' );
+preg_match_all( '/render_manager_fields\(\s*\$mgr_ctx,\s*array\(([^)]*)\)/', $portal_src, $mm );
+$claimed = array();
+foreach ( $mm[1] as $list ) {
+    preg_match_all( "/'([a-z_]+)'/", $list, $nn );
+    $claimed = array_merge( $claimed, $nn[1] );
+}
+nc( count( $claimed ) >= 4, true, 'the cards\' field claims could not be read, so the check below checks nothing' );
+foreach ( array( 'add' => 0 ) + $pages as $which => $eid ) {
+    $ctx     = kit_call( 'SFAF_Portal', 'manager_panel_context', $portal, array( $user, $eid, 'editor' ) );
+    $offered = kit_call( 'SFAF_Portal', 'manager_panel_fields', $portal, array( $ctx ) );
+    nc( array_values( array_diff( $offered, $claimed ) ), array(), "the editor ($which) offers a manager field no card places, and there is no Other details card to catch it" );
+}
+nc( false === strpos( $add_html, 'data-uc-card="other-details"' ), true, 'the Other details card is drawn again' );
+
 if ( $fails ) {
     echo 'NOTIFICATIONS CARD: ' . count( $fails ) . " FAILURE(S)\n  - " . implode( "\n  - ", $fails ) . "\n";
     exit( 1 );

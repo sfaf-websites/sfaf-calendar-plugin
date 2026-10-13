@@ -94,6 +94,8 @@ for f in .claude/*.php; do
     plant-31103.php) continue ;;       # a fault planter for the 3.110.3 checks, not a check
     release-31105-live.php) continue ;;  # run below with --run
     plant-31105.php) continue ;;       # a fault planter for the 3.110.5 checks, not a check
+    release-31110-live.php) continue ;;  # run below with --run
+    plant-31110.php) continue ;;       # a fault planter for the 3.111.0 checks, not a check
     login-check.php) continue ;;       # run last, after every capture is rewritten
     byline-live.php) continue ;;       # run below with --run; --live checks the site itself
   esac
@@ -339,6 +341,9 @@ run "release-31103-live --run" php .claude/release-31103-live.php --run
 # Drafts, the check before a post and the session-ended page (3.110.5), at
 # 1280px and 390px.
 run "release-31105-live --run" php .claude/release-31105-live.php --run
+# 3.111.0: the pinned sidebar and list, the event page's attachment and three
+# lines, both forms, the editor's new fields and a reviewer's Pending.
+run "release-31110-live --run" php .claude/release-31110-live.php --run
 
 echo
 # No real name or login in a tracked file (3.106.2). Last, because the browser

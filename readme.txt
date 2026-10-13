@@ -531,6 +531,23 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.111.0 =
+
+**Pinned events, no public registration count, submissions reviewed by teams, a rich registrant email, a PDF per event, Cost, Age range and Contact on every event, and the forms audit.**
+
+**PINNED EVENTS.** An embed takes data-pin and the shortcode pin, one or more event ids. On page one of the list and the sidebar they come first, marked Featured, and are not listed again. A pin that is past, cancelled, private or unpublished is skipped. A visitor's search or filter sets the pins aside until it is cleared. The Embed Code screen has Pin an event, a searchable list of upcoming events. Nothing is stored on the event.
+
+**NO REGISTRATION COUNT ON A PUBLIC PAGE.** The event page, list rows, the month grid, the sidebar and the embed say Register, Full, Join the waitlist or Register on another site, and no number. The capacity bar and "spots left" are gone, and the registration response no longer returns a count. The button that said RSVP says Register. Counts stay in caladmin.
+
+**SUBMISSIONS REVIEWED BY TEAMS.** A submission's organizer decides its review team: the default team of its series where there is one, else the organizer's new Review team on the Organizers screen. Editors on that team see those submissions in Pending, get the new-submission email, and approve or reject them with the same dialog and notices as an admin; their dashboard says To review. A submission with no organizer, or an organizer with no team, goes to the admins alone. The Settings list of alert addresses is unchanged; reviewers are added to it. A Review team cannot be deleted while an organizer names it.
+
+**EMAIL REGISTRANTS** writes its message in the description's editor: bold, italic, lists, links and a heading, with the token chips. Images are refused. Headings and lists render in the email and its plain text.
+
+**A PDF PER EVENT.** Event details on Add event and Edit event has an Attachment: a PDF of 5MB or less, read from its bytes, a button label, and Remove. The event page shows the button under the description, and the event's list row shows it on this site and in an embed, opening the file in a new tab. Files go to calendar-files/. A repeating event's dates share the file, and it is deleted when the last event using it is deleted for good.
+
+**COST, AGE RANGE AND CONTACT** are on every event: Cost in the Registration card, 40 characters, and Age range and Contact in Event details. The event page labels them Cost, Ages and Contact, after the place. The Other details card is gone. Schema 14 moves an old single contact line into Contact's Name and a community form's registration link into Register on another site, once.
+
+**THE PUBLIC FORMS.** Any other pictures is off both forms; pictures already sent stay under Submitted on Images. The community form's registration link becomes Register on another site, its venue website has a box on the editor's Location card, and its typed cost is 40 characters. Every helper line on both forms is one sentence that says what to do.
 = 3.110.5 =
 
 **Nothing typed into caladmin is lost to an expired sign-in.**
