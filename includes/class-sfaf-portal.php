@@ -1792,7 +1792,7 @@ class SFAF_Portal {
                 }
 
                 // Its submitted pictures are deleted with it (3.110.4).
-                update_post_meta( $event_id, SFAF_Media::META_REJECTED, current_time( 'mysql' ) );
+                update_post_meta( $event_id, SFAF_Uploads::META_REJECTED, current_time( 'mysql' ) );
                 wp_trash_post( $event_id );
                 $this->redirect( 'pending', array( 'msg' => 'rejected' ) );
                 break;

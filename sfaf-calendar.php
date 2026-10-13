@@ -239,6 +239,7 @@ function sfaf_init() {
     // a later init than SFAF_Series registers it, so the taxonomy exists by the
     // time anything is added to it.
     SFAF_Media::register();
+    SFAF_Uploads::register();
     SFAF_Slug_Aliases::register();
 
     // The public event request form. A front-end query var, like the cancel

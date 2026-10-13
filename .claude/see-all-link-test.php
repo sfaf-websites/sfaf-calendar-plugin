@@ -62,14 +62,14 @@ $filed = st_picture( 'calendar/strut.jpg' );
 $rejected = kit_write_post( array( 'post_type' => 'uc_event', 'post_status' => 'trash' ) );
 update_post_meta( $rejected, SFAF_Submit::META_IMAGE, $sub );
 update_post_meta( $rejected, SFAF_Submit::META_IMAGE_EXTRA, array( $extra, $filed ) );
-update_post_meta( $rejected, SFAF_Media::META_REJECTED, '2026-10-13 10:00:00' );
-SFAF_Media::delete_rejected_pictures( $rejected );
+update_post_meta( $rejected, SFAF_Uploads::META_REJECTED, '2026-10-13 10:00:00' );
+SFAF_Uploads::delete_rejected_pictures( $rejected );
 st_check( 'PLANT S.3: a rejected event\'s submitted pictures, and nothing filed', $GLOBALS['st_deleted'], array( $extra, $sub ) );
 
 $GLOBALS['st_deleted'] = array();
 $approved = kit_write_post( array( 'post_type' => 'uc_event', 'post_status' => 'publish' ) );
 update_post_meta( $approved, SFAF_Submit::META_IMAGE, st_picture( 'calendar-submissions/submission-3.jpg' ) );
-SFAF_Media::delete_rejected_pictures( $approved );
+SFAF_Uploads::delete_rejected_pictures( $approved );
 st_check( 'PLANT S.4: an event nobody rejected keeps its pictures', $GLOBALS['st_deleted'], array() );
 
 $src = file_get_contents( $GLOBALS['kit_root'] . '/includes/class-sfaf-portal.php' );
@@ -77,7 +77,7 @@ $at  = strpos( $src, "case 'reject_event':" );
 $end = strpos( $src, 'break;', $at );
 $arm = substr( $src, $at, $end - $at );
 st_check( 'S: Reject marks the event before it trashes it',
-    false !== strpos( $arm, 'SFAF_Media::META_REJECTED' ) && strpos( $arm, 'SFAF_Media::META_REJECTED' ) < strpos( $arm, 'wp_trash_post( $event_id )' ), true );
+    false !== strpos( $arm, 'SFAF_Uploads::META_REJECTED' ) && strpos( $arm, 'SFAF_Uploads::META_REJECTED' ) < strpos( $arm, 'wp_trash_post( $event_id )' ), true );
 
 /* ---- The pending queue's note, and the forms' size line. ---- */
 $portal = ( new ReflectionClass( 'SFAF_Portal' ) )->newInstanceWithoutConstructor();

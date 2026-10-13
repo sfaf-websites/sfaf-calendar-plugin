@@ -50,6 +50,40 @@ class SFAF_Uploads {
      */
     const FOLDER = 'calendar-submissions';
 
+    /** On an event Reject trashed: when. See delete_rejected_pictures(). */
+    const META_REJECTED = '_uc_rejected';
+
+    public static function register() {
+        add_action( 'before_delete_post', array( __CLASS__, 'delete_rejected_pictures' ) );
+    }
+
+    /**
+     * A REJECTED SUBMISSION'S PICTURES GO WITH IT (3.110.4).
+     *
+     * Reject trashes the event and marks it; this runs when the event is
+     * deleted for good, which is when WordPress empties its trash (30 days
+     * unless EMPTY_TRASH_DAYS says otherwise).
+     * Only files still in calendar-submissions/ are deleted, the featured one
+     * and the extras: nothing approval filed, and nothing on an event that was
+     * not rejected. Here and not in SFAF_Media, whose Remove promises that
+     * nothing on the Images screen deletes a file.
+     *
+     * @param int $post_id
+     */
+    public static function delete_rejected_pictures( $post_id ) {
+        $post_id = (int) $post_id;
+        if ( 'uc_event' !== get_post_type( $post_id ) || '' === (string) get_post_meta( $post_id, self::META_REJECTED, true ) ) {
+            return;
+        }
+        $ids   = (array) get_post_meta( $post_id, SFAF_Submit::META_IMAGE_EXTRA, true );
+        $ids[] = get_post_meta( $post_id, SFAF_Submit::META_IMAGE, true );
+        foreach ( array_unique( array_filter( array_map( 'intval', $ids ) ) ) as $att ) {
+            if ( 'attachment' === get_post_type( $att ) && self::holds( $att ) ) {
+                wp_delete_attachment( $att, true );
+            }
+        }
+    }
+
     /** 10MB, which is what the Google Form this replaces allows. */
     const MAX_BYTES = 10485760;
 

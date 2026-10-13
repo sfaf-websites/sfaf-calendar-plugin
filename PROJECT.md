@@ -2435,8 +2435,8 @@ and the file becomes the thumbnail. Moving to Other images is refused while a
 series has the picture as its own. Bulk Publish on the queue holds a submission
 with a picture, because a bulk press never opens the dialog, and the bar says
 so beside Publish. Rejecting trashes the event and stamps
-`SFAF_Media::META_REJECTED`; when the event is deleted for good, which is when
-WordPress empties its trash, `delete_rejected_pictures()` on
+`SFAF_Uploads::META_REJECTED`; when the event is deleted for good, which is when
+WordPress empties its trash, `SFAF_Uploads::delete_rejected_pictures()` on
 `before_delete_post` deletes its featured and extra submitted pictures that are
 still in `calendar-submissions/` (3.110.4). The stamp is what limits it to
 rejections, and the folder is what keeps a filed picture safe.

@@ -245,6 +245,8 @@ class WP_Query {
 function wp_reset_postdata() {}
 
 // The shortcode resolves an old slug through it (3.110.3).
+/* No Calendar home URL, so See all events takes the archive (3.110.4). */
+if ( ! function_exists( 'sfaf_calendar_home_url' ) ) { function sfaf_calendar_home_url() { return ''; } }
 require_once $root . '/includes/class-sfaf-slug-aliases.php';
 require_once $root . '/includes/class-sfaf-shortcodes.php';
 
