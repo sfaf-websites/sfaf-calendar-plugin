@@ -107,7 +107,8 @@ if ( '' === $eslice ) {
     hp_fail( 'the preview block differs between calendar.js and embed.js. It is one block in two '
         . 'files and they have to be identical; copy whichever is right over the other' );
 }
-if ( false === strpos( $ejs, 'initMonthPreview()' ) || 1 === substr_count( $ejs, 'initMonthPreview' ) ) {
+// A call, with or without the root it draws in (3.111.0), that is not the definition.
+if ( ! preg_match( '/(?<!function )initMonthPreview\((?:\)|previewMount\(\)\))/', $ejs ) ) {
     hp_fail( 'embed.js defines the preview and never calls it, which is the same outcome as not having it' );
 }
 if ( false === strpos( $js, "run('monthPreview'" ) ) {

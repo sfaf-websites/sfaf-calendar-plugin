@@ -1670,7 +1670,7 @@ class SFAF_Admin {
                         </p>
                     </div>
 
-                    <div class="uc-embed-field" data-when-view="sidebar">
+                    <div class="uc-embed-field" data-when-view="sidebar combined">
                         <label class="uc-embed-label" for="uc-embed-count">How many to show</label>
                         <input type="number" id="uc-embed-count" class="uc-input uc-input-narrow"
                                value="10" min="1" max="50" />

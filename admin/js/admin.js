@@ -873,7 +873,7 @@
             } else if (choices.view === 'combined') {
                 // No toggle mentioned: the combined mode has none, because both
                 // views are on screen.
-                how = 'as a month calendar beside a list of ' + choices.perPage + ' upcoming events';
+                how = 'as a month calendar beside the next ' + choices.count + ' dates';
             } else {
                 how = 'as a list, ' + choices.perPage + ' at a time' + (choices.toggle ? ', with a calendar toggle' : '');
             }
@@ -919,6 +919,10 @@
                  */
                 attrs['data-heading'] = choices.heading;
             } else {
+                // The combined view's sidebar takes the same count (3.111.0).
+                if (choices.view === 'combined') {
+                    attrs['data-count'] = String(choices.count);
+                }
                 attrs['data-per-page'] = String(choices.perPage);
                 /* 'none' said out loud, because an absent attribute means
                  * "not stated" and falls back to the old show_filters default,

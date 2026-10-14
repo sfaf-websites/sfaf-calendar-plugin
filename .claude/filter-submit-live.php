@@ -398,7 +398,9 @@ window.__navs    = [];
 window.__allowSubmit = false;
 window.__lastForm = null;
 
-window.addEventListener('submit', function (e) {
+/* A submit inside a shadow root does not reach window, so the embed's root
+   gets the same listener as soon as it exists (3.111.0). */
+function onSubmit(e) {
   window.__lastForm = e.target;
   if (window.__allowSubmit) {
     /* THE NO-SCRIPT READING. requestSubmit(button) asks the browser for the
@@ -411,7 +413,15 @@ window.addEventListener('submit', function (e) {
     window.__submits.push((e.submitter && e.submitter.textContent || '?').trim());
   }
   e.preventDefault();
-}, true);
+}
+window.addEventListener('submit', onSubmit, true);
+var __bound = null;
+/* Where the block is: the embed's shadow root (3.111.0), or the page. */
+function scope() {
+  var h = document.querySelector('[data-sfaf-calendar]'), r = h && h.shadowRoot;
+  if (r && __bound !== r) { r.addEventListener('submit', onSubmit, true); __bound = r; }
+  return r || document;
+}
 
 window.addEventListener('beforeunload', function () { window.__navs.push('unload'); });
 HTMLFormElement.prototype.submit = function () { window.__navs.push('form.submit()'); };
@@ -420,9 +430,9 @@ function since(n) { return window.__submits.length - n; }
 
 /* ---- THE CONTROLS, FOUND THE WAY A PERSON FINDS THEM. ------------------ */
 function pills() {
-  return Array.prototype.slice.call(document.querySelectorAll('.uc-filter-btn'));
+  return Array.prototype.slice.call(scope().querySelectorAll('.uc-filter-btn'));
 }
-function theForm() { return document.querySelector('.uc-filter-form'); }
+function theForm() { return scope().querySelector('.uc-filter-form'); }
 
 function pressed(el, label) {
   var subs = window.__submits.length;
@@ -455,7 +465,7 @@ function run(which) {
 
   /* ---- 2. THE SEARCH FIELD. Typing, and Enter. ---------------------- */
   say('the search field:');
-  var box = document.querySelector('.uc-search');
+  var box = scope().querySelector('.uc-search');
   if (!box) {
     say('  THERE IS NO SEARCH FIELD');
     bad++;
@@ -474,8 +484,8 @@ function run(which) {
 
   /* ---- 3. THE ORGANIZERS AND GROUPS CONTROL. ------------------------ */
   say('the Organizers and groups control:');
-  var who = document.querySelector('[data-uc-who]');
-  var boxes = document.querySelectorAll('[data-uc-who] input[type="checkbox"]');
+  var who = scope().querySelector('[data-uc-who]');
+  var boxes = scope().querySelectorAll('[data-uc-who] input[type="checkbox"]');
   if (!who || !boxes.length) {
     say('  THE CONTROL IS NOT ON THE PAGE');
     bad++;

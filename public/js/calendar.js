@@ -2445,7 +2445,7 @@
     var PREVIEW_OPEN_DELAY  = 260;
     var PREVIEW_CLOSE_DELAY = 140;
 
-    function initMonthPreview() {
+    function initMonthPreview(mount) {
         /* The device, asked rather than guessed. matchMedia is old enough to
            assume; if it is missing, so is any device this would suit. */
         if (!window.matchMedia || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
@@ -2515,7 +2515,10 @@
                 '<span class="uc-mp-place"></span>' +
                 '<a class="uc-mp-go" tabindex="-1" href="#">View Event Details</a>' +
             '</span>';
-        document.body.appendChild(panel);
+        /* Where the panel lives. embed.js hands it a shadow root of its own
+           (3.111.0), so the host page's stylesheet cannot repaint it; on the
+           calendar site it is the page's own body. */
+        (mount || document.body).appendChild(panel);
 
         /* The two targets, kept in one list so nothing can fill one and forget
            the other. */
@@ -2675,7 +2678,10 @@
            EXIST IN BOTH SCRIPTS. embed.js has no jQuery on purpose, and the
            host page is somebody else's. See the marker note at the top. */
         function tileFrom(e) {
-            var t = e.target;
+            /* The element really under the pointer. A block in a shadow root
+               (embed.js, 3.111.0) reaches a listener on the document as its
+               host, so e.target alone would never be a tile. */
+            var t = (typeof e.composedPath === 'function' && e.composedPath()[0]) || e.target;
             if (!t || typeof t.closest !== 'function') { return null; }
             return t.closest('.uc-day-event a[data-uc-preview]');
         }

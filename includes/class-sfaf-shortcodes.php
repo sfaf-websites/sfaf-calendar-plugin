@@ -1933,10 +1933,15 @@ class SFAF_Shortcodes {
         <div class="uc-month-tabs" role="group" aria-label="Other months">
             <?php foreach ( $tabs as $tab ) :
                 $count = $this->month_event_count( $tab['month'], $filters );
-                $label = sfaf_ap_date( $tab['month'] . '-01', 'month_year' );
+                /* The short month, "Oct 48", so a pill never truncates in a
+                   narrow column (3.111.0); the full month and year are what a
+                   screen reader hears. */
+                $label = sfaf_ap_date( $tab['month'] . '-01', 'month' );
+                $named = sfaf_ap_date( $tab['month'] . '-01', 'month_year' );
                 ?>
                 <button type="button"
                         class="uc-month-tab uc-month-tab-<?php echo esc_attr( $tab['dir'] ); ?>"
+                        aria-label="<?php echo esc_attr( sprintf( '%s, %d %s', $named, (int) $count, 1 === (int) $count ? 'event' : 'events' ) ); ?>"
                         data-goto="<?php echo esc_attr( $tab['month'] ); ?>">
                     <span class="uc-month-tab-name"><?php echo esc_html( $label ); ?></span>
                     <span class="uc-month-tab-count"><?php echo (int) $count; ?></span>

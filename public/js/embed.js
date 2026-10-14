@@ -360,16 +360,47 @@
      * Assets and states
      * -------------------------------------------------------------------- */
 
-    /** Load the calendar stylesheet once, however many blocks are on the page. */
-    function ensureStylesheet() {
-        if (!CSS_URL || document.querySelector('link[data-sfaf-calendar-css]')) {
+    /*
+     * WHERE THE STYLESHEET GOES (3.111.0): INSIDE EACH BLOCK'S SHADOW ROOT.
+     *
+     * A block is drawn in a shadow root (see mount()), and a stylesheet in the
+     * document cannot reach into one, which is the point: the host's rules
+     * cannot repaint the calendar and the calendar's cannot leak onto the
+     * host. So the link goes into the block's own root. Only where a browser
+     * has no shadow DOM does it go into the document head, as it always did.
+     *
+     * THE FONTS ARE THE ONE THING THAT STAYS IN THE DOCUMENT. Chrome ignores
+     * an @font-face declared inside a shadow root, so calendar.css's @import
+     * of Montserrat and Merriweather would load nothing there. The same Google
+     * Fonts sheet goes into the document head once: it declares two families
+     * and styles nothing, so it changes nothing on the host page.
+     */
+    var FONTS_URL = 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Merriweather:wght@300;400;700&display=swap';
+
+    function rootOf(container) {
+        var root = container.getRootNode ? container.getRootNode() : document;
+        return (root && root !== document && root.host) ? root : null;
+    }
+
+    function addSheet(where, url, mark) {
+        if (!url || where.querySelector('link[data-sfaf-calendar-css="' + mark + '"]')) {
             return;
         }
         var link = document.createElement('link');
         link.rel = 'stylesheet';
-        link.href = CSS_URL;
-        link.setAttribute('data-sfaf-calendar-css', '1');
-        (document.head || document.getElementsByTagName('head')[0]).appendChild(link);
+        link.href = url;
+        link.setAttribute('data-sfaf-calendar-css', mark);
+        if (where === document) {
+            (document.head || document.getElementsByTagName('head')[0]).appendChild(link);
+        } else {
+            where.insertBefore(link, where.querySelector('.sfaf-embed-root, .uc-mp'));
+        }
+    }
+
+    /** The calendar stylesheet for this block, once per root, and the fonts once per page. */
+    function ensureStylesheet(container) {
+        addSheet(document, FONTS_URL, 'fonts');
+        addSheet(rootOf(container) || document, CSS_URL, '1');
     }
 
     /**
@@ -385,18 +416,14 @@
      * where appending simply layers the correct rules on top and the older link
      * becomes a no-op.
      */
-    function adoptStylesheet(url) {
+    function adoptStylesheet(container, url) {
         if (!url || url === CSS_URL) {
             return;
         }
-        if (document.querySelector('link[data-sfaf-calendar-css="server"]')) {
-            return;
+        addSheet(rootOf(container) || document, url, 'server');
+        if (PREVIEW_ROOT) {
+            addSheet(PREVIEW_ROOT, url, 'server');
         }
-        var link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = url;
-        link.setAttribute('data-sfaf-calendar-css', 'server');
-        (document.head || document.getElementsByTagName('head')[0]).appendChild(link);
     }
 
     function setLoading(container) {
@@ -528,7 +555,7 @@
     /** Replace the whole block (first load, and numbered page navigation). */
     function loadBlock(container, page, scrollIntoView) {
         request(container, page, 'block', function (data) {
-            adoptStylesheet(data.css_url);
+            adoptStylesheet(container, data.css_url);
             reportIfStale(data.js_version);
 
             /*
@@ -1082,7 +1109,7 @@
         grid.addEventListener('keydown', function (event) {
             var current = -1;
             for (var i = 0; i < cells.length; i++) {
-                if (cells[i] === document.activeElement) {
+                if (cells[i] === (rootOf(container) || document).activeElement) {
                     current = i;
                     break;
                 }
@@ -1770,9 +1797,11 @@
     }
 
     function closeMenus() {
-        var open = document.querySelectorAll('[data-sfaf-calendar] .uc-addcal.open');
-        for (var i = 0; i < open.length; i++) {
-            open[i].classList.remove('open');
+        for (var b = 0; b < BLOCKS.length; b++) {
+            var open = BLOCKS[b].querySelectorAll('.uc-addcal.open');
+            for (var i = 0; i < open.length; i++) {
+                open[i].classList.remove('open');
+            }
         }
     }
 
@@ -1824,7 +1853,7 @@
            that reaches what the filter bar actually draws now. */
         bindWho(container);
 
-        ensureStylesheet();
+        ensureStylesheet(container);
         setLoading(container);
         loadBlock(container, 1, false);
     }
@@ -1837,8 +1866,106 @@
     function scan() {
         var blocks = document.querySelectorAll('[data-sfaf-calendar]');
         for (var i = 0; i < blocks.length; i++) {
-            init(blocks[i]);
+            if (blocks[i].getAttribute('data-sfaf-mounted') === '1') {
+                continue;
+            }
+            blocks[i].setAttribute('data-sfaf-mounted', '1');
+            var container = mount(blocks[i]);
+            BLOCKS.push(container);
+            init(container);
         }
+    }
+
+    /*
+     * EVERY BLOCK IS DRAWN IN A SHADOW ROOT (3.111.0).
+     *
+     * The host page's theme was repainting the calendar: on
+     * 2027.cycletozero.org the category pills took the theme's magenta with
+     * its pink link colour, and the view toggle sat in a black box. A rule on
+     * someone else's page that says `button { ... }` reaches every button
+     * under it, and no specificity this stylesheet could pick beats every
+     * selector a theme might write. A shadow root is not a specificity
+     * contest: selectors in the page do not cross it at all.
+     *
+     * THE BLOCK'S ATTRIBUTES ARE COPIED ONTO A WRAPPER INSIDE THE ROOT, and
+     * that wrapper is what every function here calls the container. So the
+     * rest of this file is unchanged: it reads data-category off the wrapper,
+     * writes data-active-category onto it, and swaps the wrapper's contents.
+     * The block the host page wrote is left as it was, an empty-looking div.
+     *
+     * INHERITANCE STILL CROSSES THE BOUNDARY, which selectors do not: color,
+     * font, line-height and letter-spacing flow from the host's div into the
+     * root. SHEET_RESET puts the wrapper on all: initial and then the values
+     * the calendar is drawn with, ahead of calendar.css, so nothing the host
+     * set on its div is inherited and calendar.css still has the last word.
+     * The preview panel gets the same values, since it has no wrapper.
+     *
+     * A browser with no shadow DOM gets the block exactly as before 3.111.0.
+     */
+    var SHEET_RESET =
+        ':host{display:block}' +
+        '.sfaf-embed-root{all:initial;display:block;' +
+            "font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;" +
+            'font-size:16px;font-weight:400;font-style:normal;line-height:1.5;color:#373433;' +
+            'text-align:left;text-transform:none;letter-spacing:normal;word-spacing:normal;' +
+            'white-space:normal;text-shadow:none;text-indent:0;direction:ltr;}' +
+        '.uc-mp{font-size:16px;font-weight:400;font-style:normal;line-height:1.5;color:#373433;' +
+            'text-align:left;text-transform:none;letter-spacing:normal;word-spacing:normal;' +
+            'white-space:normal;text-shadow:none;text-indent:0;direction:ltr;}';
+    var BLOCKS = [];
+
+    function shadowFor(host) {
+        var root = host.attachShadow({ mode: 'open' });
+        var reset = document.createElement('style');
+        reset.textContent = SHEET_RESET;
+        root.appendChild(reset);
+        return root;
+    }
+
+    function mount(host) {
+        if (typeof host.attachShadow !== 'function') {
+            return host;
+        }
+        var root;
+        try {
+            root = shadowFor(host);
+        } catch (e) {
+            // A host element that cannot carry a shadow root, or one that has
+            // one already: draw it the old way rather than not at all.
+            return host;
+        }
+        var wrap = document.createElement('div');
+        for (var i = 0; i < host.attributes.length; i++) {
+            var a = host.attributes[i];
+            if (a.name !== 'id' && a.name !== 'style' && a.name !== 'data-sfaf-mounted') {
+                wrap.setAttribute(a.name, a.value);
+            }
+        }
+        wrap.classList.add('sfaf-embed-root');
+        root.appendChild(wrap);
+        return wrap;
+    }
+
+    /*
+     * THE HOVER PREVIEW'S PANEL GETS A ROOT OF ITS OWN (3.111.0), on a host
+     * appended to <body> and drawn as display:contents, so the host has no box
+     * for the page's rules to give a border or a background. The panel is in
+     * the top layer and is positioned against the viewport, so where its root
+     * sits in the page does not matter.
+     */
+    var PREVIEW_ROOT = null;
+    function previewMount() {
+        if (!document.body || typeof document.body.attachShadow !== 'function') {
+            return null;
+        }
+        var host = document.createElement('div');
+        host.setAttribute('data-sfaf-calendar-preview', '');
+        host.setAttribute('style', 'display:contents !important');
+        document.body.appendChild(host);
+        PREVIEW_ROOT = shadowFor(host);
+        addSheet(document, FONTS_URL, 'fonts');
+        addSheet(PREVIEW_ROOT, CSS_URL, '1');
+        return PREVIEW_ROOT;
     }
 
     /* -----------------------------------------------------------------------
@@ -1952,7 +2079,7 @@
     var PREVIEW_OPEN_DELAY  = 260;
     var PREVIEW_CLOSE_DELAY = 140;
 
-    function initMonthPreview() {
+    function initMonthPreview(mount) {
         /* The device, asked rather than guessed. matchMedia is old enough to
            assume; if it is missing, so is any device this would suit. */
         if (!window.matchMedia || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
@@ -2022,7 +2149,10 @@
                 '<span class="uc-mp-place"></span>' +
                 '<a class="uc-mp-go" tabindex="-1" href="#">View Event Details</a>' +
             '</span>';
-        document.body.appendChild(panel);
+        /* Where the panel lives. embed.js hands it a shadow root of its own
+           (3.111.0), so the host page's stylesheet cannot repaint it; on the
+           calendar site it is the page's own body. */
+        (mount || document.body).appendChild(panel);
 
         /* The two targets, kept in one list so nothing can fill one and forget
            the other. */
@@ -2182,7 +2312,10 @@
            EXIST IN BOTH SCRIPTS. embed.js has no jQuery on purpose, and the
            host page is somebody else's. See the marker note at the top. */
         function tileFrom(e) {
-            var t = e.target;
+            /* The element really under the pointer. A block in a shadow root
+               (embed.js, 3.111.0) reaches a listener on the document as its
+               host, so e.target alone would never be a tile. */
+            var t = (typeof e.composedPath === 'function' && e.composedPath()[0]) || e.target;
             if (!t || typeof t.closest !== 'function') { return null; }
             return t.closest('.uc-day-event a[data-uc-preview]');
         }
@@ -2228,7 +2361,7 @@
      * It refuses to build itself where the device cannot hover, so on a phone
      * this costs one matchMedia call and nothing else. */
     try {
-        initMonthPreview();
+        initMonthPreview(previewMount());
     } catch (e) {
         /* Same contract as everything else here: a failed enhancement must not
          * take the calendar with it. The tiles are still links. */

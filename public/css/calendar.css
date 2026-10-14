@@ -26,7 +26,7 @@
    ------------------------------------------------------------------------- */
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Merriweather:wght@300;400;700&display=swap');
 
-:root {
+:root, :host {
     /* Approved SFAF brand palette (brand guide v3.0, p.9). */
     --uc-teal: #16BECF;         /* Pantone 7710 UP — fills, borders, accents */
     --uc-dark: #373433;         /* Cool Gray 11 CP */
@@ -3060,7 +3060,8 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
    The right answer was neither, because the rule was not needed. */
 
 /* ---------------------------------------------------------------------------
-   THE COLUMN REACHES THE BOTTOM OF THE CARD (3.81.0)
+   THE COLUMN REACHED THE BOTTOM OF THE CARD (3.81.0), UNDONE IN 3.111.0: the
+   rule after the next note is what holds now, and this is kept for the why.
 
    THIS IS THE HALF 3.80.0 MISSED, and it missed it by fixing the right fault at
    the wrong end. The diagnosis was correct and is unchanged: nothing overflows,
@@ -3142,15 +3143,19 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
    the list under it reads as the same section continuing, and the rows already
    reflow on their own flex rules at any width. */
 .uc-calendar .uc-view-panels-combined .uc-sidebar { max-width: none; }
-.uc-calendar .uc-view-panels-combined > .uc-panel-sidebar { display: flex; flex-direction: column; }
-.uc-calendar .uc-view-panels-combined .uc-sidebar { flex: 1 1 auto; display: flex; flex-direction: column; }
-/* The list takes its natural height. Without this it would share the spare
-   space with nothing and grow, which puts the rows' hairlines in the wrong
-   places. */
-.uc-calendar .uc-view-panels-combined .uc-sidebar-list { flex: 0 0 auto; }
-.uc-calendar .uc-view-panels-combined .uc-month-tabs { flex: 0 0 auto; }
-/* auto, which is the whole fix: all the spare space goes above the link. */
-.uc-calendar .uc-view-panels-combined .uc-sidebar-all { flex: 0 0 auto; margin-top: auto; }
+/* ---------------------------------------------------------------------------
+   THE SIDEBAR ENDS AT ITS CONTENT (3.111.0, REVERSING 3.81.0)
+
+   3.81.0 stretched the column to the grid's height and pushed See all events
+   to its foot, so the rule above the link would read as the card's footer.
+   With a full month beside it that left a tall empty gap after the last date
+   and the link pinned to the bottom of the card, far from the month pills it
+   belongs with. The panel now starts at the top of its line and stops where
+   its content does: the list, the month pills, then See all events directly
+   under them. The grid keeps the divider on its own side, so the line between
+   the halves still runs the full height. No height and no overflow here, for
+   the reason in the note above. */
+.uc-calendar .uc-view-panels-combined > .uc-panel-sidebar { align-self: flex-start; }
 
 /* ---------------------------------------------------------------------------
    EACH HALF ASKS ABOUT ITSELF, NOT ABOUT THE BLOCK.

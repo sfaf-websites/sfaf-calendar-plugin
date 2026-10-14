@@ -8,7 +8,8 @@
  * editor outside the review team approving; E.1 a non-PDF accepted; F.3 a
  * migrated value lost; G.2 the field still rendered; H a message sent for an
  * event registering elsewhere; and in the browser, A.1
- * the Featured mark not drawn.
+ * the Featured mark not drawn; J the embed back in the page's DOM; K the
+ * combined sidebar stretched again.
  *
  * Each replacement is written into the real file, the check is run, and every
  * file is put back from memory, not from git. An anchor that is not there, or
@@ -43,6 +44,13 @@ $plants = array(
     ) ),
     'A.1 live: the Featured mark not drawn' => array( $live, 'PLANT A.1 LIVE', array(
         array( 'public/css/calendar.css', ".uc-featured-mark {\n    display: block;", ".uc-featured-mark {\n    display: none;" ),
+    ) ),
+    'J: the block drawn in the page\'s own DOM again' => array( 'embed-isolation-live.php --run', 'PLANT J', array(
+        array( 'public/js/embed.js', "        if (typeof host.attachShadow !== 'function') {\n            return host;", "        if (true) {\n            return host;" ),
+    ) ),
+    'K: the 3.81.0 stretch back on the combined sidebar' => array( 'embed-isolation-live.php --run', 'PLANT K', array(
+        array( 'public/css/calendar.css', ".uc-calendar .uc-view-panels-combined > .uc-panel-sidebar { align-self: flex-start; }",
+            ".uc-calendar .uc-view-panels-combined > .uc-panel-sidebar { display: flex; flex-direction: column; }\n.uc-calendar .uc-view-panels-combined .uc-sidebar { flex: 1 1 auto; display: flex; flex-direction: column; }\n.uc-calendar .uc-view-panels-combined .uc-sidebar-all { margin-top: auto; }" ),
     ) ),
 );
 $missed = 0;
