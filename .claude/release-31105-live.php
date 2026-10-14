@@ -144,7 +144,7 @@ window.addEventListener('load', function () { setTimeout(function () {
     out.main = rect(q('.uc-portal-main')); out.topbar = rect(q('.uc-portal-topbar'));
     out.title = form ? q('[name="title"]', form).value : null;
     out.firstAfterBar = bar && bar.nextElementSibling ? bar.nextElementSibling.className : null;
-    if (S.press && yes) { yes.click(); out.went = went; }
+    if (S.press && !S.shot && yes) { yes.click(); out.went = went; }
     if (no) { no.click(); }
     out.goneAfterDiscard = !q('[data-uc-draft-prompt]');
     out.keptAfterDiscard = !!localStorage.getItem(S.key);
@@ -248,7 +248,7 @@ if ( $shots ) {
         $png   = __DIR__ . "/screens/caladmin-31105-$k.png";
         $src   = __DIR__ . "/release-31105-live-$k.html";
         $inner = __DIR__ . "/release-31105-shot-$k.html";
-        file_put_contents( $inner, str_replace( array( '"press":1', '</head>' ), array( '"press":0,"shot":1', '<style>*,*::before,*::after{transition:none!important;animation:none!important}</style></head>' ), str_replace( "if (no) { no.click(); }", "if (no && !S.shot) { no.click(); }", file_get_contents( $src ) ) ) );
+        file_put_contents( $inner, str_replace( array( 'window.SL={', '</head>' ), array( 'window.SL={"shot":1,', '<style>*,*::before,*::after{transition:none!important;animation:none!important}</style></head>' ), str_replace( "if (no) { no.click(); }", "if (no && !S.shot) { no.click(); }", file_get_contents( $src ) ) ) );
         $frame = __DIR__ . "/release-31105-shot-$k-frame.html";
         file_put_contents( $frame, '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0"><iframe src="' . basename( $inner ) . '" style="display:block;width:' . $w . 'px;height:900px;border:0"></iframe></body></html>' );
         shell_exec( '"' . $chrome . '" --headless --disable-gpu --hide-scrollbars --allow-file-access-from-files --window-size=' . max( 504, $w ) . ',900 --virtual-time-budget=8000 --screenshot="' . $png . '" "file:///' . str_replace( '\\', '/', $frame ) . '" 2>NUL' );

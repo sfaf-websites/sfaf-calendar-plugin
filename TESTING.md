@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 297 items.** Quick 244, needs real conditions 49, blocked on other
+**Outstanding: 303 items.** Quick 249, needs real conditions 50, blocked on other
 people 4.
 
 ---
@@ -3405,6 +3405,57 @@ row." on one line at desk width.
 
 **Why it needs a person:** the live queue.
 
+### 1.248 Restore what you were typing, after a reload (3.110.5)
+
+On **Add event**, type a title and a few words into the **description**, then
+reload the page. "Restore what you were typing?" must show above the heading
+with **Restore** and **Discard**. Press Restore: the title AND the description
+editor hold what you typed. Save. Open the event again: no prompt. Then type,
+reload and press **Discard**: the prompt goes, and a reload does not bring it
+back.
+
+**Why it needs a person:** the description is TinyMCE, which the build stands in
+for with a plain text box; only the live editor shows whether a restore reaches it.
+
+### 1.249 Signed out with a form open (3.110.5)
+
+Open **Edit event** in one tab and change the title. In a second tab, **Sign
+out**. Back in the first, press **Save changes**. You must land on the caladmin
+sign-in (never `wp-login.php`), and after signing in, back on the same event with
+your title in the box and "What you were typing is back. Save to keep it." Save:
+the change is kept. Nothing should have been saved before you signed in.
+
+**Why it needs a person:** a real sign-out and a real sign-in.
+
+### 1.250 A stale token while still signed in (3.110.5)
+
+Open **Edit event** in one tab and change the title. In a second tab, sign out
+and sign straight back in, which starts a new session. In the first tab press
+**Save changes**: the page reloads on the same event with your title restored,
+and nothing was saved. Press Save again: it saves.
+
+**Why it needs a person:** WordPress tokens belong to a session, which only a
+real sign-in makes.
+
+### 1.251 The session-ended page, with scripting off (3.110.5)
+
+Turn JavaScript off for the site, open **Edit event**, sign out in another tab,
+and press **Save changes**. You must see caladmin's sign-in layout with "Your
+session had ended, so that change was not saved. Sign in and your form will be
+restored." and a **Sign in** button, no Weglot language switcher and nothing
+from the theme. Sign in returns to the event. With scripting off nothing is
+restored, so the second sentence is untrue there: say whether that matters.
+
+**Why it needs a person:** Weglot and the theme are only on the live site.
+
+### 1.252 A CSV download after the session ended (3.110.5)
+
+Open an event's **RSVP list**, sign out in another tab, and press the CSV
+download. You must get the same page saying "Your session had ended, so the
+download did not start. Sign in and start it again." and no file.
+
+**Why it needs a person:** the live download route.
+
 ## 2. Needs real conditionsWaiting for an unattended job to fire, a real removal at source, or a real event
 with real registrations and real mail.
 
@@ -4134,6 +4185,18 @@ carries no mark, so its pictures stay; say how many of those there are.
 
 **Why it needs real conditions:** a real rejection and the trash emptying on its
 own schedule.
+
+### 2.52 The keepalive renews a sign-in that is about to end (3.110.5)
+
+Sign in **without** Remember me and leave **Edit event** open in a tab, with the
+computer awake, for more than 36 hours (a sign-in lasts two days; it is renewed
+when under twelve hours are left). Then change something and **Save changes**:
+it must save with no sign-in. Repeat once **with** Remember me if there is time.
+If a security plugin keeps a sign-in log, look at whether the renewal shows as a
+new sign-in, and say so.
+
+**Why it needs real conditions:** two days of an open tab, and the site's own
+plugins watching cookies.
 
 ## 3. Blocked on other peopleNothing here can move until somebody outside the build answers.
 

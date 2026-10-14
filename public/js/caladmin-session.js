@@ -229,11 +229,10 @@
         u.searchParams.set('uc_restore', '1');
         return u.toString();
     }
+    /* First in the page's content, where the server's own flash lines go. */
     function topOfPage() {
-        var main = document.querySelector('.uc-portal-main');
-        if (!main) { return null; }
-        var bar = main.querySelector(':scope > .uc-portal-topbar');
-        return { parent: main, before: bar ? bar.nextSibling : main.firstChild };
+        var main = document.querySelector('.uc-portal-content');
+        return main ? { parent: main, before: main.firstChild } : null;
     }
     function say(el) {
         var at = topOfPage();

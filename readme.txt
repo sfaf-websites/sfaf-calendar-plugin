@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.110.4
+Stable tag: 3.110.5
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,18 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.110.5 =
+
+**Nothing typed into caladmin is lost to an expired sign-in.**
+
+**DRAFTS.** Every caladmin form that takes typing keeps a copy of its fields in the browser as somebody works, for that screen and that event. A reload, a dropped sign-in or a browser crash finds it again: opening the screen shows "Restore what you were typing?" with Restore and Discard. A save the server accepts clears it. Passwords, uploads and security tokens are never copied. A row added in the browser and never saved (a FAQ, a question, an extra date) cannot be put back, because the page does not draw it again.
+
+**THE CHECK BEFORE A POST.** Every caladmin form asks the server before it posts whether its sign-in and its security token are still good. If not, nothing is sent: the person goes to the caladmin sign-in, and signing in lands them back on the same screen with what they typed in the fields. A page whose token went stale while still signed in goes straight back to the screen with the draft restored.
+
+**THE SESSION-ENDED PAGE.** A caladmin post with a stale or missing token, or from somebody signed out, shows caladmin's sign-in layout with "Your session had ended, so that change was not saved. Sign in and your form will be restored." and a Sign in button that returns to the screen. The two CSV downloads say the download did not start. "Security check failed" is gone from caladmin, and the page carries no theme or language switcher. A sign-in page left open too long says so instead.
+
+**THE KEEPALIVE.** While a caladmin screen is open, it checks in every ten minutes, and a sign-in with less than twelve hours left is renewed, keeping Remember me as it was. An open tab therefore stays signed in for as long as it is open.
 
 = 3.110.4 =
 

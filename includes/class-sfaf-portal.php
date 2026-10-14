@@ -2472,7 +2472,7 @@ class SFAF_Portal {
         $this->head( 'Sign In' );
         $this->login_card_open( 'SFAF Calendar Admin', '' );
         ?>
-                <p class="uc-notice uc-login-notice" role="alert" data-uc-session-ended><?php echo esc_html( $message ); ?></p>
+                <p class="uc-login-error" role="alert" data-uc-session-ended><?php echo esc_html( $message ); ?></p>
                 <a class="uc-btn uc-btn-primary uc-btn-block" href="<?php echo esc_url( $href ); ?>" data-uc-session-signin>Sign in</a>
         <?php
         $this->login_card_close();

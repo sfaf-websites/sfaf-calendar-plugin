@@ -4,18 +4,17 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-13, at 3.110.4, released.
+**Last updated:** 2026-10-14, at 3.110.5, released ahead of 3.111.0.
 
 ---
 
 ## What shipped last
 
-**3.110.4**: See all events goes to the Calendar home URL with `uc_cat`,
-`uc_org` or `uc_group`, and an embed reads them from its page; Strut for any
-name starting with Strut; rejected pictures deleted with the event (`TESTING.md`
-1.245 to 1.247, 2.51). **3.110.3**: pictures in three places, one upload size,
-+ Upload a picture for this event, a submitted picture filed at approval, Set
-team, and every changed slug redirecting (`TESTING.md` 1.235 to 1.244, 2.48 to 2.50).
+**3.110.5, from the 3.110.4 code**: nothing typed into caladmin is lost to an
+expired sign-in: browser drafts, a check before every post, a session-ended page,
+and a keepalive, so **an open caladmin tab never signs out on its own**
+(`PROJECT.md` 5, `TESTING.md` 1.248 to 1.252, 2.52). **3.110.4**: See all events
+to the Calendar home, filtered; Strut by prefix (1.245 to 1.247, 2.51).
 > **3.110.1: EDITORS NO LONGER HAVE EVERY EVENT.** A team decides which events a
 > person has; their level decides what they can do on them (CLAUDE.md 7,
 > `PROJECT.md` 5). An editor has what they created and what **Team and
@@ -84,6 +83,8 @@ Earlier releases, and the reasoning for all of it: **`readme.txt` is the changel
 
 ## In flight
 
+- **3.111.0 is built and unreleased**, on `wip-3.111.0` until it is rebased on
+  3.110.5; its own TESTING items follow 3.110.5's.
 - **Following a series is half built.** 3.53.0 established the followers; nothing
   sends them. `PROJECT.md` 8, then `TESTING.md` 1.22.
 - **Automated fetching is ON and its own copy says it should not be**, and only
@@ -94,7 +95,8 @@ Earlier releases, and the reasoning for all of it: **`readme.txt` is the changel
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 297 items.** **1.235**, **1.245**
+**`TESTING.md` holds the manual testing backlog: 303 items.** **1.249** (signed out
+with a form open) first, then **1.235**, **1.245**
 and **1.236** first (Strut's slug, See all events, retired names), then **1.225**,
 that editors have their events, then **1.218**,
 that schema 13 ran, then **2.37**, the old offers moved, then **1.200**, that

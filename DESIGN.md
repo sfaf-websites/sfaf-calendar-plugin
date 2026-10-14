@@ -1156,6 +1156,23 @@ padding, the chevron right, and the same 12px 14px 14px panel. It keeps its
 sentence, "Emails for this event: all 6 are on", as the label. It is the first
 thing in its own section of the card, so the space above it is the section's.
 
+### Restore what you were typing, and the session-ended page (3.110.5)
+
+Measured in Chrome by `.claude/release-31105-live.php` at 1280px and 390px;
+screenshots `caladmin-31105-prompt-*` and `caladmin-31105-ended-*` in
+`.claude/screens/`. **Nothing new in colour.**
+
+**The restore prompt** is the page-level `.uc-flash-attention` banner, first in
+`.uc-portal-content` where the server's own flash lines go: "Restore what you
+were typing?" left, **Restore** (`.uc-btn-primary`) and **Discard** (`.uc-btn`)
+together at the right, wrapping under the words on a phone, 44px tall there.
+After a restore, the plain `.uc-flash` says "What you were typing is back. Save
+to keep it."
+
+**The session-ended page is the sign-in layout** from 3.109.0: the logo, "SFAF
+Calendar Admin", the sentence as the failure pair (`.uc-login-error`), because
+a change was not saved, and **Sign in** as the full-width yellow button.
+
 ### Private in the Display card, the sign-in pages and the logos (3.109.0)
 
 Measured in Chrome by `.claude/release-3109-live.php` at 1280px and 390px.

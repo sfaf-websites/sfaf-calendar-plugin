@@ -1637,6 +1637,10 @@ are separate because conflating them returned a 500 in 3.44.0.
 | `load_media` | this screen opens the media library | `wp_enqueue_media()` |
 | `load_editor` | this screen has a rich text control | `wp_editor()` or `SFAF_Rich_Text::enqueue()` |
 
+**`caladmin-session.js` is on every caladmin page, flags or not (3.110.5)**,
+printed by `foot()` with its settings in `#uc-session-config` AHEAD of the
+footer scripts and portal.js; §5 has why the order is the feature.
+
 Either prints the enqueued styles and scripts. **Only `load_media` prints media
 templates**, because `wp_print_media_templates()` is a media-stack function and
 is not safe on a request that never loaded the media stack.
@@ -6407,6 +6411,61 @@ re-issues the person's cookie so they stay signed in. The plugin stores
 nothing. **Nothing in caladmin links to the WordPress login or profile**;
 `.claude/password-pages-test.php` sweeps the source for it.
 
+### A sign-in that ends loses nothing typed (3.110.5)
+
+Three layers, because each catches what the one before it cannot.
+
+1. **Drafts in the browser.** `public/js/caladmin-session.js` keeps a copy of
+   every caladmin POST form that takes typing in `localStorage`, under
+   `ucDraft:<screen>|<uc_action>|<n>` (`events/edit/12|save_event|0`), as
+   somebody types, clicks and every five seconds. Never a password, a file, a
+   nonce, `uc_action` or the referer. A copy that matches what the page drew is
+   deleted rather than kept. Opening a screen with a copy that differs offers
+   **Restore what you were typing?**; Restore reloads with `?uc_restore=1`,
+   and the copy is applied when the script runs, which is **before the footer
+   scripts**, so TinyMCE and portal.js start from the restored values instead
+   of being written into after they have drawn. The copy is cleared only by
+   Discard or by the server: a post that passes the nonce sets the
+   `uc_draft_done` cookie naming the draft the form carried in `uc_draft_key`,
+   and the next page deletes it. Drafts older than fourteen days are pruned.
+2. **The check before a post.** Every caladmin POST form's submit is held,
+   in the capture phase and before portal.js's own handlers, while admin-ajax
+   `sfaf_caladmin_session` is asked whether the person is signed in and
+   whether this form's `uc_portal_<action>` nonce verifies. Signed out: the
+   caladmin sign-in with `redirect_to` the screen plus `uc_restore=1`. Signed
+   in with a stale nonce: straight back to the screen with `uc_restore=1`.
+   Good: the same submit is replayed with the button that was pressed, and
+   further submits pass unasked for two minutes. **Only a clear no stops a
+   post**: an unreadable answer or no answer lets it go, and layer 3 is under it.
+3. **The session-ended page.** `dispatch_post()` answers a stale or missing
+   nonce, and any non-sign-in action from somebody signed out, with
+   `session_ended()`: caladmin's sign-in layout, the sentence, and Sign in to
+   `session_return_url()` (the posted `_wp_http_referer`, then the browser's
+   referer, then the screen, only ever a caladmin address). Nothing in the post
+   is acted on. The CSV exports use it with the download sentence. A request
+   carrying `uc_ajax` gets the same sentence as JSON with a 403.
+   `.claude/session-ended-test.php` reads every `case` out of `dispatch_post()`
+   with the tokenizer and posts each one three ways.
+
+**The sign-in returns to the screen.** `login_return()`: a `redirect_to` that
+is a caladmin address, or the screen somebody was on when they were shown the
+sign-in. Anything else goes to the dashboard.
+
+**The keepalive.** Every ten minutes while a caladmin page is open the same
+endpoint is asked with `keepalive=1`, and `extend_sign_in()` renews a sign-in
+with under twelve hours left. **It renews the same session**, moving the
+session record's expiry and reissuing the cookie over the same token with
+`wp_set_auth_cookie( $uid, $remember, is_ssl(), $token )`, because a nonce is
+tied to the session token and a fresh sign-in would break every form open in
+every tab. Remember me is read from the session's first length (over three days
+means yes) and stored as `uc_remember`. **Consequence, asked for in 3.110.5: an
+open caladmin tab never signs out on its own.**
+
+**What a restore cannot do.** It fills the fields the page drew. A repeater row
+added in the browser and never saved (a FAQ, a question, an extra date) is not
+drawn again, so its fields have nowhere to go. With scripting off there is no
+draft, and the session-ended page's promise to restore is not kept.
+
 ### The logos come from SFAF's own site (3.109.0)
 
 The sign-in pages show the wide logo and the sidebar the stacked one,
@@ -6790,7 +6849,9 @@ current situation and all four will still be true in six months.
   pressing Approve. §1 carries the reasoning.
 - **Nothing in caladmin warns about unsaved work.** There is no `beforeunload`
   handler anywhere in the portal: close a tab or follow a link mid-edit and
-  everything typed is gone, silently, on every screen. This is also why a
+  nothing says so. Since 3.110.5 what was typed is kept as a browser draft and
+  offered back on the next visit to that screen (§5), but a repeater row added
+  and never saved is still lost. This is also why a
   control that creates something is a field on the form and never a button that
   posts; see "Create-from-the-editor is a field, never a button".
 - **A cancelled event is still `publish` with a date**, and teams are an access
