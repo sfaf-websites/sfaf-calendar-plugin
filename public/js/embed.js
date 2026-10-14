@@ -132,6 +132,10 @@
             filters: container.getAttribute('data-filters') || '',
             // Event ids shown first (3.111.0); the endpoint drops any it cannot show.
             pin: container.getAttribute('data-pin') || '',
+            // What's included and Location (3.112.0): the snippet's tag scope and the visitor's choices.
+            tag: container.getAttribute('data-tag') || '',
+            active_tags: container.getAttribute('data-active-tags') || '',
+            active_locations: container.getAttribute('data-active-locations') || '',
             organizer: container.getAttribute('data-organizer') || '',
             series: container.getAttribute('data-series') || '',
             venue: container.getAttribute('data-venue') || '',
@@ -576,8 +580,14 @@
              * place that does the swapping.
              */
             var whoOpen = !!container.querySelector('[data-uc-who][open]');
+            var pickOpen = (container.querySelector('[data-uc-pick][open]') || { getAttribute: function () { return ''; } }).getAttribute('data-uc-pick');
 
             container.innerHTML = data.html;
+
+            if (pickOpen) {
+                var pick = container.querySelector('[data-uc-pick="' + pickOpen + '"]');
+                if (pick) { pick.open = true; }
+            }
 
             if (whoOpen) {
                 var who = container.querySelector('[data-uc-who]');
@@ -1562,6 +1572,74 @@
         narrow();
     }
 
+    /*
+     * WHAT'S INCLUDED AND LOCATION (3.112.0), as calendar.js does them: a tick
+     * names the block's choice and redraws after 350ms, Clear all empties the
+     * one list, and a press outside closes it.
+     */
+    function bindPickers(container) {
+        var timer = null;
+        var attrFor = { tag: 'data-active-tags', location: 'data-active-locations' };
+
+        function relabel(root) {
+            var names = Array.prototype.slice.call(root.querySelectorAll('[data-uc-pick-opt]'))
+                .filter(function (b) { return b.checked; })
+                .map(function (b) {
+                    var s = b.nextElementSibling ? b.nextElementSibling.cloneNode(true) : null;
+                    if (!s) { return ''; }
+                    var c = s.querySelector('.uc-who-count');
+                    if (c) { c.parentNode.removeChild(c); }
+                    return (s.textContent || '').replace(/^\s+|\s+$/g, '');
+                })
+                .filter(Boolean);
+            var label = root.querySelector('[data-uc-pick-label]');
+            if (label) {
+                label.textContent = !names.length ? (root.getAttribute('data-uc-pick-empty') || '')
+                    : (names.length <= 2 ? names.join(', ') : names.length + ' selected');
+            }
+            var trigger = root.querySelector('[data-uc-pick-trigger]');
+            if (trigger) { trigger.classList.toggle('active', names.length > 0); }
+        }
+
+        function apply(root) {
+            var kind = root.getAttribute('data-uc-pick');
+            if (!attrFor[kind]) { return; }
+            container.setAttribute(attrFor[kind], Array.prototype.slice.call(root.querySelectorAll('[data-uc-pick-opt]'))
+                .filter(function (b) { return b.checked; })
+                .map(function (b) { return b.value; }).join(','));
+            if (timer) { clearTimeout(timer); }
+            timer = setTimeout(function () {
+                timer = null;
+                loadBlock(container, 1, false);
+            }, 350);
+        }
+
+        container.addEventListener('change', function (e) {
+            var box = e.target;
+            if (!box || !box.matches || !box.matches('[data-uc-pick-opt]')) { return; }
+            var root = box.closest('[data-uc-pick]');
+            if (!root) { return; }
+            relabel(root);
+            apply(root);
+        });
+
+        container.addEventListener('click', function (e) {
+            var t = e.target;
+            if (!t || !t.closest) { return; }
+            var clear = t.closest('[data-uc-pick-clear]');
+            if (clear && container.contains(clear)) {
+                e.preventDefault();
+                var root = clear.closest('[data-uc-pick]');
+                Array.prototype.forEach.call(root.querySelectorAll('[data-uc-pick-opt]'), function (b) { b.checked = false; });
+                relabel(root);
+                apply(root);
+                return;
+            }
+            Array.prototype.forEach.call(container.querySelectorAll('[data-uc-pick][open]'), function (d) {
+                if (!d.contains(t)) { d.open = false; }
+            });
+        });
+    }
     function bindGroups(container) {
         container.addEventListener('click', function (e) {
             var t = e.target;
@@ -1842,6 +1920,9 @@
         if (pageParam('uc_org')) {
             container.setAttribute('data-active-organizer', pageParam('uc_org'));
         }
+        // And What's included and Location, which See all events carries (3.112.0).
+        container.setAttribute('data-active-tags', pageParam('uc_tag'));
+        container.setAttribute('data-active-locations', pageParam('uc_loc'));
         container.setAttribute('data-active-search', '');
 
         // Bound to the container itself, once, so they survive every re-render
@@ -1856,6 +1937,7 @@
            the renderer for a block that asks for the old shape. This is the one
            that reaches what the filter bar actually draws now. */
         bindWho(container);
+        bindPickers(container);
 
         ensureStylesheet(container);
         setLoading(container);

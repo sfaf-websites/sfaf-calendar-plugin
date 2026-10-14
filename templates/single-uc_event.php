@@ -130,6 +130,9 @@ while ( have_posts() ) :
                     <p class="uc-single-organizer">Hosted by <?php echo esc_html( $organizer_phrase ); ?></p>
                 <?php endif; ?>
 
+                <?php // What's included (3.112.0), under the category and organizer. ?>
+                <?php echo SFAF_Tags::pills_html( $post_id, 'page' ); ?>
+
                 <?php
                 $series_link = sfaf_series_link( $post_id );
                 if ( $series_link ) {

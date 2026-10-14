@@ -44,6 +44,7 @@
         run('faq', initFAQ);
         run('pagination', initPagination);
         run('who', initWhoPicker);
+        run('pickers', initPickers);
         run('views', initViews);
         // After views, which is what puts a month grid on the screen. It is
         // delegated, so the order does not actually matter, and it is here
@@ -370,6 +371,9 @@
             organizer: $block.attr('data-filter-organizer') || '',
             series: $block.attr('data-filter-series') || '',
             venue: $block.attr('data-filter-venue') || '',
+            // What's included and Location, as this render queried them (3.112.0).
+            tag: $block.attr('data-filter-tag') || '',
+            location: $block.attr('data-filter-location') || '',
             /* THE SEARCH TERM TRAVELS WITH THE MONTH FROM 3.86.0. It was not in
                this payload, and ajax_load_month() did not read it, and
                month_grid_data() did not apply it. Three places, each of which
@@ -729,6 +733,8 @@
             organizer:      $block.attr('data-filter-organizer') || '',
             series:         $block.attr('data-filter-series') || '',
             venue:          $block.attr('data-filter-venue') || '',
+            tag:            $block.attr('data-filter-tag') || '',
+            location:       $block.attr('data-filter-location') || '',
             s:              $block.attr('data-filter-s') || '',
             // The pins this page drew, so the next page leaves them out (3.111.0).
             pin:            $block.attr('data-filter-pin') || '',
@@ -966,6 +972,72 @@
         });
     }
 
+    /* -----------------------------------------------------------------------
+     * WHAT'S INCLUDED AND LOCATION (3.112.0). Two dropdowns beside
+     * Organizers and groups, each one list of ticks. A tick names the block's
+     * choice in data-active-tags or data-active-locations and redraws the
+     * block after the same 350ms pause the organizer picker uses; Clear all
+     * empties the one list; a press outside or Escape closes it.
+     * -------------------------------------------------------------------- */
+    function initPickers() {
+        var pickTimer = null;
+        var attrFor = { tag: 'data-active-tags', location: 'data-active-locations' };
+
+        function relabelPick(root) {
+            var names = $(root).find('[data-uc-pick-opt]:checked').map(function () {
+                var s = this.nextElementSibling;
+                var t = s ? s.cloneNode(true) : null;
+                if (t) { $(t).find('.uc-who-count').remove(); }
+                return t ? $.trim(t.textContent) : '';
+            }).get().filter(Boolean);
+            var empty = $(root).attr('data-uc-pick-empty') || '';
+            $(root).find('[data-uc-pick-label]').text(!names.length ? empty
+                : (names.length <= 2 ? names.join(', ') : names.length + ' selected'));
+            $(root).find('[data-uc-pick-trigger]').toggleClass('active', names.length > 0);
+        }
+
+        function apply(root, $block) {
+            var kind = $(root).attr('data-uc-pick');
+            if (!attrFor[kind] || !$block.length) { return; }
+            $block.attr(attrFor[kind], $(root).find('[data-uc-pick-opt]:checked').map(function () { return this.value; }).get().join(','));
+            if (pickTimer) { clearTimeout(pickTimer); }
+            pickTimer = setTimeout(function () {
+                pickTimer = null;
+                var $live = $('[data-uc-pick="' + kind + '"]').closest('.uc-calendar').first();
+                reloadBlock($live.length ? $live : $block);
+            }, 350);
+        }
+
+        $(document).on('change', '[data-uc-pick-opt]', function () {
+            var root = $(this).closest('[data-uc-pick]')[0];
+            if (!root) { return; }
+            relabelPick(root);
+            apply(root, $(this).closest('.uc-calendar'));
+        });
+
+        $(document).on('click', '[data-uc-pick-clear]', function (e) {
+            e.preventDefault();
+            var root = $(this).closest('[data-uc-pick]')[0];
+            if (!root) { return; }
+            $(root).find('[data-uc-pick-opt]').prop('checked', false);
+            relabelPick(root);
+            apply(root, $(this).closest('.uc-calendar'));
+        });
+
+        $(document).on('click', function (e) {
+            $('[data-uc-pick][open]').each(function () {
+                if (!this.contains(e.target)) { this.open = false; }
+            });
+        });
+        $(document).on('keydown', function (e) {
+            if ('Escape' !== e.key && 'Esc' !== e.key) { return; }
+            $('[data-uc-pick][open]').each(function () {
+                this.open = false;
+                var s = $(this).find('[data-uc-pick-trigger]')[0];
+                if (s) { s.focus(); }
+            });
+        });
+    }
     function initFilters() {
         $(document).on('click', '.uc-filter-btn', function (e) {
             /*
@@ -1165,6 +1237,10 @@
             active_groups:   activeGroups($block),
             organizer:        $block.attr('data-scope-organizer') || $block.attr('data-filter-organizer') || '',
             active_organizer: $block.attr('data-active-organizer') || '',
+            // What's included and Location (3.112.0): the scope and the choices.
+            tag:              $block.attr('data-scope-tag') || '',
+            active_tags:      $block.attr('data-active-tags') || '',
+            active_locations: $block.attr('data-active-locations') || '',
             filters:          $block.attr('data-filters') || '',
             series:          $block.attr('data-filter-series') || '',
             venue:           $block.attr('data-filter-venue') || '',
@@ -1205,9 +1281,11 @@
                  * place that swaps the markup.
                  */
                 var whoWasOpen = $block.find('[data-uc-who]').prop('open');
+                var pickWasOpen = $block.find('[data-uc-pick][open]').attr('data-uc-pick') || '';
                 var $fresh = $(resp.html);
                 $block.replaceWith($fresh);
                 if (whoWasOpen) { $fresh.find('[data-uc-who]').prop('open', true); }
+                if (pickWasOpen) { $fresh.find('[data-uc-pick="' + pickWasOpen + '"]').prop('open', true); }
                 /* The rows are new markup, so the hiding is reapplied or the
                    groups the chosen organizers do not run come back one frame
                    after being hidden. See narrowWho(). */

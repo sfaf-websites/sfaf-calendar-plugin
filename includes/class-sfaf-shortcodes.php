@@ -4976,6 +4976,8 @@ class SFAF_Shortcodes {
                         <span class="uc-lrow-byline"><?php echo esc_html( $byline ); ?></span>
                     <?php endif; ?>
                 </span>
+                <?php // What's included (3.112.0): small pills, each to the calendar filtered to it. ?>
+                <?php echo SFAF_Tags::pills_html( $post_id, 'card' ); ?>
                 <?php // The event's PDF (3.111.0), here and in every embed of the list. ?>
                 <?php echo SFAF_Attachments::button_html( $post_id, 'uc-attachment-row' ); ?>
             </div>
