@@ -6670,8 +6670,16 @@ class SFAF_Portal {
             // Carried so paging, sorting and the view tabs keep the chosen
             // scope. Without it, page two of All events would be page two of
             // My events and the count above it would stop matching the table.
-            'scope'    => $this->scope_choice(),
+            'scope'    => $this->scope_choice( true ),
         );
+        /* Drafts and Scheduled hold every date: the Upcoming and Archived views
+           do not apply to them, so the view is All and its tabs are not drawn. */
+        $own_tab = isset( self::own_status_tabs()[ $filters['scope'] ] );
+        if ( $own_tab ) {
+            $view              = 'all';
+            $filters['view']   = 'all';
+            $filters['status'] = '';
+        }
 
         // SORT LIVES IN THE URL so a view can be linked, bookmarked and shared,
         // and so it survives paging and filtering without a session or a cookie
@@ -6710,7 +6718,7 @@ class SFAF_Portal {
          * or an action. is_public_scope() is the one question that decides it,
          * asked once here and answered the same way everywhere below.
          */
-        $scope  = $this->scope_choice();
+        $scope  = $this->scope_choice( true );
         $public = $this->is_public_scope( $user, $scope );
 
         /* The dashboard's "Set organizers" link lands here. Read from the URL
@@ -6730,7 +6738,7 @@ class SFAF_Portal {
         $pages = $this->last_query_pages;
         ?>
         <div class="uc-page-head">
-            <h1><?php echo 'all' === $scope ? 'All Events' : 'My Events'; ?></h1>
+            <h1><?php echo esc_html( $own_tab ? self::own_status_tabs()[ $scope ]['label'] : ( 'all' === $scope ? 'All Events' : 'My Events' ) ); ?></h1>
             <a href="<?php echo esc_url( $this->url( 'events/new' ) ); ?>" class="uc-btn uc-btn-primary">+ New Event</a>
         </div>
 
@@ -6754,6 +6762,9 @@ class SFAF_Portal {
             'status'  => $filters['status'],
             'orderby' => $orderby,
             'order'   => $order,
+        ), array(
+            'drafts'    => $this->own_status_count( $user, 'draft' ),
+            'scheduled' => $this->own_status_count( $user, 'future' ),
         ) );
         ?>
 
@@ -6764,7 +6775,7 @@ class SFAF_Portal {
             </p>
         <?php endif; ?>
 
-        <?php $this->view_tabs( $view, $filters, $sort ); ?>
+        <?php if ( ! $own_tab ) { $this->view_tabs( $view, $filters, $sort ); } ?>
 
         <?php
         /*
@@ -6800,12 +6811,14 @@ class SFAF_Portal {
                     <option value="<?php echo (int) $c->term_id; ?>" <?php selected( $filters['cat'], $c->term_id ); ?>><?php echo esc_html( $c->name ); ?></option>
                 <?php endforeach; endif; ?>
             </select>
+            <?php if ( ! $own_tab ) : ?>
             <select name="status">
                 <option value="">Any status</option>
                 <?php foreach ( array( 'publish', 'pending', 'draft', 'future' ) as $k ) : ?>
                     <option value="<?php echo esc_attr( $k ); ?>" <?php selected( $filters['status'], $k ); ?>><?php echo esc_html( sfaf_status_label( $k ) ); ?></option>
                 <?php endforeach; ?>
             </select>
+            <?php endif; ?>
             <input type="date" name="from" value="<?php echo esc_attr( $filters['from'] ); ?>" title="From date" />
             <input type="date" name="to" value="<?php echo esc_attr( $filters['to'] ); ?>" title="To date" />
             <?php
@@ -6972,8 +6985,38 @@ class SFAF_Portal {
      *
      * @return string 'mine'|'all'
      */
-    private function scope_choice() {
-        return ( isset( $_GET['scope'] ) && 'all' === $_GET['scope'] ) ? 'all' : 'mine';
+    private function scope_choice( $with_tabs = false ) {
+        $asked = isset( $_GET['scope'] ) ? sanitize_key( wp_unslash( $_GET['scope'] ) ) : '';
+        if ( $with_tabs && in_array( $asked, array( 'drafts', 'scheduled' ), true ) ) {
+            return $asked;
+        }
+        return ( 'all' === $asked ) ? 'all' : 'mine';
+    }
+
+    /*
+     * DRAFTS AND SCHEDULED (3.112.0): two more tabs beside My events and All
+     * events, on the events screen. Each is THIS PERSON'S OWN events in that
+     * state, by post_author and nothing wider: a teammate's draft is theirs to
+     * finish, and Team and access decides editing, not whose list it is on.
+     * The status each tab means, and its label.
+     */
+    private static function own_status_tabs() {
+        return array(
+            'drafts'    => array( 'label' => 'Drafts', 'status' => 'draft' ),
+            'scheduled' => array( 'label' => 'Scheduled', 'status' => 'future' ),
+        );
+    }
+
+    /** How many of this person's own events are in a status. */
+    private function own_status_count( $user, $status ) {
+        $q = new WP_Query( array(
+            'post_type'      => 'uc_event',
+            'post_status'    => $status,
+            'author'         => (int) $user->ID,
+            'posts_per_page' => 1,
+            'fields'         => 'ids',
+        ) );
+        return (int) $q->found_posts;
     }
 
     /**
@@ -6989,12 +7032,17 @@ class SFAF_Portal {
      * @param string $path  Portal path this control lives on.
      * @param array  $carry Query args to preserve across the switch.
      */
-    private function render_scope_toggle( $scope, $path, $carry = array() ) {
+    private function render_scope_toggle( $scope, $path, $carry = array(), $counts = array() ) {
         $carry = array_filter( (array) $carry, function ( $v ) { return '' !== $v && null !== $v; } );
         $options = array(
             'mine' => 'My events',
             'all'  => 'All events',
         );
+        foreach ( self::own_status_tabs() as $key => $tab ) {
+            if ( isset( $counts[ $key ] ) ) {
+                $options[ $key ] = $tab['label'] . ' (' . (int) $counts[ $key ] . ')';
+            }
+        }
         ?>
         <div class="uc-scope-switch" role="group" aria-label="Which events to show">
             <?php foreach ( $options as $key => $label ) :
@@ -22463,8 +22511,13 @@ class SFAF_Portal {
          */
         $scope        = isset( $args['scope'] ) ? (string) $args['scope'] : '';
 
+        $own_tabs = self::own_status_tabs();
         if ( 'all' === $scope ) {
             // Nothing added: the caller has said so in as many words.
+        } elseif ( isset( $own_tabs[ $scope ] ) ) {
+            // Drafts or Scheduled (3.112.0): this person's own, in that status.
+            $q['author']      = $user->ID;
+            $q['post_status'] = $own_tabs[ $scope ]['status'];
         } elseif ( 'mine' === $scope && $this->is_admin_role( $user ) ) {
             // An admin has every event, so My events is a filter on a list
             // they may see either way, not a gate, and it stays literal.
