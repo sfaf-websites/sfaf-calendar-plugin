@@ -1652,6 +1652,18 @@ class SFAF_Admin {
                      */
                     ?>
                     <div class="uc-embed-field">
+                        <span class="uc-embed-label">Host page styles</span>
+                        <label class="uc-check">
+                            <input type="checkbox" id="uc-embed-isolate" />
+                            Protect from the host page's styles
+                        </label>
+                        <p class="description">
+                            Tick this for a site whose theme recolors the calendar. The calendar then keeps its own look
+                            there, and a translation plugin on that site, such as Weglot, cannot translate it.
+                        </p>
+                    </div>
+
+                    <div class="uc-embed-field">
                         <span class="uc-embed-label">Where events open</span>
                         <label class="uc-check">
                             <input type="checkbox" id="uc-embed-source-links"

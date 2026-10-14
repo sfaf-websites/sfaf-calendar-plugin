@@ -397,10 +397,14 @@
         }
     }
 
-    /** The calendar stylesheet for this block, once per root, and the fonts once per page. */
+    /** The calendar stylesheet for this block: in its root when isolated, with the
+        fonts in the head once; otherwise in the head, as it always was. */
     function ensureStylesheet(container) {
-        addSheet(document, FONTS_URL, 'fonts');
-        addSheet(rootOf(container) || document, CSS_URL, '1');
+        var root = rootOf(container);
+        if (root) {
+            addSheet(document, FONTS_URL, 'fonts');
+        }
+        addSheet(root || document, CSS_URL, '1');
     }
 
     /**
@@ -1877,7 +1881,14 @@
     }
 
     /*
-     * EVERY BLOCK IS DRAWN IN A SHADOW ROOT (3.111.0).
+     * A BLOCK THAT ASKS IS DRAWN IN A SHADOW ROOT (3.111.0): data-isolate="yes".
+     *
+     * OPT-IN, AND THE DEFAULT IS WHAT IT ALWAYS WAS. A block without the
+     * attribute is drawn in the host page exactly as in 3.110.5, with
+     * calendar.css in the document head, because a host may depend on reaching
+     * it: Weglot translates sfaf.org by walking the page's text, and a shadow
+     * root is closed to that. Isolation is for a host whose theme repaints the
+     * calendar and has nothing that needs to see inside it.
      *
      * The host page's theme was repainting the calendar: on
      * 2027.cycletozero.org the category pills took the theme's magenta with
@@ -1923,7 +1934,7 @@
     }
 
     function mount(host) {
-        if (typeof host.attachShadow !== 'function') {
+        if (host.getAttribute('data-isolate') !== 'yes' || typeof host.attachShadow !== 'function') {
             return host;
         }
         var root;
@@ -1955,7 +1966,10 @@
      */
     var PREVIEW_ROOT = null;
     function previewMount() {
-        if (!document.body || typeof document.body.attachShadow !== 'function') {
+        /* Only on a page with an isolated block; otherwise the panel goes into
+           <body> and takes calendar.css from the head, as before. */
+        if (!document.body || typeof document.body.attachShadow !== 'function'
+            || !document.querySelector('[data-sfaf-calendar][data-isolate="yes"]')) {
             return null;
         }
         var host = document.createElement('div');

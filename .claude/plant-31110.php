@@ -8,7 +8,8 @@
  * editor outside the review team approving; E.1 a non-PDF accepted; F.3 a
  * migrated value lost; G.2 the field still rendered; H a message sent for an
  * event registering elsewhere; and in the browser, A.1
- * the Featured mark not drawn; J the embed back in the page's DOM; K the
+ * the Featured mark not drawn; J an isolated embed back in the page's DOM; J2
+ * every embed isolated, asked or not; K the
  * combined sidebar stretched again.
  *
  * Each replacement is written into the real file, the check is run, and every
@@ -45,8 +46,11 @@ $plants = array(
     'A.1 live: the Featured mark not drawn' => array( $live, 'PLANT A.1 LIVE', array(
         array( 'public/css/calendar.css', ".uc-featured-mark {\n    display: block;", ".uc-featured-mark {\n    display: none;" ),
     ) ),
-    'J: the block drawn in the page\'s own DOM again' => array( 'embed-isolation-live.php --run', 'PLANT J', array(
-        array( 'public/js/embed.js', "        if (typeof host.attachShadow !== 'function') {\n            return host;", "        if (true) {\n            return host;" ),
+    'J: a block asking for isolation drawn in the page\'s own DOM' => array( 'embed-isolation-live.php --run', 'PLANT J:', array(
+        array( 'public/js/embed.js', "        if (host.getAttribute('data-isolate') !== 'yes' || typeof host.attachShadow !== 'function') {\n            return host;", "        if (true) {\n            return host;" ),
+    ) ),
+    'J2: every block isolated, asked or not' => array( 'embed-isolation-live.php --run', 'PLANT J2', array(
+        array( 'public/js/embed.js', "        if (host.getAttribute('data-isolate') !== 'yes' || typeof host.attachShadow !== 'function') {", "        if (typeof host.attachShadow !== 'function') {" ),
     ) ),
     'K: the 3.81.0 stretch back on the combined sidebar' => array( 'embed-isolation-live.php --run', 'PLANT K', array(
         array( 'public/css/calendar.css', ".uc-calendar .uc-view-panels-combined > .uc-panel-sidebar { align-self: flex-start; }",

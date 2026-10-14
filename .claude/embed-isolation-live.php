@@ -27,6 +27,12 @@
  *      the sidebar panel ends at its content, See all events sits directly
  *      under the month pills, and every pill shows a short month, untruncated.
  *
+ * ISOLATION IS OPT-IN (data-isolate="yes"), so the embed is measured both ways:
+ * with the attribute every value is the embed's own (PLANT J turns it off);
+ * without it the block is in the page, calendar.css is in the head, no fonts
+ * link is added and the host stylesheet is allowed through, as in 3.110.5
+ * (PLANT J2 turns isolation on for every block).
+ *
  * PLANT J puts the block back in the page's own DOM; PLANT K puts the 3.81.0
  * stretch back. plant-31110.php carries both.
  */
@@ -74,6 +80,11 @@ $ajs   = file_get_contents( dirname( __DIR__ ) . '/admin/js/admin.js' );
 ei( false !== strpos( $admin, 'data-when-view="sidebar combined">' . "\n" . '                        <label class="uc-embed-label" for="uc-embed-count">' ), 'K: the generator does not offer How many to show on the combined view' );
 ei( (bool) preg_match( "/if \\(choices\\.view === 'combined'\\) \\{\\s*attrs\\['data-count'\\] = String\\(choices\\.count\\);/", $ajs ), 'K: the generator does not write data-count for the combined view' );
 
+/* The generator: "Protect from the host page's styles", off by default, writing
+   data-isolate="yes" only when ticked. */
+ei( (bool) preg_match( '#<input type="checkbox" id="uc-embed-isolate" />\s*Protect from the host page\'s styles#', $admin ), 'J: the generator has no "Protect from the host page\'s styles" tick that is off by default' );
+ei( (bool) preg_match( "/if \\(choices\\.isolate\\) \\{\\s*attrs\\['data-isolate'\\] = 'yes';/", $ajs ), 'J: the generator does not write data-isolate="yes" only when ticked' );
+
 /* ---- The hostile host. ---------------------------------------------------- */
 $hostile = <<<'CSS'
 button, a, span, li, p, div, h3 { color: #ff00aa; background: #111 linear-gradient(#e0007a, #e0007a); border: 3px dashed #00ff00;
@@ -104,15 +115,35 @@ var tries = 0;
 (function wait() {
   var host = document.querySelector('[data-sfaf-calendar]');
   var lp = document.querySelector('.uc-view-panels');
-  var scope = window.EI_MODE === 'light' ? (lp && lp.closest('.uc-calendar')) : (host && host.shadowRoot);
+  var flat = window.EI_MODE === 'light' || window.EI_MODE === 'open';
+  var scope = flat ? (lp && lp.closest('.uc-calendar')) : (host && host.shadowRoot);
   /* Loaded, not merely linked: a <link> in a shadow root loads like any other, and
      measuring before it arrives measures an unstyled block. */
-  var ready = scope && scope.querySelector('.uc-view-panels') && (window.EI_MODE === 'light' || sheetsIn(scope));
-  if (!ready && tries++ < 60) { setTimeout(wait, 100); return; }
+  var ready = scope && scope.querySelector('.uc-view-panels') && (window.EI_MODE === 'light' || window.EI_MODE === 'none' || sheetsIn(window.EI_MODE === 'open' ? document : scope));
+  if (!ready && tries++ < 200) { setTimeout(wait, 100); return; }
+  out.unready = !ready;
+  /* The page's no-transition rule does not cross into a shadow root, and a pill
+     caught mid-transition measures as a colour nobody chose: the same rule goes
+     inside. Then wait for the block to stop changing, so both pages are measured
+     at rest rather than mid-redraw. */
+  if (scope && scope !== document && scope.host && !scope.querySelector('style[data-ei]')) {
+    var still = document.createElement('style'); still.setAttribute('data-ei', '');
+    still.textContent = '*,*::before,*::after{transition:none!important;animation:none!important}';
+    scope.appendChild(still);
+  }
+  var last = -1, same = 0, rounds = 0;
+  (function steady() {
+    var n = scope ? scope.querySelectorAll('*').length : 0;
+    same = (n === last) ? same + 1 : 0; last = n;
+    if (same < 3 && rounds++ < 40) { setTimeout(steady, 150); return; }
+    measure();
+  })();
+  function measure() {
   setTimeout(function () {
     out.shadow = !!(host && host.shadowRoot);
     out.inLight = !!document.querySelector('.uc-view-panels');
     out.fontsLink = !!document.querySelector('head link[data-sfaf-calendar-css="fonts"]');
+    out.headCss = !!document.querySelector('head link[data-sfaf-calendar-css="1"]');
     if (!scope) { out.noScope = true; finish(); return; }
     out.items = sweep(scope, scope);
     var probe = document.querySelector('.host-probe');
@@ -132,6 +163,11 @@ var tries = 0;
     (function settle() {
       var pr = document.querySelector('[data-sfaf-calendar-preview]');
       if (pr && pr.shadowRoot && !sheetsIn(pr.shadowRoot) && waited++ < 60) { setTimeout(settle, 100); return; }
+      if (pr && pr.shadowRoot && !pr.shadowRoot.querySelector('style[data-ei]')) {
+        var st = document.createElement('style'); st.setAttribute('data-ei', '');
+        st.textContent = '*,*::before,*::after{transition:none!important;animation:none!important}';
+        pr.shadowRoot.appendChild(st);
+      }
       setTimeout(measurePreview, 500);
     })();
     function measurePreview() {
@@ -142,6 +178,7 @@ var tries = 0;
       finish();
     }
   }, 300);
+  }
 })();
 })();
 JS;
@@ -156,10 +193,10 @@ function ei_page( $mode, $hostile_css, $markup, $fake, $probe, $count = 4 ) {
         . ( 'light' === $mode ? '<link rel="stylesheet" href="../public/css/calendar.css">' : '' )
         . ( '' !== $hostile_css ? '<style>' . $hostile_css . '</style>' : '' )
         . '<style>html,body{margin:0;padding:0;background:#fff}.page{padding:16px}*{transition:none!important;animation:none!important}</style>'
-        . '<script>window.EI_MODE=' . json_encode( $mode ) . ';' . ( 'shadow' === $mode ? $fake : 'window.__errs=[];window.addEventListener("error",function(e){window.__errs.push(e.message);});window.ucData={ajaxUrl:"",nonce:"n"};' ) . '</script></head><body><div class="page entry-content">'
+        . '<script>window.EI_MODE=' . json_encode( $mode ) . ';' . ( 'light' !== $mode ? $fake : 'window.__errs=[];window.addEventListener("error",function(e){window.__errs.push(e.message);});window.ucData={ajaxUrl:"",nonce:"n"};' ) . '</script></head><body><div class="page entry-content">'
         . '<div class="uc-calendar"><button type="button" class="uc-filter-btn host-probe">A host button</button></div>';
-    if ( 'shadow' === $mode ) {
-        $body = '<div class="sfaf-calendar-embed" data-sfaf-calendar data-view="combined" data-count="' . (int) $count . '" data-filters="category" data-toggle="yes"></div>'
+    if ( 'light' !== $mode ) {
+        $body = '<div class="sfaf-calendar-embed" data-sfaf-calendar' . ( 'shadow' === $mode ? ' data-isolate="yes"' : '' ) . ' data-view="combined" data-count="' . (int) $count . '" data-filters="category" data-toggle="yes"></div>'
             . '</div><script src="../public/js/embed.js"></script>';
     } else {
         $body = $markup . '</div><script src="vendor/jquery-3.7.1.min.js"></script><script src="../public/js/calendar.js"></script>';
@@ -168,10 +205,10 @@ function ei_page( $mode, $hostile_css, $markup, $fake, $probe, $count = 4 ) {
 }
 
 $pages = array();
-foreach ( array( 'shadow', 'light' ) as $mode ) {
+foreach ( array( 'shadow', 'open', 'light' ) as $mode ) {
     foreach ( array( 'clean' => '', 'hostile' => $hostile ) as $h => $css ) {
         foreach ( array( 'desktop' => 1280, 'phone' => 390 ) as $wn => $w ) {
-            if ( 'light' === $mode && 'phone' === $wn ) { continue; }
+            if ( 'shadow' !== $mode && 'phone' === $wn ) { continue; }
             $pages[ "$mode-$h-$wn" ] = array( 'w' => $w, 'html' => ei_page( $mode, $css, $markup, $fake, $probe ) );
         }
     }
@@ -182,7 +219,7 @@ $fake2 = str_replace( substr( json_encode( $markup ), 1, -1 ), substr( json_enco
 $pages['short-desktop'] = array( 'w' => 1280, 'html' => ei_page( 'shadow', '', $markup, $fake2, $probe, 2 ) );
 /* A host page with the same host button and no calendar at all: the leak baseline. */
 $pages['bare-desktop'] = array( 'w' => 1280, 'html' => '<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:#fff}.page{padding:16px}</style><script>window.EI_MODE="none";window.__errs=[];</script></head><body><div class="page entry-content"><div class="uc-calendar"><button type="button" class="uc-filter-btn host-probe">A host button</button></div></div>'
-    . '<script>' . str_replace( "var scope = window.EI_MODE === 'light'", "var scope = window.EI_MODE === 'none' ? document : window.EI_MODE === 'light'", str_replace( "scope.querySelector('.uc-view-panels') &&", "(window.EI_MODE === 'none' || scope.querySelector('.uc-view-panels')) &&", $probe ) ) . '</script></body></html>' );
+    . '<script>' . str_replace( "var scope = flat ?", "var scope = window.EI_MODE === 'none' ? document : flat ?", str_replace( "scope.querySelector('.uc-view-panels') &&", "(window.EI_MODE === 'none' || scope.querySelector('.uc-view-panels')) &&", $probe ) ) . '</script></body></html>' );
 
 $files = array();
 foreach ( $pages as $name => $p ) {
@@ -202,10 +239,12 @@ if ( ! file_exists( $chrome ) ) { echo "Chrome not found at $chrome\n"; exit( 1 
 $g = array();
 foreach ( $files as $name => $file ) {
     $w   = $pages[ $name ]['w'];
-    $dom = shell_exec( '"' . $chrome . '" --headless --disable-gpu --run-all-compositor-stages-before-draw --allow-file-access-from-files --window-size=' . max( 600, $w + 20 ) . ',1500 --virtual-time-budget=15000 --dump-dom "file:///' . str_replace( '\\', '/', $file ) . '" 2>NUL' );
+    $dom = shell_exec( '"' . $chrome . '" --headless --disable-gpu --run-all-compositor-stages-before-draw --allow-file-access-from-files --window-size=' . max( 600, $w + 20 ) . ',1500 --virtual-time-budget=40000 --dump-dom "file:///' . str_replace( '\\', '/', $file ) . '" 2>NUL' );
     if ( ! preg_match( '#<pre id="out">(.*?)</pre>#s', (string) $dom, $m ) ) { ei( false, "$name: Chrome returned no probe block" ); continue; }
     $g[ $name ] = json_decode( html_entity_decode( $m[1], ENT_QUOTES, 'UTF-8' ), true );
     ei( empty( $g[ $name ]['errors'] ), "$name threw: " . implode( '; ', (array) $g[ $name ]['errors'] ) );
+    // Not a finding about the embed: the page was measured before its stylesheet arrived.
+    ei( empty( $g[ $name ]['unready'] ), "$name: the block or its stylesheet had not loaded after 20 seconds, so nothing on that page was measured at rest" );
     ei( (int) $g[ $name ]['pageWidth'] <= $w, "$name: the page scrolls sideways, " . $g[ $name ]['pageWidth'] . "px in $w" );
     if ( in_array( '--verbose', $args, true ) ) { echo $name . ': ' . json_encode( $g[ $name ], JSON_UNESCAPED_SLASHES ) . "\n"; }
 }
@@ -243,6 +282,14 @@ if ( $pc && $ph ) {
     $d = array_merge( $d, ei_diff( $pc['items'], $ph['items'] ) );
     ei( ! $d, "PLANT J: the host page's stylesheet repaints the hover preview, " . count( $d ) . " value(s):\n      " . implode( "\n      ", array_slice( $d, 0, 8 ) ) );
 }
+
+/* ---- J: without data-isolate, the embed is what it was in 3.110.5 --------- */
+ei( false === $v( 'open-clean-desktop', 'shadow' ) && true === $v( 'open-clean-desktop', 'inLight' ), 'PLANT J2: an embed without data-isolate is drawn in a shadow root' );
+ei( true === $v( 'open-clean-desktop', 'headCss' ) && false === $v( 'open-clean-desktop', 'fontsLink' ), 'PLANT J2: an embed without data-isolate does not load calendar.css in the head alone: ' . json_encode( array( $v( 'open-clean-desktop', 'headCss' ), $v( 'open-clean-desktop', 'fontsLink' ) ) ) );
+$open = ei_diff( $v( 'open-clean-desktop', 'items' ), $v( 'open-hostile-desktop', 'items' ), 0 );
+ei( count( $open ) > 0, 'PLANT J2: without data-isolate the host stylesheet did not reach the embed, so it is isolated anyway' );
+$po = (array) $v( 'open-clean-desktop', 'preview' );
+ei( ! $po || false === $po['inShadow'], 'PLANT J2: on a page with no isolated block the hover preview is in a shadow root' );
 
 /* ---- J: calendar.js, measured and reported -------------------------------- */
 $light = ei_diff( $v( 'light-clean-desktop', 'items' ), $v( 'light-hostile-desktop', 'items' ), 0 );
@@ -284,7 +331,8 @@ if ( $fails ) {
     echo 'EMBED ISOLATION LIVE: ' . count( $fails ) . " FAILURE(S)\n  - " . implode( "\n  - ", $fails ) . "\n";
     exit( 1 );
 }
+echo 'embed.js without data-isolate, under the hostile stylesheet: ' . count( $open ) . " value(s) repainted, as in 3.110.5.\n";
 echo 'calendar.js on its own page, under the same stylesheet: ' . count( $light ) . " value(s) repainted.\n";
 foreach ( array_slice( $light, 0, 12 ) as $l ) { echo '      ' . $l . "\n"; }
-echo "embed isolation: the embed and its hover preview measure the same under a hostile host stylesheet at 1280px and 390px, nothing of the calendar's reaches the host, the fonts load; the combined sidebar shows four dates, ends at its content with See all events under the short month pills.\n";
+echo "embed isolation: with data-isolate=\"yes\" the embed and its hover preview measure the same under a hostile host stylesheet at 1280px and 390px, nothing of the calendar's reaches the host, the fonts load; the combined sidebar shows four dates, ends at its content with See all events under the short month pills.\n";
 exit( 0 );

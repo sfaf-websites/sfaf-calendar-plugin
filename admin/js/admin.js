@@ -805,6 +805,7 @@
                 view: view,
                 toggle: $('#uc-embed-toggle').is(':checked'),
                 sourceLinks: $('#uc-embed-source-links').is(':checked'),
+                isolate: $('#uc-embed-isolate').is(':checked'),
                 filterType: value ? type : '',
                 filterValue: value,
                 filterName: name,
@@ -890,6 +891,9 @@
             if (choices.sourceLinks) {
                 summary += ', opening imported events at their source';
             }
+            if (choices.isolate) {
+                summary += ', protected from the host page\'s styles';
+            }
             if (choices.pin && choices.view !== 'combined') {
                 var pins = choices.pin.split(',').length;
                 summary += ', with ' + pins + ' pinned event' + (pins === 1 ? '' : 's') + ' first';
@@ -942,6 +946,12 @@
              * flipped later without re-pasting anything.
              */
             attrs['data-source-links'] = choices.sourceLinks ? 'yes' : 'no';
+
+            // Only when ticked: a block without it is drawn in the host page,
+            // as every block was before 3.111.0.
+            if (choices.isolate) {
+                attrs['data-isolate'] = 'yes';
+            }
 
             // Only when something is pinned, and never on the combined view (3.111.0).
             if (choices.pin && choices.view !== 'combined') {
