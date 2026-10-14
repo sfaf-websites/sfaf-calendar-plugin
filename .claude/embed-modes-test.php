@@ -1073,9 +1073,11 @@ check(
     'who_counts() leaves the organizer filter applied to its own counts, so ticking one zeroes the rest'
 );
 /* QUOTED EXACTLY, for the same reason as `uc-day-event-text` above. */
+/* Three since 3.112.0: organizers, groups, and render_pick(), which draws What's
+   included and Location with the same count. */
 check(
-    2 === substr_count( $code, 'class="uc-who-count"' ),
-    'the count is missing from one of the two lists, so organizers and groups no longer answer the same question'
+    3 === substr_count( $code, 'class="uc-who-count"' ),
+    'the count is missing from one of the lists, so organizers, groups and the two dropdowns no longer answer the same question'
 );
 check(
     false !== strpos( $code, 'if ( 0 === $n && ! $on ) { continue; }' ),

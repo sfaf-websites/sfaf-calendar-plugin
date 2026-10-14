@@ -344,6 +344,11 @@ class SFAF_Embed {
                 'filters'          => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
                 // 3.111.0: event ids shown first, from data-pin. Same route, for the CORS reason above.
                 'pin'              => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
+                // 3.112.0: the snippet's tag scope, and what the visitor chose in
+                // What's included and Location. Same route, for the CORS reason above.
+                'tag'              => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
+                'active_tags'      => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
+                'active_locations' => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
             ),
         ) );
     }
@@ -407,7 +412,9 @@ class SFAF_Embed {
         $narrowed = ( '' !== trim( (string) $params['s'] ) )
             || ( '' !== trim( (string) $params['active_organizer'] ) )
             || ( '' !== trim( (string) $params['active_groups'] ) )
-            || ( '' !== trim( (string) $params['active_category'] ) );
+            || ( '' !== trim( (string) $params['active_category'] ) )
+            || ( '' !== trim( (string) $params['active_tags'] ) )
+            || ( '' !== trim( (string) $params['active_locations'] ) );
 
         $browser_ttl = (int) apply_filters( 'sfaf_embed_browser_cache_ttl', MINUTE_IN_SECONDS );
         if ( $narrowed ) {
@@ -477,6 +484,10 @@ class SFAF_Embed {
              * generated without. */
             'filters'            => (string) $request->get_param( 'filters' ),
             'pin'                => SFAF_Shortcodes::pin_list( (string) $request->get_param( 'pin' ) ),
+            // What's included and Location (3.112.0).
+            'tag'                => $al( SFAF_Tags::TAXONOMY, 'tag' ),
+            'active_tags'        => $this->shortcodes->clean_active_tags( (string) $request->get_param( 'active_tags' ) ),
+            'active_locations'   => SFAF_Shortcodes::location_list( (string) $request->get_param( 'active_locations' ) ),
             'venue'        => (string) $request->get_param( 'venue' ),
             'series'       => absint( $request->get_param( 'series' ) ),
             /*
@@ -547,7 +558,11 @@ class SFAF_Embed {
          */
         $resolved['groups'] = $this->shortcodes->clamp_groups( $resolved, $params['active_groups'] );
         /* Pins stand aside while a visitor narrows, as in render_calendar_block(). */
-        if ( '' !== $params['active_category'] || '' !== $params['active_organizer'] || '' !== $params['active_groups'] || '' !== trim( (string) $params['s'] ) ) {
+        /* What's included and Location for items and month (3.112.0); the
+           block mode clamps its own, because it also draws the dropdowns. */
+        $resolved['tag']      = $this->shortcodes->effective_organizer( $params['tag'], $params['active_tags'] );
+        $resolved['location'] = $params['active_locations'];
+        if ( '' !== $params['active_category'] || '' !== $params['active_organizer'] || '' !== $params['active_groups'] || '' !== $params['active_tags'] || '' !== $params['active_locations'] || '' !== trim( (string) $params['s'] ) ) {
             $resolved['pin'] = '';
         }
 
@@ -1164,6 +1179,10 @@ class SFAF_Embed {
             's'         => isset( $params['s'] ) ? $params['s'] : '',
             // Two blocks pinning different events are two payloads (3.111.0).
             'pin'       => isset( $params['pin'] ) ? $params['pin'] : '',
+            // What's included and Location (3.112.0), each choice its own payload.
+            'tag'              => isset( $params['tag'] ) ? $params['tag'] : '',
+            'active_tags'      => isset( $params['active_tags'] ) ? $params['active_tags'] : '',
+            'active_locations' => isset( $params['active_locations'] ) ? $params['active_locations'] : '',
         );
 
         if ( 'month' === $params['mode'] ) {

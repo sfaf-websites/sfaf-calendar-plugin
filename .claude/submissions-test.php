@@ -120,6 +120,7 @@ function sfaf_flatten_html( $html ) {
 require_once $root . '/includes/class-sfaf-rich-text.php';
 
 require_once $root . '/includes/class-sfaf-uploads.php';
+require_once $root . '/includes/class-sfaf-tags.php'; // What's included (3.112.0)
 require_once $root . '/includes/class-sfaf-submissions.php';
 require_once $root . '/includes/class-sfaf-request.php';
 require_once $root . '/includes/class-sfaf-submit.php';

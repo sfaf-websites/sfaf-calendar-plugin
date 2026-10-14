@@ -40,6 +40,7 @@ class SFAF_Slug_Aliases {
         'uc_event_category' => 'uc_cat',
         'uc_organizer'      => 'uc_org',
         'uc_series'         => 'uc_group',
+        'uc_tag'            => 'uc_tag',
     );
 
     public static function register() {

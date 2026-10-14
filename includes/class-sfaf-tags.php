@@ -223,6 +223,9 @@ class SFAF_Tags {
      */
     public static function from_form( $post ) {
         $raw = isset( $post['tags'] ) ? (array) $post['tags'] : array();
+        if ( empty( $raw ) ) {
+            return array();
+        }
         return self::clean_ids( array_map( 'intval', $raw ) );
     }
 

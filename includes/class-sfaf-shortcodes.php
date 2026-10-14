@@ -118,6 +118,9 @@ class SFAF_Shortcodes {
             'groups'    => $this->slug_list( isset( $raw['groups'] ) ? $raw['groups'] : '' ),
             /* Pinned event ids, as the snippet wrote them (3.111.0). See pinned_ids(). */
             'pin'       => self::pin_list( isset( $raw['pin'] ) ? $raw['pin'] : '' ),
+            /* What's included and Location (3.112.0). See apply_tag_location(). */
+            'tag'       => SFAF_Slug_Aliases::resolve_list( SFAF_Tags::TAXONOMY, $this->slug_list( isset( $raw['tag'] ) ? $raw['tag'] : '' ) ),
+            'location'  => self::location_list( isset( $raw['location'] ) ? $raw['location'] : '' ),
         );
     }
 
@@ -250,7 +253,7 @@ class SFAF_Shortcodes {
      * @return string[]
      */
     public static function filter_rows_available() {
-        return array( 'category', 'organizer', 'series' );
+        return array( 'category', 'organizer', 'series', 'tag', 'location' );
     }
 
     /**
@@ -544,8 +547,330 @@ class SFAF_Shortcodes {
             );
         }
 
+        $this->apply_tag_location( $args, $filters );
+
         return $args;
     }
+
+    /* ---------------------------------------------------------------------
+     * What's included and Location (3.112.0).
+     *
+     * TWO MORE FILTERS ON THE SAME BAR, BY THE SAME RULES: a real query, never
+     * hidden cards; several choices are an OR, and each ANDs with the rest;
+     * carried in the address (uc_tag, uc_loc) and by See all events; offered
+     * only as what the block's own events hold, each with its count.
+     *
+     * A LOCATION IS A VENUE OR A ONE-OFF ADDRESS. A venue is keyed by its slug,
+     * "v-strut"; an address typed on an event is keyed by a short hash of the
+     * address line, "p-1a2b3c4d5e", because it has no term. Both resolve to
+     * event ids through location_index(), built once per request from the
+     * published events dated from forty-five days ago, so the month grid's
+     * leading days are covered too.
+     * ------------------------------------------------------------------- */
+
+    /**
+     * A clean list of location keys: "v-slug" or "p-" and ten hex digits.
+     *
+     * @param mixed $raw CSV or array.
+     * @return string CSV, '' for none.
+     */
+    public static function location_list( $raw ) {
+        if ( is_array( $raw ) ) {
+            $raw = implode( ',', $raw );
+        }
+        $out = array();
+        foreach ( preg_split( '/[\s,]+/', strtolower( (string) $raw ) ) as $one ) {
+            if ( preg_match( '/^(v-[a-z0-9-]+|p-[0-9a-f]{10})$/', $one ) && ! in_array( $one, $out, true ) ) {
+                $out[] = $one;
+            }
+        }
+        return implode( ',', $out );
+    }
+
+    /**
+     * An event's location key, or '' when it has none (an online event).
+     *
+     * @param int $post_id
+     * @return string
+     */
+    public static function location_key_for_event( $post_id ) {
+        $venue = SFAF_Venues::for_event( (int) $post_id );
+        if ( $venue ) {
+            return 'v-' . $venue->slug;
+        }
+        $line = trim( (string) get_post_meta( (int) $post_id, '_uc_location', true ) );
+        return ( '' === $line ) ? '' : 'p-' . substr( md5( strtolower( $line ) ), 0, 10 );
+    }
+
+    /**
+     * How a location reads in the dropdown: name, street, city.
+     *
+     * @param int $post_id An event at that location.
+     * @return string
+     */
+    public static function location_label_for_event( $post_id ) {
+        $post_id = (int) $post_id;
+        $venue   = SFAF_Venues::for_event( $post_id );
+        if ( $venue ) {
+            $parts = SFAF_Venues::parts( (int) $venue->term_id );
+            $bits  = array( $venue->name, $parts['street'], $parts['city'] );
+        } else {
+            $parts = sfaf_event_location_parts( $post_id );
+            $name  = trim( (string) get_post_meta( $post_id, '_uc_location_name', true ) );
+            $bits  = array( $name, isset( $parts['street'] ) ? $parts['street'] : '', isset( $parts['city'] ) ? $parts['city'] : '' );
+            if ( '' === trim( implode( '', $bits ) ) ) {
+                $bits = array( trim( (string) get_post_meta( $post_id, '_uc_location', true ) ) );
+            }
+        }
+        return implode( ', ', array_values( array_filter( array_map( 'trim', $bits ), 'strlen' ) ) );
+    }
+
+    /**
+     * Location key => event ids, for published events from forty-five days ago.
+     * Built once per request.
+     *
+     * @return array<string,int[]>
+     */
+    private function location_index() {
+        static $index = null;
+        if ( null !== $index ) {
+            return $index;
+        }
+        $index = array();
+        $args  = array(
+            'post_type'      => 'uc_event',
+            'post_status'    => 'publish',
+            'posts_per_page' => 1000,
+            'fields'         => 'ids',
+            'no_found_rows'  => true,
+            'meta_query'     => array(
+                array(
+                    'key'     => '_uc_event_date',
+                    'value'   => gmdate( 'Y-m-d', strtotime( current_time( 'Y-m-d' ) . ' -45 days' ) ),
+                    'compare' => '>=',
+                    'type'    => 'DATE',
+                ),
+            ),
+        );
+        SFAF_Privacy::exclude( $args );
+        foreach ( (array) get_posts( $args ) as $id ) {
+            $id  = (int) ( is_object( $id ) ? $id->ID : $id );
+            $key = self::location_key_for_event( $id );
+            if ( '' !== $key ) {
+                $index[ $key ][] = $id;
+            }
+        }
+        return $index;
+    }
+
+    /**
+     * Narrow a query by the chosen tags and locations. Both builders call this,
+     * the list's and the month grid's, so neither can filter what the other
+     * does not.
+     *
+     * @param array $args    WP_Query args, changed in place.
+     * @param array $filters Normalized filters.
+     */
+    private function apply_tag_location( &$args, $filters ) {
+        if ( isset( $filters['tag'] ) && '' !== $filters['tag'] ) {
+            $args['tax_query'][] = array(
+                'taxonomy' => SFAF_Tags::TAXONOMY,
+                'field'    => 'slug',
+                'terms'    => explode( ',', $filters['tag'] ),
+            );
+        }
+        if ( isset( $filters['location'] ) && '' !== $filters['location'] ) {
+            $index = $this->location_index();
+            $ids   = array();
+            foreach ( explode( ',', $filters['location'] ) as $key ) {
+                if ( isset( $index[ $key ] ) ) {
+                    $ids = array_merge( $ids, $index[ $key ] );
+                }
+            }
+            $ids = array_values( array_unique( array_map( 'intval', $ids ) ) );
+            if ( ! empty( $args['post__in'] ) ) {
+                $ids = array_values( array_intersect( $ids, array_map( 'intval', (array) $args['post__in'] ) ) );
+            }
+            $args['post__in'] = $ids ? $ids : array( 0 );
+        }
+    }
+
+    /** A tag choice from a request, with retired and unknown tags removed. */
+    public function clean_active_tags( $csv ) {
+        return $this->only_active_tags( SFAF_Slug_Aliases::resolve_list( SFAF_Tags::TAXONOMY, $this->slug_list( $csv ) ) );
+    }
+
+    /** The tags a visitor asked for in the address. Retired ones are dropped. */
+    private function requested_tags() {
+        return isset( $_GET['uc_tag'] ) ? $this->only_active_tags( SFAF_Slug_Aliases::resolve_list( SFAF_Tags::TAXONOMY, $this->slug_list( wp_unslash( $_GET['uc_tag'] ) ) ) ) : '';
+    }
+
+    /** The locations a visitor asked for in the address. */
+    private function requested_locations() {
+        return isset( $_GET['uc_loc'] ) ? self::location_list( wp_unslash( $_GET['uc_loc'] ) ) : '';
+    }
+
+    /**
+     * A tag slug list with every retired or unknown tag removed. A retired tag
+     * is never a filter, whoever asks for it.
+     *
+     * @param string $csv
+     * @return string
+     */
+    private function only_active_tags( $csv ) {
+        $active = wp_list_pluck( SFAF_Tags::active(), 'slug' );
+        $out    = array();
+        foreach ( array_filter( explode( ',', (string) $csv ) ) as $slug ) {
+            if ( in_array( $slug, $active, true ) && ! in_array( $slug, $out, true ) ) {
+                $out[] = $slug;
+            }
+        }
+        return implode( ',', $out );
+    }
+
+    /**
+     * The ids the filter bar counts against: the block's events with every
+     * filter applied except the one being counted.
+     *
+     * @param array  $filters
+     * @param string $without 'tag' or 'location'.
+     * @return int[]
+     */
+    private function ids_without( $filters, $without ) {
+        $base = $filters;
+        $base[ $without ] = '';
+        $args = $this->build_query_args( 300, 1, $base );
+        $args['fields']        = 'ids';
+        $args['no_found_rows'] = true;
+        $q = new WP_Query( $args );
+        return array_map( 'intval', (array) $q->posts );
+    }
+
+    /**
+     * What's included, as the dropdown offers it: tags that are not retired,
+     * inside the block's own tag scope, each with how many of the block's
+     * events carry it.
+     *
+     * @param array  $filters   Normalized, with the tag choice applied.
+     * @param string $scope_tag The block's own tag scope.
+     * @return array{opts:array<string,string>,counts:array<string,int>}
+     */
+    private function available_tags( $filters, $scope_tag ) {
+        $tags = SFAF_Tags::active();
+        if ( '' !== $scope_tag ) {
+            $in   = explode( ',', $scope_tag );
+            $tags = array_values( array_filter( $tags, function ( $t ) use ( $in ) { return in_array( $t->slug, $in, true ); } ) );
+        }
+        $out = array( 'opts' => array(), 'counts' => array() );
+        if ( empty( $tags ) ) {
+            return $out;
+        }
+        foreach ( $tags as $t ) {
+            $out['opts'][ $t->slug ]   = $t->name;
+            $out['counts'][ $t->slug ] = 0;
+        }
+        $ids = $this->ids_without( $filters, 'tag' );
+        if ( $ids ) {
+            $rows = wp_get_object_terms( $ids, SFAF_Tags::TAXONOMY, array( 'fields' => 'all_with_object_id' ) );
+            if ( ! is_wp_error( $rows ) ) {
+                foreach ( (array) $rows as $row ) {
+                    if ( isset( $out['counts'][ $row->slug ] ) ) {
+                        $out['counts'][ $row->slug ]++;
+                    }
+                }
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Location, as the dropdown offers it: every venue and every one-off
+     * address the block's upcoming events use, by label, each with its count.
+     *
+     * @param array $filters Normalized, with the location choice applied.
+     * @return array{opts:array<string,string>,counts:array<string,int>}
+     */
+    private function available_locations( $filters ) {
+        $out = array( 'opts' => array(), 'counts' => array() );
+        foreach ( $this->ids_without( $filters, 'location' ) as $id ) {
+            $key = self::location_key_for_event( $id );
+            if ( '' === $key ) {
+                continue;
+            }
+            if ( ! isset( $out['opts'][ $key ] ) ) {
+                $out['opts'][ $key ]   = self::location_label_for_event( $id );
+                $out['counts'][ $key ] = 0;
+            }
+            $out['counts'][ $key ]++;
+        }
+        asort( $out['opts'], SORT_NATURAL | SORT_FLAG_CASE );
+        return $out;
+    }
+
+    /**
+     * One filter dropdown for What's included or Location: the Organizers and
+     * groups control's look, its <details> and its no-script Apply, with one
+     * list of ticks. Data attributes of its own, so neither script mistakes it
+     * for the Organizers and groups picker.
+     *
+     * @param string   $kind    'tag' or 'location'.
+     * @param string   $label   The public string naming it: its key in SFAF_Messages::labels().
+     * @param string   $name    The field name, uc_tag or uc_loc.
+     * @param array    $opts    key => label.
+     * @param string[] $on      Chosen keys.
+     * @param array    $counts  key => count.
+     * @param string   $active_category What Apply carries, with script off.
+     */
+    private function render_pick( $kind, $label, $name, $opts, $on, $counts, $active_category ) {
+        $shown = array();
+        foreach ( $opts as $key => $text ) {
+            $n = isset( $counts[ $key ] ) ? (int) $counts[ $key ] : 0;
+            // A zero is hidden, as on Organizers and groups; a ticked one stays.
+            if ( 0 === $n && ! in_array( $key, $on, true ) ) {
+                continue;
+            }
+            $shown[ $key ] = array( $text, $n );
+        }
+        if ( empty( $shown ) ) {
+            return;
+        }
+        $label = SFAF_Messages::label( $label, 'en' );
+        $names = array();
+        foreach ( $shown as $key => $pair ) {
+            if ( in_array( $key, $on, true ) ) { $names[] = $pair[0]; }
+        }
+        $closed = empty( $names ) ? $label : ( count( $names ) <= 2 ? implode( ', ', $names ) : count( $names ) . ' selected' );
+        $id     = 'uc-pick-' . $kind . '-' . wp_rand( 1000, 9999 );
+        ?>
+        <details class="uc-who uc-pick uc-pick-<?php echo esc_attr( $kind ); ?>" data-uc-pick="<?php echo esc_attr( $kind ); ?>" data-uc-pick-empty="<?php echo esc_attr( $label ); ?>">
+            <summary class="uc-who-trigger<?php echo $names ? ' active' : ''; ?>" data-uc-pick-trigger
+                     aria-label="<?php echo esc_attr( 'Filter by ' . strtolower( $label ) ); ?>">
+                <span class="uc-who-label" data-uc-pick-label><?php echo esc_html( $closed ); ?></span>
+                <?php echo sfaf_icon( 'chevron', array( 'class' => 'uc-who-chevron' ) ); ?>
+            </summary>
+            <div class="uc-who-panel uc-pick-panel" id="<?php echo esc_attr( $id ); ?>" data-uc-pick-panel>
+                <button type="button" class="uc-who-clear" data-uc-pick-clear>Clear all</button>
+                <p class="uc-who-heading" id="<?php echo esc_attr( $id ); ?>-h"><?php echo esc_html( $label ); ?></p>
+                <div class="uc-who-list" role="group" aria-labelledby="<?php echo esc_attr( $id ); ?>-h">
+                    <?php foreach ( $shown as $key => $pair ) : list( $text, $n ) = $pair; ?>
+                        <label class="uc-who-opt">
+                            <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[]" value="<?php echo esc_attr( $key ); ?>"
+                                   data-uc-pick-opt <?php checked( in_array( $key, $on, true ) ); ?> />
+                            <span><?php echo esc_html( $text ); ?> <span class="uc-who-count" aria-hidden="true">(<?php echo (int) $n; ?>)</span></span>
+                            <span class="uc-visually-hidden"><?php echo esc_html( sprintf( _n( '%d upcoming event', '%d upcoming events', $n ), $n ) ); ?></span>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+                <noscript>
+                <div class="uc-who-foot">
+                    <button type="submit" name="uc_cat" value="<?php echo esc_attr( $active_category ); ?>" class="uc-who-apply">Apply</button>
+                </div>
+                </noscript>
+            </div>
+        </details>
+        <?php
+    }
+
 
     /* ---------------------------------------------------------------------
      * The second level: groups.
@@ -1079,6 +1404,9 @@ class SFAF_Shortcodes {
                 'terms'    => explode( ',', $filters['groups'] ),
             );
         }
+
+        // What's included and Location, through the same helper as the list (3.112.0).
+        $this->apply_tag_location( $args, $filters );
 
         $query  = new WP_Query( $args );
         $by_day = array();
@@ -1810,6 +2138,25 @@ class SFAF_Shortcodes {
      * @param array $filters Normalized filters.
      * @return string
      */
+    /**
+     * The locations See all events carries (3.112.0): the block's venue scope,
+     * as venue keys, and any location the visitor chose. A venue had no public
+     * key before this, so a venue-scoped block linked to everything.
+     *
+     * @param array $filters
+     * @return string
+     */
+    private function see_all_locations( $filters ) {
+        $keys = array();
+        foreach ( array_filter( explode( ',', (string) $filters['venue'] ) ) as $slug ) {
+            $keys[] = 'v-' . $slug;
+        }
+        foreach ( array_filter( explode( ',', isset( $filters['location'] ) ? (string) $filters['location'] : '' ) ) as $key ) {
+            $keys[] = $key;
+        }
+        return self::location_list( $keys );
+    }
+
     private function see_all_url( $filters ) {
         $group = '';
         if ( $filters['series'] ) {
@@ -1823,6 +2170,8 @@ class SFAF_Shortcodes {
                 'uc_cat'   => $filters['category'],
                 'uc_org'   => $filters['organizer'],
                 'uc_group' => $group,
+                'uc_tag'   => isset( $filters['tag'] ) ? $filters['tag'] : '',
+                'uc_loc'   => $this->see_all_locations( $filters ),
             ) );
             return empty( $qs ) ? $home : add_query_arg( $qs, $home );
         }
@@ -1832,6 +2181,7 @@ class SFAF_Shortcodes {
             'uc_organizer'      => $filters['organizer'],
             'uc_venue'          => $filters['venue'],
             SFAF_Series::TAXONOMY => $group,
+            SFAF_Tags::TAXONOMY => isset( $filters['tag'] ) ? $filters['tag'] : '',
         ) );
         $all_url = SFAF_Embed::calendar_url();
         return empty( $qs ) ? $all_url : add_query_arg( $qs, $all_url );
@@ -3255,6 +3605,11 @@ class SFAF_Shortcodes {
             'active_category'  => null,
             'active_organizer' => null,
             'active_groups'    => null,
+            // What's included and Location (3.112.0): the block's tag scope,
+            // and what the visitor chose in each.
+            'tag'              => '',
+            'active_tags'      => null,
+            'active_locations' => null,
         ) );
 
         $filters = $this->normalize_filters( $args );
@@ -3326,6 +3681,28 @@ class SFAF_Shortcodes {
             : '';
 
         /*
+         * WHAT'S INCLUDED AND LOCATION (3.112.0). Tags clamp to the block's
+         * own tag scope as the organizer does, and a retired tag is never a
+         * filter. A location is applied only when some event of the block's
+         * is there; a stale key would otherwise empty the calendar.
+         */
+        $scope_tag = $filters['tag'];
+        $req_tags  = ( null === $args['active_tags'] )
+            ? $this->requested_tags()
+            : $this->only_active_tags( $this->slug_list( $args['active_tags'] ) );
+        $filters['tag'] = $this->effective_organizer( $scope_tag, $req_tags );
+        $active_tags    = ( '' !== $req_tags && $filters['tag'] === $req_tags ) ? $filters['tag'] : '';
+
+        $req_locs = ( null === $args['active_locations'] )
+            ? $this->requested_locations()
+            : self::location_list( $args['active_locations'] );
+        $loc_index = ( '' === $req_locs ) ? array() : $this->location_index();
+        $active_locations = self::location_list( array_values( array_filter( explode( ',', $req_locs ), function ( $k ) use ( $loc_index ) {
+            return '' !== $k && isset( $loc_index[ $k ] );
+        } ) ) );
+        $filters['location'] = $active_locations;
+
+        /*
          * A BUTTON IS ONLY MARKED PRESSED WHEN IT IS WHAT IS BEING SHOWN. If the
          * chosen category fell outside the block's scope it was dropped, and the
          * list is the block's own events; lighting up a chip in that state would
@@ -3361,7 +3738,7 @@ class SFAF_Shortcodes {
          * clearing the choice brings them back.
          */
         $block_pin = $filters['pin'];
-        if ( '' !== $active_category || '' !== $active_organizer || '' !== $active_groups || '' !== trim( (string) $filters['s'] ) ) {
+        if ( '' !== $active_category || '' !== $active_organizer || '' !== $active_groups || '' !== $active_tags || '' !== $active_locations || '' !== trim( (string) $filters['s'] ) ) {
             $filters['pin'] = '';
         }
 
@@ -3485,6 +3862,12 @@ class SFAF_Shortcodes {
              data-scope-category="<?php echo esc_attr( $scope_category ); ?>"
              data-active-category="<?php echo esc_attr( $active_category ); ?>"
              data-active-groups="<?php echo esc_attr( $active_groups ); ?>"
+             <?php // What's included and Location (3.112.0): scope, choice, and what was queried. ?>
+             data-scope-tag="<?php echo esc_attr( $scope_tag ); ?>"
+             data-active-tags="<?php echo esc_attr( $active_tags ); ?>"
+             data-active-locations="<?php echo esc_attr( $active_locations ); ?>"
+             data-filter-tag="<?php echo esc_attr( $filters['tag'] ); ?>"
+             data-filter-location="<?php echo esc_attr( $filters['location'] ); ?>"
              <?php // Which filter rows this block offers, and which organizer the
                    // visitor picked. Both travel with the pasted snippet. ?>
              data-filters="<?php echo esc_attr( $this->filter_rows_attr( $rows ) ); ?>"
@@ -3527,7 +3910,7 @@ class SFAF_Shortcodes {
              * one of the three toggles, and a block with no rows at all has no
              * bar to put it in.
              */
-            $any_row = ( ! empty( $rows['category'] ) || ! empty( $rows['organizer'] ) || ! empty( $rows['series'] ) );
+            $any_row = ( ! empty( $rows['category'] ) || ! empty( $rows['organizer'] ) || ! empty( $rows['series'] ) || ! empty( $rows['tag'] ) || ! empty( $rows['location'] ) );
             ?>
             <?php if ( $any_row ) : ?>
             <?php
@@ -3760,6 +4143,22 @@ class SFAF_Shortcodes {
                 );
                 ?>
                 <?php endif; ?>
+                <?php
+                /*
+                 * WHAT'S INCLUDED AND LOCATION (3.112.0), beside Organizers and
+                 * groups, in the same shape. The labels are the public strings.
+                 */
+                if ( ! empty( $rows['tag'] ) ) {
+                    $tag_av = $this->available_tags( $filters, $scope_tag );
+                    $this->render_pick( 'tag', 'whats_included', 'uc_tag', $tag_av['opts'],
+                        ( '' === $active_tags ) ? array() : explode( ',', $active_tags ), $tag_av['counts'], $active_category );
+                }
+                if ( ! empty( $rows['location'] ) ) {
+                    $loc_av = $this->available_locations( $filters );
+                    $this->render_pick( 'location', 'location', 'uc_loc', $loc_av['opts'],
+                        ( '' === $active_locations ) ? array() : explode( ',', $active_locations ), $loc_av['counts'], $active_category );
+                }
+                ?>
             </div>
             </form>
 
@@ -4123,7 +4522,7 @@ class SFAF_Shortcodes {
         $filters = array();
         // 's' rides along with the rest, because the search is a filter now
         // rather than a pass over the cards this endpoint already returned.
-        foreach ( array( 'category', 'organizer', 'series', 'venue', 's' ) as $key ) {
+        foreach ( array( 'category', 'organizer', 'series', 'venue', 's', 'tag', 'location' ) as $key ) {
             $filters[ $key ] = isset( $_POST[ $key ] ) ? sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) : '';
         }
 
@@ -4186,6 +4585,10 @@ class SFAF_Shortcodes {
             /* The organizer the visitor picked, kept apart from the block's own
              * scope above for the same reason the category's two are. */
             'active_organizer' => isset( $_POST['active_organizer'] ) ? sanitize_text_field( wp_unslash( $_POST['active_organizer'] ) ) : '',
+            // What's included and Location (3.112.0).
+            'tag'             => isset( $_POST['tag'] ) ? sanitize_text_field( wp_unslash( $_POST['tag'] ) ) : '',
+            'active_tags'     => isset( $_POST['active_tags'] ) ? sanitize_text_field( wp_unslash( $_POST['active_tags'] ) ) : '',
+            'active_locations' => isset( $_POST['active_locations'] ) ? sanitize_text_field( wp_unslash( $_POST['active_locations'] ) ) : '',
             /* Which rows the block offers. Without this a redraw would rebuild
              * the bar from the shipped default and quietly hand back controls
              * the block was generated without. */
@@ -4237,7 +4640,7 @@ class SFAF_Shortcodes {
          * enough to make the box look broken in calendar view while working
          * perfectly in list view.
          */
-        foreach ( array( 'category', 'organizer', 'series', 'venue', 'groups', 's' ) as $key ) {
+        foreach ( array( 'category', 'organizer', 'series', 'venue', 'groups', 's', 'tag', 'location' ) as $key ) {
             $filters[ $key ] = isset( $_POST[ $key ] ) ? sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) : '';
         }
         // Clamped exactly as the list is, so choosing a category or a group

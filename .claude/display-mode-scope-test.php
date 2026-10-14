@@ -300,11 +300,16 @@ class WP_REST_Request {
     public function get_param( $key ) { return isset( $this->params[ $key ] ) ? $this->params[ $key ] : null; }
 }
 
+/* The Location filter reads an event's venue and address (3.112.0). This
+   world has neither, so every event has no location and the row stays empty. */
+if ( ! class_exists( 'SFAF_Venues' ) ) { class SFAF_Venues { public static function for_event( $id ) { return null; } public static function parts( $id ) { return array( 'street' => '', 'city' => '', 'state' => '', 'zip' => '' ); } } }
+if ( ! function_exists( 'sfaf_event_location_parts' ) ) { function sfaf_event_location_parts( $id ) { return array(); } }
 // The shortcode resolves an old slug through it (3.110.3).
 /* No Calendar home URL, so See all events takes the archive (3.110.4). */
 if ( ! function_exists( 'sfaf_calendar_home_url' ) ) { function sfaf_calendar_home_url() { return ''; } }
 require_once $root . '/includes/class-sfaf-slug-aliases.php';
 require_once $root . '/includes/class-sfaf-attachments.php'; // the list row's PDF button (3.111.0)
+require_once $root . '/includes/class-sfaf-tags.php'; // What's included (3.112.0)
 require_once $root . '/includes/class-sfaf-shortcodes.php';
 require_once $root . '/includes/class-sfaf-embed.php';
 

@@ -430,11 +430,14 @@ class SFAF_Closures {
 class SFAF_Series {
     const TAXONOMY = 'uc_series';
     public static function all() { return array(); }
+    /* The editor's What's included note asks it (3.112.0). */
+    public static function filled_from( $id, $field ) { return ''; }
 }
 /* The bulk bar's pickers (3.103.0). Empty lists are enough to draw it. */
 class SFAF_Categories { public static function all() { return array(); } public static function exists( $id ) { return false; } }
 class SFAF_Organizers { public static function all() { return array(); } public static function exists( $id ) { return false; } }
 
+require_once $root . '/includes/class-sfaf-tags.php'; // What's included (3.112.0)
 require_once $root . '/includes/class-sfaf-request.php';
 require_once $root . '/includes/class-sfaf-uploads.php';
 require_once $root . '/includes/class-sfaf-attachments.php'; // Event details' PDF (3.111.0)

@@ -525,6 +525,7 @@ $WHITELIST = array(
     'class-sfaf-venues.php'          => 'which events use a venue, for the deletion refusal',
     'class-sfaf-organizers.php'      => 'which events name an organizer, for the count and the deletion confirmation',
     'class-sfaf-categories.php'      => 'which events use a category, for the deletion refusal',
+    'class-sfaf-tags.php::events_using' => 'how many events carry a tag, a count on the Tags section of a staff screen',
     /*
      * THE SAME SHAPE AS THE FOUR DELETION REFUSALS ABOVE, and it MUST see
      * private events for the same reason (3.81.0). uses_of() answers "what is
