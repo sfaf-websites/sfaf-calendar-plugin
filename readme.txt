@@ -533,7 +533,7 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 = 3.111.0 =
 
-**Pinned events, no public registration count, submissions reviewed by teams, a rich registrant email, a PDF per event, Cost, Age range and Contact on every event, and the forms audit.**
+**Pinned events, no public registration count, submissions reviewed by teams, a rich registrant email, a PDF per event, Cost, Age range and Contact on every event, the forms audit, an embed no host page can restyle, and a combined sidebar that ends at its content.**
 
 **PINNED EVENTS.** An embed takes data-pin and the shortcode pin, one or more event ids. On page one of the list and the sidebar they come first, marked Featured, and are not listed again. A pin that is past, cancelled, private or unpublished is skipped. A visitor's search or filter sets the pins aside until it is cleared. The Embed Code screen has Pin an event, a searchable list of upcoming events. Nothing is stored on the event.
 
@@ -550,6 +550,10 @@ restriction is what makes a key that is visible by design safe to have visible.
 **REGISTRATIONS TAKEN ELSEWHERE SEND NOTHING.** With Register on another site chosen, and on an imported event, none of the notification messages is sent, and the Notifications card says so in one line, hiding its recipients, ticks and Reply-to until registrations come back here, unchanged.
 
 **THE PUBLIC FORMS.** Any other pictures is off both forms; pictures already sent stay under Submitted on Images. The community form's registration link becomes Register on another site, its venue website has a box on the editor's Location card, and its typed cost is 40 characters. Every helper line on both forms is one sentence that says what to do.
+
+**THE EMBED LOOKS THE SAME ON EVERY HOST.** An embedded calendar is drawn in a shadow root with its own stylesheet inside it, so a host page's theme can no longer repaint it (on 2027.cycletozero.org it was turning the category pills magenta and putting the view toggle in a black box), and nothing of the calendar's styles reaches the host page. The fonts still load. The hover preview on the month grid is isolated the same way. The calendar on this site's own pages is unchanged. Anything on a host page that reads its own page's text or clicks, such as a translation plugin or click tracking, no longer sees inside the calendar.
+
+**THE COMBINED VIEW'S SIDEBAR** ends at its last date, with the month pills and See all events directly under it, instead of stretching to the month's height. The month pills show the short month, "Oct 48", so they never cut off. The combined view takes How many to show, as the sidebar does, and the embed generator offers it.
 
 = 3.110.5 =
 

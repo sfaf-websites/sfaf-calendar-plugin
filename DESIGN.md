@@ -1172,6 +1172,23 @@ to keep it."
 Calendar Admin", the sentence as the failure pair (`.uc-login-error`), because
 a change was not saved, and **Sign in** as the full-width yellow button.
 
+### The embed is the same on every host, and the combined sidebar ends at its content (3.111.0)
+
+Measured in Chrome by `.claude/embed-isolation-live.php` at 1280px and 390px.
+
+**The embed is drawn in a shadow root** (`PROJECT.md` 1), so a host theme's rules
+on buttons, links and spans do not reach it. Under a stylesheet setting color,
+background, border, font, text-transform, box-shadow, line-height,
+letter-spacing and text-decoration on all three, every measured value inside the
+block and inside the hover preview is the same as on a clean page. The block's
+own base is stated on its wrapper: Montserrat, 16px, line-height 1.5, `#373433`,
+no transform, normal spacing.
+
+**The combined view's sidebar ends at its content** (reversing 3.81.0): the
+dates, the month pills, then See all events directly under them, with no gap to
+the foot of the card. The divider stays on the grid's side and runs the full
+height. **The month pills show the short month**, "Oct 48", so they never
+truncate; the full month and year are the pill's accessible name.
 ### Private in the Display card, the sign-in pages and the logos (3.109.0)
 
 Measured in Chrome by `.claude/release-3109-live.php` at 1280px and 390px.

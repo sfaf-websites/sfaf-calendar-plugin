@@ -1498,6 +1498,49 @@ shared proxy may keep. The unnarrowed calendar is the same for everybody and is
 still cached; anything carrying a search, an organizer, groups or a category is
 `private, no-cache`.
 
+### The embed is drawn in a shadow root (3.111.0)
+
+**A host page's stylesheet cannot reach the calendar, and the calendar's cannot
+reach the host.** On 2027.cycletozero.org the theme repainted the category pills
+in its magenta with its pink link colour and put the view toggle in a black box:
+a rule like `button { ... }` on someone else's page reaches every button under
+it, and no specificity calendar.css could choose beats every selector a theme
+might write. Selectors do not cross a shadow boundary, so that contest is gone.
+
+- **`mount()` in embed.js** gives each `[data-sfaf-calendar]` block an open
+  shadow root holding a small reset `<style>`, the calendar.css `<link>`, and a
+  wrapper `div.sfaf-embed-root` carrying a copy of the block's attributes.
+  **That wrapper is what the rest of embed.js calls the container**, so every
+  function reads and writes its data attributes and swaps its contents exactly
+  as before. The host's div is left as written. `BLOCKS` lists the wrappers for
+  the one thing that looked across blocks, closing the add-to-calendar menus.
+- **Inheritance still crosses the boundary**, which selectors do not. The reset
+  puts the wrapper on `all: initial` and then the values the calendar is drawn
+  with (Montserrat, 16px, 1.5, `#373433`, no transform, normal spacing), ahead
+  of calendar.css, so nothing set on the host's div is inherited.
+- **The variables are declared on `:root, :host`**, so they reach the root.
+- **The fonts stay in the document.** Chrome ignores `@font-face` inside a
+  shadow root, so calendar.css's `@import` loads nothing there. embed.js links
+  the same Google Fonts sheet in the document head once; it declares two
+  families and styles nothing.
+- **The hover preview's panel gets a root of its own** on a `display: contents`
+  host appended to `<body>`, with the same reset for `.uc-mp`. The shared
+  preview block takes where to mount as an argument (`initMonthPreview(mount)`;
+  calendar.js passes nothing and gets `document.body`) and reads the tile under
+  the pointer from `composedPath()`, because a listener on the document sees a
+  shadow block as its host.
+- **A browser with no `attachShadow`** draws the block in the page as before.
+
+**What the host page can no longer do**: anything that walks or listens to its
+own DOM stops at the host div. That includes a translation layer such as Weglot
+walking the text, and analytics that read `event.target` on a click. Both are
+`TESTING.md` items, because whether either was relied on is a fact about the
+host sites.
+
+**calendar.js is not in a shadow root.** The shortcode's markup is the page's
+own and calendar.js binds through jQuery delegation on the document, which a
+shadow root would sever. `.claude/embed-isolation-live.php` measures that page
+under the same hostile stylesheet and reports how much moves, every run.
 ### The organizer filter was a control that did nothing
 
 **Until 3.50.0 it rendered on this site, was left out of embeds deliberately,

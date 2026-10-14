@@ -10,11 +10,10 @@ layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
 ## What shipped last
 
-**3.111.0**: pinned events on an embed; **no registration count on any public
-page**; submissions reviewed by a review team (`PROJECT.md` 5); Email registrants
-in the description's editor; one PDF per event; Cost, Age range and Contact on
-every event and **schema 14**; **nothing sent for an event registering elsewhere**
-(`TESTING.md` 1.253 to 1.262, 2.53, 2.54). **3.110.5**, released first: nothing
+**3.111.0**: pinned events; **no registration count on any public page**; review
+teams (`PROJECT.md` 5); a rich registrant email; one PDF per event; Cost, Age range
+and Contact and **schema 14**; **nothing sent for an event registering elsewhere**;
+**the embed in a shadow root**, so no host restyles it (`TESTING.md` 1.253 to 1.267, 2.53, 2.54). **3.110.5**, released first: nothing
 typed into caladmin is lost to an expired sign-in, and **an open caladmin tab
 never signs out on its own** (`PROJECT.md` 5, 1.248 to 1.252, 2.52).
 > **3.110.1: EDITORS NO LONGER HAVE EVERY EVENT.** A team decides which events a
@@ -94,7 +93,7 @@ and from 3.111.0 `calendar-files/` for PDFs, beside them.
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 315 items.** **1.249** (signed out
+**`TESTING.md` holds the manual testing backlog: 320 items.** **1.249** (signed out
 with a form open) first, then **1.260** (that schema 14 ran), **1.255** (no count
 anywhere public) and **1.256** (a review team), then **1.235**, **1.245**
 and **1.236** (Strut's slug, See all events, retired names), then **1.225**,
