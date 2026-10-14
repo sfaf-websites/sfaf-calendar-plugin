@@ -20823,7 +20823,7 @@ class SFAF_Portal {
                         /* ON A CLOSED DAY (3.105.0), beside the date and in words.
                            A flag for whoever approves it, never a hold: the publish
                            rule does not know about closures and must not. */
-                        $closed_flag = SFAF_Closures::flag_for( $date );
+                        $closed_flag = $id ? SFAF_Closures::flag_for_event( $id ) : SFAF_Closures::flag_for( $date );
                         ?>
                         <?php if ( '' !== $closed_flag ) : ?>
                             <span class="uc-closed-flag" data-uc-closed-flag><?php echo esc_html( $closed_flag ); ?></span>

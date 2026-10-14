@@ -258,6 +258,23 @@ class SFAF_Closures {
     }
 
     /**
+     * The flag for an event, on any of its days (3.112.0): a multi-day event is
+     * on a closure when any day of its range is.
+     *
+     * @param int $post_id
+     * @return string
+     */
+    public static function flag_for_event( $post_id ) {
+        foreach ( sfaf_event_days( (int) $post_id ) as $day ) {
+            $flag = self::flag_for( $day );
+            if ( '' !== $flag ) {
+                return $flag;
+            }
+        }
+        return '';
+    }
+
+    /**
      * How a closure reads. One phrase, one place, every surface.
      *
      * "Closed for Thanksgiving" when there is a label, and "Closed" when there

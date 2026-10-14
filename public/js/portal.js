@@ -5746,6 +5746,18 @@ function ucDismissOnBackdrop(dialog) {
         function hits() {
             var all = [];
             if (dateInput.value) { all.push(dateInput.value); }
+            /* Every day of a multi-day event (3.112.0). */
+            var md = form.querySelector('[data-uc-multiday-tick]');
+            var lastInput = form.querySelector('input[name="last_date"]');
+            if (md && md.checked && lastInput && dateInput.value && lastInput.value > dateInput.value) {
+                var d = new Date(dateInput.value + 'T12:00:00Z');
+                var stop = new Date(lastInput.value + 'T12:00:00Z');
+                for (var n = 0; d < stop && n < 400; n++) {
+                    d = new Date(d.getTime() + 86400000);
+                    var ymd = d.toISOString().slice(0, 10);
+                    if (all.indexOf(ymd) === -1) { all.push(ymd); }
+                }
+            }
             if (repeat) {
                 (repeat.getAttribute('data-uc-repeat-dates') || '').split(' ').forEach(function (d) {
                     if (d && all.indexOf(d) === -1) { all.push(d); }

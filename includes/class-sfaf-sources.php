@@ -568,6 +568,8 @@ class SFAF_Sources {
             update_post_meta( $post_id, self::META_SOURCE_TYPE, sanitize_key( $event['source_type'] ) );
         }
         update_post_meta( $post_id, self::META_IMPORTED_AT, time() );
+        // Multi-day when the source's end date says so (3.112.0).
+        self::sync_multi_day( $post_id );
 
         if ( ! empty( $event['source_url'] ) ) {
             update_post_meta( $post_id, self::META_SOURCE_URL, esc_url_raw( (string) $event['source_url'] ) );
@@ -1218,6 +1220,8 @@ class SFAF_Sources {
                 update_post_meta( $post_id, self::META_SOURCE_TYPE, $type_now );
             }
         }
+        // Multi-day follows the source's dates on every fetch (3.112.0).
+        self::sync_multi_day( $post_id );
 
         /* ---- URLs. ---- */
         $url_map = array(
@@ -2180,6 +2184,37 @@ class SFAF_Sources {
      * later will not default into being treated as an event.
      */
     const EVENT_TYPES = array( 'event', 'ticketed', 'registration', 'reg_w_fund', 'fund_for_entry' );
+
+    /**
+     * MULTI-DAY FROM THE SOURCE (3.112.0): an imported event whose end date
+     * is after its start date is a multi-day event, with that end date as its
+     * last day.
+     *
+     * ONLY WHERE THE END DATE MEANS THAT. Eventbrite's end is an event's end.
+     * On GoFundMe Pro it is the close of a fundraising window except on the
+     * event-shaped types, the same rule last_day() keeps, so a campaign is
+     * never drawn across months of the grid. Anything else clears the tick.
+     *
+     * @param int $post_id
+     */
+    public static function sync_multi_day( $post_id ) {
+        $post_id = (int) $post_id;
+        $source  = (string) get_post_meta( $post_id, self::META_SOURCE, true );
+        if ( '' === $source ) {
+            return;
+        }
+        $start   = (string) get_post_meta( $post_id, '_uc_event_date', true );
+        $end     = (string) get_post_meta( $post_id, '_uc_end_date', true );
+        $trusted = ( 'eventbrite' === $source )
+            || ( 'gofundme_pro' === $source && self::type_is_event_shaped( (string) get_post_meta( $post_id, self::META_SOURCE_TYPE, true ) ) );
+        if ( $trusted && preg_match( '/^\d{4}-\d{2}-\d{2}$/', $end ) && '' !== $start && $end > $start ) {
+            update_post_meta( $post_id, '_uc_multi_day', '1' );
+            update_post_meta( $post_id, '_uc_last_date', $end );
+        } else {
+            delete_post_meta( $post_id, '_uc_multi_day' );
+            delete_post_meta( $post_id, '_uc_last_date' );
+        }
+    }
 
     /** Does this source's own word for an item's kind mean "an event"? */
     public static function type_is_event_shaped( $type ) {
