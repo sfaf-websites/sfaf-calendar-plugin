@@ -126,6 +126,8 @@ class SFAF_Post_Types {
         // now is: a way of grouping events, exactly like category and
         // organizer, and not a kind of event. See class-sfaf-series.php.
         SFAF_Series::register_taxonomy();
+        // Tags, "What's included" (3.112.0). See class-sfaf-tags.php.
+        SFAF_Tags::register_taxonomy();
     }
 
     public function add_meta_boxes() {

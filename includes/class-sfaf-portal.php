@@ -1577,6 +1577,31 @@ class SFAF_Portal {
                 $this->schedule_publish_from_post();
                 break;
 
+            /* ---- Tags, "What's included" (3.112.0). Admins only. ---------- */
+            case 'save_tag':
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                $tag_id = isset( $_POST['tag_id'] ) ? intval( $_POST['tag_id'] ) : 0;
+                $saved  = SFAF_Tags::save( $tag_id, isset( $_POST['tag_name'] ) ? wp_unslash( $_POST['tag_name'] ) : '' );
+                if ( ! is_wp_error( $saved ) && $tag_id && isset( $_POST['tag_slug'] ) ) {
+                    $moved = SFAF_Slug_Aliases::rename( $tag_id, SFAF_Tags::TAXONOMY, wp_unslash( $_POST['tag_slug'] ) );
+                    if ( is_wp_error( $moved ) ) {
+                        $saved = $moved;
+                    }
+                }
+                if ( is_wp_error( $saved ) ) {
+                    set_transient( 'sfaf_tag_error_' . $user->ID, $saved->get_error_message(), 60 );
+                    $this->redirect( 'series', array( 'msg' => 'tag_failed' ) );
+                }
+                $this->redirect( 'series', array( 'msg' => 'tag_saved' ) );
+                break;
+
+            case 'retire_tag':
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                $retire = ! empty( $_POST['tag_retire'] );
+                SFAF_Tags::set_retired( isset( $_POST['tag_id'] ) ? intval( $_POST['tag_id'] ) : 0, $retire );
+                $this->redirect( 'series', array( 'msg' => $retire ? 'tag_retired' : 'tag_restored' ) );
+                break;
+
             /* ---- Categories. What kind of event this is. ------------------ */
             case 'save_category':
                 if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
@@ -5010,6 +5035,10 @@ class SFAF_Portal {
             'series_slug_refused' => 'Series saved, and its slug was not changed: it was empty or another series has it.',
             'category_saved' => 'Category saved. Its color and icon are what a card and its placeholder are drawn from, so events in it change appearance straight away.',
             'category_failed'=> 'That category could not be saved. Give it a name and try again.',
+            'tag_saved'      => 'Tag saved.',
+            'tag_failed'     => 'That tag could not be saved. Give it a name and try again.',
+            'tag_retired'    => 'Tag retired. Events that have it keep it, and it is no longer offered.',
+            'tag_restored'   => 'Tag restored. It is offered again.',
             'series_failed'  => 'That series could not be saved. Give it a name and try again.',
             'faq_set_failed' => 'That set could not be saved.',
             // 'series_removed' is built from real counts further down, because
@@ -8927,7 +8956,7 @@ class SFAF_Portal {
      * @return string[]
      */
     private function manager_field_order() {
-        return array( 'image', 'description', 'category', 'organizer', 'fundraising_progress', 'private' );
+        return array( 'image', 'description', 'category', 'organizer', 'tag', 'fundraising_progress', 'private' );
     }
 
     /**
@@ -8960,6 +8989,8 @@ class SFAF_Portal {
             'note'     => $adapter ? (string) $adapter->manager_fields_note() : '',
             'cats'     => get_terms( array( 'taxonomy' => 'uc_event_category', 'hide_empty' => false ) ),
             'orgs'     => get_terms( array( 'taxonomy' => 'uc_organizer', 'hide_empty' => false ) ),
+            // Tags a picker may offer (3.112.0): every one not retired.
+            'tags'     => SFAF_Tags::active(),
             'allowed'  => $this->allowed_categories( $user ),
             // Unique per event so several panels can sit on the queue screen
             // without two elements sharing an id.
@@ -9003,6 +9034,12 @@ class SFAF_Portal {
          * save_listing_fields() rather than offered here when one had a value.
          */
         $fields = array_diff( $fields, array( 'listing_detail' ) );
+
+        // What's included (3.112.0), on every event: no platform supplies tags,
+        // so an imported event has the control as a native one does.
+        if ( ! in_array( 'tag', $fields, true ) ) {
+            $fields[] = 'tag';
+        }
 
         /*
          * PRIVATE IS ON EVERY EVENT, NATIVE OR IMPORTED, AND ONLY ONCE SAVED.
@@ -9828,6 +9865,48 @@ class SFAF_Portal {
                 <?php
                 break;
 
+            case 'tag':
+                /*
+                 * WHAT'S INCLUDED (3.112.0): the categories' picker pattern,
+                 * chips over checkboxes. A retired tag the event already holds
+                 * is offered too, ticked, so saving cannot drop it by not
+                 * showing it; no other retired tag is offered.
+                 */
+                $held = $event_id ? array_map( 'intval', wp_list_pluck( SFAF_Tags::for_event( $event_id ), 'term_id' ) ) : array();
+                $offer = $ctx['tags'];
+                foreach ( $held as $hid ) {
+                    if ( ! in_array( $hid, array_map( 'intval', wp_list_pluck( $offer, 'term_id' ) ), true ) ) {
+                        $ht = SFAF_Tags::get( $hid );
+                        if ( $ht ) { $offer[] = $ht; }
+                    }
+                }
+                ?>
+                <div class="uc-field uc-cat-field uc-tag-field<?php echo esc_attr( $this->field_class( $state ) ); ?>" data-uc-chips>
+                    <span class="uc-field-label">What's included <?php echo $this->field_badge( $state, $label ); ?></span>
+                    <input type="hidden" name="uc_tag_present" value="1" />
+                    <div class="uc-chips" data-uc-chips-list hidden></div>
+                    <p class="uc-chips-empty" data-uc-chips-empty hidden>Nothing chosen yet.</p>
+                    <div class="uc-chips-add" data-uc-chips-add hidden>
+                        <button type="button" class="uc-btn uc-btn-sm" data-uc-chips-toggle
+                                aria-expanded="false">+ Add what's included</button>
+                    </div>
+                    <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
+                        <?php foreach ( $offer as $t ) : ?>
+                            <label class="uc-check" data-uc-chip-label="<?php echo esc_attr( $t->name ); ?>">
+                                <input type="checkbox" name="tag[]" value="<?php echo (int) $t->term_id; ?>"
+                                       <?php checked( in_array( (int) $t->term_id, $held, true ) ); ?> />
+                                <?php echo esc_html( $t->name ); ?>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php if ( empty( $offer ) ) : ?>
+                        <span class="uc-hint">No tags yet. An admin adds them under Series &amp; Categories.</span>
+                    <?php endif; ?>
+                    <?php $this->series_filled_note( $event_id, 'tag' ); ?>
+                </div>
+                <?php
+                break;
+
             case 'fundraising_progress':
                 $on     = ( '1' === (string) get_post_meta( $event_id, sfaf_fundraising_progress_meta_key(), true ) );
                 $goal   = (float) get_post_meta( $event_id, '_uc_gofundme_goal', true );
@@ -9960,6 +10039,11 @@ class SFAF_Portal {
             $posted = array_values( array_unique( array_filter( $posted ) ) );
             wp_set_object_terms( $event_id, $posted, 'uc_event_category' );
         }
+        if ( isset( $_POST['uc_tag_present'] ) ) {
+            $held = array_map( 'intval', wp_list_pluck( SFAF_Tags::for_event( $event_id ), 'term_id' ) );
+            $tags = isset( $_POST['tag'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['tag'] ) ) : array();
+            wp_set_object_terms( $event_id, SFAF_Tags::clean_ids( $tags, $held ), SFAF_Tags::TAXONOMY );
+        }
         if ( isset( $_POST['uc_organizer_present'] ) ) {
             /*
              * EVERY TICKED BOX, NOT ONE VALUE (3.40.0).
@@ -10081,6 +10165,7 @@ class SFAF_Portal {
         if ( isset( $_POST['uc_series_defaults_present'] ) ) {
             $args['categories'] = isset( $_POST['series_categories'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['series_categories'] ) ) : array();
             $args['organizers'] = isset( $_POST['series_organizers'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['series_organizers'] ) ) : array();
+            $args['tags']       = isset( $_POST['series_tags'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['series_tags'] ) ) : array();
         }
 
         /*
@@ -10365,6 +10450,7 @@ class SFAF_Portal {
         </section>
 
         <?php $this->render_categories( $user ); ?>
+        <?php $this->render_tags( $user ); ?>
         <?php
         $this->chrome_close();
     }
@@ -10395,6 +10481,102 @@ class SFAF_Portal {
      *
      * @param WP_User $user
      */
+/**
+     * Tags, "What's included" (3.112.0): add, rename, retire, restore.
+     *
+     * Admins only, because a tag is a public filter every event can use. A
+     * retired tag stays on the events that carry it and leaves every picker and
+     * filter. Editing is a mode in the URL, as categories are.
+     *
+     * @param WP_User $user
+     */
+    private function render_tags( $user ) {
+        $can_edit = $this->is_admin_role( $user );
+        $tags     = SFAF_Tags::all();
+        $editing  = isset( $_GET['tag_edit'] ) ? (int) $_GET['tag_edit'] : 0;
+        $base     = $this->url( 'series' );
+        $err      = get_transient( 'sfaf_tag_error_' . $user->ID );
+        if ( false !== $err ) {
+            delete_transient( 'sfaf_tag_error_' . $user->ID );
+        }
+        ?>
+        <section class="uc-section" id="uc-tags" data-uc-tags>
+            <div class="uc-section-head">
+                <h2>Tags</h2>
+                <p class="uc-section-sub">What's included at an event, such as food or childcare. Events show them as pills, and the calendar filters by them.</p>
+            </div>
+            <div class="uc-card">
+                <?php if ( $err ) : ?>
+                    <div class="uc-flash uc-flash-error"><?php echo esc_html( $err ); ?></div>
+                <?php endif; ?>
+                <?php if ( empty( $tags ) ) : ?>
+                    <p class="uc-empty">No tags yet.<?php echo $can_edit ? ' Add one below.' : ''; ?></p>
+                <?php else : ?>
+                    <ul class="uc-cat-list uc-tag-list">
+                        <?php foreach ( $tags as $t ) :
+                            $tid     = (int) $t->term_id;
+                            $retired = SFAF_Tags::is_retired( $tid );
+                            $used    = SFAF_Tags::events_using( $tid );
+                            ?>
+                            <li class="uc-cat-row uc-tag-row<?php echo $retired ? ' is-retired' : ''; ?>" data-uc-tag-row="<?php echo esc_attr( $t->slug ); ?>">
+                                <?php if ( $can_edit && $editing === $tid ) : ?>
+                                    <form method="post" action="<?php echo esc_url( $base ); ?>" class="uc-cat-form uc-tag-form">
+                                        <input type="hidden" name="uc_action" value="save_tag" />
+                                        <input type="hidden" name="tag_id" value="<?php echo $tid; ?>" />
+                                        <?php wp_nonce_field( 'uc_portal_save_tag', 'uc_nonce' ); ?>
+                                        <label class="uc-field">
+                                            <span class="uc-field-label">Name</span>
+                                            <input type="text" name="tag_name" value="<?php echo esc_attr( $t->name ); ?>" required autofocus />
+                                        </label>
+                                        <?php $this->render_slug_field( 'tag_slug', $t->slug ); ?>
+                                        <div class="uc-form-actions">
+                                            <button type="submit" class="uc-btn uc-btn-primary">Save</button>
+                                            <a class="uc-btn" href="<?php echo esc_url( $base . '#uc-tags' ); ?>">Cancel</a>
+                                        </div>
+                                    </form>
+                                <?php else : ?>
+                                    <span class="uc-cat-id">
+                                        <strong><?php echo esc_html( $t->name ); ?></strong>
+                                        <span class="uc-muted">
+                                            <?php echo esc_html( $t->slug ); ?>,
+                                            <?php echo (int) $used; ?> <?php echo esc_html( 1 === $used ? 'event' : 'events' ); ?><?php echo $retired ? ', retired' : ''; ?>
+                                        </span>
+                                    </span>
+                                    <?php if ( $can_edit ) : ?>
+                                        <span class="uc-cat-actions">
+                                            <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( add_query_arg( 'tag_edit', $tid, $base ) . '#uc-tags' ); ?>">Rename</a>
+                                            <form method="post" action="<?php echo esc_url( $base ); ?>">
+                                                <input type="hidden" name="uc_action" value="retire_tag" />
+                                                <input type="hidden" name="tag_id" value="<?php echo $tid; ?>" />
+                                                <input type="hidden" name="tag_retire" value="<?php echo $retired ? '0' : '1'; ?>" />
+                                                <?php wp_nonce_field( 'uc_portal_retire_tag', 'uc_nonce' ); ?>
+                                                <button type="submit" class="uc-btn uc-btn-sm"><?php echo $retired ? 'Restore' : 'Retire'; ?></button>
+                                            </form>
+                                        </span>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <p class="uc-hint">A retired tag stays on the events that have it and is not offered for new ones or in the calendar's filter.</p>
+                <?php endif; ?>
+
+                <?php if ( $can_edit ) : ?>
+                    <form method="post" action="<?php echo esc_url( $base ); ?>" class="uc-cat-new uc-tag-new">
+                        <input type="hidden" name="uc_action" value="save_tag" />
+                        <input type="hidden" name="tag_id" value="0" />
+                        <?php wp_nonce_field( 'uc_portal_save_tag', 'uc_nonce' ); ?>
+                        <label class="uc-field">
+                            <span class="uc-field-label">New tag</span>
+                            <input type="text" name="tag_name" placeholder="e.g. Food provided" required />
+                        </label>
+                        <button type="submit" class="uc-btn">Add tag</button>
+                    </form>
+                <?php endif; ?>
+            </div>
+        </section>
+        <?php
+    }
     private function render_categories( $user ) {
         $can_edit = $this->can_view_all( $user );
         $cats     = SFAF_Categories::all();
@@ -10876,6 +11058,29 @@ class SFAF_Portal {
                         </div>
                     <?php endif; ?>
                     <span class="uc-hint">Given to an event that joins this series with no organizer. Events already in it keep their own.</span>
+                </div>
+
+                <?php
+                /* What's included (3.112.0), the same rule as the two above. */
+                $def_tags = $term_id ? SFAF_Tags::series_default( $term_id ) : array();
+                $all_tags = SFAF_Tags::active();
+                ?>
+                <div class="uc-field uc-series-default" data-uc-series-default="tag" role="group" aria-labelledby="uc-series-default-tag">
+                    <span class="uc-field-label" id="uc-series-default-tag">Default for What's included</span>
+                    <?php if ( empty( $all_tags ) ) : ?>
+                        <p class="uc-hint">There are no tags yet.</p>
+                    <?php else : ?>
+                        <div class="uc-check-grid">
+                            <?php foreach ( $all_tags as $t ) : ?>
+                                <label class="uc-check">
+                                    <input type="checkbox" name="series_tags[]" value="<?php echo (int) $t->term_id; ?>"
+                                           <?php checked( in_array( (int) $t->term_id, $def_tags, true ) ); ?> />
+                                    <?php echo esc_html( $t->name ); ?>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                    <span class="uc-hint">Given to an event that joins this series with nothing in What's included. Events already in it keep their own.</span>
                 </div>
 
                 <label class="uc-field">
@@ -14797,7 +15002,7 @@ class SFAF_Portal {
                 <?php // ---- Classification: how it is found. --------------- ?>
                 <section class="uc-bento-card" data-uc-card="classification">
                     <h2 class="uc-bento-title">Classification</h2>
-                    <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'category', 'organizer' ), $placed ) ); ?>
+                    <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'category', 'organizer', 'tag' ), $placed ) ); ?>
                 </section>
 
                 <?php

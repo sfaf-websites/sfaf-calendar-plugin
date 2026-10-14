@@ -581,6 +581,7 @@ class SFAF_Series {
         foreach ( array(
             'category'  => array( 'uc_event_category', self::default_categories( $term_id ) ),
             'organizer' => array( 'uc_organizer', self::default_organizers( $term_id ) ),
+            'tag'       => array( SFAF_Tags::TAXONOMY, SFAF_Tags::series_default( $term_id ) ),
         ) as $field => $pair ) {
             list( $taxonomy, $ids ) = $pair;
             if ( empty( $ids ) ) {
@@ -613,7 +614,7 @@ class SFAF_Series {
             return array();
         }
 
-        $taxonomy = array( 'category' => 'uc_event_category', 'organizer' => 'uc_organizer' );
+        $taxonomy = array( 'category' => 'uc_event_category', 'organizer' => 'uc_organizer', 'tag' => SFAF_Tags::TAXONOMY );
         $record   = get_post_meta( $post_id, self::META_EVENT_FILLED, true );
         $record   = is_array( $record ) ? $record : array();
 
@@ -670,7 +671,7 @@ class SFAF_Series {
         if ( ! is_array( $record ) || empty( $record[ $field ]['ids'] ) ) {
             return '';
         }
-        $taxonomy = ( 'organizer' === $field ) ? 'uc_organizer' : 'uc_event_category';
+        $taxonomy = ( 'organizer' === $field ) ? 'uc_organizer' : ( ( 'tag' === $field ) ? SFAF_Tags::TAXONOMY : 'uc_event_category' );
         $now      = wp_get_object_terms( $post_id, $taxonomy, array( 'fields' => 'ids' ) );
         $now      = is_wp_error( $now ) ? array() : array_map( 'intval', (array) $now );
         $was      = array_map( 'intval', (array) $record[ $field ]['ids'] );
@@ -1257,6 +1258,8 @@ class SFAF_Series {
         foreach ( array(
             'categories' => array( self::META_CATEGORIES, array( 'SFAF_Categories', 'exists' ) ),
             'organizers' => array( self::META_ORGANIZERS, array( 'SFAF_Organizers', 'exists' ) ),
+            // What's included (3.112.0).
+            'tags'       => array( SFAF_Tags::META_SERIES_DEFAULT, array( 'SFAF_Tags', 'exists' ) ),
         ) as $arg => $pair ) {
             if ( ! array_key_exists( $arg, $args ) ) {
                 continue;
