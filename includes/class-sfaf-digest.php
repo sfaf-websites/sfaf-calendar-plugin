@@ -297,7 +297,7 @@ class SFAF_Digest {
         foreach ( $event_ids as $id ) {
             $reg   = self::registrations( $id );
             $rows  = array(
-                'Date'          => sfaf_ap_date( (string) get_post_meta( $id, '_uc_event_date', true ), 'full' ),
+                'Date'          => sfaf_ap_event_date( $id, 'full' ),
                 'Time'          => sfaf_ap_time_range( (string) get_post_meta( $id, '_uc_start_time', true ), (string) get_post_meta( $id, '_uc_end_time', true ), 'zone' ),
                 'Place'         => sfaf_event_location( $id ),
                 'Registrations' => $reg['line'],

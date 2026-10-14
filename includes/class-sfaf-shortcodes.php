@@ -397,11 +397,21 @@ class SFAF_Shortcodes {
             'orderby'     => 'meta_value',
             'order'       => 'ASC',
             'meta_query'  => array(
+                /* Today or later, or a multi-day event still running today
+                   (3.112.0). */
                 array(
-                    'key'     => '_uc_event_date',
-                    'value'   => current_time( 'Y-m-d' ),
-                    'compare' => '>=',
-                    'type'    => 'DATE',
+                    'relation' => 'OR',
+                    array(
+                        'key'     => '_uc_event_date',
+                        'value'   => current_time( 'Y-m-d' ),
+                        'compare' => '>=',
+                        'type'    => 'DATE',
+                    ),
+                    array(
+                        'relation' => 'AND',
+                        array( 'key' => '_uc_multi_day', 'value' => '1' ),
+                        array( 'key' => '_uc_last_date', 'value' => current_time( 'Y-m-d' ), 'compare' => '>=', 'type' => 'DATE' ),
+                    ),
                 ),
             ),
         );
@@ -1408,14 +1418,41 @@ class SFAF_Shortcodes {
         // What's included and Location, through the same helper as the list (3.112.0).
         $this->apply_tag_location( $args, $filters );
 
-        $query  = new WP_Query( $args );
+        $query = new WP_Query( $args );
+        $posts = $query->posts;
+
+        /*
+         * A MULTI-DAY EVENT IS ON EVERY DAY OF ITS RANGE (3.112.0). The query
+         * above finds the ones that start inside the grid; this finds the ones
+         * that started before it and are still running on its first day. Each
+         * is then placed on every one of its days that the grid draws.
+         */
+        $span = $args;
+        $span['meta_query']['event_date'] = array(
+            'key'     => '_uc_event_date',
+            'value'   => $grid['start'],
+            'compare' => '<',
+            'type'    => 'DATE',
+        );
+        $span['meta_query'][] = array( 'key' => '_uc_multi_day', 'value' => '1' );
+        $span['meta_query'][] = array( 'key' => '_uc_last_date', 'value' => $grid['start'], 'compare' => '>=', 'type' => 'DATE' );
+        $earlier = new WP_Query( $span );
+        $posts   = array_merge( $earlier->posts, $posts );
+
         $by_day = array();
-        foreach ( $query->posts as $post ) {
-            $day = (string) get_post_meta( $post->ID, '_uc_event_date', true );
-            if ( '' === $day ) {
+        $placed = array();
+        foreach ( $posts as $post ) {
+            $pid = (int) $post->ID;
+            if ( isset( $placed[ $pid ] ) ) {
                 continue;
             }
-            $by_day[ $day ][] = (int) $post->ID;
+            $placed[ $pid ] = true;
+            foreach ( sfaf_event_days( $pid ) as $day ) {
+                if ( $day < $grid['start'] || $day > $grid['end'] ) {
+                    continue;
+                }
+                $by_day[ $day ][] = $pid;
+            }
         }
 
         // Within a day, earliest start first. A dateless start sorts last.
@@ -1481,7 +1518,7 @@ class SFAF_Shortcodes {
             'grid'     => $grid,
             'events'   => $by_day,
             'closed'   => $closed,
-            'total'    => count( $query->posts ),
+            'total'    => count( $placed ),
             'in_month' => $in_month,
         );
     }
@@ -1960,7 +1997,7 @@ class SFAF_Shortcodes {
                                                    data-uc-preview
                                                    data-uc-pv-title="<?php echo esc_attr( get_the_title( $id ) ); ?>"
                                                    data-uc-pv-img="<?php echo esc_url( sfaf_event_image_url( $id ) ); ?>"
-                                                   data-uc-pv-date="<?php echo esc_attr( sfaf_ap_date( (string) get_post_meta( $id, '_uc_event_date', true ), 'full' ) ); ?>"
+                                                   data-uc-pv-date="<?php echo esc_attr( sfaf_ap_event_date( $id, 'full' ) ); ?>"
                                                    data-uc-pv-time="<?php echo esc_attr( $pv_time ); ?>"
                                                    data-uc-pv-place="<?php echo esc_attr( sfaf_event_location_short( $id ) ); ?>"
                                                    <?php echo $ev_off ? ' data-uc-pv-off="Cancelled"' : ''; ?>
@@ -2342,8 +2379,9 @@ class SFAF_Shortcodes {
          * Both halves are optional and the separator only appears when both are
          * there, so an undated event does not print a stray dot.
          */
+        // A multi-day event says its range (3.112.0).
         $when  = ( '' !== $date )
-            ? sfaf_ap_date( $date, 'weekday' ) . ', ' . sfaf_ap_date( $date, 'short' )
+            ? ( '' !== sfaf_event_last_date( $post_id ) ? sfaf_ap_event_date( $post_id ) : sfaf_ap_date( $date, 'weekday' ) . ', ' . sfaf_ap_date( $date, 'short' ) )
             : '';
         $clock = sfaf_ap_time_range( $start, $end );
 
@@ -5005,11 +5043,16 @@ class SFAF_Shortcodes {
                      * stays at zero and the two cannot drift apart.
                      */
                     ?>
+                    <?php if ( '' !== sfaf_event_last_date( $post_id ) ) : ?>
+                        <?php // A multi-day event says its range, on one line (3.112.0). ?>
+                        <span class="uc-lrow-date"><span class="uc-lrow-dmy" data-uc-range><?php echo esc_html( sfaf_ap_event_date( $post_id ) ); ?></span></span>
+                    <?php else : ?>
                     <span class="uc-lrow-date"><span class="uc-lrow-dow"><?php
                         echo esc_html( sfaf_ap_date( $date_ts, 'weekday_comma' ) );
                     ?></span> <span class="uc-lrow-dmy"><?php
                         echo esc_html( sfaf_ap_date( $date_ts, 'day_year' ) );
                     ?></span></span>
+                    <?php endif; ?>
                 <?php endif; ?>
                 <?php if ( '' !== $time ) : ?>
                     <span class="uc-lrow-time"><?php echo esc_html( $time ); ?></span>

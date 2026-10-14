@@ -232,7 +232,7 @@ while ( have_posts() ) :
                             <?php if ( $date_ts ) : ?>
                                 <li>
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'calendar' ); ?></span>
-                                    <span><strong><?php echo esc_html( sfaf_ap_date( $date_ts, 'full' ) ); ?></strong></span>
+                                    <span><strong><?php echo esc_html( sfaf_ap_event_date( $post_id, 'full' ) ); ?></strong></span>
                                 </li>
                             <?php endif; ?>
                             <?php if ( $start_time ) : ?>

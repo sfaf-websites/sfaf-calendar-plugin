@@ -709,7 +709,15 @@ function sfaf_event_datetimes( $post_id ) {
     }
 
     $end = null;
-    if ( $end_time ) {
+    // A multi-day event ends on its last day (3.112.0).
+    $last_day = sfaf_event_last_date( $post_id );
+    if ( '' !== $last_day ) {
+        try {
+            $end = new DateTime( $last_day . ' ' . ( $end_time ?: '23:59' ), $tz );
+        } catch ( Exception $e ) {
+            $end = null;
+        }
+    } elseif ( $end_time ) {
         try {
             $end = new DateTime( $date . ' ' . $end_time, $tz );
         } catch ( Exception $e ) {
@@ -1428,7 +1436,8 @@ function sfaf_replace_tokens( $text, $event_id, $data = array() ) {
      * public surface and takes the same rules the cards do.
      */
     $date     = get_post_meta( $event_id, '_uc_event_date', true );
-    $date_fmt = sfaf_ap_date( $date, 'full' );
+    // The range for a multi-day event (3.112.0).
+    $date_fmt = sfaf_ap_event_date( $event_id, 'full' );
 
     // THE PHRASE, not a comma-joined list: this is the {organizer} token a
     // manager writes into an email body and the ORGANIZER line on an .ics, and
