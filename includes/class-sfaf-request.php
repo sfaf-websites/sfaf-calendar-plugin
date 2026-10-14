@@ -631,6 +631,8 @@ class SFAF_Request {
             }
         }
         $clean['categories'] = array_values( array_unique( $clean['categories'] ) );
+        // What's included (3.112.0): real tags that are not retired.
+        $clean['tags'] = SFAF_Tags::from_form( $post );
 
         $clean['series'] = 0;
         if ( ! empty( $post['series'] ) ) {
@@ -1115,6 +1117,9 @@ class SFAF_Request {
 
         if ( ! empty( $c['categories'] ) ) {
             wp_set_object_terms( $event_id, $c['categories'], 'uc_event_category' );
+        }
+        if ( ! empty( $c['tags'] ) ) {
+            wp_set_object_terms( $event_id, $c['tags'], SFAF_Tags::TAXONOMY );
         }
         /* Who is putting it on, when the requester said. An empty set writes
          * nothing, which leaves the event exactly as it arrived before this
@@ -1922,6 +1927,8 @@ class SFAF_Request {
                         </div>
                     </fieldset>
                 <?php endif; ?>
+
+                <?php SFAF_Tags::form_fieldset( (array) $v( 'tags', array() ) ); ?>
 
                 </fieldset>
 

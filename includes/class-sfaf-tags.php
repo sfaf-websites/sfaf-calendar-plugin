@@ -186,6 +186,46 @@ class SFAF_Tags {
         return $out;
     }
 
+    /**
+     * The "What's included" fieldset both public forms draw (3.112.0): one tick
+     * per tag that is not retired. Nothing when there are no tags.
+     *
+     * @param int[] $chosen
+     */
+    public static function form_fieldset( $chosen = array() ) {
+        $tags = self::active();
+        if ( empty( $tags ) ) {
+            return;
+        }
+        $chosen = array_map( 'intval', (array) $chosen );
+        ?>
+        <fieldset class="uc-field" data-uc-form-tags>
+            <legend class="uc-field-label"><?php echo esc_html( SFAF_Messages::label( 'whats_included', 'en' ) ); ?></legend>
+            <div class="uc-check-grid">
+                <?php foreach ( $tags as $t ) : ?>
+                    <label class="uc-check">
+                        <input type="checkbox" name="tags[]" value="<?php echo (int) $t->term_id; ?>"
+                            <?php checked( in_array( (int) $t->term_id, $chosen, true ) ); ?> />
+                        <?php echo esc_html( $t->name ); ?>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+        </fieldset>
+        <?php
+    }
+
+    /**
+     * The tags a public form posted, as ids a form may set: real tags that are
+     * not retired.
+     *
+     * @param array $post
+     * @return int[]
+     */
+    public static function from_form( $post ) {
+        $raw = isset( $post['tags'] ) ? (array) $post['tags'] : array();
+        return self::clean_ids( array_map( 'intval', $raw ) );
+    }
+
     /** A series' default tags: ids that still exist and are not retired. */
     public static function series_default( $series_id ) {
         $raw = get_term_meta( (int) $series_id, self::META_SERIES_DEFAULT, true );
