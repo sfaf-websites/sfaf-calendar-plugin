@@ -16356,29 +16356,89 @@ class SFAF_Portal {
                 ?>
                 <div class="uc-notify-section">
                 <h4 class="uc-notify-subhead">Replies</h4>
-                <label class="uc-field">
-                    <span class="uc-field-label">Replies go to</span>
-                    <?php
-                    // A server-side rejection renders in exactly the shape the
-                    // client-side validator uses, so the two are
-                    // indistinguishable to the person reading them and to a
-                    // screen reader.
-                    ?>
-                    <input type="email" name="event_replyto" id="uc-event-replyto"
-                           value="<?php echo esc_attr( '' !== $reply_current ? $reply_current : $reply_resolved ); ?>"
-                           <?php echo $reply_rejected ? ' class="uc-invalid" aria-invalid="true" aria-describedby="uc-event-replyto-error"' : ''; ?>
-                           placeholder="events@sfaf.org" />
+                <?php
+                /*
+                 * A CALENDAR USER, OR SOMEONE ELSE (3.112.0). The people are
+                 * radios in a <details> with a filter box over them, the shape
+                 * the notification picker already uses; "Someone else" shows
+                 * the typed address, by CSS :has() so it works with no script.
+                 * What is stored is unchanged: one address in
+                 * _uc_email_replyto, from save_event_from_post().
+                 */
+                $reply_shown  = ( '' !== $reply_current ) ? $reply_current : $reply_resolved;
+                $reply_people = $this->replyto_people( $user );
+                $reply_pick   = 'other';
+                foreach ( $reply_people as $rp ) {
+                    if ( '' !== $reply_shown && 0 === strcasecmp( $rp->user_email, $reply_shown ) ) {
+                        $reply_pick = $rp->user_email;
+                        break;
+                    }
+                }
+                $reply_label = 'Someone else';
+                foreach ( $reply_people as $rp ) {
+                    if ( $reply_pick === $rp->user_email ) {
+                        $reply_label = $rp->display_name . ' (' . $rp->user_email . ')';
+                    }
+                }
+                if ( 'other' === $reply_pick && '' !== $reply_shown ) {
+                    $reply_label = $reply_shown;
+                }
+                ?>
+                <div class="uc-field uc-replyto" data-uc-replyto>
+                    <span class="uc-field-label" id="uc-replyto-label">Replies go to</span>
+                    <details class="uc-picker uc-replyto-picker" data-uc-replyto-picker>
+                        <summary class="uc-picker-toggle" aria-describedby="uc-replyto-label">
+                            <span class="uc-picker-label" data-uc-replyto-summary><?php echo esc_html( $reply_label ); ?></span>
+                        </summary>
+                        <div class="uc-picker-panel">
+                            <label class="uc-picker-filter">
+                                <span class="uc-visually-hidden">Filter people by name or address</span>
+                                <input type="search" placeholder="Type to filter people…" data-uc-replyto-filter autocomplete="off" />
+                            </label>
+                            <div class="uc-picker-options" role="radiogroup" aria-labelledby="uc-replyto-label">
+                                <?php foreach ( $reply_people as $rp ) : ?>
+                                    <label class="uc-check uc-picker-option"
+                                           data-uc-picker-search="<?php echo esc_attr( strtolower( $rp->display_name . ' ' . $rp->user_email ) ); ?>">
+                                        <input type="radio" name="event_replyto_pick" value="<?php echo esc_attr( $rp->user_email ); ?>"
+                                               data-uc-replyto-name="<?php echo esc_attr( $rp->display_name . ' (' . $rp->user_email . ')' ); ?>"
+                                               <?php checked( $reply_pick, $rp->user_email ); ?> />
+                                        <span><?php echo esc_html( $rp->display_name ); ?>
+                                            <span class="uc-muted"><?php echo esc_html( $rp->user_email ); ?></span></span>
+                                    </label>
+                                <?php endforeach; ?>
+                                <label class="uc-check uc-picker-option uc-replyto-other-opt" data-uc-picker-search="">
+                                    <input type="radio" name="event_replyto_pick" value="other" data-uc-replyto-other
+                                           <?php checked( $reply_pick, 'other' ); ?> />
+                                    <span>Someone else</span>
+                                </label>
+                            </div>
+                            <p class="uc-muted uc-picker-empty" data-uc-replyto-empty hidden>Nobody matches that.</p>
+                        </div>
+                    </details>
+                    <label class="uc-field uc-replyto-typed">
+                        <span class="uc-field-label">Their email address</span>
+                        <?php
+                        // A server-side rejection renders in exactly the shape the
+                        // client-side validator uses, so the two are
+                        // indistinguishable to the person reading them and to a
+                        // screen reader.
+                        ?>
+                        <input type="email" name="event_replyto" id="uc-event-replyto"
+                               value="<?php echo esc_attr( 'other' === $reply_pick ? $reply_shown : '' ); ?>"
+                               <?php echo $reply_rejected ? ' class="uc-invalid" aria-invalid="true" aria-describedby="uc-event-replyto-error"' : ''; ?>
+                               placeholder="events@sfaf.org" />
+                    </label>
                     <?php if ( $reply_rejected ) : ?>
                         <p class="uc-field-error" id="uc-event-replyto-error" data-uc-for="uc-event-replyto" role="alert">
                             <?php echo esc_html( 'Not an email address, so it was not saved: ' . $reply_rejected ); ?>
                         </p>
                     <?php endif; ?>
                     <?php if ( '' === $reply_current && 'setting' === $reply_source ) : ?>
-                        <span class="uc-hint">Empty sends replies to the site-wide default in Settings.</span>
+                        <span class="uc-hint">An empty address sends replies to the site-wide default in Settings.</span>
                     <?php elseif ( '' === $reply_current && 'author' !== $reply_source ) : ?>
-                        <span class="uc-hint">Empty sends replies to the address the mail comes from.</span>
+                        <span class="uc-hint">An empty address sends replies to the address the mail comes from.</span>
                     <?php endif; ?>
-                </label>
+                </div>
                 </div>
                 <?php
                 break;
@@ -16518,8 +16578,22 @@ class SFAF_Portal {
             $want = isset( $_POST['email_required'] ) || sfaf_email_required_locked( $event_id );
             update_post_meta( $event_id, '_uc_email_required', $want ? '1' : '0' );
         }
-        if ( isset( $_POST['event_replyto'] ) ) {
-            $raw = trim( (string) wp_unslash( $_POST['event_replyto'] ) );
+        if ( isset( $_POST['event_replyto'] ) || isset( $_POST['event_replyto_pick'] ) ) {
+            /*
+             * A CALENDAR USER CHOSEN FROM THE LIST WINS, and only one the list
+             * offered: a posted address that is not a calendar user's is read
+             * as "Someone else" and the typed box decides (3.112.0).
+             */
+            $pick = isset( $_POST['event_replyto_pick'] ) ? sanitize_email( wp_unslash( $_POST['event_replyto_pick'] ) ) : '';
+            $raw  = isset( $_POST['event_replyto'] ) ? trim( (string) wp_unslash( $_POST['event_replyto'] ) ) : '';
+            if ( '' !== $pick ) {
+                foreach ( $this->replyto_people( $user ) as $rp ) {
+                    if ( 0 === strcasecmp( $rp->user_email, $pick ) ) {
+                        $raw = $rp->user_email;
+                        break;
+                    }
+                }
+            }
             if ( '' === $raw ) {
                 delete_post_meta( $event_id, '_uc_email_replyto' );
             } else {
@@ -17795,6 +17869,27 @@ class SFAF_Portal {
      *
      * @return WP_User[] Display-name order.
      */
+    /**
+     * Who "Replies go to" offers (3.112.0): every calendar user with an
+     * address, and the person editing even when they have no calendar record,
+     * so the default can always be the creator.
+     *
+     * @param WP_User|null $user
+     * @return WP_User[]
+     */
+    private function replyto_people( $user ) {
+        $out = array();
+        foreach ( $this->calendar_people() as $p ) {
+            if ( is_email( $p->user_email ) ) {
+                $out[ strtolower( $p->user_email ) ] = $p;
+            }
+        }
+        if ( $user && is_email( $user->user_email ) && ! isset( $out[ strtolower( $user->user_email ) ] ) ) {
+            $out[ strtolower( $user->user_email ) ] = $user;
+        }
+        uasort( $out, function ( $a, $b ) { return strcasecmp( $a->display_name, $b->display_name ); } );
+        return array_values( $out );
+    }
     private function calendar_people() {
         $people = get_users( array(
             'meta_key'     => '_uc_calendar_role',

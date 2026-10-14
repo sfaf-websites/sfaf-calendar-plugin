@@ -154,6 +154,7 @@ function ucDismissOnBackdrop(dialog) {
         run('attachment', initAttachment);
         run('checkin', initCheckin);
         run('rsvpFilter', initRsvpFilter);
+        run('replyTo', initReplyTo);
     });
 
     /* ---------------------------------------------------------------------
@@ -312,6 +313,49 @@ function ucDismissOnBackdrop(dialog) {
      * button says "Checked in [time]", or "Check in" again on a second press,
      * and the count above follows.
      * ------------------------------------------------------------------ */
+    /* ---------------------------------------------------------------------
+     * REPLIES GO TO (3.112.0): a calendar user or someone else. The filter
+     * box narrows the list as you type; choosing somebody names them on the
+     * closed control; choosing Someone else puts the caret in the address,
+     * which CSS reveals for that choice alone.
+     * ------------------------------------------------------------------ */
+    function initReplyTo() {
+        document.querySelectorAll('[data-uc-replyto]').forEach(function (root) {
+            var filter = root.querySelector('[data-uc-replyto-filter]');
+            var summary = root.querySelector('[data-uc-replyto-summary]');
+            var typed = root.querySelector('input[name="event_replyto"]');
+            var empty = root.querySelector('[data-uc-replyto-empty]');
+            if (filter) {
+                filter.addEventListener('input', function () {
+                    var q = filter.value.trim().toLowerCase();
+                    var shown = 0;
+                    root.querySelectorAll('.uc-picker-option').forEach(function (opt) {
+                        var hay = opt.getAttribute('data-uc-picker-search');
+                        var keep = !q || hay === '' || hay.indexOf(q) !== -1;
+                        opt.hidden = !keep;
+                        if (keep && hay !== '') { shown++; }
+                    });
+                    if (empty) { empty.hidden = !q || shown > 0; }
+                });
+            }
+            root.addEventListener('change', function (e) {
+                var r = e.target;
+                if (!r || r.name !== 'event_replyto_pick') { return; }
+                if (r.hasAttribute('data-uc-replyto-other')) {
+                    if (summary) { summary.textContent = (typed && typed.value) ? typed.value : 'Someone else'; }
+                    if (typed) { typed.focus(); }
+                } else if (summary) {
+                    summary.textContent = r.getAttribute('data-uc-replyto-name') || r.value;
+                }
+            });
+            if (typed) {
+                typed.addEventListener('input', function () {
+                    var other = root.querySelector('[data-uc-replyto-other]');
+                    if (other && other.checked && summary) { summary.textContent = typed.value || 'Someone else'; }
+                });
+            }
+        });
+    }
     function initCheckin() {
         var count = document.querySelector('[data-uc-checked-count]');
         document.querySelectorAll('[data-uc-checkin-form]').forEach(function (form) {

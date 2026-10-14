@@ -5402,3 +5402,18 @@ body.uc-modal-open { overflow: hidden; }
    and its fields wait hidden until registrations come back here. */
 .uc-portal .uc-notify-away[hidden],
 .uc-portal .uc-notify-fields[hidden] { display: none; }
+
+/* ---------------------------------------------------------------------------
+   REPLIES GO TO (3.112.0)
+
+   The notification picker's closed row and panel, holding one radio per
+   calendar user and "Someone else". The typed address shows only for Someone
+   else, by :has(), so it needs no script; a browser without :has() shows it
+   always.
+   ------------------------------------------------------------------------ */
+.uc-portal .uc-replyto-typed { display: none; margin-top: 10px; }
+.uc-portal .uc-replyto:has([data-uc-replyto-other]:checked) .uc-replyto-typed { display: block; }
+@supports not selector(:has(*)) {
+    .uc-portal .uc-replyto-typed { display: block; }
+}
+.uc-portal .uc-replyto-picker .uc-picker-options { max-height: 260px; overflow-y: auto; }
