@@ -299,6 +299,11 @@ foreach ( $pages as $name => $p ) {
     if ( 0 === strpos( $p['html'], 'THREW' ) ) { rl_check( false, "$name could not be rendered: " . $p['html'] ); continue; }
     $inject = '<script>window.RL_PAGE=' . json_encode( $name ) . ';window.RL_W=' . (int) $p['w'] . ';' . $probe . '</script>';
     $html = ( false !== stripos( $p['html'], '</body>' ) ) ? preg_replace( '#</body>#i', $inject . '</body>', $p['html'], 1 ) : $p['html'] . $inject;
+    /* Since 3.110.5 caladmin-session.js holds every post until the server
+       says the sign-in is good, and there is no server here: this reads what
+       Save sends, so the page is drawn without the check's settings and the
+       script stands aside. release-31105-live.php is where the check is tested. */
+    $html = str_replace( 'id="uc-session-config"', 'id="uc-session-config-off"', $html );
     $files[ $name ] = __DIR__ . '/release-3106-live-' . $name . '.html';
     file_put_contents( $files[ $name ], $html );
     if ( $p['w'] < 504 ) {

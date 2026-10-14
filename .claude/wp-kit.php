@@ -200,10 +200,10 @@ function user_can( $u, $c ) { return ! in_array( (int) ( is_object( $u ) ? $u->I
 function is_user_logged_in() { return empty( $GLOBALS['kit_logged_out'] ); }
 /* JSON answers end a request; here they throw what they would have sent (3.110.5). */
 class KitJson extends RuntimeException { public $payload; function __construct( $p ) { parent::__construct( 'json' ); $this->payload = $p; } }
-function wp_send_json_success( $d = null, $s = null ) { throw new KitJson( array( 'success' => true, 'data' => $d ) ); }
-function wp_send_json_error( $d = null, $s = null ) { throw new KitJson( array( 'success' => false, 'data' => $d, 'status' => $s ) ); }
-function remove_query_arg( $k, $u = '' ) { $p = parse_url( (string) $u ); if ( empty( $p['query'] ) ) { return (string) $u; } parse_str( $p['query'], $q ); foreach ( (array) $k as $x ) { unset( $q[ $x ] ); } $base = strtok( (string) $u, '?' ); return $q ? $base . '?' . http_build_query( $q ) : $base; }
-function is_ssl() { return true; }
+if ( ! function_exists( 'wp_send_json_success' ) ) { function wp_send_json_success( $d = null, $s = null ) { throw new KitJson( array( 'success' => true, 'data' => $d ) ); } }
+if ( ! function_exists( 'wp_send_json_error' ) ) { function wp_send_json_error( $d = null, $s = null ) { throw new KitJson( array( 'success' => false, 'data' => $d, 'status' => $s ) ); } }
+if ( ! function_exists( 'remove_query_arg' ) ) { function remove_query_arg( $k, $u = '' ) { $p = parse_url( (string) $u ); if ( empty( $p['query'] ) ) { return (string) $u; } parse_str( $p['query'], $q ); foreach ( (array) $k as $x ) { unset( $q[ $x ] ); } $base = strtok( (string) $u, '?' ); return $q ? $base . '?' . http_build_query( $q ) : $base; } }
+if ( ! function_exists( 'is_ssl' ) ) { function is_ssl() { return true; } }
 /* With kit_users set (3.110.2), get_users() answers from that list: those
    holding a calendar role when asked for _uc_calendar_role, less any excluded
    ids. Off, nobody. */

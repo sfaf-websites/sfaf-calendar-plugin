@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html >
+<head><script>window.SL={"kind":"ended","name":"ended-desktop","key":"ucDraft:events\/edit\/501|save_event|0"};(function () {
+  var S = window.SL;
+  window.SL_errors = []; window.SL_calls = [];
+  window.addEventListener('error', function (e) { window.SL_errors.push(String(e.message)); });
+  try { localStorage.clear(); } catch (e) {}
+  if (S.seed) { localStorage.setItem(S.seed.key, JSON.stringify({ t: Date.now(), f: S.seed.f })); }
+  if (S.answer !== undefined) {
+    window.fetch = function (url, o) {
+      window.SL_calls.push(String(o && o.body || ''));
+      if (S.answer === 'down') { return Promise.reject(new Error('down')); }
+      return Promise.resolve({ json: function () { return Promise.resolve(S.answer); } });
+    };
+  }
+  /* What the restore put in the fields before anything else started. */
+  document.addEventListener('DOMContentLoaded', function () {
+    var t = document.querySelector('form[id^="uc-event-form-"] [name="title"]');
+    window.SL_atStart = t ? t.value : null;
+  });
+})();</script>
+    <meta charset="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Sign In - SFAF Calendar</title>
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.110.5" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.110.5" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.110.5" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.110.5" />
+    <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
+        <script>
+    (function (d) {
+        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        d.setAttribute('data-uc-motion', reduced ? 'reduced' : 'on');
+        if (reduced) { return; }
+        d.className += ' uc-anim';
+        // The nav stagger is once per session, not once per navigation: every
+        // screen here is a full page load. A storage failure means it simply
+        // runs again, which is the harmless outcome.
+        try {
+            if (window.sessionStorage.getItem('ucNavIntro') !== '1') {
+                window.sessionStorage.setItem('ucNavIntro', '1');
+                d.className += ' uc-anim-nav';
+            }
+        } catch (e) {
+            d.className += ' uc-anim-nav';
+        }
+    })(document.documentElement);
+    </script>
+    </head>
+<body class="uc-portal">        <div class="uc-login-wrap">
+            <div class="uc-login-card">
+                <div class="uc-login-brand">
+                    <img src="https://resources.sfaf.org/wp-content/uploads/logos/sfaf-logo.webp" alt="San Francisco AIDS Foundation"
+                         class="uc-login-logo" width="348" height="91" data-uc-login-logo />
+                </div>
+                <h1>SFAF Calendar Admin</h1>
+                                        <p class="uc-login-error" role="alert" data-uc-session-ended>Your session had ended, so that change was not saved. Sign in and your form will be restored.</p>
+                <a class="uc-btn uc-btn-primary uc-btn-block" href="https://resources.sfaf.org/caladmin/events/edit/501?uc_restore=1" data-uc-session-signin>Sign in</a>
+                    </div>
+        </div>
+        <script type="application/json" id="uc-session-config">{"ajax":"https:\/\/resources.sfaf.org\/wp-admin\/admin-ajax.php","action":"sfaf_caladmin_session","signin":"https:\/\/resources.sfaf.org\/caladmin","screen":"events\/edit\/501","signedIn":true}</script>
+<script src="../public/js/caladmin-session.js?ver=3.110.5"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.110.5"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.110.5"></script>
+<script src="../public/js/portal.js?ver=3.110.5"></script>
+<script>(function () {
+var S = window.SL, out = { page: S.name };
+function q(s, r) { return (r || document).querySelector(s); }
+function rect(el) { if (!el) { return null; } var b = el.getBoundingClientRect(); return { left: Math.round(b.left), top: Math.round(b.top), right: Math.round(b.right), bottom: Math.round(b.bottom), w: Math.round(b.width), h: Math.round(b.height) }; }
+function text(el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : null; }
+function finish() { out.errors = window.SL_errors; out.calls = window.SL_calls; out.pageWidth = document.documentElement.scrollWidth; parent.postMessage(JSON.stringify(out), '*'); }
+window.addEventListener('load', function () { setTimeout(function () {
+  var went = []; if (window.ucSession) { window.ucSession.go = function (u) { went.push(u); }; }
+  out.hasApi = !!window.ucSession;
+  var form = q('form[id^="uc-event-form-"]');
+  if (S.kind === 'flow') {
+    out.posted = 0; out.held = 0; out.resubmitted = [];
+    HTMLFormElement.prototype.requestSubmit = function (s) {
+      out.resubmitted.push(s ? s.value : '(none)');
+      this.dispatchEvent(new SubmitEvent('submit', { cancelable: true, bubbles: true, submitter: s || null }));
+    };
+    window.addEventListener('submit', function (e) { if (e.defaultPrevented) { out.held++; } else { out.posted++; e.preventDefault(); } });
+    var t = q('[name="title"]', form);
+    t.value = 'Typed title'; t.dispatchEvent(new Event('input', { bubbles: true }));
+    var btn = q('button[form="' + form.id + '"][name="save_mode"]');
+    form.dispatchEvent(new SubmitEvent('submit', { cancelable: true, bubbles: true, submitter: btn }));
+    setTimeout(function () {
+      out.went = went;
+      var d = null; try { d = JSON.parse(localStorage.getItem(S.key) || 'null'); } catch (e) {}
+      out.draftTitle = d && d.f ? (d.f.filter(function (f) { return f.n === 'title'; })[0] || {}).v : null;
+      out.draftNonce = d && d.f ? d.f.some(function (f) { return /nonce|^uc_action$/.test(f.n); }) : null;
+      var k = q('[name="uc_draft_key"]', form); out.draftKey = k ? k.value : null;
+      finish();
+    }, 300);
+    return;
+  }
+  if (S.kind === 'restore') {
+    out.atStart = window.SL_atStart;
+    out.title = q('[name="title"]', form).value;
+    out.desc = q('[name="description"]', form).value;
+    out.line = text(q('[data-uc-draft-restored]'));
+    out.search = window.location.search;
+    out.prompt = !!q('[data-uc-draft-prompt]');
+    out.kept = !!localStorage.getItem(S.key);
+    finish();
+    return;
+  }
+  if (S.kind === 'prompt') {
+    var bar = q('[data-uc-draft-prompt]'), yes = q('[data-uc-draft-restore]'), no = q('[data-uc-draft-discard]');
+    out.bar = rect(bar); out.words = text(q('.uc-draft-prompt-text')); out.yes = rect(yes); out.no = rect(no);
+    out.yesText = text(yes); out.noText = text(no);
+    out.main = rect(q('.uc-portal-main')); out.topbar = rect(q('.uc-portal-topbar'));
+    out.title = form ? q('[name="title"]', form).value : null;
+    out.firstAfterBar = bar && bar.nextElementSibling ? bar.nextElementSibling.className : null;
+    if (S.press && !S.shot && yes) { yes.click(); out.went = went; }
+    if (no) { no.click(); }
+    out.goneAfterDiscard = !q('[data-uc-draft-prompt]');
+    out.keptAfterDiscard = !!localStorage.getItem(S.key);
+    finish();
+    return;
+  }
+  var card = q('.uc-login-card'), msg = q('[data-uc-session-ended]'), sign = q('[data-uc-session-signin]');
+  out.card = rect(card); out.msg = text(msg); out.sign = rect(sign); out.signText = text(sign);
+  out.msgBox = rect(msg); out.logo = rect(q('[data-uc-login-logo]'));
+  out.vw = window.innerWidth;
+  out.bodyClass = document.body.className;
+  finish();
+}, 600); });
+})();</script></body></html>
