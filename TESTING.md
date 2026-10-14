@@ -3458,7 +3458,7 @@ download. You must get the same page saying "Your session had ended, so the
 download did not start. Sign in and start it again." and no file.
 
 **Why it needs a person:** the live download route.
-### 1.248 A pinned event on an embed and the shortcode (3.111.0)
+### 1.253 A pinned event on an embed and the shortcode (3.111.0)
 
 On a test page, paste a sidebar block and a list block from **Embed Code** with
 one upcoming event ticked under **Pin an event**. Both open on that event with
@@ -3470,7 +3470,7 @@ marked. The same with `[sfaf_calendar view="sidebar" pin="ID"]`.
 
 **Why it needs a person:** a real embed on another page, and real events.
 
-### 1.249 The generator's Pin an event (3.111.0)
+### 1.254 The generator's Pin an event (3.111.0)
 
 On **Events > Embed Code**, under each display mode: **Pin an event** shows for
 List, Calendar and Sidebar and not for Combined. Type part of a title: the list
@@ -3480,7 +3480,7 @@ the list of upcoming events is usable at the real number.
 
 **Why it needs a person:** wp-admin on the live site with its real events.
 
-### 1.250 No registration count anywhere public (3.111.0)
+### 1.255 No registration count anywhere public (3.111.0)
 
 Find an event taking RSVPs with a limit and some registrations. On its event
 page the card shows **Register** (or **Join the waitlist** when full) and no
@@ -3493,7 +3493,7 @@ list.
 **Why it needs a person:** a real event with real registrations, on the live
 pages.
 
-### 1.251 A submission reviewed by its team (3.111.0)
+### 1.256 A submission reviewed by its team (3.111.0)
 
 On **Organizers**, give one organizer a **Review team** whose members include an
 editor you can sign in as. Submit a community event in a series whose events
@@ -3507,7 +3507,7 @@ Try to delete the team on **Users & Teams**: refused, naming the organizer.
 
 **Why it needs a person:** two real accounts and a real submission.
 
-### 1.252 Email registrants in the description's editor (3.111.0)
+### 1.257 Email registrants in the description's editor (3.111.0)
 
 On an event's RSVP list, open **Email registrants**. The message box is the
 description's editor: Paragraph and Heading, bold, italic, both lists, link.
@@ -3521,7 +3521,7 @@ on lines of their own.
 **Why it needs a person:** TinyMCE starting inside caladmin, and real mail
 clients.
 
-### 1.253 A PDF attachment, from upload to the public page (3.111.0)
+### 1.258 A PDF attachment, from upload to the public page (3.111.0)
 
 On Edit event, under Event details, **+ Upload a PDF**: choose a JPEG renamed to
 .pdf, then a PDF over 5MB. Both are refused with "Attachments must be a PDF under
@@ -3534,7 +3534,7 @@ attach on one and use **Apply to all upcoming**: every date shows it.
 
 **Why it needs a person:** a real upload on the live site.
 
-### 1.254 Cost, Age range and Contact on any event (3.111.0)
+### 1.259 Cost, Age range and Contact on any event (3.111.0)
 
 On Add event: **Cost** is first in the Registration card whatever registration
 is set to; **Age range** and **Contact** are in Event details; there is no Other
@@ -3545,7 +3545,7 @@ something else: the cost is unchanged.
 
 **Why it needs a person:** the live editor and event page.
 
-### 1.255 That schema 14 ran (3.111.0)
+### 1.260 That schema 14 ran (3.111.0)
 
 After updating, check the option `sfaf_other_details_migration` exists (Tools
 or a database view) and note its `touched`. Open an event that had an old
@@ -3557,7 +3557,7 @@ link waits in the card.
 
 **Why it needs a person:** the live database and its old events.
 
-### 1.256 The two public forms, read (3.111.0)
+### 1.261 The two public forms, read (3.111.0)
 
 On both forms: there is no **Any other pictures**, and each grey helper line is
 one sentence telling somebody what to do. Say any that reads oddly. The
@@ -3566,7 +3566,7 @@ Registration and Location cards: submit one with both and look.
 
 **Why it needs a person:** the live forms, read by somebody.
 
-### 1.257 Notifications on an event registering elsewhere (3.111.0)
+### 1.262 Notifications on an event registering elsewhere (3.111.0)
 
 On Edit event, choose **Register on another site** with a link. The
 Notifications card becomes one line, "Registrations are taken on another site,
@@ -4320,7 +4320,7 @@ new sign-in, and say so.
 
 **Why it needs real conditions:** two days of an open tab, and the site's own
 plugins watching cookies.
-### 2.52 A review team's editor gets the "new submission" email (3.111.0)
+### 2.53 A review team's editor gets the "new submission" email (3.111.0)
 
 When a real submission arrives for an organizer with a Review team, the
 team's editors get the email as well as the addresses on Settings, each their
@@ -4330,7 +4330,7 @@ the Settings addresses alone.
 
 **Why it needs real conditions:** a real submission and real mail.
 
-### 2.53 A PDF goes when the last event using it does (3.111.0)
+### 2.54 A PDF goes when the last event using it does (3.111.0)
 
 Trash a one-off event with an attachment, and one date of a repeating event
 whose dates share one. When WordPress empties its trash, the one-off's PDF is

@@ -11,15 +11,12 @@ layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 ## What shipped last
 
 **3.111.0**: pinned events on an embed; **no registration count on any public
-page**; submissions reviewed by the editors of a review team (Review team on
-Organizers, `PROJECT.md` 5); Email registrants in the description's editor; one
-PDF per event in `calendar-files/`; Cost, Age range and Contact on every event,
-the Other details card gone and **schema 14** moving two old keys; Any other
-pictures off both forms; **nothing sent for an event registering elsewhere**
+page**; submissions reviewed by a review team (`PROJECT.md` 5); Email registrants
+in the description's editor; one PDF per event; Cost, Age range and Contact on
+every event and **schema 14**; **nothing sent for an event registering elsewhere**
 (`TESTING.md` 1.253 to 1.262, 2.53, 2.54). **3.110.5**, released first: nothing
 typed into caladmin is lost to an expired sign-in, and **an open caladmin tab
-never signs out on its own** (`PROJECT.md` 5, 1.248 to 1.252, 2.52). **3.110.4**,
-**3.110.3**: See all events, Strut, pictures (1.235 to 1.247).
+never signs out on its own** (`PROJECT.md` 5, 1.248 to 1.252, 2.52).
 > **3.110.1: EDITORS NO LONGER HAVE EVERY EVENT.** A team decides which events a
 > person has; their level decides what they can do on them (CLAUDE.md 7,
 > `PROJECT.md` 5). An editor has what they created and what **Team and
@@ -86,8 +83,7 @@ and from 3.111.0 `calendar-files/` for PDFs, beside them.
 
 ## In flight
 
-- **3.111.0 is rebased on 3.110.5 and unreleased**, on `wip-3.111.0`; it needs
-  a build, the suite and a release from there.
+- **3.111.0 is rebased on 3.110.5, unreleased** (`wip-3.111.0`): build, suite, release.
 - **Following a series is half built.** 3.53.0 established the followers; nothing
   sends them. `PROJECT.md` 8, then `TESTING.md` 1.22.
 - **Automated fetching is ON and its own copy says it should not be**, and only
