@@ -2860,6 +2860,15 @@ class SFAF_Portal {
         }
         $filled['location'] = (bool) $where;
 
+        /* End date, only when Multi-day is ticked (3.112.0), and after Date. */
+        if ( isset( $_POST['uc_multiday_present'] ) && ! $is_locked( 'date' ) ) {
+            $md_date = $post_str( 'date' );
+            $md_last = $post_str( 'last_date' );
+            $filled['last_date'] = empty( $_POST['multi_day'] ) || ( '' !== $md_last && '' !== $md_date && $md_last > $md_date );
+        } else {
+            $filled['last_date'] = ! $event_id || ! in_array( 'last_date', SFAF_Sources::publish_missing( $event_id ), true );
+        }
+
         $missing = array();
         foreach ( array_keys( SFAF_Sources::publish_fields() ) as $field ) {
             if ( empty( $filled[ $field ] ) ) {
@@ -3187,6 +3196,31 @@ class SFAF_Portal {
             }
             if ( isset( $_POST[ $field ] ) ) {
                 update_post_meta( $event_id, $key, sanitize_text_field( wp_unslash( $_POST[ $field ] ) ) );
+            }
+        }
+
+        /*
+         * MULTI-DAY (3.112.0), under its marker so a form that did not draw it
+         * leaves it alone. The End date is kept only after the Date; one that is
+         * not is reported and not stored, and the tick stays so the publish
+         * rule can name it.
+         */
+        if ( isset( $_POST['uc_multiday_present'] ) && ! $is_locked( 'date' ) ) {
+            if ( ! empty( $_POST['multi_day'] ) ) {
+                update_post_meta( $event_id, '_uc_multi_day', '1' );
+                $md_date = (string) get_post_meta( $event_id, '_uc_event_date', true );
+                $md_last = isset( $_POST['last_date'] ) ? sanitize_text_field( wp_unslash( $_POST['last_date'] ) ) : '';
+                if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $md_last ) && $md_last > $md_date ) {
+                    update_post_meta( $event_id, '_uc_last_date', $md_last );
+                } else {
+                    delete_post_meta( $event_id, '_uc_last_date' );
+                    if ( '' !== $md_last ) {
+                        set_transient( 'sfaf_last_date_rejected_' . $user->ID . '_' . $event_id, $md_last, 5 * MINUTE_IN_SECONDS );
+                    }
+                }
+            } else {
+                delete_post_meta( $event_id, '_uc_multi_day' );
+                delete_post_meta( $event_id, '_uc_last_date' );
             }
         }
 
@@ -14808,12 +14842,48 @@ class SFAF_Portal {
                     $s_start = $st( 'start_time' );
                     $s_end   = $st( 'end_time' );
                     ?>
-                    <label class="uc-field<?php echo esc_attr( $this->field_class( $s_date ) ); ?>"<?php echo $this->field_watch_attr( 'date', $s_date ); ?>>
-                        <span class="uc-field-label">Date<?php echo $this->publish_mark( 'date' ); ?> <?php echo $this->field_badge( $s_date, $prov['label'] ); ?></span>
-                        <input type="date" name="date" value="<?php echo esc_attr( $g( '_uc_event_date' ) ); ?>"<?php echo $this->field_disabled( $s_date ); ?> />
-                        <?php // Names a closure the date falls on (3.105.0). A warning, never a refusal. ?>
-                        <?php echo SFAF_Closures::date_warning_markup(); ?>
-                    </label>
+                    <?php
+                    /*
+                     * MULTI-DAY (3.112.0). Unticked, the card is as it was.
+                     * Ticked, End date sits beside Date; the start time is the
+                     * first day's and the end time the last day's. Multi-day
+                     * and Repeats are never on one event: ticking this hides
+                     * Repeats, and a repeat cadence hides this, by CSS :has().
+                     * Not offered on a date in a recurrence group.
+                     */
+                    $md_on    = '1' === (string) $g( '_uc_multi_day' );
+                    $md_last  = (string) $g( '_uc_last_date' );
+                    $md_show  = ! ( $event_id && '' !== SFAF_Recurrence::group_of( $event_id ) );
+                    $md_error = $event_id ? get_transient( 'sfaf_last_date_rejected_' . $user->ID . '_' . $event_id ) : false;
+                    if ( $md_error ) {
+                        delete_transient( 'sfaf_last_date_rejected_' . $user->ID . '_' . $event_id );
+                    }
+                    ?>
+                    <div class="uc-field-row uc-date-row" data-uc-multiday-row>
+                        <label class="uc-field<?php echo esc_attr( $this->field_class( $s_date ) ); ?>"<?php echo $this->field_watch_attr( 'date', $s_date ); ?>>
+                            <span class="uc-field-label">Date<?php echo $this->publish_mark( 'date' ); ?> <?php echo $this->field_badge( $s_date, $prov['label'] ); ?></span>
+                            <input type="date" name="date" value="<?php echo esc_attr( $g( '_uc_event_date' ) ); ?>"<?php echo $this->field_disabled( $s_date ); ?> />
+                            <?php // Names a closure the date falls on (3.105.0). A warning, never a refusal. ?>
+                            <?php echo SFAF_Closures::date_warning_markup(); ?>
+                        </label>
+                        <?php if ( $md_show ) : ?>
+                            <label class="uc-field uc-multiday-end" data-uc-multiday-end>
+                                <span class="uc-field-label">End date<?php echo $this->publish_mark( 'last_date' ); ?></span>
+                                <input type="date" name="last_date" value="<?php echo esc_attr( $md_last ); ?>"<?php echo $this->field_disabled( $s_date ); ?>
+                                       <?php echo $md_error ? ' class="uc-invalid" aria-invalid="true" aria-describedby="uc-last-date-error"' : ''; ?> />
+                                <?php if ( $md_error ) : ?>
+                                    <p class="uc-field-error" id="uc-last-date-error" role="alert">The end date must be after the date, so it was not saved.</p>
+                                <?php endif; ?>
+                            </label>
+                        <?php endif; ?>
+                    </div>
+                    <?php if ( $md_show ) : ?>
+                        <input type="hidden" name="uc_multiday_present" value="1" />
+                        <label class="uc-check uc-multiday" data-uc-multiday>
+                            <input type="checkbox" name="multi_day" value="1" data-uc-multiday-tick <?php checked( $md_on ); ?><?php echo $this->field_disabled( $s_date ); ?> />
+                            Multi-day event
+                        </label>
+                    <?php endif; ?>
                     <div class="uc-field-row">
                         <label class="uc-field<?php echo esc_attr( $this->field_class( $s_start ) ); ?>">
                             <span class="uc-field-label">Start<?php echo $this->publish_mark( 'start_time' ); ?> <?php echo $this->field_badge( $s_start, $prov['label'] ); ?></span>
@@ -14871,7 +14941,9 @@ class SFAF_Portal {
                             ); ?>
                         </p>
                     <?php else : ?>
-                        <?php $this->render_recurrence_control( $event_id, (string) $g( '_uc_event_date' ) ); ?>
+                        <div data-uc-repeat-wrap>
+                            <?php $this->render_recurrence_control( $event_id, (string) $g( '_uc_event_date' ) ); ?>
+                        </div>
                     <?php endif; ?>
                 </section>
 
@@ -15664,6 +15736,10 @@ class SFAF_Portal {
      *         occurrence limit, explicit dates.
      */
     private function recurrence_from_post() {
+        // A multi-day event does not repeat (3.112.0): the tick wins.
+        if ( ! empty( $_POST['multi_day'] ) ) {
+            return array( '', '', 0, array() );
+        }
         return SFAF_Recurrence::from_post( $_POST );
     }
 

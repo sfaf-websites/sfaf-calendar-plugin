@@ -747,6 +747,8 @@ class SFAF_Sources {
             'category'    => array( 'phrase' => 'a category' ),
             'description' => array( 'phrase' => 'a description' ),
             'location'    => array( 'phrase' => 'a location' ),
+            // Only when Multi-day is ticked (3.112.0); filled otherwise.
+            'last_date'   => array( 'phrase' => 'an end date' ),
         );
     }
 
@@ -802,6 +804,9 @@ class SFAF_Sources {
                 case 'location':
                     $filled = ( class_exists( 'SFAF_Online' ) && ( SFAF_Online::is_online( $post_id ) || SFAF_Online::is_hybrid( $post_id ) ) )
                         || '' !== trim( (string) sfaf_event_location( $post_id ) );
+                    break;
+                case 'last_date':
+                    $filled = '1' !== (string) get_post_meta( $post_id, '_uc_multi_day', true ) || '' !== sfaf_event_last_date( $post_id );
                     break;
                 default:
                     $filled = true;

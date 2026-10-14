@@ -5417,3 +5417,15 @@ body.uc-modal-open { overflow: hidden; }
     .uc-portal .uc-replyto-typed { display: block; }
 }
 .uc-portal .uc-replyto-picker .uc-picker-options { max-height: 260px; overflow-y: auto; }
+/* ---------------------------------------------------------------------------
+   MULTI-DAY (3.112.0)
+
+   End date sits beside Date and shows only while Multi-day is ticked.
+   Multi-day hides Repeats, and a repeat cadence other than Never hides
+   Multi-day, by :has() so it needs no script. A browser without :has() shows
+   all three, and the save ignores Repeats when Multi-day is ticked.
+   ------------------------------------------------------------------------ */
+.uc-portal [data-uc-card="schedule"]:not(:has([data-uc-multiday-tick]:checked)) [data-uc-multiday-end] { display: none; }
+.uc-portal [data-uc-card="schedule"]:has([data-uc-multiday-tick]:checked) [data-uc-repeat-wrap] { display: none; }
+.uc-portal [data-uc-card="schedule"]:has([data-uc-repeat-mode]:checked:not([value=""])) [data-uc-multiday] { display: none; }
+.uc-portal .uc-multiday { margin-top: 10px; }
