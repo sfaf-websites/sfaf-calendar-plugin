@@ -3560,6 +3560,8 @@ class SFAF_Shortcodes {
             'heading'      => null,
             // Event ids to show first, comma separated (3.111.0). See pinned_ids().
             'pin'          => '',
+            // Tag slugs the block is limited to, like category (3.112.0).
+            'tag'          => '',
         ), $atts );
 
         $block = $this->render_calendar_block( $atts );
