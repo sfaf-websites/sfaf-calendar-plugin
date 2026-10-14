@@ -1176,8 +1176,10 @@ a change was not saved, and **Sign in** as the full-width yellow button.
 
 Measured in Chrome by `.claude/embed-isolation-live.php` at 1280px and 390px.
 
-**The embed is drawn in a shadow root** (`PROJECT.md` 1), so a host theme's rules
-on buttons, links and spans do not reach it. Under a stylesheet setting color,
+**An embed with `data-isolate="yes"` is drawn in a shadow root** (`PROJECT.md` 1),
+so a host theme's rules on buttons, links and spans do not reach it; without the
+attribute it is drawn in the page as before and a host's rules do. Under a
+stylesheet setting color,
 background, border, font, text-transform, box-shadow, line-height,
 letter-spacing and text-decoration on all three, every measured value inside the
 block and inside the hover preview is the same as on a clean page. The block's

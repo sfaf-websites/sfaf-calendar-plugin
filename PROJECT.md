@@ -1498,7 +1498,7 @@ shared proxy may keep. The unnarrowed calendar is the same for everybody and is
 still cached; anything carrying a search, an organizer, groups or a category is
 `private, no-cache`.
 
-### The embed is drawn in a shadow root (3.111.0)
+### An embed can be drawn in a shadow root, when it asks (3.111.0)
 
 **A host page's stylesheet cannot reach the calendar, and the calendar's cannot
 reach the host.** On 2027.cycletozero.org the theme repainted the category pills
@@ -1507,8 +1507,16 @@ a rule like `button { ... }` on someone else's page reaches every button under
 it, and no specificity calendar.css could choose beats every selector a theme
 might write. Selectors do not cross a shadow boundary, so that contest is gone.
 
-- **`mount()` in embed.js** gives each `[data-sfaf-calendar]` block an open
-  shadow root holding a small reset `<style>`, the calendar.css `<link>`, and a
+**OPT-IN: `data-isolate="yes"` on the block.** Without it an embed is drawn in
+the host page exactly as in 3.110.5, with calendar.css in the document head and
+no fonts link, because a host may depend on reaching it: sfaf.org runs Weglot,
+which translates by walking the page's text and cannot see into a shadow root.
+The generator's **Protect from the host page's styles** writes the attribute and
+is off by default. Isolation is for a host whose theme repaints the calendar and
+has nothing that needs to see inside it.
+
+- **`mount()` in embed.js** gives each block carrying `data-isolate="yes"` an
+  open shadow root holding a small reset `<style>`, the calendar.css `<link>`, and a
   wrapper `div.sfaf-embed-root` carrying a copy of the block's attributes.
   **That wrapper is what the rest of embed.js calls the container**, so every
   function reads and writes its data attributes and swaps its contents exactly
@@ -1523,24 +1531,24 @@ might write. Selectors do not cross a shadow boundary, so that contest is gone.
   shadow root, so calendar.css's `@import` loads nothing there. embed.js links
   the same Google Fonts sheet in the document head once; it declares two
   families and styles nothing.
-- **The hover preview's panel gets a root of its own** on a `display: contents`
-  host appended to `<body>`, with the same reset for `.uc-mp`. The shared
+- **The hover preview's panel gets a root of its own**, on a page with an
+  isolated block, on a `display: contents` host appended to `<body>`, with the same reset for `.uc-mp`. The shared
   preview block takes where to mount as an argument (`initMonthPreview(mount)`;
   calendar.js passes nothing and gets `document.body`) and reads the tile under
   the pointer from `composedPath()`, because a listener on the document sees a
   shadow block as its host.
 - **A browser with no `attachShadow`** draws the block in the page as before.
 
-**What the host page can no longer do**: anything that walks or listens to its
+**What a host gives up by isolating**: anything that walks or listens to its
 own DOM stops at the host div. That includes a translation layer such as Weglot
-walking the text, and analytics that read `event.target` on a click. Both are
-`TESTING.md` items, because whether either was relied on is a fact about the
-host sites.
+walking the text, and analytics that read `event.target` on a click, which is
+why it is the block's choice and not the default.
 
 **calendar.js is not in a shadow root.** The shortcode's markup is the page's
 own and calendar.js binds through jQuery delegation on the document, which a
-shadow root would sever. `.claude/embed-isolation-live.php` measures that page
-under the same hostile stylesheet and reports how much moves, every run.
+shadow root would sever. `.claude/embed-isolation-live.php` measures that page,
+and an embed without the attribute, under the same hostile stylesheet and
+reports how much moves, every run; with the attribute nothing may move.
 ### The organizer filter was a control that did nothing
 
 **Until 3.50.0 it rendered on this site, was left out of embeds deliberately,

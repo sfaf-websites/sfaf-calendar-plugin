@@ -3581,7 +3581,9 @@ count or summary arrives the next morning.
 
 ### 1.263 The embed on 2027.cycletozero.org (3.111.0)
 
-Open the cycletozero page that carries the calendar. The category pills must be
+Generate the cycletozero block again in the embed generator with **Protect from
+the host page's styles** ticked (or add `data-isolate="yes"` to the existing
+code) and replace it on that page. Then open the page. The category pills must be
 the calendar's own (white with a grey edge, the chosen one tinted), not the
 theme's magenta with pink text, and the List and Calendar toggle must not sit in
 a black box. Compare with the same block on sfaf.org: they should look the same.
@@ -3590,15 +3592,16 @@ a black box. Compare with the same block on sfaf.org: they should look the same.
 
 ### 1.264 The embed's fonts on a host page (3.111.0)
 
-On sfaf.org and on cycletozero, the calendar's headings and pills must be in
-Montserrat and descriptions in Merriweather. In the browser's developer tools,
-the Network tab should show one request to fonts.googleapis.com from the page.
+On cycletozero, once its block is protected (1.263), the calendar's headings and
+pills must be in Montserrat and descriptions in Merriweather. In the browser's
+developer tools, the Network tab should show one request to fonts.googleapis.com.
 
 **Why it needs a person:** fonts load from Google on a real page.
 
 ### 1.265 The hover preview on a host page (3.111.0)
 
-On sfaf.org, in the month view, rest the pointer on an event in the grid. The
+On cycletozero, once protected, and on sfaf.org, which is not, in the month view
+rest the pointer on an event in the grid. The
 preview must open beside it with the picture, the date, the time, the place and
 View Event Details, in the calendar's own type, and close when the pointer leaves.
 
@@ -3613,13 +3616,12 @@ to show** must be offered, and a block generated with 4 must show four dates.
 
 **Why it needs a person:** the live generator and a real month.
 
-### 1.267 Weglot and analytics on a page carrying the embed (3.111.0)
+### 1.267 Weglot still translates the calendar on sfaf.org (3.111.0)
 
-On sfaf.org, switch the language with Weglot's switcher. Say whether the
-calendar's text was translated before 3.111.0 and whether it is now: the embed is
-drawn in a shadow root, which a translation layer walking the page cannot see
-into. If the site tracks link clicks (Google Analytics outbound clicks, for
-example), click an event in the embed and say whether the click is recorded.
+On sfaf.org, whose blocks carry no `data-isolate`, switch the language with
+Weglot's switcher: the calendar's text must be translated as it was in 3.110.5.
+If the site tracks link clicks, click an event in the embed and say whether the
+click is recorded, as before.
 
 **Why it needs a person:** what the host sites rely on is not in this repository.
 ## 2. Needs real conditionsWaiting for an unattended job to fire, a real removal at source, or a real event

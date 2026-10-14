@@ -13,7 +13,7 @@ layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 **3.111.0**: pinned events; **no registration count on any public page**; review
 teams (`PROJECT.md` 5); a rich registrant email; one PDF per event; Cost, Age range
 and Contact and **schema 14**; **nothing sent for an event registering elsewhere**;
-**the embed in a shadow root**, so no host restyles it (`TESTING.md` 1.253 to 1.267, 2.53, 2.54). **3.110.5**, released first: nothing
+**an opt-in shadow root** (`data-isolate`) so a host cannot restyle it (`TESTING.md` 1.253 to 1.267, 2.53, 2.54). **3.110.5**, released first: nothing
 typed into caladmin is lost to an expired sign-in, and **an open caladmin tab
 never signs out on its own** (`PROJECT.md` 5, 1.248 to 1.252, 2.52).
 > **3.110.1: EDITORS NO LONGER HAVE EVERY EVENT.** A team decides which events a
