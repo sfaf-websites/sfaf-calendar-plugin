@@ -19,8 +19,9 @@
  *   return address. If the question cannot be asked, the post goes as it
  *   would have, and the server's session-ended page is the net under it.
  *
- *   THE KEEPALIVE. Every ten minutes while a caladmin page is open the same
- *   endpoint is asked with keepalive=1, and the server renews a sign-in that
+ *   THE KEEPALIVE. Every ten minutes, while somebody has clicked or typed on
+ *   the screen in the last thirty minutes (3.112.0), the same endpoint is
+ *   asked with keepalive=1, and the server renews a sign-in that
  *   is close to ending, over the same session so no open form's token breaks.
  *
  * WHY BEFORE THE FOOTER SCRIPTS. A restore is applied when this file runs, so
@@ -43,6 +44,7 @@
     var PREFIX = 'ucDraft:';
     var MAX_AGE = 14 * 864e5;
     var KEEPALIVE_MS = 10 * 60 * 1000;
+    var ACTIVE_MS = 30 * 60 * 1000;
     var PASS_MS = 2 * 60 * 1000;
     var SIGN_IN_FORMS = { login: 1, forgot_password: 1, reset_password: 1 };
     var NOT_A_FIELD = /(^|_)nonce$|^_wpnonce$|^uc_action$|^_wp_http_referer$|^uc_draft_key$|^redirect_to$/;
@@ -364,16 +366,33 @@
     }, true);
 
     /* ---- the keepalive --------------------------------------------------- */
+    /*
+     * ONLY WHILE SOMEBODY IS THERE (3.112.0). 3.110.5 renewed the sign-in for
+     * as long as a caladmin tab was open, so a tab left open on a shared
+     * machine never signed out. Now a tick renews only when there has been a
+     * click or a keystroke on this screen in the last thirty minutes; an
+     * abandoned tab ends as it did before 3.110.5, and what was typed is in its
+     * draft when somebody signs back in.
+     */
+    var lastActive = Date.now();
+    function touched() { lastActive = Date.now(); }
+    document.addEventListener('click', touched, true);
+    document.addEventListener('keydown', touched, true);
+    function keepalive() {
+        if (Date.now() - lastActive > ACTIVE_MS) {
+            return;
+        }
+        var body = new URLSearchParams();
+        body.append('action', cfg.action);
+        body.append('keepalive', '1');
+        window.fetch(cfg.ajax, {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+            body: body.toString()
+        }).catch(function () { /* the next one, or the check before a post */ });
+    }
+    api.keepalive = keepalive;
     if (cfg.signedIn && window.fetch) {
-        setInterval(function () {
-            var body = new URLSearchParams();
-            body.append('action', cfg.action);
-            body.append('keepalive', '1');
-            window.fetch(cfg.ajax, {
-                method: 'POST', credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-                body: body.toString()
-            }).catch(function () { /* the next one, or the check before a post */ });
-        }, KEEPALIVE_MS);
+        setInterval(keepalive, KEEPALIVE_MS);
     }
 })();
