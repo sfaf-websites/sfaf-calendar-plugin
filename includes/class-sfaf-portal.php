@@ -67,6 +67,9 @@ class SFAF_Portal {
     private $load_media = false;
     private $load_editor = false;
 
+    /** The screen being drawn, "events/edit/12", which keys its drafts (3.110.5). */
+    private $route = '';
+
     /* =====================================================================
      * Bootstrap
      * ================================================================== */
@@ -94,6 +97,78 @@ class SFAF_Portal {
          * checks that again rather than trusting the hook name.
          */
         add_action( 'wp_ajax_' . SFAF_Desc_Images::ACTION, array( $this, 'ajax_description_image' ) );
+        /*
+         * THE SIGN-IN CHECK AND THE KEEPALIVE (3.110.5). nopriv as well,
+         * because "you are signed out" is the answer it exists to give, and
+         * without it admin-ajax answers a signed-out browser with a bare 0.
+         * It says whether the asker is signed in and whether one form's token
+         * is still good, and nothing else.
+         */
+        add_action( 'wp_ajax_' . self::SESSION_ACTION, array( $this, 'ajax_session' ) );
+        add_action( 'wp_ajax_nopriv_' . self::SESSION_ACTION, array( $this, 'ajax_session' ) );
+    }
+
+    /** The admin-ajax action caladmin-session.js asks (3.110.5). */
+    const SESSION_ACTION = 'sfaf_caladmin_session';
+
+    /** A sign-in with less than this left is renewed by the keepalive. */
+    const SESSION_RENEW_WITHIN = 12 * HOUR_IN_SECONDS;
+
+    /**
+     * Is the asker signed in, and is this form's token still good (3.110.5).
+     *
+     * Asked by caladmin-session.js before every caladmin form posts, and by
+     * its ten-minute keepalive. A form whose answer is no never posts: the
+     * person is sent to sign in with what they typed kept in the browser.
+     */
+    public function ajax_session() {
+        nocache_headers();
+        if ( ! is_user_logged_in() ) {
+            wp_send_json_success( array( 'signed_in' => false, 'valid' => false ) );
+        }
+        $valid = true;
+        $check = isset( $_POST['check'] ) ? sanitize_key( wp_unslash( $_POST['check'] ) ) : '';
+        if ( '' !== $check ) {
+            $nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
+            $valid = (bool) wp_verify_nonce( $nonce, 'uc_portal_' . $check );
+        }
+        if ( ! empty( $_POST['keepalive'] ) ) {
+            $this->extend_sign_in();
+        }
+        wp_send_json_success( array( 'signed_in' => true, 'valid' => $valid ) );
+    }
+
+    /**
+     * Renew the sign-in when it is close to ending (3.110.5).
+     *
+     * THE SAME SESSION, NOT A NEW ONE. A WordPress token is part of every
+     * nonce, so a fresh sign-in would invalidate every form open in every
+     * tab, which is the fault this exists to prevent. The session record's
+     * expiry moves and the cookie is reissued over the same token; "Remember
+     * me" is read from how long the session was first given, and kept.
+     */
+    private function extend_sign_in() {
+        $uid   = get_current_user_id();
+        $token = wp_get_session_token();
+        if ( ! $uid || '' === $token || ! class_exists( 'WP_Session_Tokens' ) ) {
+            return;
+        }
+        $manager = WP_Session_Tokens::get_instance( $uid );
+        $session = $manager->get( $token );
+        if ( ! is_array( $session ) || empty( $session['expiration'] ) ) {
+            return;
+        }
+        if ( (int) $session['expiration'] - time() > self::SESSION_RENEW_WITHIN ) {
+            return;
+        }
+        $remember = isset( $session['uc_remember'] )
+            ? (bool) $session['uc_remember']
+            : ( (int) $session['expiration'] - ( isset( $session['login'] ) ? (int) $session['login'] : time() ) > 3 * DAY_IN_SECONDS );
+        $length = (int) apply_filters( 'auth_cookie_expiration', ( $remember ? 14 : 2 ) * DAY_IN_SECONDS, $uid, $remember );
+        $session['expiration']  = time() + $length;
+        $session['uc_remember'] = $remember;
+        $manager->update( $token, $session );
+        wp_set_auth_cookie( $uid, $remember, is_ssl(), $token );
     }
 
     /**
@@ -695,19 +770,27 @@ class SFAF_Portal {
 
     public function handle( $route ) {
         nocache_headers();
-        $segments = array_values( array_filter( explode( '/', trim( $route, '/' ) ) ) );
+        $segments    = array_values( array_filter( explode( '/', trim( $route, '/' ) ) ) );
+        $this->route = implode( '/', $segments );
 
-        // POST dispatch (may redirect + exit).
+        // POST dispatch (may redirect + exit). True when it drew the
+        // session-ended page, which is then the whole response (3.110.5).
         if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['uc_action'] ) ) {
-            $this->dispatch_post( sanitize_key( $_POST['uc_action'] ) );
+            if ( $this->dispatch_post( sanitize_key( $_POST['uc_action'] ) ) ) {
+                return;
+            }
         }
 
-        // CSV exports stream and exit.
+        // CSV exports stream and exit, or draw the session-ended page.
         if ( isset( $segments[0], $segments[1] ) && $segments[0] === 'rsvps' && $segments[1] === 'export' ) {
-            $this->export_rsvps_csv();
+            if ( $this->export_rsvps_csv() ) {
+                return;
+            }
         }
         if ( isset( $segments[0], $segments[1] ) && $segments[0] === 'optins' && $segments[1] === 'export' ) {
-            $this->export_optins_csv();
+            if ( $this->export_optins_csv() ) {
+                return;
+            }
         }
 
         if ( ! is_user_logged_in() ) {
@@ -787,14 +870,31 @@ class SFAF_Portal {
                 $this->process_forgot_password();
             } elseif ( 'reset_password' === $action ) {
                 $this->process_reset_password();
+            } else {
+                // Signed out with a form open: the post is not acted on, and
+                // the page says so rather than showing a bare sign-in.
+                return $this->session_ended( 'save' );
             }
-            return;
+            return false;
         }
 
         $user  = wp_get_current_user();
         $nonce = isset( $_POST['uc_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['uc_nonce'] ) ) : '';
         if ( ! wp_verify_nonce( $nonce, 'uc_portal_' . $action ) ) {
-            wp_die( 'Security check failed.' );
+            return $this->session_ended( 'save' );
+        }
+
+        /*
+         * THE SERVER TOOK THE POST, SO THE BROWSER'S DRAFT OF IT GOES
+         * (3.110.5). caladmin-session.js names the draft on the way out and
+         * reads this on the next page; it is the only thing that clears a
+         * draft except Discard.
+         */
+        if ( isset( $_POST['uc_draft_key'] ) && ! headers_sent() ) {
+            $draft = substr( preg_replace( '/[^A-Za-z0-9:|\/_-]/', '', (string) wp_unslash( $_POST['uc_draft_key'] ) ), 0, 200 );
+            if ( '' !== $draft ) {
+                setcookie( 'uc_draft_done', $draft, 0, '/', '', is_ssl(), false );
+            }
         }
 
         switch ( $action ) {
@@ -2333,12 +2433,115 @@ class SFAF_Portal {
                 $this->redirect( 'users', array( 'msg' => 'team_deleted' ) );
                 break;
         }
+        return false;
+    }
+
+    /* =====================================================================
+     * The session-ended page (3.110.5)
+     *
+     * A caladmin post whose sign-in has ended, or whose token is stale or
+     * missing, lands here and nowhere else: never wp_die(), whose page is not
+     * caladmin's, carries the theme's language switcher, and said only
+     * "Security check failed." Nothing in the post is acted on. What was
+     * typed is in the browser's draft (caladmin-session.js), and Sign in goes
+     * back to the screen with ?uc_restore=1, which puts it back.
+     * .claude/session-ended-test.php posts every action here with a bad token.
+     * ================================================================== */
+
+    /** What the page says, by what did not happen. */
+    const SESSION_ENDED = array(
+        'save'     => 'Your session had ended, so that change was not saved. Sign in and your form will be restored.',
+        'download' => 'Your session had ended, so the download did not start. Sign in and start it again.',
+    );
+
+    /**
+     * Draw the page, or answer a background request in its own terms.
+     *
+     * @return true So the caller can return it and handle() stops there.
+     */
+    private function session_ended( $what ) {
+        $message = isset( self::SESSION_ENDED[ $what ] ) ? self::SESSION_ENDED[ $what ] : self::SESSION_ENDED['save'];
+        if ( ! empty( $_POST['uc_ajax'] ) ) {
+            wp_send_json_error( array( 'message' => $message, 'session' => 'ended' ), 403 );
+        }
+        $back = $this->session_return_url();
+        $href = is_user_logged_in()
+            ? $back
+            : add_query_arg( 'redirect_to', rawurlencode( $back ), $this->url() );
+        status_header( 403 );
+        $this->head( 'Sign In' );
+        $this->login_card_open( 'SFAF Calendar Admin', '' );
+        ?>
+                <p class="uc-notice uc-login-notice" role="alert" data-uc-session-ended><?php echo esc_html( $message ); ?></p>
+                <a class="uc-btn uc-btn-primary uc-btn-block" href="<?php echo esc_url( $href ); ?>" data-uc-session-signin>Sign in</a>
+        <?php
+        $this->login_card_close();
+        $this->foot();
+        return true;
+    }
+
+    /**
+     * The screen the post came from, with ?uc_restore=1 (3.110.5).
+     *
+     * The referer the form carried, then the browser's, then the address the
+     * post went to; only ever a caladmin address, so this cannot be used to
+     * send somebody elsewhere after signing in.
+     */
+    private function session_return_url() {
+        $base = $this->url();
+        $home = wp_parse_url( $base );
+        $host = ( isset( $home['scheme'] ) ? $home['scheme'] : 'https' ) . '://' . ( isset( $home['host'] ) ? $home['host'] : '' )
+            . ( isset( $home['port'] ) ? ':' . $home['port'] : '' );
+        $seen = array();
+        if ( ! empty( $_POST['_wp_http_referer'] ) ) {
+            $seen[] = (string) wp_unslash( $_POST['_wp_http_referer'] );
+        }
+        if ( ! empty( $_SERVER['HTTP_REFERER'] ) ) {
+            $seen[] = (string) wp_unslash( $_SERVER['HTTP_REFERER'] );
+        }
+        $seen[] = $this->url( $this->route );
+        foreach ( $seen as $url ) {
+            if ( 0 === strpos( $url, '/' ) && 0 !== strpos( $url, '//' ) ) {
+                $url = $host . $url;
+            }
+            $url = $this->caladmin_address( $url );
+            if ( '' !== $url ) {
+                $url = remove_query_arg( array( 'uc_restore', 'msg' ), $url );
+                return add_query_arg( 'uc_restore', '1', $url );
+            }
+        }
+        return add_query_arg( 'uc_restore', '1', $base );
+    }
+
+    /** The address when it is caladmin's own, otherwise ''. */
+    private function caladmin_address( $url ) {
+        $url  = (string) $url;
+        $base = $this->url();
+        if ( 0 !== strpos( $url, $base ) ) {
+            return '';
+        }
+        $next = (string) substr( $url, strlen( $base ), 1 );
+        return ( '' === $next || '/' === $next || '?' === $next ) ? $url : '';
+    }
+
+    /** Where the sign-in goes once it succeeds: a caladmin address, or ''. */
+    private function login_return() {
+        $asked = isset( $_REQUEST['redirect_to'] ) ? (string) wp_unslash( $_REQUEST['redirect_to'] ) : '';
+        if ( '' !== $asked ) {
+            return $this->caladmin_address( $asked );
+        }
+        // Signed out on a screen: signing in comes back to it.
+        if ( '' === $this->route ) {
+            return '';
+        }
+        $query = isset( $_SERVER['QUERY_STRING'] ) ? (string) wp_unslash( $_SERVER['QUERY_STRING'] ) : '';
+        return $this->url( $this->route ) . ( '' !== $query ? '?' . $query : '' );
     }
 
     private function process_login() {
         $nonce = isset( $_POST['uc_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['uc_nonce'] ) ) : '';
         if ( ! wp_verify_nonce( $nonce, 'uc_portal_login' ) ) {
-            $this->login_error = 'Security check failed. Please try again.';
+            $this->login_error = 'That page had been open too long. Sign in again.';
             return;
         }
         $creds = array(
@@ -2352,6 +2555,12 @@ class SFAF_Portal {
             return;
         }
         wp_set_current_user( $user->ID );
+        // Back to the screen somebody was on (3.110.5), else the dashboard.
+        $back = $this->login_return();
+        if ( '' !== $back ) {
+            wp_safe_redirect( $back );
+            exit;
+        }
         $this->redirect();
     }
 
@@ -2380,7 +2589,7 @@ class SFAF_Portal {
     private function process_forgot_password() {
         $nonce = isset( $_POST['uc_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['uc_nonce'] ) ) : '';
         if ( ! wp_verify_nonce( $nonce, 'uc_portal_forgot_password' ) ) {
-            $this->login_error = 'Security check failed. Please try again.';
+            $this->login_error = 'That page had been open too long. Try again.';
             return;
         }
         $email = sanitize_email( wp_unslash( $_POST['user_email'] ?? '' ) );
@@ -2401,7 +2610,7 @@ class SFAF_Portal {
     private function process_reset_password() {
         $nonce = isset( $_POST['uc_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['uc_nonce'] ) ) : '';
         if ( ! wp_verify_nonce( $nonce, 'uc_portal_reset_password' ) ) {
-            $this->login_error = 'Security check failed. Please try again.';
+            $this->login_error = 'That page had been open too long. Try again.';
             return;
         }
         $key   = sanitize_text_field( wp_unslash( $_POST['rp_key'] ?? '' ) );
@@ -4064,12 +4273,9 @@ class SFAF_Portal {
      * ================================================================== */
 
     private function export_rsvps_csv() {
-        if ( ! is_user_logged_in() ) {
-            wp_die( 'Denied' );
-        }
         $nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
-        if ( ! wp_verify_nonce( $nonce, 'uc_portal_export' ) ) {
-            wp_die( 'Security check failed.' );
+        if ( ! is_user_logged_in() || ! wp_verify_nonce( $nonce, 'uc_portal_export' ) ) {
+            return $this->session_ended( 'download' );
         }
 
         $event_id = isset( $_GET['event_id'] ) ? intval( $_GET['event_id'] ) : 0;
@@ -4141,12 +4347,12 @@ class SFAF_Portal {
     }
 
     private function export_optins_csv() {
-        if ( ! is_user_logged_in() || ! $this->is_admin_role( wp_get_current_user() ) ) {
-            wp_die( 'Denied' );
-        }
         $nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
-        if ( ! wp_verify_nonce( $nonce, 'uc_portal_export' ) ) {
-            wp_die( 'Security check failed.' );
+        if ( ! is_user_logged_in() || ! wp_verify_nonce( $nonce, 'uc_portal_export' ) ) {
+            return $this->session_ended( 'download' );
+        }
+        if ( ! $this->is_admin_role( wp_get_current_user() ) ) {
+            wp_die( 'Denied' );
         }
 
         $search = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
@@ -4294,6 +4500,24 @@ class SFAF_Portal {
     }
 
     private function foot() {
+        /*
+         * DRAFTS, THE SIGN-IN CHECK AND THE KEEPALIVE (3.110.5), FIRST.
+         *
+         * Before the footer scripts on purpose: a draft being restored has to
+         * be in the fields before TinyMCE and portal.js read them, and both
+         * read them once, when they start. See caladmin-session.js.
+         */
+        ?><script type="application/json" id="uc-session-config"><?php
+            echo wp_json_encode( array(
+                'ajax'     => admin_url( 'admin-ajax.php' ),
+                'action'   => self::SESSION_ACTION,
+                'signin'   => $this->url(),
+                'screen'   => '' !== $this->route ? $this->route : 'dashboard',
+                'signedIn' => is_user_logged_in(),
+            ) );
+        ?></script>
+<script src="<?php echo esc_url( SFAF_PLUGIN_URL . 'public/js/caladmin-session.js?ver=' . SFAF_VERSION ); ?>"></script>
+<?php
         // The portal builds its own document, so whatever either control
         // enqueued has to be printed by hand.
         if ( $this->load_media || $this->load_editor ) {
@@ -5166,6 +5390,9 @@ class SFAF_Portal {
 
                 <form method="post" action="<?php echo esc_url( $this->url() ); ?>" class="uc-login-form">
                     <input type="hidden" name="uc_action" value="login" />
+                    <?php if ( '' !== $this->login_return() ) : ?>
+                        <input type="hidden" name="redirect_to" value="<?php echo esc_attr( $this->login_return() ); ?>" />
+                    <?php endif; ?>
                     <?php wp_nonce_field( 'uc_portal_login', 'uc_nonce' ); ?>
                     <label>Username or Email
                         <input type="text" name="log" autocomplete="username" required autofocus />

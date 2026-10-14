@@ -5382,3 +5382,15 @@ body.uc-modal-open { overflow: hidden; }
     .uc-portal .uc-chip-remove { position: relative; }
     .uc-portal .uc-chip-remove::after { content: ""; position: absolute; top: -14px; right: -6px; bottom: -14px; left: -6px; }
 }
+
+/* ---------------------------------------------------------------------------
+   RESTORE WHAT YOU WERE TYPING (3.110.5)
+
+   caladmin-session.js puts one line at the top of a screen that has a draft
+   in this browser: the .uc-flash-attention banner, its words, then Restore
+   and Discard together at the right, wrapping under the words when they do
+   not fit. After a restore, the plain .uc-flash says it is back. Nothing new
+   in colour: both are the page-level banners caladmin already has.
+   ------------------------------------------------------------------------ */
+.uc-draft-prompt { justify-content: space-between; }
+.uc-draft-prompt-actions { display: flex; gap: 8px; flex-wrap: wrap; }

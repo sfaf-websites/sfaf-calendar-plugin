@@ -170,7 +170,8 @@ function wp_die( $m = '' ) { throw new RuntimeException( 'wp_die: ' . ( is_strin
  * redirect and the test goes on (3.103.0). */
 class KitRedirect extends RuntimeException {}
 function wp_safe_redirect( $u ) { $GLOBALS['kit_redirect'] = $u; if ( ! empty( $GLOBALS['kit_redirect_throws'] ) ) { throw new KitRedirect( (string) $u ); } return true; }
-function wp_verify_nonce( $n, $a = -1 ) { return 1; }
+/* A stale token and a signed-out request, on demand (3.110.5). */
+function wp_verify_nonce( $n, $a = -1 ) { return empty( $GLOBALS['kit_nonce_bad'] ) ? 1 : false; }
 function wp_update_term( $id, $tax, $a = array() ) { if ( isset( $a['description'] ) ) { $GLOBALS['kit_term_desc'][ (int) $id ] = $a['description']; } return array( 'term_id' => (int) $id ); }
 function wp_redirect( $u ) { $GLOBALS['kit_redirect'] = $u; return true; }
 
@@ -196,7 +197,13 @@ function get_current_user_id() { return (int) $GLOBALS['kit_user_id']; }
 function get_userdata( $id ) { if ( ! empty( $GLOBALS['kit_users'] ) ) { foreach ( $GLOBALS['kit_users'] as $ku ) { if ( (int) $ku->ID === (int) $id ) { return $ku; } } } $u = new WP_User(); if ( isset( $GLOBALS['kit_umeta'] ) ) { $u->ID = (int) $id; $u->display_name = 'User ' . (int) $id; $u->user_email = 'user' . (int) $id . '@sfaf.org'; } return $u; }
 function current_user_can( $c ) { return true; }
 function user_can( $u, $c ) { return ! in_array( (int) ( is_object( $u ) ? $u->ID : $u ), $GLOBALS['kit_refused'], true ); }
-function is_user_logged_in() { return true; }
+function is_user_logged_in() { return empty( $GLOBALS['kit_logged_out'] ); }
+/* JSON answers end a request; here they throw what they would have sent (3.110.5). */
+class KitJson extends RuntimeException { public $payload; function __construct( $p ) { parent::__construct( 'json' ); $this->payload = $p; } }
+function wp_send_json_success( $d = null, $s = null ) { throw new KitJson( array( 'success' => true, 'data' => $d ) ); }
+function wp_send_json_error( $d = null, $s = null ) { throw new KitJson( array( 'success' => false, 'data' => $d, 'status' => $s ) ); }
+function remove_query_arg( $k, $u = '' ) { $p = parse_url( (string) $u ); if ( empty( $p['query'] ) ) { return (string) $u; } parse_str( $p['query'], $q ); foreach ( (array) $k as $x ) { unset( $q[ $x ] ); } $base = strtok( (string) $u, '?' ); return $q ? $base . '?' . http_build_query( $q ) : $base; }
+function is_ssl() { return true; }
 /* With kit_users set (3.110.2), get_users() answers from that list: those
    holding a calendar role when asked for _uc_calendar_role, less any excluded
    ids. Off, nobody. */

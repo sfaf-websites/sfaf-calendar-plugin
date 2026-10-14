@@ -210,6 +210,7 @@ function ucDismissOnBackdrop(dialog) {
                 chips.syncAll();
                 var body = new URLSearchParams();
                 body.append('uc_action', 'registrant_mail_preview');
+                body.append('uc_ajax', '1');
                 body.append('uc_nonce', form.getAttribute('data-uc-rm-preview-nonce') || '');
                 ['event_id', 'rm_subject', 'rm_body'].forEach(function (n) {
                     var f = form.querySelector('[name="' + n + '"]');
