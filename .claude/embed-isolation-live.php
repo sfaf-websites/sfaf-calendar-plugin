@@ -95,13 +95,19 @@ function sweep(scope, top) {
   return Array.prototype.slice.call(scope.querySelectorAll('button, a, span')).filter(function (el) { return el.getClientRects().length; })
     .map(function (el) { return { at: path(el, top), css: css(el) }; });
 }
+function sheetsIn(root) {
+  var links = root.querySelectorAll('link[rel="stylesheet"]');
+  return links.length > 0 && Array.prototype.every.call(links, function (l) { return !!l.sheet; });
+}
 function finish() { out.pageWidth = document.documentElement.scrollWidth; parent.postMessage(JSON.stringify(out), '*'); }
 var tries = 0;
 (function wait() {
   var host = document.querySelector('[data-sfaf-calendar]');
   var lp = document.querySelector('.uc-view-panels');
   var scope = window.EI_MODE === 'light' ? (lp && lp.closest('.uc-calendar')) : (host && host.shadowRoot);
-  var ready = scope && scope.querySelector('.uc-view-panels') && (window.EI_MODE === 'light' || scope.querySelector('link[rel="stylesheet"]'));
+  /* Loaded, not merely linked: a <link> in a shadow root loads like any other, and
+     measuring before it arrives measures an unstyled block. */
+  var ready = scope && scope.querySelector('.uc-view-panels') && (window.EI_MODE === 'light' || sheetsIn(scope));
   if (!ready && tries++ < 60) { setTimeout(wait, 100); return; }
   setTimeout(function () {
     out.shadow = !!(host && host.shadowRoot);
@@ -122,13 +128,19 @@ var tries = 0;
     var tile = scope.querySelector('.uc-day-event a[data-uc-preview]');
     out.tile = !!tile;
     if (tile) { tile.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, composed: true })); }
-    setTimeout(function () {
+    var waited = 0;
+    (function settle() {
+      var pr = document.querySelector('[data-sfaf-calendar-preview]');
+      if (pr && pr.shadowRoot && !sheetsIn(pr.shadowRoot) && waited++ < 60) { setTimeout(settle, 100); return; }
+      setTimeout(measurePreview, 500);
+    })();
+    function measurePreview() {
       var proot = document.querySelector('[data-sfaf-calendar-preview]');
       var mp = (proot && proot.shadowRoot && proot.shadowRoot.querySelector('.uc-mp')) || document.querySelector('.uc-mp');
       out.preview = mp ? { open: mp.matches(':popover-open'), inShadow: !!(proot && proot.shadowRoot && proot.shadowRoot.contains(mp)), css: css(mp),
         items: sweep(mp, mp) } : null;
       finish();
-    }, 500);
+    }
   }, 300);
 })();
 })();

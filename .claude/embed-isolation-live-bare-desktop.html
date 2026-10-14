@@ -1,0 +1,61 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:#fff}.page{padding:16px}</style><script>window.EI_MODE="none";window.__errs=[];</script></head><body><div class="page entry-content"><div class="uc-calendar"><button type="button" class="uc-filter-btn host-probe">A host button</button></div></div><script>(function () {
+var out = { errors: window.__errs || [] };
+var PROPS = ['color', 'background-color', 'background-image', 'border-top-color', 'border-top-width', 'border-top-style',
+  'border-left-color', 'border-left-width', 'font-family', 'font-size', 'font-weight', 'font-style', 'text-transform',
+  'box-shadow', 'line-height', 'letter-spacing', 'text-decoration-line', 'border-radius', 'padding-top', 'padding-left'];
+function css(el) { var cs = getComputedStyle(el), o = {}; PROPS.forEach(function (p) { o[p] = cs.getPropertyValue(p); }); return o; }
+function rect(el) { if (!el) { return null; } var b = el.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), left: Math.round(b.left), right: Math.round(b.right), h: Math.round(b.height), w: Math.round(b.width) }; }
+function path(el, top) { var p = []; for (var n = el; n && n !== top; n = n.parentNode) { if (n.nodeType === 1) { p.unshift(n.tagName.toLowerCase() + (n.className && typeof n.className === 'string' ? '.' + n.className.trim().split(/\s+/)[0] : '')); } } return p.slice(-3).join('>'); }
+function sweep(scope, top) {
+  return Array.prototype.slice.call(scope.querySelectorAll('button, a, span')).filter(function (el) { return el.getClientRects().length; })
+    .map(function (el) { return { at: path(el, top), css: css(el) }; });
+}
+function sheetsIn(root) {
+  var links = root.querySelectorAll('link[rel="stylesheet"]');
+  return links.length > 0 && Array.prototype.every.call(links, function (l) { return !!l.sheet; });
+}
+function finish() { out.pageWidth = document.documentElement.scrollWidth; parent.postMessage(JSON.stringify(out), '*'); }
+var tries = 0;
+(function wait() {
+  var host = document.querySelector('[data-sfaf-calendar]');
+  var lp = document.querySelector('.uc-view-panels');
+  var scope = window.EI_MODE === 'none' ? document : window.EI_MODE === 'light' ? (lp && lp.closest('.uc-calendar')) : (host && host.shadowRoot);
+  /* Loaded, not merely linked: a <link> in a shadow root loads like any other, and
+     measuring before it arrives measures an unstyled block. */
+  var ready = scope && (window.EI_MODE === 'none' || scope.querySelector('.uc-view-panels')) && (window.EI_MODE === 'light' || sheetsIn(scope));
+  if (!ready && tries++ < 60) { setTimeout(wait, 100); return; }
+  setTimeout(function () {
+    out.shadow = !!(host && host.shadowRoot);
+    out.inLight = !!document.querySelector('.uc-view-panels');
+    out.fontsLink = !!document.querySelector('head link[data-sfaf-calendar-css="fonts"]');
+    if (!scope) { out.noScope = true; finish(); return; }
+    out.items = sweep(scope, scope);
+    var probe = document.querySelector('.host-probe');
+    out.hostProbe = probe ? css(probe) : null;
+    var panel = scope.querySelector('.uc-panel-sidebar'), side = scope.querySelector('.uc-sidebar');
+    var tabs = scope.querySelector('.uc-month-tabs'), all = scope.querySelector('.uc-sidebar-all'), grid = scope.querySelector('.uc-panel-calendar');
+    out.k = { panel: rect(panel), side: rect(side), tabs: rect(tabs), all: rect(all), grid: rect(grid),
+      padBottom: panel ? parseFloat(getComputedStyle(panel).paddingBottom) : null,
+      rows: scope.querySelectorAll('.uc-panel-sidebar .uc-sidebar-row').length,
+      pills: Array.prototype.map.call(scope.querySelectorAll('.uc-month-tab-name'), function (n) { return { text: n.textContent.trim(), cut: n.scrollWidth > n.clientWidth + 1, w: n.clientWidth }; }),
+      family: (function (el) { return el ? getComputedStyle(el).fontFamily : ''; })(scope.querySelector('.uc-sidebar-heading, .uc-month-title, .uc-calendar')) };
+    /* The hover preview, opened on the first tile. */
+    var tile = scope.querySelector('.uc-day-event a[data-uc-preview]');
+    out.tile = !!tile;
+    if (tile) { tile.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, composed: true })); }
+    var waited = 0;
+    (function settle() {
+      var pr = document.querySelector('[data-sfaf-calendar-preview]');
+      if (pr && pr.shadowRoot && !sheetsIn(pr.shadowRoot) && waited++ < 60) { setTimeout(settle, 100); return; }
+      setTimeout(measurePreview, 500);
+    })();
+    function measurePreview() {
+      var proot = document.querySelector('[data-sfaf-calendar-preview]');
+      var mp = (proot && proot.shadowRoot && proot.shadowRoot.querySelector('.uc-mp')) || document.querySelector('.uc-mp');
+      out.preview = mp ? { open: mp.matches(':popover-open'), inShadow: !!(proot && proot.shadowRoot && proot.shadowRoot.contains(mp)), css: css(mp),
+        items: sweep(mp, mp) } : null;
+      finish();
+    }
+  }, 300);
+})();
+})();</script></body></html>

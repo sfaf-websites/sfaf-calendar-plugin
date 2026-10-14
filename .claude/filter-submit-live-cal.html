@@ -36,7 +36,7 @@
              data-filter-pin=""
              data-pagination="load_more"
              data-page="1"
-                                       data-month="2026-10-14 18:18:47"
+                                       data-month="2026-10-14 21:20:55"
              data-max-pages="1">
 
                                                 <form class="uc-filter-form" method="get" action="" data-uc-filter-form>
@@ -79,12 +79,12 @@
                 <span class="uc-who-label" data-uc-who-label>Organizers and groups</span>
                 <svg class="sfaf-icon sfaf-icon-chevron uc-who-chevron" width="1em" height="1em" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg>            </summary>
 
-            <div class="uc-who-panel" id="uc-who-3414" data-uc-who-panel>
+            <div class="uc-who-panel" id="uc-who-4058" data-uc-who-panel>
                                 <button type="button" class="uc-who-clear" data-uc-who-clear>Clear all</button>
                                 <div class="uc-who-cols">
                                             <section class="uc-who-col uc-who-col-org">
-                            <p class="uc-who-heading" id="uc-who-3414-org">Organizers</p>
-                            <div class="uc-who-list" role="group" aria-labelledby="uc-who-3414-org">
+                            <p class="uc-who-heading" id="uc-who-4058-org">Organizers</p>
+                            <div class="uc-who-list" role="group" aria-labelledby="uc-who-4058-org">
                                                                     <label class="uc-who-opt">
                                         <input type="checkbox" name="uc_org[]"
                                                value="sfaf"
@@ -2605,7 +2605,7 @@ jQuery.ajax = function () {
     var PREVIEW_OPEN_DELAY  = 260;
     var PREVIEW_CLOSE_DELAY = 140;
 
-    function initMonthPreview() {
+    function initMonthPreview(mount) {
         /* The device, asked rather than guessed. matchMedia is old enough to
            assume; if it is missing, so is any device this would suit. */
         if (!window.matchMedia || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
@@ -2675,7 +2675,10 @@ jQuery.ajax = function () {
                 '<span class="uc-mp-place"></span>' +
                 '<a class="uc-mp-go" tabindex="-1" href="#">View Event Details</a>' +
             '</span>';
-        document.body.appendChild(panel);
+        /* Where the panel lives. embed.js hands it a shadow root of its own
+           (3.111.0), so the host page's stylesheet cannot repaint it; on the
+           calendar site it is the page's own body. */
+        (mount || document.body).appendChild(panel);
 
         /* The two targets, kept in one list so nothing can fill one and forget
            the other. */
@@ -2835,7 +2838,10 @@ jQuery.ajax = function () {
            EXIST IN BOTH SCRIPTS. embed.js has no jQuery on purpose, and the
            host page is somebody else's. See the marker note at the top. */
         function tileFrom(e) {
-            var t = e.target;
+            /* The element really under the pointer. A block in a shadow root
+               (embed.js, 3.111.0) reaches a listener on the document as its
+               host, so e.target alone would never be a tile. */
+            var t = (typeof e.composedPath === 'function' && e.composedPath()[0]) || e.target;
             if (!t || typeof t.closest !== 'function') { return null; }
             return t.closest('.uc-day-event a[data-uc-preview]');
         }
@@ -2896,7 +2902,9 @@ window.__navs    = [];
 window.__allowSubmit = false;
 window.__lastForm = null;
 
-window.addEventListener('submit', function (e) {
+/* A submit inside a shadow root does not reach window, so the embed's root
+   gets the same listener as soon as it exists (3.111.0). */
+function onSubmit(e) {
   window.__lastForm = e.target;
   if (window.__allowSubmit) {
     /* THE NO-SCRIPT READING. requestSubmit(button) asks the browser for the
@@ -2909,7 +2917,15 @@ window.addEventListener('submit', function (e) {
     window.__submits.push((e.submitter && e.submitter.textContent || '?').trim());
   }
   e.preventDefault();
-}, true);
+}
+window.addEventListener('submit', onSubmit, true);
+var __bound = null;
+/* Where the block is: the embed's shadow root (3.111.0), or the page. */
+function scope() {
+  var h = document.querySelector('[data-sfaf-calendar]'), r = h && h.shadowRoot;
+  if (r && __bound !== r) { r.addEventListener('submit', onSubmit, true); __bound = r; }
+  return r || document;
+}
 
 window.addEventListener('beforeunload', function () { window.__navs.push('unload'); });
 HTMLFormElement.prototype.submit = function () { window.__navs.push('form.submit()'); };
@@ -2918,9 +2934,9 @@ function since(n) { return window.__submits.length - n; }
 
 /* ---- THE CONTROLS, FOUND THE WAY A PERSON FINDS THEM. ------------------ */
 function pills() {
-  return Array.prototype.slice.call(document.querySelectorAll('.uc-filter-btn'));
+  return Array.prototype.slice.call(scope().querySelectorAll('.uc-filter-btn'));
 }
-function theForm() { return document.querySelector('.uc-filter-form'); }
+function theForm() { return scope().querySelector('.uc-filter-form'); }
 
 function pressed(el, label) {
   var subs = window.__submits.length;
@@ -2953,7 +2969,7 @@ function run(which) {
 
   /* ---- 2. THE SEARCH FIELD. Typing, and Enter. ---------------------- */
   say('the search field:');
-  var box = document.querySelector('.uc-search');
+  var box = scope().querySelector('.uc-search');
   if (!box) {
     say('  THERE IS NO SEARCH FIELD');
     bad++;
@@ -2972,8 +2988,8 @@ function run(which) {
 
   /* ---- 3. THE ORGANIZERS AND GROUPS CONTROL. ------------------------ */
   say('the Organizers and groups control:');
-  var who = document.querySelector('[data-uc-who]');
-  var boxes = document.querySelectorAll('[data-uc-who] input[type="checkbox"]');
+  var who = scope().querySelector('[data-uc-who]');
+  var boxes = scope().querySelectorAll('[data-uc-who] input[type="checkbox"]');
   if (!who || !boxes.length) {
     say('  THE CONTROL IS NOT ON THE PAGE');
     bad++;

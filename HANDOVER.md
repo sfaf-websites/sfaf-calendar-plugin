@@ -4,7 +4,7 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-14, at 3.111.0, rebased on 3.110.5 and not yet released.
+**Last updated:** 2026-10-14, at 3.111.0, released on top of 3.110.5.
 
 ---
 
@@ -82,7 +82,6 @@ and from 3.111.0 `calendar-files/` for PDFs, beside them.
 
 ## In flight
 
-- **3.111.0 is rebased on 3.110.5, unreleased** (`wip-3.111.0`): build, suite, release.
 - **Following a series is half built.** 3.53.0 established the followers; nothing
   sends them. `PROJECT.md` 8, then `TESTING.md` 1.22.
 - **Automated fetching is ON and its own copy says it should not be**, and only
