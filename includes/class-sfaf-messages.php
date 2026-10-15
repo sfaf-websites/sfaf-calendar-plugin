@@ -432,7 +432,7 @@ class SFAF_Messages {
                 'ics_join_event'   => array( 'Join the event', 'Participar en el evento' ),
                 'in_person_online' => array( 'In person and online', 'En persona y en línea' ),
                 // Public strings for the calendar's tags and its location filter (3.112.0).
-                'whats_included'   => array( "What's included", 'Qué incluye' ),
+                'whats_included'   => array( 'Tags', 'Etiquetas' ),
             );
         }
         return $t;

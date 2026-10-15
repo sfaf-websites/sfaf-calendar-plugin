@@ -1730,7 +1730,7 @@ class SFAF_Admin {
                             <option value="organizer">One organizer</option>
                             <option value="series">One series</option>
                             <option value="category">One category</option>
-                            <option value="tag">One thing included</option>
+                            <option value="tag">One tag</option>
                         </select>
                         <p class="description">All events is the default, so a block shows the whole calendar unless it is deliberately narrowed. Organizer is usually the right narrowing for a program page: a team&rsquo;s work is often several series and several categories.</p>
                     </div>
@@ -1778,7 +1778,7 @@ class SFAF_Admin {
                     </div>
 
                     <div class="uc-embed-field" data-when-filter="tag" hidden>
-                        <label class="uc-embed-label" for="uc-embed-tag">Which thing included</label>
+                        <label class="uc-embed-label" for="uc-embed-tag">Which tag</label>
                         <select id="uc-embed-tag" class="uc-input uc-embed-which">
                             <?php if ( empty( $gen_tags ) ) : ?>
                                 <option value="">No tags yet</option>
@@ -1852,7 +1852,7 @@ class SFAF_Admin {
                             <label class="uc-embed-check"><input type="checkbox" id="uc-embed-filter-category" checked /> Category</label>
                             <label class="uc-embed-check"><input type="checkbox" id="uc-embed-filter-organizer" checked /> Organizer</label>
                             <label class="uc-embed-check"><input type="checkbox" id="uc-embed-filter-series" checked /> Series</label>
-                            <label class="uc-embed-check"><input type="checkbox" id="uc-embed-filter-tag" checked /> What's included</label>
+                            <label class="uc-embed-check"><input type="checkbox" id="uc-embed-filter-tag" checked /> Tags</label>
                             <label class="uc-embed-check"><input type="checkbox" id="uc-embed-filter-location" checked /> Location</label>
                         </div>
                         <p class="description">Any combination, including none. The search box appears whenever at least one is on.</p>

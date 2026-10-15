@@ -138,6 +138,27 @@ class SFAF_Slug_Aliases {
     }
 
     /**
+     * Forget every old slug of a term, when the term itself is deleted
+     * (3.112.1). An address naming one then reaches nothing, as an unknown
+     * slug does, rather than pointing at an id that is gone.
+     *
+     * @param string $taxonomy
+     * @param int    $term_id
+     */
+    public static function forget( $taxonomy, $term_id ) {
+        $all = self::all();
+        if ( empty( $all[ $taxonomy ] ) ) {
+            return;
+        }
+        $left = array_filter( $all[ $taxonomy ], function ( $id ) use ( $term_id ) { return (int) $id !== (int) $term_id; } );
+        if ( count( $left ) === count( $all[ $taxonomy ] ) ) {
+            return;
+        }
+        $all[ $taxonomy ] = $left;
+        update_option( self::OPTION, $all, false );
+    }
+
+    /**
      * A public address carrying an old slug goes to the new one, with a 301.
      *
      * The archive (/event-organizer/magnet/ is a 404 once the term is strut)

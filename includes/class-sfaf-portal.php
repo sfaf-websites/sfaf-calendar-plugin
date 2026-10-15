@@ -1325,8 +1325,10 @@ class SFAF_Portal {
                     }
 
                     $this->redirect( 'events/edit/' . $event_id, array(
-                        'msg'  => 'uncancelled',
-                        'told' => (int) $told_back['sent'],
+                        'msg'        => 'uncancelled',
+                        'told'       => (int) $told_back['sent'],
+                        // Answered: the editor does not ask how a save applies (3.112.1).
+                        'edit_scope' => 'this',
                     ) );
                 }
 
@@ -1355,17 +1357,38 @@ class SFAF_Portal {
                     }
                     SFAF_Cancellation::set_visibility( $event_id, $visibility );
                     $this->redirect( 'events/edit/' . $event_id, array(
-                        'msg' => ( 'hide' === $visibility ) ? 'cancel_hidden' : 'cancel_listed',
+                        'msg'        => ( 'hide' === $visibility ) ? 'cancel_hidden' : 'cancel_listed',
+                        'edit_scope' => 'this',
                     ) );
                 }
                 $reason = isset( $_POST['cancel_reason'] )
                     ? sanitize_textarea_field( wp_unslash( $_POST['cancel_reason'] ) ) : '';
 
-                SFAF_Cancellation::set( $event_id, true, $visibility );
-                if ( '' !== $reason ) {
-                    update_post_meta( $event_id, '_uc_cancelled_reason', $reason );
-                } else {
-                    delete_post_meta( $event_id, '_uc_cancelled_reason' );
+                /*
+                 * WHICH DATES (3.112.1). The dialog asks on an event with more
+                 * than one upcoming date in its group. All of them is the same
+                 * group a save to all upcoming reaches, less any this person
+                 * cannot edit; past dates are never in it.
+                 */
+                $cancel_ids = array( $event_id );
+                if ( isset( $_POST['cancel_scope'] ) && 'all_upcoming' === $_POST['cancel_scope'] ) {
+                    foreach ( SFAF_Recurrence::bulk_targets( $event_id ) as $tid ) {
+                        $tpost = get_post( (int) $tid );
+                        if ( $tpost && 'uc_event' === $tpost->post_type && $this->can_edit_event( $user, $tpost )
+                            && '' === (string) get_post_meta( (int) $tid, SFAF_Sources::META_SOURCE, true ) ) {
+                            $cancel_ids[] = (int) $tid;
+                        }
+                    }
+                    $cancel_ids = array_values( array_unique( $cancel_ids ) );
+                }
+
+                foreach ( $cancel_ids as $cid ) {
+                    SFAF_Cancellation::set( $cid, true, $visibility );
+                    if ( '' !== $reason ) {
+                        update_post_meta( $cid, '_uc_cancelled_reason', $reason );
+                    } else {
+                        delete_post_meta( $cid, '_uc_cancelled_reason' );
+                    }
                 }
 
                 // The answer comes off the cancel confirmation, which states how
@@ -1393,21 +1416,27 @@ class SFAF_Portal {
                 $extra = ( $tell && isset( $_POST['cancel_message'] ) )
                     ? SFAF_Rich_Text::to_plain( sanitize_textarea_field( wp_unslash( $_POST['cancel_message'] ) ) )
                     : '';
-                if ( '' !== $extra ) {
-                    update_post_meta( $event_id, SFAF_Cancellation::MESSAGE_META, $extra );
-                } else {
-                    delete_post_meta( $event_id, SFAF_Cancellation::MESSAGE_META );
+                foreach ( $cancel_ids as $cid ) {
+                    if ( '' !== $extra ) {
+                        update_post_meta( $cid, SFAF_Cancellation::MESSAGE_META, $extra );
+                    } else {
+                        delete_post_meta( $cid, SFAF_Cancellation::MESSAGE_META );
+                    }
                 }
 
                 $told = array( 'people' => 0, 'sent' => 0 );
                 if ( $tell ) {
-                    $told = SFAF_Announce::cancelled( array( $event_id ) );
+                    // One email per person across every date cancelled. See SFAF_Announce.
+                    $told = SFAF_Announce::cancelled( $cancel_ids );
                 }
 
                 $this->redirect( 'events/edit/' . $event_id, array(
-                    'msg'  => 'cancelled',
-                    'told' => (int) $told['sent'],
-                    'wl'   => isset( $told['waitlist'] ) ? (int) $told['waitlist'] : 0,
+                    'msg'        => 'cancelled',
+                    'told'       => (int) $told['sent'],
+                    'wl'         => isset( $told['waitlist'] ) ? (int) $told['waitlist'] : 0,
+                    'n'          => count( $cancel_ids ),
+                    // Answered: the editor does not ask how a save applies (3.112.1).
+                    'edit_scope' => 'this',
                 ) );
                 break;
 
@@ -1602,6 +1631,13 @@ class SFAF_Portal {
                 $retire = ! empty( $_POST['tag_retire'] );
                 SFAF_Tags::set_retired( isset( $_POST['tag_id'] ) ? intval( $_POST['tag_id'] ) : 0, $retire );
                 $this->redirect( 'series', array( 'msg' => $retire ? 'tag_retired' : 'tag_restored' ) );
+                break;
+
+            /* Delete a tag (3.112.1): from every event and series default. */
+            case 'delete_tag':
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                $gone = SFAF_Tags::delete( isset( $_POST['tag_id'] ) ? intval( $_POST['tag_id'] ) : 0 );
+                $this->redirect( 'series', array( 'msg' => $gone ? 'tag_deleted' : 'tag_delete_failed' ) );
                 break;
 
             /* ---- Categories. What kind of event this is. ------------------ */
@@ -5107,7 +5143,9 @@ class SFAF_Portal {
             'category_failed'=> 'That category could not be saved. Give it a name and try again.',
             'tag_saved'      => 'Tag saved.',
             'tag_failed'     => 'That tag could not be saved. Give it a name and try again.',
-            'tag_retired'    => 'Tag retired. Events that have it keep it, and it is no longer offered.',
+            'tag_retired'    => 'Tag archived. Events that have it keep it, and it is no longer offered.',
+            'tag_deleted'    => 'Tag deleted. No event has it now.',
+            'tag_delete_failed' => 'That tag could not be deleted. It may have been deleted already.',
             'tag_restored'   => 'Tag restored. It is offered again.',
             'closed_kept'    => 'Kept. The event is held on the day SFAF is closed, and nobody is reminded about it again.',
             'series_failed'  => 'That series could not be saved. Give it a name and try again.',
@@ -5241,9 +5279,11 @@ class SFAF_Portal {
 
         if ( 'cancelled' === $key ) {
             $told = isset( $_GET['told'] ) ? max( 0, intval( $_GET['told'] ) ) : 0;
+            $n    = isset( $_GET['n'] ) ? max( 1, intval( $_GET['n'] ) ) : 1;
             echo '<div class="uc-flash uc-flash-ok">'
                 . esc_html(
-                    'Event cancelled. It takes no new registrations, and neither the morning-of reminder nor the two-hour summary will go out for it. '
+                    ( $n > 1 ? $n . ' dates cancelled. They take no new registrations, and neither the morning-of reminder nor the two-hour summary will go out for them. '
+                        : 'Event cancelled. It takes no new registrations, and neither the morning-of reminder nor the two-hour summary will go out for it. ' )
                     . $this->cancel_told( $told, '' )
                 )
                 . '</div>';
@@ -9953,13 +9993,13 @@ class SFAF_Portal {
                 }
                 ?>
                 <div class="uc-field uc-cat-field uc-tag-field<?php echo esc_attr( $this->field_class( $state ) ); ?>" data-uc-chips>
-                    <span class="uc-field-label">What's included <?php echo $this->field_badge( $state, $label ); ?></span>
+                    <span class="uc-field-label">Tags <?php echo $this->field_badge( $state, $label ); ?></span>
                     <input type="hidden" name="uc_tag_present" value="1" />
                     <div class="uc-chips" data-uc-chips-list hidden></div>
                     <p class="uc-chips-empty" data-uc-chips-empty hidden>Nothing chosen yet.</p>
                     <div class="uc-chips-add" data-uc-chips-add hidden>
                         <button type="button" class="uc-btn uc-btn-sm" data-uc-chips-toggle
-                                aria-expanded="false">+ Add what's included</button>
+                                aria-expanded="false">+ Add tag</button>
                     </div>
                     <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
                         <?php foreach ( $offer as $t ) : ?>
@@ -10552,12 +10592,17 @@ class SFAF_Portal {
      *
      * @param WP_User $user
      */
-/**
-     * Tags, "What's included" (3.112.0): add, rename, retire, restore.
+    /**
+     * Tags (3.112.0): add, rename, archive, restore, delete (3.112.1).
      *
-     * Admins only, because a tag is a public filter every event can use. A
-     * retired tag stays on the events that carry it and leaves every picker and
-     * filter. Editing is a mode in the URL, as categories are.
+     * Admins only, because a tag is a public filter every event can use. An
+     * archived tag stays on the events that carry it and leaves every picker
+     * and filter; storage still calls it retired (_sfaf_tag_retired). Editing
+     * is a mode in the URL, as categories are.
+     *
+     * BUILT FROM THE CATEGORIES SECTION'S COMPONENTS (3.112.1): the fold card
+     * with its count, the same rows and row actions, and the new-tag form in
+     * .uc-cat-new with its own action row. See CLAUDE.md 7.
      *
      * @param WP_User $user
      */
@@ -10574,24 +10619,33 @@ class SFAF_Portal {
         <section class="uc-section" id="uc-tags" data-uc-tags>
             <div class="uc-section-head">
                 <h2>Tags</h2>
-                <p class="uc-section-sub">What's included at an event, such as food or childcare. Events show them as pills, and the calendar filters by them.</p>
+                <p class="uc-section-sub">Label events with anything visitors may want to filter by, such as food provided, giveaways or interpretation.</p>
             </div>
             <div class="uc-card">
+                <details class="uc-list-fold"<?php echo sfaf_fold_open( count( $tags ) ) ? ' open' : ''; ?>>
+                <summary class="uc-card-head uc-list-fold-head">
+                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
+                    <h2><?php echo count( $tags ); ?> <?php echo esc_html( 1 === count( $tags ) ? 'tag' : 'tags' ); ?></h2>
+                </summary>
+
                 <?php if ( $err ) : ?>
                     <div class="uc-flash uc-flash-error"><?php echo esc_html( $err ); ?></div>
                 <?php endif; ?>
+
                 <?php if ( empty( $tags ) ) : ?>
                     <p class="uc-empty">No tags yet.<?php echo $can_edit ? ' Add one below.' : ''; ?></p>
                 <?php else : ?>
+                    <p class="uc-hint">An archived tag stays on the events that have it and is not offered for new ones or in the calendar's filter.</p>
                     <ul class="uc-cat-list uc-tag-list">
                         <?php foreach ( $tags as $t ) :
-                            $tid     = (int) $t->term_id;
-                            $retired = SFAF_Tags::is_retired( $tid );
-                            $used    = SFAF_Tags::events_using( $tid );
+                            $tid      = (int) $t->term_id;
+                            $archived = SFAF_Tags::is_retired( $tid );
+                            $used     = SFAF_Tags::events_using( $tid );
+                            $open     = ( $can_edit && $editing === $tid );
                             ?>
-                            <li class="uc-cat-row uc-tag-row<?php echo $retired ? ' is-retired' : ''; ?>" data-uc-tag-row="<?php echo esc_attr( $t->slug ); ?>">
-                                <?php if ( $can_edit && $editing === $tid ) : ?>
-                                    <form method="post" action="<?php echo esc_url( $base ); ?>" class="uc-cat-form uc-tag-form">
+                            <li class="uc-cat-row uc-tag-row<?php echo $open ? ' uc-cat-row-open' : ''; ?><?php echo $archived ? ' is-archived' : ''; ?>" data-uc-tag-row="<?php echo esc_attr( $t->slug ); ?>">
+                                <?php if ( $open ) : ?>
+                                    <form method="post" action="<?php echo esc_url( $base ); ?>" class="uc-cat-form" id="uc-tag-form-<?php echo $tid; ?>">
                                         <input type="hidden" name="uc_action" value="save_tag" />
                                         <input type="hidden" name="tag_id" value="<?php echo $tid; ?>" />
                                         <?php wp_nonce_field( 'uc_portal_save_tag', 'uc_nonce' ); ?>
@@ -10600,9 +10654,9 @@ class SFAF_Portal {
                                             <input type="text" name="tag_name" value="<?php echo esc_attr( $t->name ); ?>" required autofocus />
                                         </label>
                                         <?php $this->render_slug_field( 'tag_slug', $t->slug ); ?>
-                                        <div class="uc-form-actions">
-                                            <button type="submit" class="uc-btn uc-btn-primary">Save</button>
-                                            <a class="uc-btn" href="<?php echo esc_url( $base . '#uc-tags' ); ?>">Cancel</a>
+                                        <div class="uc-cat-form-actions">
+                                            <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary" form="uc-tag-form-<?php echo $tid; ?>">Save tag</button>
+                                            <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( $base . '#uc-tags' ); ?>">Cancel</a>
                                         </div>
                                     </form>
                                 <?php else : ?>
@@ -10610,39 +10664,69 @@ class SFAF_Portal {
                                         <strong><?php echo esc_html( $t->name ); ?></strong>
                                         <span class="uc-muted">
                                             <?php echo esc_html( $t->slug ); ?>,
-                                            <?php echo (int) $used; ?> <?php echo esc_html( 1 === $used ? 'event' : 'events' ); ?><?php echo $retired ? ', retired' : ''; ?>
+                                            <?php echo (int) $used; ?> <?php echo esc_html( 1 === $used ? 'event' : 'events' ); ?><?php echo $archived ? ', archived' : ''; ?>
                                         </span>
                                     </span>
-                                    <?php if ( $can_edit ) : ?>
+                                    <?php if ( $can_edit ) :
+                                        $tagged = SFAF_Tags::events_tagged( $tid );
+                                        ?>
                                         <span class="uc-cat-actions">
                                             <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( add_query_arg( 'tag_edit', $tid, $base ) . '#uc-tags' ); ?>">Rename</a>
-                                            <form method="post" action="<?php echo esc_url( $base ); ?>">
+                                            <form method="post" action="<?php echo esc_url( $base ); ?>" id="uc-tag-archive-<?php echo $tid; ?>">
                                                 <input type="hidden" name="uc_action" value="retire_tag" />
                                                 <input type="hidden" name="tag_id" value="<?php echo $tid; ?>" />
-                                                <input type="hidden" name="tag_retire" value="<?php echo $retired ? '0' : '1'; ?>" />
+                                                <input type="hidden" name="tag_retire" value="<?php echo $archived ? '0' : '1'; ?>" />
                                                 <?php wp_nonce_field( 'uc_portal_retire_tag', 'uc_nonce' ); ?>
-                                                <button type="submit" class="uc-btn uc-btn-sm"><?php echo $retired ? 'Restore' : 'Retire'; ?></button>
+                                                <button type="submit" class="uc-btn uc-btn-sm" form="uc-tag-archive-<?php echo $tid; ?>"><?php echo $archived ? 'Restore' : 'Archive'; ?></button>
                                             </form>
+                                            <button type="button" class="uc-link-danger uc-btn-sm" data-uc-dialog-open="uc-tag-delete-<?php echo $tid; ?>"
+                                                    aria-haspopup="dialog">Delete</button>
                                         </span>
+                                        <?php /* The Delete dialog (3.112.1). With no script it is in the page under its row. */ ?>
+                                        <div class="uc-dialog-panel uc-tag-delete" id="uc-tag-delete-<?php echo $tid; ?>" data-uc-dialog-panel
+                                             role="group" aria-labelledby="uc-tag-delete-title-<?php echo $tid; ?>">
+                                            <h2 class="uc-dialog-title" id="uc-tag-delete-title-<?php echo $tid; ?>">Delete "<?php echo esc_html( $t->name ); ?>"?</h2>
+                                            <p class="uc-dialog-lead">
+                                                <?php if ( $tagged > 0 ) : ?>
+                                                    It will be removed from <?php echo (int) $tagged; ?> <?php echo esc_html( 1 === $tagged ? 'event' : 'events' ); ?>, including past ones. This cannot be undone.
+                                                <?php else : ?>
+                                                    This cannot be undone.
+                                                <?php endif; ?>
+                                            </p>
+                                            <p class="uc-hint">To stop offering it but keep it on past events, archive it instead.</p>
+                                            <form method="post" action="<?php echo esc_url( $base ); ?>" id="uc-tag-delete-form-<?php echo $tid; ?>">
+                                                <input type="hidden" name="uc_action" value="delete_tag" />
+                                                <input type="hidden" name="tag_id" value="<?php echo $tid; ?>" />
+                                                <?php wp_nonce_field( 'uc_portal_delete_tag', 'uc_nonce' ); ?>
+                                                <div class="uc-dialog-actions">
+                                                    <button type="button" class="uc-btn" data-uc-dialog-close form="uc-tag-delete-form-<?php echo $tid; ?>" hidden>Keep tag</button>
+                                                    <button type="submit" class="uc-btn uc-btn-danger" form="uc-tag-delete-form-<?php echo $tid; ?>">Delete</button>
+                                                </div>
+                                            </form>
+                                        </div>
                                     <?php endif; ?>
                                 <?php endif; ?>
                             </li>
                         <?php endforeach; ?>
                     </ul>
-                    <p class="uc-hint">A retired tag stays on the events that have it and is not offered for new ones or in the calendar's filter.</p>
                 <?php endif; ?>
+                </details>
 
                 <?php if ( $can_edit ) : ?>
-                    <form method="post" action="<?php echo esc_url( $base ); ?>" class="uc-cat-new uc-tag-new">
-                        <input type="hidden" name="uc_action" value="save_tag" />
-                        <input type="hidden" name="tag_id" value="0" />
-                        <?php wp_nonce_field( 'uc_portal_save_tag', 'uc_nonce' ); ?>
-                        <label class="uc-field">
-                            <span class="uc-field-label">New tag</span>
-                            <input type="text" name="tag_name" placeholder="e.g. Food provided" required />
-                        </label>
-                        <button type="submit" class="uc-btn">Add tag</button>
-                    </form>
+                    <div class="uc-cat-new">
+                        <form method="post" action="<?php echo esc_url( $base ); ?>" class="uc-cat-form uc-tag-new" id="uc-tag-new">
+                            <input type="hidden" name="uc_action" value="save_tag" />
+                            <input type="hidden" name="tag_id" value="0" />
+                            <?php wp_nonce_field( 'uc_portal_save_tag', 'uc_nonce' ); ?>
+                            <label class="uc-field">
+                                <span class="uc-field-label">New tag</span>
+                                <input type="text" name="tag_name" placeholder="e.g. Food provided" required />
+                            </label>
+                            <div class="uc-cat-form-actions">
+                                <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary" form="uc-tag-new">Add tag</button>
+                            </div>
+                        </form>
+                    </div>
                 <?php endif; ?>
             </div>
         </section>
@@ -11137,7 +11221,7 @@ class SFAF_Portal {
                 $all_tags = SFAF_Tags::active();
                 ?>
                 <div class="uc-field uc-series-default" data-uc-series-default="tag" role="group" aria-labelledby="uc-series-default-tag">
-                    <span class="uc-field-label" id="uc-series-default-tag">Default for What's included</span>
+                    <span class="uc-field-label" id="uc-series-default-tag">Default tags</span>
                     <?php if ( empty( $all_tags ) ) : ?>
                         <p class="uc-hint">There are no tags yet.</p>
                     <?php else : ?>
@@ -11151,7 +11235,7 @@ class SFAF_Portal {
                             <?php endforeach; ?>
                         </div>
                     <?php endif; ?>
-                    <span class="uc-hint">Given to an event that joins this series with nothing in What's included. Events already in it keep their own.</span>
+                    <span class="uc-hint">Given to an event that joins this series with no tags. Events already in it keep their own.</span>
                 </div>
 
                 <label class="uc-field">
@@ -15514,7 +15598,7 @@ class SFAF_Portal {
                  * cancel or delete until the event exists, which is what both
                  * renderers already check for themselves.
                  */
-                $this->render_cancel_card( $user, $event_id );
+                $this->render_cancel_card( $user, $event_id, 'opener' );
                 $this->render_delete_button( $user, $event_id );
                 ?>
             </div>
@@ -15526,13 +15610,8 @@ class SFAF_Portal {
              * pixels. One line each, in the order the buttons are in.
              */
             ?>
-            <?php // Edit only (3.107.0): Add event has nothing to cancel or delete. ?>
-            <?php if ( $event_id ) : ?>
-                <p class="uc-editor-actions-note">
-                    <strong>Cancel</strong> keeps the registrations, closes new ones and offers to tell everybody who signed up.
-                    <strong>Delete</strong> takes the event, its questions and its settings. Nothing puts them back.
-                </p>
-            <?php endif; ?>
+            <?php /* The note that explained Cancel and Delete under this row is
+               inside each one's dialog since 3.112.1. */ ?>
 
         <?php
         /*
@@ -15571,6 +15650,7 @@ class SFAF_Portal {
          * Below rather than above because it is the destructive thing on this
          * screen and should not be the first control somebody meets.
          */
+        $this->render_cancel_card( $user, $event_id, 'panel' );
         $this->render_delete_card( $user, $event_id );
 
         $this->chrome_close();
@@ -15632,9 +15712,10 @@ class SFAF_Portal {
             return;
         }
         ?>
-        <button type="submit" form="uc-delete-event-<?php echo (int) $event_id; ?>" data-uc-saved-action="delete"
-                class="uc-btn uc-btn-stop uc-editor-delete"
-                data-uc-confirm="Delete this event? Nothing puts it back.">Delete</button>
+        <?php /* Opens the dialog render_delete_card() draws (3.112.1); the
+           submit that deletes is in there, after the event form's own. */ ?>
+        <button type="button" data-uc-dialog-open="uc-delete-this" data-uc-saved-action="delete"
+                class="uc-btn uc-btn-stop uc-editor-delete" aria-haspopup="dialog">Delete</button>
         <?php
     }
 
@@ -15669,13 +15750,24 @@ class SFAF_Portal {
                     Once it is cancelled you can delete it.
                 </p>
             <?php else : ?>
-                <?php /* The form only. Its submit is in the actions row above,
-                   associated by id. */ ?>
-                <form method="post" id="uc-delete-event-<?php echo (int) $event_id; ?>" action="<?php echo esc_url( $this->url( 'events' ) ); ?>" data-uc-saved-action="delete">
-                    <input type="hidden" name="uc_action" value="trash_event" />
-                    <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
-                    <?php wp_nonce_field( 'uc_portal_trash_event', 'uc_nonce' ); ?>
-                </form>
+                <?php /* THE DIALOG (3.112.1): the Delete button in the row opens
+                   it, and this submit is the one that deletes. It is after the
+                   event form's own submits, so Return in a field never finds it.
+                   With no script the panel is on the page as it is. */ ?>
+                <div class="uc-dialog-panel" id="uc-delete-this" data-uc-dialog-panel data-uc-saved-action="delete"
+                     role="group" aria-labelledby="uc-delete-this-title">
+                    <h2 class="uc-dialog-title" id="uc-delete-this-title">Delete this event?</h2>
+                    <p class="uc-dialog-lead">It takes the event, its questions and its settings. This cannot be undone.</p>
+                    <form method="post" id="uc-delete-event-<?php echo (int) $event_id; ?>" action="<?php echo esc_url( $this->url( 'events' ) ); ?>" data-uc-saved-action="delete">
+                        <input type="hidden" name="uc_action" value="trash_event" />
+                        <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
+                        <?php wp_nonce_field( 'uc_portal_trash_event', 'uc_nonce' ); ?>
+                        <div class="uc-dialog-actions">
+                            <button type="button" class="uc-btn" data-uc-dialog-close form="uc-delete-event-<?php echo (int) $event_id; ?>" hidden>Keep the event</button>
+                            <button type="submit" class="uc-btn uc-btn-danger" form="uc-delete-event-<?php echo (int) $event_id; ?>">Delete</button>
+                        </div>
+                    </form>
+                </div>
             <?php endif; ?>
         </div>
         <?php
@@ -17112,10 +17204,17 @@ class SFAF_Portal {
      * legitimate reason to untick it, which is that they are writing to people
      * some other way.
      *
+     * TWO PARTS SINCE 3.112.1. The opener is the Cancel event button in the
+     * editor's action row; the panel is the form, drawn after the row and
+     * lifted into a centred <dialog> by portal.js when the button is pressed.
+     * With no script the panel is simply on the page, as the approval prompt
+     * is. The cancelled state is drawn with the opener and has no panel.
+     *
      * @param WP_User $user
      * @param int     $event_id
+     * @param string  $part     'opener', 'panel' or 'both'.
      */
-    private function render_cancel_card( $user, $event_id ) {
+    private function render_cancel_card( $user, $event_id, $part = 'both' ) {
         $event_id = (int) $event_id;
         if ( ! $event_id ) {
             // Nothing to cancel before the first save.
@@ -17170,6 +17269,9 @@ class SFAF_Portal {
          * for ten minutes without noticing it is cancelled.
          */
         if ( $cancelled ) :
+            if ( 'panel' === $part ) {
+                return;
+            }
             ?>
         <section class="uc-bento-card uc-cancel-card is-cancelled" data-uc-saved-action="cancel">
             <h2 class="uc-bento-title">This event is cancelled</h2>
@@ -17356,18 +17458,32 @@ class SFAF_Portal {
          * IS the button.
          */
         ?>
-        <details class="uc-cancel-inline" id="uc-cancel-this" data-uc-saved-action="cancel" data-uc-disclosure<?php echo $came_to_cancel ? ' open' : ''; ?>>
-                <?php /* THE CHEVRON STAYS. It is a button in a row of buttons and it is
-                   also the only one of the three that opens something rather than doing
-                   it, which is exactly what the mark is for. control-standard-audit.php
-                   caught its removal. */ ?>
-                <summary class="uc-btn uc-btn-stop uc-cancel-inline-toggle" aria-expanded="<?php echo $came_to_cancel ? 'true' : 'false'; ?>">
-                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '14px' ) ); ?></span>
-                    <span>Cancel event</span>
-                </summary>
-                <div class="uc-cancel-inline-body">
+        <?php
+        /*
+         * WHICH DATES (3.112.1). On an event with more than one upcoming date
+         * in its group, the dialog asks whether the cancel is this date or all
+         * of them, and the counts for the email question follow the answer.
+         * The editor's own "How should this save apply?" is not asked after
+         * a cancel: the redirect carries edit_scope.
+         */
+        $scope_ids   = SFAF_Recurrence::bulk_targets( $event_id );
+        $scope_ids   = ( count( $scope_ids ) > 1 ) ? $scope_ids : array();
+        $counts_all  = $scope_ids ? SFAF_Announce::count_affected( $scope_ids ) : $counts;
+        $waiting_all = $scope_ids ? SFAF_Announce::count_waitlisted( $scope_ids ) : 0;
+        $form_id     = 'uc-cancel-form-' . $event_id;
+        ?>
+        <?php if ( 'panel' !== $part ) : ?>
+            <button type="button" class="uc-btn uc-btn-stop uc-cancel-open" data-uc-dialog-open="uc-cancel-this"
+                    aria-haspopup="dialog" data-uc-saved-action="cancel">Cancel event</button>
+        <?php endif; ?>
+        <?php if ( 'opener' === $part ) { return; } ?>
+        <div class="uc-dialog-panel" id="uc-cancel-this" data-uc-dialog-panel data-uc-saved-action="cancel"
+             role="group" aria-labelledby="uc-cancel-this-title"<?php echo $came_to_cancel ? ' data-uc-dialog-autoopen' : ''; ?>>
+                <h2 class="uc-dialog-title" id="uc-cancel-this-title">Cancel this event?</h2>
+                <p class="uc-dialog-lead">It keeps its registrations, takes no new ones, and you can choose to tell everybody who signed up.</p>
+                <div class="uc-dialog-body">
 
-                <form method="post" action="<?php echo esc_url( $this->url( 'events/edit/' . $event_id ) ); ?>" class="uc-cancel-form" data-uc-confirm-cancel>
+                <form method="post" action="<?php echo esc_url( $this->url( 'events/edit/' . $event_id ) ); ?>" class="uc-cancel-form" id="<?php echo esc_attr( $form_id ); ?>" data-uc-confirm-cancel>
                     <input type="hidden" name="uc_action" value="cancel_event" />
                     <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
                     <?php wp_nonce_field( 'uc_portal_cancel_event', 'uc_nonce' ); ?>
@@ -17463,7 +17579,8 @@ class SFAF_Portal {
                     $people  = (int) $counts['people'];
                     ?>
                     <?php if ( $has_regs || $waiting > 0 ) : ?>
-                        <p class="uc-notice-count" data-uc-cancel-count="<?php echo $people; ?>" data-uc-cancel-waiting="<?php echo (int) $waiting; ?>">
+                        <p class="uc-notice-count" data-uc-cancel-count="<?php echo $people; ?>" data-uc-cancel-waiting="<?php echo (int) $waiting; ?>"
+                           data-uc-cancel-count-all="<?php echo (int) $counts_all['people']; ?>" data-uc-cancel-waiting-all="<?php echo (int) $waiting_all; ?>">
                             <?php if ( $has_regs ) : ?>
                                 <strong><?php echo $people; ?></strong>
                                 <?php echo esc_html( 1 === $people ? 'person is' : 'people are' ); ?> registered<?php echo $waiting > 0 ? '' : '.'; ?>
@@ -17478,14 +17595,32 @@ class SFAF_Portal {
                             You will be asked whether to email them.
                         </p>
                     <?php else : ?>
-                        <p class="uc-hint" data-uc-cancel-count="0" data-uc-cancel-waiting="0">Nobody is registered or on the waitlist, so there is nobody to tell.</p>
+                        <p class="uc-hint" data-uc-cancel-count="0" data-uc-cancel-waiting="0"
+                           data-uc-cancel-count-all="<?php echo (int) $counts_all['people']; ?>" data-uc-cancel-waiting-all="<?php echo (int) $waiting_all; ?>">Nobody is registered or on the waitlist, so there is nobody to tell.</p>
                     <?php endif; ?>
 
-                    <button type="submit" class="uc-btn uc-btn-caution">Cancel this event</button>
+                    <?php if ( $scope_ids ) : ?>
+                        <fieldset class="uc-cancel-scope" data-uc-cancel-scope>
+                            <legend>Which dates?</legend>
+                            <label class="uc-radio-opt">
+                                <input type="radio" name="cancel_scope" value="this" checked />
+                                <span><strong>This date only.</strong> The other <?php echo (int) ( count( $scope_ids ) - 1 ); ?> upcoming <?php echo esc_html( 2 === count( $scope_ids ) ? 'date stays' : 'dates stay' ); ?> on.</span>
+                            </label>
+                            <label class="uc-radio-opt">
+                                <input type="radio" name="cancel_scope" value="all_upcoming" />
+                                <span><strong>All <?php echo (int) count( $scope_ids ); ?> upcoming dates.</strong> Past dates are not changed.</span>
+                            </label>
+                        </fieldset>
+                    <?php endif; ?>
+
+                    <div class="uc-dialog-actions">
+                        <button type="button" class="uc-btn" data-uc-dialog-close form="<?php echo esc_attr( $form_id ); ?>" hidden>Keep the event</button>
+                        <button type="submit" class="uc-btn uc-btn-caution" form="<?php echo esc_attr( $form_id ); ?>">Cancel this event</button>
+                    </div>
                 </form>
 
                 </div>
-        </details>
+        </div>
         <?php
     }
 

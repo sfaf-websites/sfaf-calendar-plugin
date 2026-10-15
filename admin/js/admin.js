@@ -883,7 +883,7 @@
             var summary = 'SFAF Calendar: ' + what + ', ' + how;
             if (choices.view !== 'sidebar') {
                 summary += choices.filterRows.length
-                    ? ', filtered by ' + choices.filterRows.map(function (r) { return r === 'tag' ? "what's included" : r; }).join(', ')
+                    ? ', filtered by ' + choices.filterRows.map(function (r) { return r === 'tag' ? 'tags' : r; }).join(', ')
                     : ', without visitor filters';
             }
             // Said in the comment above the snippet, because somebody reading a

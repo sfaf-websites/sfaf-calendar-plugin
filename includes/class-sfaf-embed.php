@@ -1330,7 +1330,15 @@ class SFAF_Embed {
      * @param mixed $b Unused.
      */
     public function flush_cache( $a = null, $b = null ) {
-        update_option( self::CACHE_VERSION_OPTION, $this->cache_version() + 1 );
+        self::retire_all();
+    }
+
+    /**
+     * Retire every cached payload, for a caller with no instance at hand
+     * (3.112.1): a tag deleted is the first.
+     */
+    public static function retire_all() {
+        update_option( self::CACHE_VERSION_OPTION, (int) get_option( self::CACHE_VERSION_OPTION, 1 ) + 1 );
     }
 
     /**

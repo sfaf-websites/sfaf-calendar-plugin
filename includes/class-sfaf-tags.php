@@ -119,6 +119,68 @@ class SFAF_Tags {
     }
 
     /**
+     * How many events carry a tag in ANY status, past, draft and trashed
+     * included (3.112.1): the number a Delete removes it from.
+     */
+    public static function events_tagged( $term_id ) {
+        $stati = array( 'publish', 'future', 'draft', 'pending', 'private', 'trash' );
+        $q = new WP_Query( array(
+            'post_type'      => 'uc_event',
+            'post_status'    => $stati,
+            'posts_per_page' => 1,
+            'fields'         => 'ids',
+            'tax_query'      => array(
+                array( 'taxonomy' => self::TAXONOMY, 'field' => 'term_id', 'terms' => (int) $term_id ),
+            ),
+        ) );
+        return (int) $q->found_posts;
+    }
+
+    /**
+     * Delete a tag (3.112.1). Admins only, decided by the route.
+     *
+     * It goes from every event that has it (wp_delete_term() takes the
+     * relationships), from every series default, and its old slugs are
+     * forgotten, so an address naming it reaches nothing, as an archived one
+     * does. The embed cache is retired: the filter and the pills change.
+     *
+     * @param int $term_id
+     * @return bool Whether it was there and is gone.
+     */
+    public static function delete( $term_id ) {
+        $term_id = (int) $term_id;
+        if ( ! $term_id || ! self::exists( $term_id ) ) {
+            return false;
+        }
+        $series = get_terms( array( 'taxonomy' => SFAF_Series::TAXONOMY, 'hide_empty' => false ) );
+        foreach ( is_array( $series ) ? $series : array() as $s ) {
+            $raw = get_term_meta( (int) $s->term_id, self::META_SERIES_DEFAULT, true );
+            if ( ! is_array( $raw ) ) {
+                continue;
+            }
+            $ids = array_map( 'intval', $raw );
+            if ( ! in_array( $term_id, $ids, true ) ) {
+                continue;
+            }
+            $left = array_values( array_diff( $ids, array( $term_id ) ) );
+            if ( $left ) {
+                update_term_meta( (int) $s->term_id, self::META_SERIES_DEFAULT, $left );
+            } else {
+                delete_term_meta( (int) $s->term_id, self::META_SERIES_DEFAULT );
+            }
+        }
+        SFAF_Slug_Aliases::forget( self::TAXONOMY, $term_id );
+        $done = wp_delete_term( $term_id, self::TAXONOMY );
+        if ( is_wp_error( $done ) || false === $done ) {
+            return false;
+        }
+        if ( class_exists( 'SFAF_Embed' ) ) {
+            SFAF_Embed::retire_all();
+        }
+        return true;
+    }
+
+    /**
      * Create or rename a tag. An existing tag of the same name is reused
      * rather than duplicated.
      *

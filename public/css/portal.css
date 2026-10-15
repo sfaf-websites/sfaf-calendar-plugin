@@ -3674,7 +3674,7 @@ body.uc-modal-open { overflow: hidden; }
    action" now that it is not the only coloured button. Size, not hue.
    ------------------------------------------------------------------------ */
 .uc-editor-actions .uc-editor-delete  { order: 1; }
-.uc-editor-actions .uc-cancel-inline  { order: 2; }
+.uc-editor-actions .uc-cancel-open    { order: 2; }
 .uc-editor-actions .uc-editor-save    { order: 3; }
 .uc-editor-actions .uc-editor-publish { order: 4; }
 /* Open, the cancel panel still takes the whole width and drops to the end. The
@@ -3696,39 +3696,32 @@ body.uc-modal-open { overflow: hidden; }
     padding: 13px 30px;
     font-size: 15px;
 }
-/* THE CANCEL DISCLOSURE IS ONE OF THE THREE BUTTONS, AND THEN IT IS A PANEL.
-   Closed it is a flex item the size of its label. Open it takes the row's whole
-   width and moves to the end of it, so the options lay out under the buttons
-   rather than shouldering them aside. Two declarations, no script, and the
-   element is still a native <details>, which is what makes it work with
-   scripting off. */
-.uc-cancel-inline { flex: 0 0 auto; }
-.uc-cancel-inline[open] { flex: 1 1 100%; order: 20; }
-.uc-cancel-inline > summary { list-style: none; cursor: pointer; }
-.uc-cancel-inline > summary::-webkit-details-marker { display: none; }
-.uc-cancel-inline > summary::marker { content: ""; }
-/* Open, the summary stops being a button and becomes the panel's heading: a
-   full-width amber bar would be a very loud thing to have on screen while
-   somebody reads two paragraphs and a radio group. */
-.uc-cancel-inline[open] > summary {
-    display: inline-flex; margin-bottom: 10px;
-}
-.uc-cancel-inline-body {
-    flex: 1 1 100%;
-    padding: 14px 16px; margin-top: 2px;
-    border: 1px solid var(--p-border); border-radius: 10px;
-    background: #fff;
-}
+/* ---------------------------------------------------------------------------
+   THE CENTRED DIALOGS (3.112.1): Cancel event, Delete, and a tag's Delete.
 
-/* THE EXPLANATIONS, UNDER THE ROW AND NOT BESIDE EACH BUTTON. One line, the
-   secondary size, in the order the buttons are in. */
-.uc-editor-actions-note {
-    margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--p-muted, #6B6764);
+   The panel is drawn in the page and portal.js lifts it into a <dialog> when
+   its button is pressed. In the dialog it is the dialog's one child and
+   carries the padding, as every dialog here does. With no script it stays in
+   the page and reads as a card under the row it belongs to.
+   --------------------------------------------------------------------------- */
+.uc-dialog { width: min(560px, calc(100vw - 32px)); }
+.uc-dialog-panel {
+    margin-top: 16px; padding: 18px 20px;
+    border: 1px solid var(--p-border); border-radius: 12px; background: #fff;
 }
-.uc-editor-actions-note strong { color: var(--p-text); font-weight: 600; }
+.uc-dialog .uc-dialog-panel {
+    margin: 0; padding: 22px 24px 20px; border: 0; border-radius: 0;
+    max-height: calc(100vh - 48px); overflow: auto;
+}
+.uc-dialog-title { margin: 0 0 8px; font-size: 20px; font-weight: 700; }
+.uc-dialog-lead { margin: 0 0 14px; font-size: 15px; line-height: 1.5; }
+.uc-dialog-panel .uc-cancel-form { display: flex; flex-direction: column; gap: 14px; }
+.uc-dialog-panel fieldset { margin: 0; padding: 0; border: 0; }
+.uc-dialog-panel legend { margin-bottom: 6px; font-weight: 600; }
+.uc-dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.uc-dialog-panel form > .uc-dialog-actions:first-of-type { margin-top: 4px; }
 
-/* What is left of the delete card: the form it posts, which draws nothing, and
-   the sentence for when it is refused. */
+/* What is left of the delete card: the sentence for when it is refused. */
 .uc-delete-block { margin-top: 10px; }
 
 /* ---------------------------------------------------------------------------
@@ -3755,7 +3748,6 @@ body.uc-modal-open { overflow: hidden; }
     border: 0; border-top: 1px solid var(--p-border); border-radius: 0;
     background: var(--p-panel); box-shadow: none;
 }
-.uc-portal .uc-form-actions-primary.uc-editor-bar:has(.uc-cancel-inline[open]) { position: static; }
 .uc-portal .uc-editor-bar .uc-form-actions-note { font-size: 12px; }
 @media (max-width: 600px) {
     .uc-portal .uc-form-actions-primary.uc-editor-bar { padding: 10px 0; gap: 8px; }
