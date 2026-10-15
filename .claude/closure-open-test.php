@@ -119,7 +119,9 @@ co( 'with nothing upcoming, nothing is drawn', SFAF_Closures::date_warning_marku
    for markup. No save, validator or publish rule may consult one. */
 $root = dirname( __DIR__ );
 foreach ( array(
-    'includes/class-sfaf-portal.php'  => array( 'date_warning_markup', 'flag_for' ),
+    // name and flag_for_event (3.112.0): display only, On closed days and a
+    // multi-day event's flag. Still nothing a save or the publish rule reads.
+    'includes/class-sfaf-portal.php'  => array( 'date_warning_markup', 'name', 'flag_for_event', 'flag_for' ),
     'includes/class-sfaf-request.php' => array( 'date_warning_markup' ),
     'includes/class-sfaf-submit.php'  => array( 'date_warning_markup' ),
     'includes/class-sfaf-sources.php' => array(),

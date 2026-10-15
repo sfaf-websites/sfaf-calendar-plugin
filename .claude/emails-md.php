@@ -49,6 +49,17 @@ function emd_render() {
                 $out[] = '';
             }
             $en = SFAF_Messages::render_sample( $key, $variant, 'en' );
+            // A staff message is English only (3.112.0), so it has one column.
+            if ( array( 'en' ) === SFAF_Messages::langs_for( $key ) ) {
+                $out[] = '| | English (staff, not translated) |';
+                $out[] = '|---|---|';
+                if ( '' !== trim( $en['subject'] ) ) {
+                    $out[] = '| Subject | ' . emd_cell( $en['subject'] ) . ' |';
+                }
+                $out[] = '| Text | ' . emd_cell( $en['text'] ) . ' |';
+                $out[] = '';
+                continue;
+            }
             $es = SFAF_Messages::render_sample( $key, $variant, 'es' );
             $out[] = '| | English | Spanish |';
             $out[] = '|---|---|---|';
