@@ -270,6 +270,13 @@ foreach ( $GLOBALS['BT']['writes'] as $w ) {
 bt( ! $GLOBALS['BT']['remote'], 'C: a public request asked a URL: ' . implode( '; ', $GLOBALS['BT']['remote'] ) );
 bt( ! $GLOBALS['BT']['cron'], 'C: a public request scheduled or ran a task: ' . implode( '; ', $GLOBALS['BT']['cron'] ) );
 
+/* ---- The closed-day task, every fifteen minutes. -------------------------- */
+update_option( SFAF_Closures::OPTION, array( array( 'id' => 'c1', 'start' => date( 'Y-m-d', strtotime( $today . ' +20 days' ) ), 'end' => date( 'Y-m-d', strtotime( $today . ' +22 days' ) ), 'name' => 'Holiday' ) ) );
+bq_reset();
+SFAF_Closure_Review::run_reminders();
+bt( $GLOBALS['BQ']['q'] <= 5, 'the closed-day task took ' . $GLOBALS['BQ']['q'] . ' queries; it reads every upcoming event, so its meta is read in one: ' . json_encode( $GLOBALS['BQ']['by'] ) );
+$rows[] = sprintf( '  %-46s %4d queries', 'the closed-day task (every 15 minutes)', $GLOBALS['BQ']['q'] );
+
 /* ---- D: the loader. ------------------------------------------------------- */
 $loader = (string) file_get_contents( $root . '/public/js/embed.js' );
 $code   = preg_replace( '#/\*[\s\S]*?\*/|(?<![:\'"])//[^\n]*#', '', $loader );

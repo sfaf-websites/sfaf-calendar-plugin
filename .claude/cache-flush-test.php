@@ -200,6 +200,16 @@ cf_case( 'a tag restored', function () { $id = cf_event(); update_term_meta( 11,
     function ( $id ) { return cf_post( 'retire_tag', array( 'tag_id' => '11' ) ); },
     function ( $id ) { return ! SFAF_Tags::is_retired( 11 ); } );
 
+/* A term write that changes nothing leaves the cache alone (3.112.2): core fires
+   set_object_terms on every write, and an import or a save rewriting the same
+   terms would otherwise empty every embed's cache each time. */
+cf_world();
+$same   = cf_event();
+$before = cf_gen();
+wp_set_object_terms( $same, array( 11 ), 'uc_event_category' );
+if ( cf_gen() !== $before ) { $fails[] = 'the embed cache moved on a term write that changed nothing'; }
+$rows[] = sprintf( '  %-62s %s', 'the same category written again', cf_gen() === $before ? 'left alone' : 'FLUSHED' );
+
 echo "\nThe embed cache, action by action, through each route\n" . str_repeat( '=', 72 ) . "\n";
 echo implode( "\n", $rows ) . "\n";
 if ( $fails ) { echo "\n" . count( $fails ) . " problem(s):\n  - " . implode( "\n  - ", $fails ) . "\n"; exit( 1 ); }
