@@ -95,6 +95,7 @@ for f in .claude/*.php; do
     release-31105-live.php) continue ;;  # run below with --run
     plant-31105.php) continue ;;       # a fault planter for the 3.110.5 checks, not a check
     release-31110-live.php) continue ;;  # run below with --run
+    release-31120-live.php) continue ;;  # run below with --run
     plant-31110.php) continue ;;       # a fault planter for the 3.111.0 checks, not a check
     embed-isolation-live.php) continue ;; # run below with --run
     login-check.php) continue ;;       # run last, after every capture is rewritten
@@ -345,6 +346,7 @@ run "release-31105-live --run" php .claude/release-31105-live.php --run
 # 3.111.0: the pinned sidebar and list, the event page's attachment and three
 # lines, both forms, the editor's new fields and a reviewer's Pending.
 run "release-31110-live --run" php .claude/release-31110-live.php --run
+run "release-31120-live --run" php .claude/release-31120-live.php --run
 # The embed in its shadow root under a hostile host stylesheet, and the combined
 # sidebar ending at its content (3.111.0 J and K), at 1280px and 390px.
 run "embed-isolation-live --run" php .claude/embed-isolation-live.php --run

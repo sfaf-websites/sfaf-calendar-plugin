@@ -375,9 +375,9 @@
      * draft when somebody signs back in.
      */
     var lastActive = Date.now();
-    function touched() { lastActive = Date.now(); }
-    document.addEventListener('click', touched, true);
-    document.addEventListener('keydown', touched, true);
+    function markActive() { lastActive = Date.now(); }
+    document.addEventListener('click', markActive, true);
+    document.addEventListener('keydown', markActive, true);
     function keepalive() {
         if (Date.now() - lastActive > ACTIVE_MS) {
             return;

@@ -1,0 +1,378 @@
+<!DOCTYPE html><html><head><script>(function () {
+  window.LV_calls = []; window.LV_skew = 0;
+  var realNow = Date.now.bind(Date);
+  Date.now = function () { return realNow() + window.LV_skew; };
+  window.fetch = function (url, o) { window.LV_calls.push(String(o && o.body || '')); return Promise.resolve({ json: function () { return Promise.resolve({ success: true, data: { signed_in: true, valid: true } }); } }); };
+})();</script><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="../public/css/calendar.css"></head><body>        <div class="uc-calendar uc-view-list"
+                          data-view="list"
+             data-category=""
+             data-render="card"
+             data-per-page="12"
+                          data-scope-category=""
+             data-active-category=""
+             data-active-groups=""
+                          data-scope-tag=""
+             data-active-tags=""
+             data-active-locations=""
+             data-filter-tag=""
+             data-filter-location=""
+                          data-filters="category,organizer,series,tag,location"
+             data-scope-organizer=""
+             data-active-organizer=""
+             data-filter-category=""
+             data-filter-organizer=""
+             data-filter-series="0"
+             data-filter-venue=""
+                          data-filter-s=""
+                          data-pin=""
+             data-filter-pin=""
+             data-pagination="load_more"
+             data-page="1"
+                                       data-month="2026-10"
+             data-max-pages="1">
+
+                                                <form class="uc-filter-form" method="get" action="" data-uc-filter-form>
+                                            <div class="uc-filters">
+                <div class="uc-search-wrap">
+                    <svg class="sfaf-icon sfaf-icon-search uc-search-icon" width="1em" height="1em" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.4 15.4 4.6 4.6"/></svg>                    <input type="search" class="uc-search" value=""
+                           aria-label="Search events" placeholder="Search events..." />
+                </div>
+                                <div class="uc-filter-buttons">
+                                                            <button type="submit" name="uc_cat" value=""
+                            class="uc-filter-btn active"
+                            data-category="all" aria-pressed="true">All Events</button>
+                                            <button type="submit" name="uc_cat" value="alpha"
+                                class="uc-filter-btn"
+                                data-category="alpha"
+                                aria-pressed="false"
+                                style="--cat-color: #16BECF">
+                                                        <span class="uc-filter-dot" aria-hidden="true"></span>
+                            Alpha                        </button>
+                                            <button type="submit" name="uc_cat" value="beta"
+                                class="uc-filter-btn"
+                                data-category="beta"
+                                aria-pressed="false"
+                                style="--cat-color: #16BECF">
+                                                        <span class="uc-filter-dot" aria-hidden="true"></span>
+                            Beta                        </button>
+                                    </div>
+                
+                                                <details class="uc-who" data-uc-who>
+            <summary class="uc-who-trigger"
+                    data-uc-who-trigger
+                    aria-label="Filter by organizer or group">
+                <span class="uc-who-label" data-uc-who-label>Organizers and groups</span>
+                <svg class="sfaf-icon sfaf-icon-chevron uc-who-chevron" width="1em" height="1em" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg>            </summary>
+
+            <div class="uc-who-panel" id="uc-who-2401" data-uc-who-panel>
+                                <button type="button" class="uc-who-clear" data-uc-who-clear>Clear all</button>
+                                <div class="uc-who-cols">
+                                            <section class="uc-who-col uc-who-col-org">
+                            <p class="uc-who-heading" id="uc-who-2401-org">Organizers</p>
+                            <div class="uc-who-list" role="group" aria-labelledby="uc-who-2401-org">
+                                                                    <label class="uc-who-opt">
+                                        <input type="checkbox" name="uc_org[]"
+                                               value="alpha"
+                                               data-uc-who-organizer
+                                                />
+                                        <span>Alpha <span class="uc-who-count" aria-hidden="true">(3)</span></span>
+                                                                                    <span class="uc-visually-hidden">3 upcoming events</span>
+                                                                            </label>
+                                                            </div>
+                        </section>
+                    
+                                            <section class="uc-who-col uc-who-col-grp">
+                            <p class="uc-who-heading" id="uc-who-2401-grp">Groups</p>
+                                                        <div class="uc-who-list uc-who-list-2col" role="group" aria-labelledby="uc-who-2401-grp" data-uc-who-groups>
+                                                            </div>
+                            <p class="uc-who-none" data-uc-who-none hidden>No groups match those organizers.</p>
+                        </section>
+                                    </div>
+
+                                <noscript>
+                <div class="uc-who-foot">
+                                                            <button type="submit" name="uc_cat" value=""
+                            class="uc-who-apply" data-uc-who-apply>Apply</button>
+                </div>
+                </noscript>
+            </div>
+        </details>
+                                                <details class="uc-who uc-pick uc-pick-tag" data-uc-pick="tag" data-uc-pick-empty="What&#039;s included">
+            <summary class="uc-who-trigger" data-uc-pick-trigger
+                     aria-label="Filter by what&#039;s included">
+                <span class="uc-who-label" data-uc-pick-label>What&#039;s included</span>
+                <svg class="sfaf-icon sfaf-icon-chevron uc-who-chevron" width="1em" height="1em" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg>            </summary>
+            <div class="uc-who-panel uc-pick-panel" id="uc-pick-tag-9015" data-uc-pick-panel>
+                <button type="button" class="uc-who-clear" data-uc-pick-clear>Clear all</button>
+                <p class="uc-who-heading" id="uc-pick-tag-9015-h">What&#039;s included</p>
+                <div class="uc-who-list" role="group" aria-labelledby="uc-pick-tag-9015-h">
+                                            <label class="uc-who-opt">
+                            <input type="checkbox" name="uc_tag[]" value="alpha"
+                                   data-uc-pick-opt  />
+                            <span>Alpha <span class="uc-who-count" aria-hidden="true">(2)</span></span>
+                            <span class="uc-visually-hidden">2 upcoming events</span>
+                        </label>
+                                            <label class="uc-who-opt">
+                            <input type="checkbox" name="uc_tag[]" value="beta"
+                                   data-uc-pick-opt  />
+                            <span>Beta <span class="uc-who-count" aria-hidden="true">(2)</span></span>
+                            <span class="uc-visually-hidden">2 upcoming events</span>
+                        </label>
+                                    </div>
+                <noscript>
+                <div class="uc-who-foot">
+                    <button type="submit" name="uc_cat" value="" class="uc-who-apply">Apply</button>
+                </div>
+                </noscript>
+            </div>
+        </details>
+                <details class="uc-who uc-pick uc-pick-location" data-uc-pick="location" data-uc-pick-empty="Location">
+            <summary class="uc-who-trigger" data-uc-pick-trigger
+                     aria-label="Filter by location">
+                <span class="uc-who-label" data-uc-pick-label>Location</span>
+                <svg class="sfaf-icon sfaf-icon-chevron uc-who-chevron" width="1em" height="1em" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg>            </summary>
+            <div class="uc-who-panel uc-pick-panel" id="uc-pick-location-6713" data-uc-pick-panel>
+                <button type="button" class="uc-who-clear" data-uc-pick-clear>Clear all</button>
+                <p class="uc-who-heading" id="uc-pick-location-6713-h">Location</p>
+                <div class="uc-who-list" role="group" aria-labelledby="uc-pick-location-6713-h">
+                                            <label class="uc-who-opt">
+                            <input type="checkbox" name="uc_loc[]" value="v-alpha"
+                                   data-uc-pick-opt  />
+                            <span>Alpha <span class="uc-who-count" aria-hidden="true">(1)</span></span>
+                            <span class="uc-visually-hidden">1 upcoming event</span>
+                        </label>
+                                            <label class="uc-who-opt">
+                            <input type="checkbox" name="uc_loc[]" value="p-39e76671d2"
+                                   data-uc-pick-opt  />
+                            <span>Golden Gate Park, Golden Gate Park, San Francisco <span class="uc-who-count" aria-hidden="true">(1)</span></span>
+                            <span class="uc-visually-hidden">1 upcoming event</span>
+                        </label>
+                                            <label class="uc-who-opt">
+                            <input type="checkbox" name="uc_loc[]" value="p-c74c497b0d"
+                                   data-uc-pick-opt  />
+                            <span>The 1035 Market community room on the second floor, 1035 Market Street, San Francisco <span class="uc-who-count" aria-hidden="true">(1)</span></span>
+                            <span class="uc-visually-hidden">1 upcoming event</span>
+                        </label>
+                                    </div>
+                <noscript>
+                <div class="uc-who-foot">
+                    <button type="submit" name="uc_cat" value="" class="uc-who-apply">Apply</button>
+                </div>
+                </noscript>
+            </div>
+        </details>
+                    </div>
+            </form>
+
+                        
+            <div class="uc-view-bar">
+                                                                    <div class="uc-event-count">
+                        <span class="uc-count-number">3</span>
+                        events coming up                    </div>
+                                            </div>
+
+            
+            
+                        <div class="uc-view-panels"
+                 >
+                            <div class="uc-view-panel uc-panel-list">
+                                    <div class="uc-event-list">
+                                                                    <div class="uc-event-card uc-lrow" data-category="alpha"
+             style="--uc-cat: #16BECF; --uc-cat-tint: #E3F7F9; --uc-cat-media: #D5F3F6; --uc-cat-ink: #0C666F">
+
+                        <a class="uc-lrow-media" href="https://resources.sfaf.org/events/501/" target="_blank" rel="noopener"               tabindex="-1" aria-hidden="true"><span class="uc-lc-ph" role="img" aria-label="Alpha"><span class="uc-lc-ph-icon"><svg class="sfaf-icon sfaf-icon-calendar" width="30px" height="30px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span><span class="uc-lc-ph-name">Alpha</span></span></a>
+
+            <div class="uc-lrow-main">
+                                <h3 class="uc-card-title uc-lrow-title">
+                    <a href="https://resources.sfaf.org/events/501/" target="_blank" rel="noopener">Coffee social<span class="uc-sr-only"> (opens in a new tab)</span></a>
+                </h3>
+                                                                <span class="uc-lrow-meta">
+                    <a class="uc-lc-chip uc-lc-chip-link" href="https://resources.sfaf.org/term/alpha/" data-uc-cat="alpha">Alpha</a>                                            <span class="uc-lrow-byline">Alpha</span>
+                                    </span>
+                                <ul class="uc-tag-pills uc-tag-pills-card" aria-label="What&#039;s included"><li><a class="uc-tag-pill" href="?uc_tag=alpha">Alpha</a></li></ul>                                            </div>
+
+            <div class="uc-lrow-when">
+                                                                            <span class="uc-lrow-date"><span class="uc-lrow-dow">Friday,</span> <span class="uc-lrow-dmy">October 16, 2026</span></span>
+                                                                        <span class="uc-lrow-time">6–7:30 pm</span>
+                            </div>
+
+            <div class="uc-lrow-where">
+                                    <span class="uc-lrow-venue">Alpha</span>
+                                                                            </div>
+        </div>
+                        <div class="uc-event-card uc-lrow" data-category="alpha"
+             style="--uc-cat: #16BECF; --uc-cat-tint: #E3F7F9; --uc-cat-media: #D5F3F6; --uc-cat-ink: #0C666F">
+
+                        <a class="uc-lrow-media" href="https://resources.sfaf.org/events/502/" target="_blank" rel="noopener"               tabindex="-1" aria-hidden="true"><span class="uc-lc-ph" role="img" aria-label="Alpha"><span class="uc-lc-ph-icon"><svg class="sfaf-icon sfaf-icon-calendar" width="30px" height="30px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span><span class="uc-lc-ph-name">Alpha</span></span></a>
+
+            <div class="uc-lrow-main">
+                                <h3 class="uc-card-title uc-lrow-title">
+                    <a href="https://resources.sfaf.org/events/502/" target="_blank" rel="noopener">Harm reduction drop-in<span class="uc-sr-only"> (opens in a new tab)</span></a>
+                </h3>
+                                                                <span class="uc-lrow-meta">
+                    <a class="uc-lc-chip uc-lc-chip-link" href="https://resources.sfaf.org/term/alpha/" data-uc-cat="alpha">Alpha</a>                                            <span class="uc-lrow-byline">Alpha</span>
+                                    </span>
+                                <ul class="uc-tag-pills uc-tag-pills-card" aria-label="What&#039;s included"><li><a class="uc-tag-pill" href="?uc_tag=beta">Beta</a></li></ul>                                            </div>
+
+            <div class="uc-lrow-when">
+                                                                            <span class="uc-lrow-date"><span class="uc-lrow-dow">Saturday,</span> <span class="uc-lrow-dmy">October 17, 2026</span></span>
+                                                                        <span class="uc-lrow-time">6–7:30 pm</span>
+                            </div>
+
+            <div class="uc-lrow-where">
+                                    <span class="uc-lrow-venue">The 1035 Market community room on the second floor, 1035 Market Street, San Francisco</span>
+                                                                            </div>
+        </div>
+                        <div class="uc-event-card uc-lrow" data-category="alpha"
+             style="--uc-cat: #16BECF; --uc-cat-tint: #E3F7F9; --uc-cat-media: #D5F3F6; --uc-cat-ink: #0C666F">
+
+                        <a class="uc-lrow-media" href="https://resources.sfaf.org/events/503/" target="_blank" rel="noopener"               tabindex="-1" aria-hidden="true"><span class="uc-lc-ph" role="img" aria-label="Alpha"><span class="uc-lc-ph-icon"><svg class="sfaf-icon sfaf-icon-calendar" width="30px" height="30px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span><span class="uc-lc-ph-name">Alpha</span></span></a>
+
+            <div class="uc-lrow-main">
+                                <h3 class="uc-card-title uc-lrow-title">
+                    <a href="https://resources.sfaf.org/events/503/" target="_blank" rel="noopener">Three-day autumn retreat in the redwoods<span class="uc-sr-only"> (opens in a new tab)</span></a>
+                </h3>
+                                                                <span class="uc-lrow-meta">
+                    <a class="uc-lc-chip uc-lc-chip-link" href="https://resources.sfaf.org/term/alpha/" data-uc-cat="alpha">Alpha</a>                                            <span class="uc-lrow-byline">Alpha</span>
+                                    </span>
+                                <ul class="uc-tag-pills uc-tag-pills-card" aria-label="What&#039;s included"><li><a class="uc-tag-pill" href="?uc_tag=alpha">Alpha</a></li><li><a class="uc-tag-pill" href="?uc_tag=beta">Beta</a></li></ul>                                            </div>
+
+            <div class="uc-lrow-when">
+                                                                                                        <span class="uc-lrow-date"><span class="uc-lrow-dmy" data-uc-range>Oct 24 to 26, 2026</span></span>
+                                                                        <span class="uc-lrow-time">6–7:30 pm</span>
+                            </div>
+
+            <div class="uc-lrow-where">
+                                    <span class="uc-lrow-venue">Golden Gate Park, Golden Gate Park, San Francisco</span>
+                                                                            </div>
+        </div>
+                                                    </div>
+                                                </div>
+                                    <div class="uc-view-panel uc-panel-calendar" hidden>
+                            </div>
+                        </div>
+
+                    </div>
+        <script>window.RV_PAGE="bar-phone";(function () {
+var P = window.RV_PAGE, out = { page: P, errors: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function q(s, r) { return (r || document).querySelector(s); }
+function qa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function text(el) { if (!el) { return ''; } var c = el.cloneNode(true); Array.prototype.forEach.call(c.querySelectorAll('.uc-visually-hidden, .uc-sr-only, .screen-reader-text'), function (h) { h.parentNode.removeChild(h); }); return c.textContent.replace(/\s+/g, ' ').trim(); }
+function shut(el) { var d = el.closest('details:not([open])'); return !!d && !(el.tagName === 'SUMMARY' && el.parentNode === d) && !(el.closest('summary') && el.closest('summary').parentNode === d); }
+function seen(el) { if (!el || !el.getClientRects().length || shut(el)) { return false; } var cs = getComputedStyle(el); return cs.visibility !== 'hidden' && cs.display !== 'none' && +cs.opacity !== 0; }
+function rect(el) { if (!el) { return null; } var r = el.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom), w: Math.round(r.width), h: Math.round(r.height) }; }
+function name(el) { return el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).join('.') : '') + (el.name ? '[' + el.name + ']' : '') + ' "' + (text(el) || el.getAttribute('aria-label') || el.value || '').slice(0, 28) + '"'; }
+var phone = window.innerWidth < 600;
+function small(root) {
+  var bad = [];
+  qa('a.uc-btn, button, select, textarea, summary, input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]), label', root).forEach(function (el) {
+    if (!seen(el)) { return; }
+    if (el.tagName === 'LABEL' && !q('input[type="checkbox"], input[type="radio"], input[type="file"]', el)) { return; }
+    if (el.closest('.uc-tpl-editor, [hidden], #uc-sidebar, .uc-portal-sidebar, .mce-container, .wp-editor-wrap, noscript')) { return; }
+    var r = el.getBoundingClientRect(); if (!r.width || !r.height) { return; }
+    var h = r.height, a = getComputedStyle(el, '::after');
+    if (a.content !== 'none' && a.position === 'absolute') { h = r.height - parseFloat(a.top) - parseFloat(a.bottom); }
+    if (Math.round(h) < 44) { bad.push(name(el) + ' ' + Math.round(h) + 'px'); }
+  });
+  return bad.slice(0, 10);
+}
+function past(root) {
+  var w = document.documentElement.clientWidth, bad = [];
+  qa('*', root).forEach(function (el) {
+    if (!seen(el) || el.closest('[hidden], #uc-sidebar, .uc-portal-sidebar')) { return; }
+    var r = el.getBoundingClientRect(); if (r.width && (r.right > w + 1 || r.left < -1)) { bad.push(name(el) + ' ' + Math.round(r.left) + ' to ' + Math.round(r.right)); }
+  });
+  return bad.slice(0, 8);
+}
+function finish() { out.pageWidth = document.documentElement.scrollWidth; window.parent.postMessage(JSON.stringify(out), '*'); }
+/* A PHONE HAS A FINGER. The public bar sizes its controls for touch under
+   @media (pointer: coarse), and headless Chrome reports a fine pointer, so
+   below 600px those rules are switched on where they stand in the sheet:
+   same place, same order, same specificity. */
+function coarse() {
+  var n = 0;
+  Array.prototype.forEach.call(document.styleSheets, function (s) {
+    var rules; try { rules = s.cssRules; } catch (e) { out.errors.push('cannot read ' + s.href); return; }
+    Array.prototype.forEach.call(rules, function (r) { if (r.media && /pointer:\s*coarse/.test(r.media.mediaText)) { r.media.mediaText = 'all'; n++; } });
+  });
+  return n;
+}
+window.addEventListener('load', function () { setTimeout(function () {
+  var main = q('.uc-portal-main') || document.body;
+  if (phone && !q('.uc-portal-main')) { out.coarse = coarse(); }
+  out.past = past(main);
+
+  /* The bar: each dropdown opened alone. */
+  var who = qa('details.uc-who');
+  if (who.length && !q('.uc-portal-main')) {
+    out.bar = who.map(function (d) {
+      who.forEach(function (o) { o.open = false; });
+      d.open = true;
+      var panel = q('.uc-who-panel', d);
+      var r = { kind: d.getAttribute('data-uc-pick') || 'who', label: text(q('summary', d)), summaryH: Math.round(q('summary', d).getBoundingClientRect().height),
+        panel: rect(panel), past: past(d), small: phone ? small(d) : [],
+        opts: qa('[data-uc-pick-opt]', d).map(function (i) { return i.value + '=' + text(i.closest('label')); }) };
+      d.open = false;
+      return r;
+    });
+    out.barTops = who.map(function (d) { return Math.round(d.getBoundingClientRect().top); });
+    out.small = phone ? small(q('.uc-filters, .uc-filter-bar, .uc-calendar') || document.body) : [];
+  }
+
+  /* The event page's pills. */
+  var pills = qa('.uc-single .uc-tag-pill');
+  if (pills.length) {
+    out.pills = pills.map(function (a) { return { text: text(a), href: a.getAttribute('href'), seen: seen(a), box: rect(a) }; });
+    var hosted = qa('.uc-single *').filter(function (e) { return /^Hosted by/.test(text(e)) && e.children.length < 4; })[0];
+    out.hostedBottom = hosted ? Math.round(hosted.getBoundingClientRect().bottom) : null;
+    out.pillsLabel = (q('.uc-single .uc-tag-pills') || {}).getAttribute ? q('.uc-single .uc-tag-pills').getAttribute('aria-label') : null;
+  }
+
+  if (q('.uc-portal-main')) {
+    out.small = phone ? small(main) : [];
+    var tick = q('[data-uc-multiday-tick]');
+    if (tick) {
+      var end = q('[data-uc-multiday-end]'), date = q('[name="date"]'), rep = q('[data-uc-repeat-wrap]');
+      out.multi = { ticked: tick.checked, end: seen(end), endInput: end ? (q('input', end) || end).value : null,
+        endBox: rect(end), dateBox: rect(date && (date.closest('.uc-field') || date)), repeats: seen(rep) };
+      tick.click();
+      out.multi.untickedEnd = seen(end); out.multi.untickedRepeats = seen(rep);
+      tick.click();
+
+      /* G: the keepalive. */
+      if (window.ucSession && window.ucSession.keepalive) {
+        window.LV_calls = [];
+        window.LV_skew = 31 * 60 * 1000;
+        window.ucSession.keepalive();
+        var idle = window.LV_calls.filter(function (b) { return /keepalive=1/.test(b); }).length;
+        document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        window.LV_skew = 32 * 60 * 1000;
+        window.ucSession.keepalive();
+        var sent = function () { return window.LV_calls.filter(function (b) { return /keepalive=1/.test(b); }).length; };
+        out.keep = { idle: idle, after: sent() - idle };
+        /* And a keystroke, after another idle half hour. */
+        window.LV_skew = 64 * 60 * 1000;
+        var before = sent();
+        window.ucSession.keepalive();
+        out.keep.idle += sent() - before;
+        document.body.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'a' }));
+        window.LV_skew = 65 * 60 * 1000;
+        before = sent();
+        window.ucSession.keepalive();
+        out.keep.key = sent() - before;
+      } else { out.keep = null; }
+    }
+    var rows = qa('[data-uc-closed-row]');
+    if (q('[data-uc-closed-list]') || rows.length) {
+      out.closed = rows.map(function (r) {
+        var keep = qa('button, a', r).filter(function (b) { return /^Keep/.test(text(b)); })[0];
+        var cancel = qa('button, a', r).filter(function (b) { return /^Cancel/.test(text(b)); })[0];
+        return { text: text(r).slice(0, 200), keep: keep ? rect(keep) : null, cancel: cancel ? rect(cancel) : null, past: past(r) };
+      });
+      out.tab = text(q('.uc-tabs [aria-current], .uc-tab.is-active, [aria-current="page"]'));
+    }
+  }
+  finish();
+}, 700); });
+})();</script></body></html>

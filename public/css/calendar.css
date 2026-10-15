@@ -1518,6 +1518,11 @@
     .uc-calendar .uc-group-clear, .uc-calendar .uc-search,
     .uc-calendar .uc-organizer-select { min-height: 44px; }
     .uc-groups-list > summary { min-height: 44px; }
+    /* The three dropdowns (3.112.0): Organizers and groups, What's included
+       and Location share these. */
+    .uc-calendar .uc-who-trigger { min-height: 44px; }
+    .uc-calendar .uc-who-clear { top: 0; right: 0; min-height: 44px; padding: 0 12px; }
+    .uc-calendar .uc-who-panel .uc-who-opt { padding-top: 12px; padding-bottom: 12px; }
 }
 
 /* ---------- Breadcrumb ----------

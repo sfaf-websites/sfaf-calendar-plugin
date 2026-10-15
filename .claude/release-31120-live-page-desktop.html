@@ -1,0 +1,226 @@
+<!DOCTYPE html><html><head><script>(function () {
+  window.LV_calls = []; window.LV_skew = 0;
+  var realNow = Date.now.bind(Date);
+  Date.now = function () { return realNow() + window.LV_skew; };
+  window.fetch = function (url, o) { window.LV_calls.push(String(o && o.body || '')); return Promise.resolve({ json: function () { return Promise.resolve({ success: true, data: { signed_in: true, valid: true } }); } }); };
+})();</script><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="../public/css/calendar.css"></head><body>    <div class="uc-single" style="--event-color: #16BECF">
+        <div class="uc-single-inner">
+
+            
+            
+                        <a href="https://resources.sfaf.org/events/" class="uc-single-back">&larr; All Events</a>
+
+            <header class="uc-single-header">
+                <div class="uc-single-badges">
+                    <a class="uc-badge uc-badge-link" href="https://resources.sfaf.org/term/alpha/" data-uc-cat="alpha" style="--uc-cat-tint: #E3F7F9; --uc-cat-ink: #0C666F">Alpha</a>                                                        </div>
+
+                <h1 class="uc-single-title">Three-day autumn retreat in the redwoods</h1>
+
+                                    <p class="uc-single-organizer">Hosted by Alpha</p>
+                
+                                <ul class="uc-tag-pills uc-tag-pills-page" aria-label="What&#039;s included"><li><a class="uc-tag-pill" href="?uc_tag=alpha">Alpha</a></li><li><a class="uc-tag-pill" href="?uc_tag=beta">Beta</a></li></ul>
+                            </header>
+
+            <div class="uc-single-grid">
+                <div class="uc-single-main">
+                    
+                    
+                    <div class="uc-single-body">
+                        <p>A gentle walk through the park with time to talk, and coffee afterwards for anybody who wants to stay.</p>                    </div>
+
+                    
+                        <section class="uc-map" aria-labelledby="uc-map-heading-503">
+        <h2 class="uc-map-heading" id="uc-map-heading-503">Getting there</h2>
+
+        <p class="uc-map-address">
+            <svg class="sfaf-icon sfaf-icon-pin" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 21c4.3-4.7 6.5-8.2 6.5-11a6.5 6.5 0 0 0-13 0c0 2.8 2.2 6.3 6.5 11z"/><circle cx="12" cy="10" r="2.5"/></svg>            <a href="https://www.google.com/maps/search/?api=1&amp;query=Golden%20Gate%20Park%2C%20Golden%20Gate%20Park%2C%20San%20Francisco" target="_blank" rel="noopener noreferrer">Golden Gate Park, Golden Gate Park, San Francisco</a>
+        </p>
+
+            </section>
+                    </div>
+
+                <aside class="uc-single-sidebar">
+                    <div class="uc-single-card">
+                        <ul class="uc-single-facts">
+                                                            <li>
+                                    <span class="uc-fact-icon"><svg class="sfaf-icon sfaf-icon-calendar" width="1em" height="1em" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span>
+                                    <span><strong>Oct 24 to 26, 2026</strong></span>
+                                </li>
+                                                                                        <li>
+                                    <span class="uc-fact-icon"><svg class="sfaf-icon sfaf-icon-clock" width="1em" height="1em" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>
+                                    <span>6–7:30 pm</span>
+                                </li>
+                                                                                                                                                <li>
+                                    <span class="uc-fact-icon"><svg class="sfaf-icon sfaf-icon-venue" width="1em" height="1em" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 21h18"/><path d="M12 3.5 4 8.5h16z"/><path d="M6.5 21v-9M10.2 21v-9M13.8 21v-9M17.5 21v-9"/></svg></span>
+                                    <span>Golden Gate Park</span>
+                                </li>
+                                                                                                                                                <li>
+                                    <span class="uc-fact-icon"><svg class="sfaf-icon sfaf-icon-pin" width="1em" height="1em" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 21c4.3-4.7 6.5-8.2 6.5-11a6.5 6.5 0 0 0-13 0c0 2.8 2.2 6.3 6.5 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
+                                                                        <span><a class="uc-fact-maplink" href="https://www.google.com/maps/search/?api=1&amp;query=Golden%20Gate%20Park%2C%20Golden%20Gate%20Park%2C%20San%20Francisco" target="_blank" rel="noopener noreferrer">Golden Gate Park, Golden Gate Park, San Francisco</a></span>
+                                </li>
+                                                                                                                                                                                                                            </ul>
+
+                                                    <div class="uc-single-actions">    <div class="uc-addcal">
+        <button type="button" class="uc-addcal-toggle"><svg class="sfaf-icon sfaf-icon-calendar" width="1em" height="1em" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg> Add to Calendar</button>
+        <div class="uc-addcal-menu">
+                            <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&amp;text=Three-day+autumn+retreat+in+the+redwoods&amp;dates=20261025T010000Z%2F20261027T023000Z&amp;details=A+gentle+walk+through+the+park+with+time+to+talk%2C+and+coffee+afterwards+for+anybody+who+wants+to+stay.&amp;location=Golden+Gate+Park%2C+Golden+Gate+Park%2C+San+Francisco" target="_blank" rel="noopener noreferrer">Google Calendar</a>
+                        <a href="https://resources.sfaf.org/?uc_ics=503">Apple / Outlook (.ics)</a>
+        </div>
+    </div>
+    </div>
+                        
+                            <div class="uc-share">
+        <span class="uc-share-label">Share:</span>
+                    <a class="uc-share-btn uc-share-facebook"
+               href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fresources.sfaf.org%2Fevents%2F503%2F"
+               target="_blank" rel="noopener noreferrer"
+               aria-label="Share on Facebook">
+                <span class="uc-share-icon"><svg class="sfaf-icon sfaf-icon-facebook" width="15px" height="15px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor" aria-hidden="true" focusable="false"><path d="M13.3 21v-8h2.7l.4-3.1h-3.1V7.9c0-.9.25-1.5 1.55-1.5H16.5V3.6A21 21 0 0 0 14.1 3.5c-2.4 0-4 1.45-4 4.1v2.3H7.4V13h2.7v8z"/></svg></span>
+            </a>
+                    <a class="uc-share-btn uc-share-x"
+               href="https://twitter.com/intent/tweet?url=https%3A%2F%2Fresources.sfaf.org%2Fevents%2F503%2F&amp;text=Three-day%20autumn%20retreat%20in%20the%20redwoods"
+               target="_blank" rel="noopener noreferrer"
+               aria-label="Share on X">
+                <span class="uc-share-icon"><svg class="sfaf-icon sfaf-icon-x" width="15px" height="15px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5.5 5.5 18.5 18.5M18.5 5.5 5.5 18.5"/></svg></span>
+            </a>
+                    <a class="uc-share-btn uc-share-linkedin"
+               href="https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fresources.sfaf.org%2Fevents%2F503%2F"
+               target="_blank" rel="noopener noreferrer"
+               aria-label="Share on LinkedIn">
+                <span class="uc-share-icon"><svg class="sfaf-icon sfaf-icon-linkedin" width="15px" height="15px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor" aria-hidden="true" focusable="false"><path d="M7.1 20H4.2V9.5h2.9zM5.65 8.2A1.7 1.7 0 1 1 5.65 4.8a1.7 1.7 0 0 1 0 3.4zM20 20h-2.9v-5.1c0-1.2 0-2.8-1.7-2.8s-2 1.35-2 2.7V20H10.5V9.5h2.8v1.45h.05A3.05 3.05 0 0 1 16.1 9.3c3 0 3.9 2 3.9 4.5z"/></svg></span>
+            </a>
+                    <a class="uc-share-btn uc-share-email"
+               href="mailto:?subject=Three-day%20autumn%20retreat%20in%20the%20redwoods&amp;body=Check%20out%20this%20event%3A%20https%3A%2F%2Fresources.sfaf.org%2Fevents%2F503%2F"
+               target="_blank" rel="noopener noreferrer"
+               aria-label="Share on Email">
+                <span class="uc-share-icon"><svg class="sfaf-icon sfaf-icon-mail" width="15px" height="15px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/></svg></span>
+            </a>
+            </div>
+                        </div>
+                </aside>
+            </div>
+        </div>
+    </div>
+    <script>window.RV_PAGE="page-desktop";(function () {
+var P = window.RV_PAGE, out = { page: P, errors: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function q(s, r) { return (r || document).querySelector(s); }
+function qa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function text(el) { if (!el) { return ''; } var c = el.cloneNode(true); Array.prototype.forEach.call(c.querySelectorAll('.uc-visually-hidden, .uc-sr-only, .screen-reader-text'), function (h) { h.parentNode.removeChild(h); }); return c.textContent.replace(/\s+/g, ' ').trim(); }
+function shut(el) { var d = el.closest('details:not([open])'); return !!d && !(el.tagName === 'SUMMARY' && el.parentNode === d) && !(el.closest('summary') && el.closest('summary').parentNode === d); }
+function seen(el) { if (!el || !el.getClientRects().length || shut(el)) { return false; } var cs = getComputedStyle(el); return cs.visibility !== 'hidden' && cs.display !== 'none' && +cs.opacity !== 0; }
+function rect(el) { if (!el) { return null; } var r = el.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom), w: Math.round(r.width), h: Math.round(r.height) }; }
+function name(el) { return el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).join('.') : '') + (el.name ? '[' + el.name + ']' : '') + ' "' + (text(el) || el.getAttribute('aria-label') || el.value || '').slice(0, 28) + '"'; }
+var phone = window.innerWidth < 600;
+function small(root) {
+  var bad = [];
+  qa('a.uc-btn, button, select, textarea, summary, input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]), label', root).forEach(function (el) {
+    if (!seen(el)) { return; }
+    if (el.tagName === 'LABEL' && !q('input[type="checkbox"], input[type="radio"], input[type="file"]', el)) { return; }
+    if (el.closest('.uc-tpl-editor, [hidden], #uc-sidebar, .uc-portal-sidebar, .mce-container, .wp-editor-wrap, noscript')) { return; }
+    var r = el.getBoundingClientRect(); if (!r.width || !r.height) { return; }
+    var h = r.height, a = getComputedStyle(el, '::after');
+    if (a.content !== 'none' && a.position === 'absolute') { h = r.height - parseFloat(a.top) - parseFloat(a.bottom); }
+    if (Math.round(h) < 44) { bad.push(name(el) + ' ' + Math.round(h) + 'px'); }
+  });
+  return bad.slice(0, 10);
+}
+function past(root) {
+  var w = document.documentElement.clientWidth, bad = [];
+  qa('*', root).forEach(function (el) {
+    if (!seen(el) || el.closest('[hidden], #uc-sidebar, .uc-portal-sidebar')) { return; }
+    var r = el.getBoundingClientRect(); if (r.width && (r.right > w + 1 || r.left < -1)) { bad.push(name(el) + ' ' + Math.round(r.left) + ' to ' + Math.round(r.right)); }
+  });
+  return bad.slice(0, 8);
+}
+function finish() { out.pageWidth = document.documentElement.scrollWidth; window.parent.postMessage(JSON.stringify(out), '*'); }
+/* A PHONE HAS A FINGER. The public bar sizes its controls for touch under
+   @media (pointer: coarse), and headless Chrome reports a fine pointer, so
+   below 600px those rules are switched on where they stand in the sheet:
+   same place, same order, same specificity. */
+function coarse() {
+  var n = 0;
+  Array.prototype.forEach.call(document.styleSheets, function (s) {
+    var rules; try { rules = s.cssRules; } catch (e) { out.errors.push('cannot read ' + s.href); return; }
+    Array.prototype.forEach.call(rules, function (r) { if (r.media && /pointer:\s*coarse/.test(r.media.mediaText)) { r.media.mediaText = 'all'; n++; } });
+  });
+  return n;
+}
+window.addEventListener('load', function () { setTimeout(function () {
+  var main = q('.uc-portal-main') || document.body;
+  if (phone && !q('.uc-portal-main')) { out.coarse = coarse(); }
+  out.past = past(main);
+
+  /* The bar: each dropdown opened alone. */
+  var who = qa('details.uc-who');
+  if (who.length && !q('.uc-portal-main')) {
+    out.bar = who.map(function (d) {
+      who.forEach(function (o) { o.open = false; });
+      d.open = true;
+      var panel = q('.uc-who-panel', d);
+      var r = { kind: d.getAttribute('data-uc-pick') || 'who', label: text(q('summary', d)), summaryH: Math.round(q('summary', d).getBoundingClientRect().height),
+        panel: rect(panel), past: past(d), small: phone ? small(d) : [],
+        opts: qa('[data-uc-pick-opt]', d).map(function (i) { return i.value + '=' + text(i.closest('label')); }) };
+      d.open = false;
+      return r;
+    });
+    out.barTops = who.map(function (d) { return Math.round(d.getBoundingClientRect().top); });
+    out.small = phone ? small(q('.uc-filters, .uc-filter-bar, .uc-calendar') || document.body) : [];
+  }
+
+  /* The event page's pills. */
+  var pills = qa('.uc-single .uc-tag-pill');
+  if (pills.length) {
+    out.pills = pills.map(function (a) { return { text: text(a), href: a.getAttribute('href'), seen: seen(a), box: rect(a) }; });
+    var hosted = qa('.uc-single *').filter(function (e) { return /^Hosted by/.test(text(e)) && e.children.length < 4; })[0];
+    out.hostedBottom = hosted ? Math.round(hosted.getBoundingClientRect().bottom) : null;
+    out.pillsLabel = (q('.uc-single .uc-tag-pills') || {}).getAttribute ? q('.uc-single .uc-tag-pills').getAttribute('aria-label') : null;
+  }
+
+  if (q('.uc-portal-main')) {
+    out.small = phone ? small(main) : [];
+    var tick = q('[data-uc-multiday-tick]');
+    if (tick) {
+      var end = q('[data-uc-multiday-end]'), date = q('[name="date"]'), rep = q('[data-uc-repeat-wrap]');
+      out.multi = { ticked: tick.checked, end: seen(end), endInput: end ? (q('input', end) || end).value : null,
+        endBox: rect(end), dateBox: rect(date && (date.closest('.uc-field') || date)), repeats: seen(rep) };
+      tick.click();
+      out.multi.untickedEnd = seen(end); out.multi.untickedRepeats = seen(rep);
+      tick.click();
+
+      /* G: the keepalive. */
+      if (window.ucSession && window.ucSession.keepalive) {
+        window.LV_calls = [];
+        window.LV_skew = 31 * 60 * 1000;
+        window.ucSession.keepalive();
+        var idle = window.LV_calls.filter(function (b) { return /keepalive=1/.test(b); }).length;
+        document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        window.LV_skew = 32 * 60 * 1000;
+        window.ucSession.keepalive();
+        var sent = function () { return window.LV_calls.filter(function (b) { return /keepalive=1/.test(b); }).length; };
+        out.keep = { idle: idle, after: sent() - idle };
+        /* And a keystroke, after another idle half hour. */
+        window.LV_skew = 64 * 60 * 1000;
+        var before = sent();
+        window.ucSession.keepalive();
+        out.keep.idle += sent() - before;
+        document.body.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'a' }));
+        window.LV_skew = 65 * 60 * 1000;
+        before = sent();
+        window.ucSession.keepalive();
+        out.keep.key = sent() - before;
+      } else { out.keep = null; }
+    }
+    var rows = qa('[data-uc-closed-row]');
+    if (q('[data-uc-closed-list]') || rows.length) {
+      out.closed = rows.map(function (r) {
+        var keep = qa('button, a', r).filter(function (b) { return /^Keep/.test(text(b)); })[0];
+        var cancel = qa('button, a', r).filter(function (b) { return /^Cancel/.test(text(b)); })[0];
+        return { text: text(r).slice(0, 200), keep: keep ? rect(keep) : null, cancel: cancel ? rect(cancel) : null, past: past(r) };
+      });
+      out.tab = text(q('.uc-tabs [aria-current], .uc-tab.is-active, [aria-current="page"]'));
+    }
+  }
+  finish();
+}, 700); });
+})();</script></body></html>

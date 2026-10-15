@@ -318,7 +318,20 @@ function wp_get_post_terms( $id, $tax = '', $a = array() ) {
     if ( isset( $a['fields'] ) && 'names' === $a['fields'] ) { return wp_list_pluck( $out, 'name' ); }
     return $out;
 }
-function wp_get_object_terms( $id, $tax, $a = array() ) { return wp_get_post_terms( is_array( $id ) ? reset( $id ) : $id, is_array( $tax ) ? reset( $tax ) : $tax, $a ); }
+/* Every id, one row per post and term, as core answers (3.112.0): the filter
+   bar counts with all_with_object_id across the block's events. */
+function wp_get_object_terms( $id, $tax, $a = array() ) {
+    $tax = is_array( $tax ) ? reset( $tax ) : $tax;
+    if ( ! is_array( $id ) ) { return wp_get_post_terms( $id, $tax, $a ); }
+    $out = array();
+    foreach ( $id as $one ) {
+        foreach ( (array) wp_get_post_terms( $one, $tax, $a ) as $t ) {
+            if ( is_object( $t ) ) { $t = clone $t; $t->object_id = (int) $one; }
+            $out[] = $t;
+        }
+    }
+    return $out;
+}
 function get_the_terms( $id, $tax ) { $t = wp_get_post_terms( $id, $tax ); return $t ? $t : false; }
 function wp_set_object_terms( $id, $terms, $tax, $append = false ) { $GLOBALS['kit_terms'][ (int) $id ][ $tax ] = array_values( array_map( 'intval', (array) $terms ) ); return $GLOBALS['kit_terms'][ (int) $id ][ $tax ]; }
 function wp_set_post_terms( $id, $terms, $tax, $append = false ) { return wp_set_object_terms( $id, $terms, $tax, $append ); }
