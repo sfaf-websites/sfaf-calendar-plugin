@@ -150,6 +150,8 @@ function get_userdata( $id ) { return false; }
 function has_post_thumbnail( $id = 0 ) { return false; }
 function get_post_thumbnail_id( $id = 0 ) { return 0; }
 function wp_get_post_terms( $id, $tax, $args = array() ) { return array(); }
+// The tag pills read the term cache since 3.112.2.
+function get_the_terms( $id, $tax ) { $t = wp_get_post_terms( $id, $tax ); return $t ? $t : false; }
 function wp_get_attachment_image_url( $id, $s = 'thumbnail' ) { return ''; }
 function get_terms( $a = array() ) { return array(); }
 function get_term( $id, $tax = '' ) { return null; }

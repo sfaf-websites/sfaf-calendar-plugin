@@ -132,6 +132,8 @@ function wp_list_pluck( $list, $field ) {
 }
 function get_terms( $args = array() ) { return array(); }
 function wp_get_post_terms( $id, $tax, $args = array() ) { return array(); }
+// The tag pills read the term cache since 3.112.2.
+function get_the_terms( $id, $tax ) { $t = wp_get_post_terms( $id, $tax ); return $t ? $t : false; }
 function taxonomy_exists( $t ) { return true; }
 function get_term_by( $a, $b, $c ) { return false; }
 function wp_json_encode( $v, $f = 0 ) { return json_encode( $v, $f ); }

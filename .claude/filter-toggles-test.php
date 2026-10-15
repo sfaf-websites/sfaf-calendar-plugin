@@ -158,6 +158,8 @@ function get_terms( $args = array() ) {
     usort( $all, function ( $a, $b ) { return strcasecmp( $a->name, $b->name ); } );
     return $all;
 }
+// The tag pills read the term cache since 3.112.2.
+function get_the_terms( $id, $tax ) { $t = wp_get_post_terms( $id, $tax ); return $t ? $t : false; }
 function wp_get_post_terms( $id, $tax, $args = array() ) {
     $out = array();
     foreach ( (array) ( isset( $GLOBALS['events'][ $id ][ $tax ] ) ? $GLOBALS['events'][ $id ][ $tax ] : array() ) as $slug ) {
