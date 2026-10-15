@@ -145,9 +145,8 @@ primaries.
 
 **CANCEL EVENT IS RED, NOT AMBER (3.98.0).** It takes the event off the public
 calendar and mails everybody who registered, which is Delete's neighbourhood of
-consequence rather than "careful". The two reds are told apart by their labels
-and by the chevron, which only Cancel event carries because only it opens
-something rather than doing it.
+consequence rather than "careful". The two reds are told apart by their labels;
+since 3.112.1 both open a dialog, so neither carries a chevron.
 
 **THE MAIN ACTION CARRIES "MAIN" BY SIZE, NOT BY HUE.** It is the largest
 control in its row, which is what the yellow used to be saying on its own.
@@ -1048,8 +1047,8 @@ questions are a section of the card: a 16px subhead, space, and one
 so it is the editor's full width and never covers the sidebar: `--p-panel`
 (white) with one `--p-border` 1px rule on top, no side borders, no radius, no
 shadow. The note in it is 12px `--p-muted`. At 390px the note takes its own
-line and every button sits inside the window. While Cancel event is open the
-bar returns to the flow, since the open panel would be taller than a phone.
+line and every button sits inside the window. Cancel event and Delete open
+centred dialogs (3.112.1), so the bar stays where it is.
 Buttons keep the colours in "The one exception" above. **Their left-to-right
 order rendered for the first time in 3.107.0**: the `order` rules and the main
 action's larger size select on `.uc-editor-actions`, which no markup carried
@@ -1542,6 +1541,31 @@ yellow count): per row, the event as a teal link in 600, then "Tuesday, November
 3, 2026, closed for Thanksgiving" in the muted ink, then **Keep**, the secondary
 grey button, and **Cancel**, the danger button. They wrap under the text on a
 phone. Nothing in it is a new colour.
+
+### The centred dialogs, and Tags built as Categories (3.112.1)
+
+**One dialog for Cancel event, Delete and a tag's Delete**, on the confirm
+dialog's surface (`.uc-confirm-modal`): white, 12px radius, the raised shadow,
+the `--p-scrim` dim. Wider than a confirmation because it holds a form:
+`min(560px, 100vw - 32px)`, its panel 22px 24px 20px, and never taller than the
+window less 48px, scrolling inside.
+
+| Part | Values |
+|---|---|
+| Title | Section, 20px/700 `--p-text`, at two classes (`.uc-dialog-panel .uc-dialog-title`), because `.uc-portal h2` is (0,1,1) and set it at 16px under a 15px lead |
+| Lead | 15px/400 at 1.5, the irreversible part said plainly: "This cannot be undone." |
+| Choices | the cancel card's existing radio blocks, unchanged; Which dates? first |
+| Actions | right-aligned, 10px apart, 18px above: Keep (the secondary grey) then the button that acts: amber `.uc-btn-caution` for Cancel this event, red `.uc-btn-danger` for Delete |
+
+**Keep has the focus when it opens**, so Return keeps. With no script the panel
+is drawn in the page as a card (1px `--p-border`, 12px radius, 18px 20px) under
+the row it belongs to, and Keep, which only closes a dialog, is hidden.
+
+**Tags is the Categories section, row for row**: the fold card with "N TAGS" in
+its band, the hint, `.uc-cat-row` rows with Rename and Archive as the small
+secondary button and Delete as the red text link, and the new-tag form in
+`.uc-cat-new` with Add tag the primary yellow in its own action row, 14px under
+the field. `component-sweep.php` holds every screen to this (CLAUDE.md 7).
 
 ---
 

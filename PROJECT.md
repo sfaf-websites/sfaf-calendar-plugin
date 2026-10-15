@@ -692,7 +692,7 @@ event page reads: `_uc_cost`, `_uc_age_restriction`, `_uc_contact_name`,
 | Field | Card | Meta | On the event page |
 |---|---|---|---|
 | Cost | Registration, first, whatever the event does about registering | `_uc_cost` | "Cost" line |
-| Age range | Event details | `_uc_age_restriction` | "Ages" line |
+| Age range | Event details | `_uc_age_restriction` | "Ages" line, only for one of the three ranges |
 | Contact | Event details | the three `_uc_contact_*` keys | "Contact" line, through `sfaf_event_public_contact()` |
 | Venue website | Location | `_uc_venue_website` | "Venue website", not on an online event |
 
@@ -733,6 +733,21 @@ under its own option like the capacity pass):
 The community form's registration link has been written as Register on another
 site since 3.111.0, so nothing writes `_uc_rsvp_url`; `sfaf_event_rsvp_url()`
 still reads it and finds nothing.
+
+### Age range is one of three (3.112.1)
+
+**All ages, 18+ or 21+, from `SFAF_Submit::age_ranges()`, the one list** every
+control (Event details, the community form), every validator and the public
+reader `sfaf_event_age_restriction()` read. Stored in the list's spelling; an
+empty choice stores nothing and is never required to publish. `age_value()`
+accepts any case and spacing ("All Ages", "18 +") and answers '' for anything
+else.
+
+**A value typed before 3.112.1 that is not one of the three is left in the meta
+and shown nowhere**: the reader answers '' for it, so the event page has no
+Ages line and the select shows its prompt. **A save does not delete it**,
+because the select never showed it and a form may only speak for what it
+offered; choosing a range replaces it.
 
 ### What the public forms collect, and where each lands (3.111.0)
 
@@ -964,16 +979,34 @@ route would match none of preflight, the response headers or the
 built. That is not an exception to the toggles: it is a different shape, with a
 count rather than a page size and no pagination.
 
-### What's included and Location: two more dropdowns on the bar (3.112.0)
+### Tags and Location: two more dropdowns on the bar (3.112.0; called What's included until 3.112.1)
 
-**Tags are `uc_tag`, a flat taxonomy, `SFAF_Tags`.** They are managed in the
-Tags section of Series & Categories by an Admin: add, rename, retire. **Retiring
-is term meta (`_sfaf_tag_retired`), never a delete**, so a past event keeps its
-pills. A retired tag is gone from every picker and from the filter, and a
-retired slug in `uc_tag` is dropped before the query (`only_active_tags()`), so
-an old link reaches nothing rather than an empty page. **The editor's picker
-still shows a retired tag the event holds, ticked**, and `clean_ids()` keeps it
-on save: a form may only speak for what it offered. Nothing is seeded.
+**Tags are `uc_tag`, a flat taxonomy, `SFAF_Tags`.** People read "Tags"
+everywhere ("Etiquetas" on a Spanish page); the internal names
+(`whats_included`, `uc_tag`, the data attributes) kept their 3.112.0 spelling.
+They are managed in the Tags section of Series & Categories by an Admin: add,
+rename, archive, restore, delete. **Archiving is term meta
+(`_sfaf_tag_retired`, the name storage kept), never a delete**, so a past event
+keeps its pills. An archived tag is gone from every picker and from the filter,
+and an archived slug in `uc_tag` is dropped before the query
+(`only_active_tags()`), so an old link reaches nothing rather than an empty
+page. **The editor's picker still shows an archived tag the event holds,
+ticked**, and `clean_ids()` keeps it on save: a form may only speak for what it
+offered. Nothing is seeded.
+
+**Delete (3.112.1) is the irreversible one**, behind a dialog that counts every
+event that has the tag in any status, past and trashed included
+(`SFAF_Tags::events_tagged()`). `SFAF_Tags::delete()` takes it off every series
+default, forgets its old slugs (`SFAF_Slug_Aliases::forget()`), deletes the
+term (which takes the relationships) and retires the embed cache. A `uc_tag`
+address naming it then reaches nothing, as an archived one does.
+
+**A block scoped to a tag clamps the visitor's choice with
+`effective_organizer()`**, which is a plain intersection and so the right clamp
+for tags too: a choice inside the scope narrows it, one outside is dropped, an
+archived one is dropped before it gets there, and an old slug is resolved on
+both sides first. `tag-scope-test.php` proves all four through the route in all
+three modes.
 
 - **The series default** is `_sfaf_series_tags` on the series term, and it goes
   through `SFAF_Series::defaults_for_event()` like every other default: copied
@@ -997,8 +1030,8 @@ other filters (`ids_without()`), like the who picker's. **Both are carried in
 the address as `uc_tag` and `uc_loc`, through the AJAX handlers and the embed
 route's `tag`, `active_tags` and `active_locations`, and by See all events**,
 which also closes the 3.110.4 gap: a block scoped to a venue now sends
-`uc_loc=v-<slug>`. The generator offers both rows, ticked, and a "One thing
-included" scope that writes the `tag` attribute.
+`uc_loc=v-<slug>`. The generator offers both rows, ticked, and a "One tag"
+scope that writes the `tag` attribute.
 
 **A block with no `filters` attribute shows the new rows**, because absent
 means all of `filter_rows_available()`. That list is now five.
@@ -1461,27 +1494,64 @@ weights, because the temptation next time will be to move them again.
 `column-rule` had a computed width and no style. Read what paints, not what is
 set.
 
-### A stale embed.js says so, and the URL stays unversioned (3.89.0)
+### embed.js is a loader, and the calendar is embed-app.js at a version (3.112.1)
 
-**The script URL must not carry a version**, and this is a decision made by a
-defect rather than a preference. That URL is baked into a snippet somebody
-pastes once, so a version PINS it to whatever the plugin was on the day it was
-copied rather than busting anything. In 2.10.1 that left host pages loading an
-old script, and an old stylesheet with it, because the script derived the
-stylesheet URL from its own src.
+**The script URL in a snippet must not carry a version**, and this is a
+decision made by a defect rather than a preference. That URL is baked into a
+snippet somebody pastes once, so a version PINS it to whatever the plugin was on
+the day it was copied rather than busting anything. In 2.10.1 that left host
+pages loading an old script, and an old stylesheet with it.
 
-**So the version travels in the payload**, which is fetched fresh on every load
-and cannot be pinned, and `embed.js` names the mismatch in the console.
+**Unversioned was not enough either.** After 3.112.0 was installed,
+sfaf.org/calendar showed "could not be loaded" until the cache was bypassed,
+and the leading explanation was a cached 3.111.0 embed.js: freshness was
+whatever the host's caches decided.
 
-> **IT DOES NOT MAKE A STALE SCRIPT FRESH AND DOES NOT CLAIM TO.** It turns the
-> failure from invisible into named. Four fixes have looked arbitrary because a
-> release was live and the page was not, and nobody thinks to hard refresh.
+**So `public/js/embed.js` is a loader that holds no release logic**, and its code
+does not change between releases. It asks the embed route `embed_version=1`
+(answered in `handle_request()` before anything is read or built, with
+`no-store`, so nothing between keeps the answer) and adds one script,
+`embed-app.js?ver=<the answer>`. A cached loader is harmless: it asks the same
+question and gets today's answer. Rules that keep it so:
 
-**A warning rather than a reload**: a script that refetches itself when it
-dislikes a number can loop against a CDN serving two versions from two edges, on
-a page this plugin does not own. **And the constant cannot drift**, because the
-build fails when it is not `SFAF_VERSION`, which is the only thing that makes it
-worth having.
+- **Nothing in the loader may change in a release.** No version, no payload
+  handling, no reload. `embed-filters-test.php` fails on a version number, on
+  calendar code, and on a reload in it.
+- **It never reloads anything.** It adds one script, once. If the site cannot be
+  asked it loads `embed-app.js` unversioned, which is what every page did
+  before.
+- **The same route, a new parameter**, for the CORS reason in "Why no new REST
+  route can be added".
+- **`EMBED_JS_VERSION` lives in `embed-app.js`**, the fourth version place, and
+  `version-check.php` reads it there. The app still compares itself with the
+  payload's `js_version` and names a mismatch in the console, a warning and
+  never a reload; with the loader a mismatch means the site could not be asked
+  or two caches are on two releases.
+- **The generator's preview loads `embed-app.js` directly**, at `SFAF_VERSION`.
+- **`public/js/.htaccess`** asks Apache to keep the loader five minutes and any
+  `?ver=` script a year. Where static files are served by nginx, as WP Engine
+  may, it is ignored, and nothing depends on it.
+
+**The transition happens once.** A browser holding 3.112.0's embed.js, which
+was the whole calendar, runs it until its cache lets go; no server can replace a
+file a browser chose to keep. That copy still draws against this route, which
+`embed-loader-live.php` proves along with the guarantee from here on: a cached
+loader from a previous release loads this release's app.
+### What retires the embed cache (3.112.1)
+
+**Anything that changes what an embed draws must move the generation**
+(`sfaf_embed_cache_version`), or every embed keeps the old answer for ten
+minutes. A save, a status change and a trash do it through core's hooks. **Meta
+and term writes reach it only through the keys and taxonomies `SFAF_Embed`
+watches**, and until 3.112.1 four actions wrote nothing it watched: cancelling
+and reinstating (`_uc_cancelled`, `_uc_cancelled_visibility`, from the editor, a
+closed day and the series removal screen alike), Remove from the calendar, the
+events list's bulk category (`wp_set_post_terms()` alone, now `set_object_terms`)
+and a tag archived or restored (term meta). Tags joined the watched taxonomies,
+and the multi-day keys and `_uc_private` the watched meta. `cache-flush-test.php`
+runs every one through its route with core's hooks firing (`kit_fire_hooks` in
+wp-kit.php) and asserts the generation moved; a new action that changes the
+public calendar belongs in it.
 
 ### The embed has its own script, and that is where fixes go missing
 
@@ -2660,25 +2730,38 @@ name, because it inverts what that file says about yellow.
 **CANCEL EVENT IS RED (3.98.0), NOT AMBER.** It takes the event off the public
 calendar and mails everybody who registered, which is Delete's neighbourhood of
 consequence rather than "careful". The two reds are told apart by their labels
-and by the chevron, which only Cancel event carries because only it opens
-something rather than doing it.
+and Cancel event is the one of the two that asks which dates.
 
 **NEITHER DELETE NOR CANCEL EVENT MAY BE THE FIRST SUBMIT IN THE MARKUP.** A
 browser sends an Enter keypress in a text field to the form's first submit
 button in DOCUMENT order. Save is first and stays first; the left-to-right order
 is CSS `order`, which moves neither the document nor the keyboard. Delete also
 carries `form=` pointing at its own form, so implicit submission cannot reach it
-whatever the order, and Cancel event is a `<summary>` rather than a submit at
-all. Three mechanisms, and the tests assert all three.
+whatever the order, and since 3.112.1 neither button in the row submits at all:
+each only opens its dialog. The tests assert all three.
 
-**THE EXPLANATIONS AND THE FORMS ARE CARDS BELOW THE ROW**, because Save is
-pressed dozens of times a day and deleting cannot be undone from that screen. After cancelling rather than before, because the two
-read as a ladder in the order somebody should try them: cancelling keeps the
-registrations, closes new ones and offers to tell everybody who signed up;
-deleting keeps nothing and tells nobody. It posts the same route the events list
-posts, so it inherits the same refusal on an event with registrations that has
-not been cancelled, and says why rather than offering a button that bounces.
+**CANCEL EVENT AND DELETE OPEN CENTRED DIALOGS (3.112.1).** Each button in the
+row names a panel (`data-uc-dialog-open`), drawn after the row and outside the
+event form, holding the explanation, the form and the button that acts.
+portal.js lifts the panel into a `<dialog>` opened with `showModal()` and puts
+it back, hidden, when Keep, the dim or Escape closes it; the component restores
+the panel itself rather than waiting for the close event. **With no script the
+panels are simply on the page** and their Keep buttons stay hidden, the same
+arrangement as the approval prompt. The same component draws a tag's Delete.
 
+- **Cancel asks which dates** on an event with more than one upcoming date in
+  its group (`cancel_scope`: this, or `all_upcoming`, the group a save to all
+  upcoming reaches, less any event this person cannot edit; never a past one).
+  The email question counts the dates chosen, and with nobody to tell, the
+  dialog's own button is the only question.
+- **Every cancel redirect carries `edit_scope=this`**, so the editor does not
+  ask "How should this save apply?" after a cancel, a reinstate or Remove from
+  the calendar.
+- **Delete posts the same route the events list posts** and inherits its
+  refusal: on an uncancelled event with registrations no Delete is offered, the
+  editor says why, and the route refuses a constructed post. The ladder still
+  holds in what each dialog says: cancelling keeps the registrations and offers
+  to tell everybody; deleting keeps nothing and cannot be undone.
 ### The editor's cards, and the bar (3.107.0, series card moved 3.107.1)
 
 **Main column**: Series and language, Title, Schedule, Location,
@@ -3930,7 +4013,7 @@ it, so a closure's new still-open rows reached caladmin at once and the public
 calendar up to ten minutes later, which is what "the rows are not visible" was.
 `SFAF_Embed` hooks `add_option_`, `update_option_` and `delete_option_` on
 `SFAF_Closures::OPTION` to `flush_cache()`. The browser's own copy of
-`embed.js` is a separate matter and is named, not prevented (§8).
+`embed.js` is a separate matter: see "embed.js is a loader" (§1).
 
 **A closure can carry a free text note** (3.84.0), because SFAF can be closed
 overall while one site stays open and "Closed for Labor Day" alone is then wrong
@@ -5403,6 +5486,29 @@ every call to the range formatter with the tokenizer: a function that builds
 mail must pass the style and one that does not must not. `{event_time_range}`
 in a manager's own template carries it; `{event_time}` and `{event_end_time}`
 are single times and do not.
+
+### Admin alerts get one Asana copy each (3.112.1)
+
+**Five messages go to calendar admins**: Event requested (`SFAF_Request`),
+Event submitted (`SFAF_Submit`), Picture uploaded (`SFAF_Media`), Events with no
+organizer and its all-clear (`SFAF_Orphans`), and Scheduled tasks failing and
+working again (`SFAF_Cron`, plain text through `wp_mail()`). Each sends **one**
+copy to the Asana address on Settings, after its own recipients, through the
+same sender, so each becomes one Asana task. `SFAF_Asana` holds the address
+(default `x+1219554950091179@mail.asana.com`), one tick per message and the
+sanitiser.
+
+- **A separate send, never a Cc or Bcc.** A Cc shows Asana to every admin and
+  threads a reply-all into the task; one added in `SFAF_Email::send()` would be
+  added once per recipient, because every caller sends one message per address.
+  So `SFAF_Email::send()` knows nothing of it.
+- **The alert list's version** for the two form notices (the editor link), the
+  picture's attachment kept, and a copy only after a picture notice actually
+  went, so a retry does not make a second task. An address already among the
+  normal recipients gets its one message, not two.
+- **Every key is written on every save.** The form posts a marker, so an
+  unticked box is off; a save that did not come from the form keeps what is
+  stored, and the defaults where nothing is. An empty address sends none.
 
 ### Icons in email are rasters, and never a platform mark
 
@@ -7058,7 +7164,11 @@ returns 403, and that reversal is what makes clearing the key a safe way to turn
 it off. **It carries no registration count since 3.110.2**: `SFAF_Sync::event_to_array()`
 had `rsvp_count`, nothing read it, and a count is registration data that has
 no business leaving the site. `.claude/team-access-test.php` asserts the payload
-has none (plant C).
+has none (plant C). **A row carries a multi-day event's range since 3.112.1**:
+`multi_day`, `last_date` (the same as `date` on a one-day event) and `days`,
+every day from first to last; `date` is still the first day and nothing was
+renamed. A reader shows the range from `date` to `last_date`, with
+`start_time` on the first day and `end_time` on the last.
 
 What *is* actually proven: the PHP linter and the callable audit run on every
 build (see `CLAUDE.md` §2), and the committed test scripts in `.claude/`: the
@@ -8128,28 +8238,6 @@ and rewrite `_wp_attached_file`, the GUID and every stored `_uc_image_url`.
 **A reconciliation REPORT should come before either**, listing the mismatches in
 both directions, because until that exists nobody knows how many files are in
 which state.
-
-### A cached embed.js is named, not prevented (3.89.0, still open)
-
-**PART OF THIS IS NOW BUILT** and is described in the body: the payload carries
-the plugin version, `embed.js` carries the version it shipped as, and the
-mismatch is named in the console. That makes a stale script DIAGNOSABLE.
-
-**What is still open is preventing it**, and the obvious remedy is banned.
-`?ver=` on the script URL would pin every snippet already pasted rather than
-bust its cache, which is the 2.10.1 defect. The options that remain all have a
-cost somebody has to choose:
-
-- **Serve `embed.js` through a PHP endpoint** so the plugin controls its cache
-  headers. New URL, so every pasted snippet needs re-copying, and it puts a
-  static file behind WordPress on every embed page view.
-- **Set the headers at the web server**, which is a `.htaccess` or an nginx
-  rule outside this plugin and outside its ability to verify.
-- **Accept it**, now that it announces itself, and hard refresh when a release
-  does not appear.
-
-**The third is the current state and is defensible**, because the failure is no
-longer silent. Moving off it needs Mark rather than code.
 
 ### The list view, rebuilt on a horizontal card (3.82.0)
 

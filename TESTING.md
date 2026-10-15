@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 334 items.** Quick 273, needs real conditions 57, blocked on other
+**Outstanding: 343 items.** Quick 279, needs real conditions 60, blocked on other
 people 4.
 
 ---
@@ -3625,21 +3625,21 @@ click is recorded, as before.
 
 **Why it needs a person:** what the host sites rely on is not in this repository.
 
-### 1.268 Tags: add, rename, retire (3.112.0)
+### 1.268 Tags: add, rename, archive (3.112.0; Retire is Archive since 3.112.1)
 
 As an Admin, on **Series & Categories**, find **Tags**. Add "Food", "Childcare"
 and "Interpretation", rename one, and tick two onto an event in the editor's
-Classification card under Organizer. Then retire one of the two. In the editor
+Classification card under Organizer. Then archive one of the two. In the editor
 it must still be ticked on that event and missing from every other event's
 picker; on the event page its pill must still show; on the calendar it must be
-gone from the What's included dropdown. Sign in as an Editor: the Tags section
-must not offer add, rename or retire.
+gone from the Tags dropdown. Sign in as an Editor: the Tags section
+must not offer add, rename, archive or delete.
 
 **Why it needs a person:** real terms in a real database.
 
-### 1.269 What's included and Location on the calendar (3.112.0)
+### 1.269 Tags and Location on the calendar (3.112.0)
 
-On the calendar page and on one embed on sfaf.org, open **What's included** and
+On the calendar page and on one embed on sfaf.org, open **Tags** and
 **Location** beside Organizers and groups. Each must list only what the shown
 events carry, each with its count. Tick one of each and check the grid, the
 list and the sidebar all narrow, and that the address now carries `uc_tag` and
@@ -3650,11 +3650,11 @@ calendar opens filtered to that tag.
 **Why it needs a person:** real events with real venues and addresses, and a
 real host page.
 
-### 1.270 The generator's two new rows, and One thing included (3.112.0)
+### 1.270 The generator's two new rows, and One tag (3.112.0)
 
-In the embed generator, **What's included** and **Location** are ticked under
+In the embed generator, **Tags** and **Location** are ticked under
 filter rows; untick one and the pasted block must not show it. Choose **One
-thing included** with a tag and paste the block: only that tag's events, and
+tag** with a tag and paste the block: only that tag's events, and
 See all events on its sidebar opens the calendar filtered to it. A block scoped
 to a venue: See all events opens the calendar filtered to that location.
 
@@ -3676,7 +3676,7 @@ and save: it must be a one-day event again.
 
 Set a multi-day event with two tags to Spanish. The event page must read "del
 21 al 23 de mayo de 2027" in that form, and a screen reader must announce the
-pills as "Qué incluye". The tag names stay as typed. The filter bar's dropdown
+pills as "Etiquetas". The tag names stay as typed. The filter bar's dropdown
 is labelled in English on every page, and that is expected.
 
 **Why it needs a person:** a Spanish reader, and a screen reader.
@@ -3700,10 +3700,10 @@ must show as Someone else with that address.
 
 **Why it needs a person:** real mail to reply to.
 
-### 1.275 What's included on both public forms (3.112.0)
+### 1.275 Tags on both public forms (3.112.0)
 
 Fill the staff request form and the community submission form, ticking two
-tags in What's included. Each submission must arrive in Pending with those two
+tags under Tags. Each submission must arrive in Pending with those two
 tags ticked in the editor.
 
 **Why it needs a person:** real submissions.
@@ -3716,6 +3716,78 @@ preview must show it; Restore must bring the shipped text back.
 
 **Why it needs a person:** the live template screen.
 
+### 1.277 Old snippets on sfaf.org and cycletozero.org after installing 3.112.1
+
+Without a hard refresh, open sfaf.org/calendar, a program page with a pinned
+or narrowed block, and 2027.cycletozero.org's calendar (the isolated one).
+Each must draw. In the Network tab: embed.js, then the embed route with
+`embed_version=1`, then `embed-app.js?ver=3.112.1`; in the console, no "running
+embed-app.js" warning. A browser that kept 3.112.0's embed.js runs that until
+its cache lets go and must still draw. Then run
+`curl -sI https://<calendar site>/wp-content/plugins/sfaf-calendar/public/js/embed.js`
+and the same for `embed-app.js?ver=3.112.1`: a `Cache-Control` of `max-age=300`
+and `max-age=31536000` means the server reads `public/js/.htaccess`; anything
+else means WP Engine serves them from nginx and ignores it, which the loader
+does not depend on.
+
+**Why it needs a person:** the live host pages, real caches and WP Engine's server.
+
+### 1.278 Weglot still translates the calendar on sfaf.org (3.112.1)
+
+Open sfaf.org/calendar in Spanish through Weglot. The block (not isolated) must
+be translated as before: the calendar now arrives from embed-app.js, one
+request later.
+
+**Why it needs a person:** Weglot on the live site.
+
+### 1.279 Cancel event and Delete as dialogs (3.112.1)
+
+On Edit event, at desktop and on a phone: **Cancel event** opens a centred
+dialog with the choices and Cancel this event; Keep the event, Escape and a
+click on the dim close it. On a repeating event it asks This date only or All
+upcoming dates; choose all, cancel, and every upcoming date must be cancelled
+and no past one, and the editor must open with no "How should this save
+apply?" question. With nobody registered, Cancel this event cancels with no
+second question; with somebody registered it asks whether to email them.
+**Delete** opens its own dialog; on an event with registrations it is not
+offered until the event is cancelled. The events list's Cancel link must
+arrive with the dialog open, and a closed day's "Cancel it instead" must open
+the same dialog.
+
+**Why it needs a person:** the live editor, on a real repeating event.
+
+### 1.280 A tag deleted from events (3.112.1)
+
+On Series & Categories > Tags, press **Delete** on a tag used by a few events,
+one of them past. The dialog must say how many, including past ones. Delete
+it: the pills must be gone from those event pages, the tag from the filter and
+from any series default, and an old link with `uc_tag=<its slug>` must show the
+whole calendar. The embed on sfaf.org must change at once (the browser's own
+minute aside). Archive and Restore another tag: Restore must bring it back to
+the pickers.
+
+**Why it needs a person:** real terms and events, and the live embed.
+
+### 1.281 An old free-text Age range is hidden (3.112.1)
+
+On the calendar site, list the stored values:
+`wp db query "SELECT meta_value, COUNT(*) FROM wp_postmeta WHERE meta_key = '_uc_age_restriction' GROUP BY meta_value"`.
+Everything that is not All ages, 18+ or 21+ (in any case or spacing) is now
+hidden; report the values and counts. Open one such event: no Ages line on its
+page, and Event details shows "No age range". Save it without choosing: run
+the query again and the value must still be there. Choose 21+ and save: it
+must replace it.
+
+**Why it needs a person:** the live database; the 2026-09-02 export holds no
+age values at all.
+
+### 1.282 The Asana settings (3.112.1)
+
+On WP admin Settings, under Email Templates, **Asana** shows the address and
+five ticks, all on. Untick one and save: it stays off when the page reopens,
+and the others stay on. Empty the address and save: the box stays empty.
+
+**Why it needs a person:** the live Settings screen.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -4524,6 +4596,34 @@ show the range.
 
 **Why it needs real conditions:** the reminder jobs running on their own.
 
+### 2.60 The Asana tasks arrive (3.112.1)
+
+Send a staff request, a community submission and an editor picture upload;
+wait for an orphan alert (remove a user who created an event) or a scheduled
+task failure. Each must make exactly one task in the Asana project, with the
+same subject and body the admins got, and the picture attached on its task.
+The admins and websites@ must still get theirs. Replying to the request's
+admin email must still go to the person who asked.
+
+**Why it needs real conditions:** real mail into a real Asana project.
+
+### 2.61 A cancel reaches the embed at once (3.112.1)
+
+With sfaf.org's calendar open, cancel an event in caladmin and reload sfaf.org
+a minute later: the event must show Cancelled (or be gone, if taken off the
+calendar). Put it back on: it must show as on again a minute later. Before
+3.112.1 both waited up to ten minutes.
+
+**Why it needs real conditions:** the live embed and its cache.
+
+### 2.62 A multi-day event on the /events feed (3.112.1)
+
+With the feed's key, fetch `/wp-json/sfaf-calendar/v1/events` and find a
+multi-day event: `date` is its first day, `last_date` its last, `days` every
+day between, `multi_day` true. A one-day event: `multi_day` false and
+`last_date` the same as `date`.
+
+**Why it needs real conditions:** the feed is dormant and needs its key.
 ## 3. Blocked on other people
 
 Nothing here can move until somebody outside the build answers.

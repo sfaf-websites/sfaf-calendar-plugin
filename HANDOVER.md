@@ -4,18 +4,17 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-14, at 3.112.0, built on 3.111.0.
+**Last updated:** 2026-10-15, at 3.112.1, built on 3.112.0.
 
 ---
 
 ## What shipped last
 
-**3.112.0**: tags ("What's included") and **Location** on the bar; **multi-day
-events** (End date, never `_uc_end_date`); **an email to the organizer for each
-event on a closed day**, Keep and Cancel never acting from the link, Pending > On
-closed days; Drafts and Scheduled; Replies go to as people (`TESTING.md` 1.268 to
-1.276, 2.55 to 2.59). **The keepalive needs a click or a keystroke in the last
-thirty minutes** (`PROJECT.md` 5). **3.111.0**: pins, no public counts, schema 14.
+**3.112.1**: **embed.js is a loader** for `embed-app.js?ver=<site version>`, so a
+cached embed.js cannot hold a page on an old calendar; the embed cache retires on
+cancel; Cancel event and Delete as dialogs; Tags with Archive and Delete; three
+Age ranges; one Asana copy per admin alert (`TESTING.md` 1.277 to 1.282, 2.60 to
+2.62). **3.112.0**: Tags and Location, multi-day, closed-day emails, the keepalive.
 > **3.110.1: EDITORS NO LONGER HAVE EVERY EVENT.** A team decides which events a
 > person has; their level decides what they can do on them (CLAUDE.md 7,
 > `PROJECT.md` 5). An editor has what they created and what **Team and
@@ -92,8 +91,9 @@ and from 3.111.0 `calendar-files/` for PDFs, beside them.
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 334 items.** **1.271** (a
-multi-day event) and **2.55** (closing a day with events) first, then **1.249** (signed out
+**`TESTING.md` holds the manual testing backlog: 343 items.** **1.277** (old
+snippets after installing 3.112.1) and **1.281** (the hidden age values) first,
+then **1.271** (a multi-day event) and **2.55** (closing a day with events) first, then **1.249** (signed out
 with a form open), then **1.260** (that schema 14 ran), **1.255** (no count
 anywhere public) and **1.256** (a review team), then **1.235**, **1.245**
 and **1.236** (Strut's slug, See all events, retired names), then **1.225**,
@@ -114,8 +114,8 @@ live. Assume everything else unverified.
   "back on" message. Unticked, so nothing sends. `TESTING.md` 2.21 and 2.24.
 - **Español as a category** gives its colour and icon to every event it is on,
   because it sorts first. The rule working.
-- **The community form's age options and two email fields.** What the public
-  forms require is settled: unchanged, now shown (3.99.0).
+- **The community form's two email fields.** The age options are settled: All
+  ages, 18+ and 21+ (3.112.1).
 - **222 published event addresses die with The Events Calendar.** A redirect
   table from the export is cheapest.
 - **Four things the calendar publicly asserts that are untrue** (`SFAF_Seo`).

@@ -531,6 +531,24 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.112.1 =
+
+**An embed that cannot be left on an old release, the embed cache retired on cancel and reinstate, Cancel event and Delete as dialogs, Tags with Archive and Delete, Age range as three choices, and an Asana copy of each admin alert.**
+
+**THE EMBED LOADS TODAY'S CALENDAR.** embed.js, the file every pasted snippet names, is now a small loader with nothing in it that changes between releases. It asks the calendar site which release it is on and loads the calendar from embed-app.js at that version, so a browser that kept an old embed.js still gets the current calendar. Snippets already pasted, with or without ?ver= and with or without data-isolate, need no change. A browser holding 3.112.0's embed.js runs it until its cache lets go, once; that copy still draws against this release. Where the server reads public/js/.htaccess, the loader is kept for five minutes and a versioned script for a year.
+
+**THE EMBED CACHE ON CANCEL AND REINSTATE.** Cancelling an event (from the editor, a closed day or the series removal screen), reinstating it, Remove from the calendar, the events list's bulk category, and archiving, restoring or renaming a tag now retire the ten-minute embed cache. Each used to leave the old answer on every embed until it ran out.
+
+**CANCEL EVENT AND DELETE** on Edit event each open a centred dialog with the explanation and the button that does it; the cards under the action bar are gone. On an event with more than one upcoming date, Cancel asks This date only or All upcoming dates, and the editor no longer asks "How should this save apply?" after a cancel. With nobody registered, the dialog's own button cancels with no second question. An event with registrations still cannot be deleted until it is cancelled. With scripting off, both appear on the page as before.
+
+**TAGS.** "What's included" is called Tags everywhere: the editor, the filter bar, the series default, the embed generator and the pills ("Etiquetas" in Spanish). The Tags section on Series & Categories is built like Categories. Retire is Archive. Delete removes a tag from every event, past ones included, and from every series default, after a dialog that says how many events have it.
+
+**AGE RANGE** is All ages, 18+ or 21+, chosen from a list on Event details and the community form, or left empty. A value typed before this release that is not one of the three stays stored and is shown nowhere.
+
+**AN ASANA COPY.** Event requested, Event submitted, Picture uploaded, Events with no organizer (and its all-clear) and Scheduled tasks failing (and working again) each send one copy to the Asana address on Settings, after the normal recipients, so each becomes one task. Each has its own tick on Settings, all on. An empty address sends none.
+
+**THE /events FEED** carries multi_day, last_date and days on every row, so a reader can show a multi-day event's whole range. Nothing it carried before has changed.
+
 = 3.112.0 =
 
 **What's included and Location on the filter bar, multi-day events, an email to the organizer of each event on a closed day, Drafts and Scheduled tabs, Replies go to as a list of people, and a keepalive that waits for somebody to be there.**
