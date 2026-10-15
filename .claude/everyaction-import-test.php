@@ -189,7 +189,8 @@ function sfaf_event_location( $id ) {
  * The plugin, the real classes, and two readers lifted from source.
  * ------------------------------------------------------------------------ */
 require __DIR__ . '/everyaction-hub.php';
-foreach ( array( 'class-sfaf-credentials', 'class-sfaf-sources', 'class-sfaf-series', 'class-sfaf-venues', 'class-sfaf-everyaction', 'class-sfaf-source-everyaction' ) as $f ) {
+// class-sfaf-tags: a series join asks for its default tags (3.112.0).
+foreach ( array( 'class-sfaf-credentials', 'class-sfaf-sources', 'class-sfaf-series', 'class-sfaf-tags', 'class-sfaf-venues', 'class-sfaf-everyaction', 'class-sfaf-source-everyaction' ) as $f ) {
     require_once $root . '/includes/' . $f . '.php';
 }
 
