@@ -199,18 +199,59 @@ class SFAF_Submit {
     }
 
     /**
-     * Who may come, as a closed list plus an escape.
+     * THE AGE RANGES, AND THE ONLY ONES (3.112.1).
      *
-     * @return array<string,string>
+     * ONE LIST, read by every control that offers an age range (Event details
+     * on Add and Edit event, the community form), by their validators and by
+     * the one public reader, sfaf_event_age_restriction(). Stored as written
+     * here. No free text and no "Something else": a value outside this list,
+     * typed before 3.112.1, is left in the meta and shown nowhere.
+     *
+     * @return string[]
      */
-    public static function age_options() {
-        return array(
-            ''      => 'Not saying',
-            'all'   => 'All ages',
-            '18'    => '18+',
-            '21'    => '21+',
-            'other' => 'Something else',
-        );
+    public static function age_ranges() {
+        return array( 'All ages', '18+', '21+' );
+    }
+
+    /** The prompt that stands for no age range, first in every list. */
+    const AGE_PROMPT = 'No age range';
+
+    /**
+     * One of age_ranges() in its own spelling, or '' for anything else.
+     * Case and spacing do not count, so "All Ages" and "18 +" are kept.
+     *
+     * @param string $raw
+     * @return string
+     */
+    public static function age_value( $raw ) {
+        $want = strtolower( preg_replace( '/\s+/', '', (string) $raw ) );
+        if ( '' === $want ) {
+            return '';
+        }
+        foreach ( self::age_ranges() as $range ) {
+            if ( strtolower( str_replace( ' ', '', $range ) ) === $want ) {
+                return $range;
+            }
+        }
+        return '';
+    }
+
+    /**
+     * The age range select, for every form that offers one.
+     *
+     * @param string $name    The field's name.
+     * @param string $current What is stored or was posted; anything outside the list shows the prompt.
+     */
+    public static function age_select( $name, $current ) {
+        $current = self::age_value( $current );
+        ?>
+        <select name="<?php echo esc_attr( $name ); ?>">
+            <option value=""<?php selected( $current, '' ); ?>><?php echo esc_html( self::AGE_PROMPT ); ?></option>
+            <?php foreach ( self::age_ranges() as $range ) : ?>
+                <option value="<?php echo esc_attr( $range ); ?>"<?php selected( $current, $range ); ?>><?php echo esc_html( $range ); ?></option>
+            <?php endforeach; ?>
+        </select>
+        <?php
     }
 
     /**
@@ -234,9 +275,10 @@ class SFAF_Submit {
         if ( 'other' === $key ) {
             return trim( (string) $other );
         }
-        $words = ( 'cost' === $which )
-            ? array( 'free' => 'Free', 'donation' => 'Donation' )
-            : array( 'all' => 'All ages', '18' => '18+', '21' => '21+' );
+        if ( 'age' === $which ) {
+            return self::age_value( $key );
+        }
+        $words = array( 'free' => 'Free', 'donation' => 'Donation' );
         return isset( $words[ $key ] ) ? $words[ $key ] : '';
     }
 
@@ -385,11 +427,6 @@ class SFAF_Submit {
                 'inputs'  => array( 'cost_other' ),
                 'when'    => array( 'cost' => 'other' ),
             ),
-            'age_other'       => array(
-                'message' => 'Say who can come, or choose one of the options above.',
-                'inputs'  => array( 'age_other' ),
-                'when'    => array( 'age_restriction' => 'other' ),
-            ),
             'contact_name'    => array(
                 'message' => 'Give the name people should ask for.',
                 'inputs'  => array( 'contact_name' ),
@@ -430,7 +467,6 @@ class SFAF_Submit {
             'cost'              => $g( 'cost' ),
             'cost_other'        => $g( 'cost_other' ),
             'age_restriction'   => $g( 'age' ),
-            'age_other'         => $g( 'age_other' ),
             'contact_same'      => empty( $c['contact_same'] ) ? '' : '1',
             'contact_name'      => $g( 'contact_name' ),
             'contact_email'     => $g( 'contact_email' ),
@@ -595,9 +631,8 @@ class SFAF_Submit {
         // 40, the editor's Cost box (3.111.0).
         $clean['cost_other'] = ( 'other' === $clean['cost'] ) ? $line( 'cost_other', 40 ) : '';
 
-        $age_key       = isset( $post['age_restriction'] ) ? sanitize_key( wp_unslash( $post['age_restriction'] ) ) : '';
-        $clean['age']  = array_key_exists( $age_key, self::age_options() ) ? $age_key : '';
-        $clean['age_other'] = ( 'other' === $clean['age'] ) ? $line( 'age_other', 120 ) : '';
+        // One of the three, or nothing (3.112.1).
+        $clean['age'] = self::age_value( isset( $post['age_restriction'] ) ? wp_unslash( $post['age_restriction'] ) : '' );
 
         $clean['rsvp_url'] = SFAF_Submissions::url( isset( $post['rsvp_url'] ) ? wp_unslash( $post['rsvp_url'] ) : '' );
         if ( '' === $clean['rsvp_url'] && ! empty( $post['rsvp_url'] ) ) {
@@ -930,7 +965,7 @@ class SFAF_Submit {
          * somebody. See choice_phrase(). */
         foreach ( array(
             self::META_COST          => self::choice_phrase( $c['cost'], $c['cost_other'], 'cost' ),
-            self::META_AGE           => self::choice_phrase( $c['age'], $c['age_other'], 'age' ),
+            self::META_AGE           => self::age_value( $c['age'] ),
             self::META_CONTACT_NAME  => $c['contact_name'],
             self::META_CONTACT_EMAIL => $c['contact_email'],
             self::META_CONTACT_PHONE => $c['contact_phone'],
@@ -1119,7 +1154,7 @@ class SFAF_Submit {
             'Where'    => $c['location'],
         );
         $cost_words = self::choice_phrase( $c['cost'], $c['cost_other'], 'cost' );
-        $age_words   = self::choice_phrase( $c['age'], $c['age_other'], 'age' );
+        $age_words   = self::age_value( $c['age'] );
         if ( '' !== $cost_words ) {
             $rows['Cost'] = $cost_words;
         }
@@ -1203,7 +1238,7 @@ class SFAF_Submit {
             'Where'    => $c['location'],
         );
         $cost_words = self::choice_phrase( $c['cost'], $c['cost_other'], 'cost' );
-        $age_words   = self::choice_phrase( $c['age'], $c['age_other'], 'age' );
+        $age_words   = self::age_value( $c['age'] );
         if ( '' !== $cost_words ) {
             $rows['Cost'] = $cost_words;
         }
@@ -1610,19 +1645,7 @@ class SFAF_Submit {
 
                 <div class="uc-field">
                     <span class="uc-field-label">Age restriction</span>
-                    <select name="age_restriction" data-uc-reveal="uc-age-other">
-                        <?php foreach ( self::age_options() as $key => $label ) : ?>
-                            <option value="<?php echo esc_attr( $key ); ?>" <?php selected( (string) $v( 'age' ), (string) $key ); ?>>
-                                <?php echo esc_html( $label ); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <label class="uc-field uc-reveal-target" id="uc-age-other">
-                        <span class="uc-field-label">Who can come<?php echo $mark( 'age_other' ); ?></span>
-                        <input type="text" name="age_other"<?php echo $attr( 'age_other' ); ?> maxlength="120" value="<?php echo esc_attr( $v( 'age_other' ) ); ?>"
-                               placeholder="21+ after 9pm" />
-                        <?php SFAF_Submissions::field_error( $err( 'age_other' ) ); ?>
-                    </label>
+                    <?php self::age_select( 'age_restriction', (string) $v( 'age' ) ); ?>
                 </div>
                 </fieldset>
 

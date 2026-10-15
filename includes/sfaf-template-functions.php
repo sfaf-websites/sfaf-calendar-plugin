@@ -2684,9 +2684,16 @@ function sfaf_event_cost( $post_id ) {
     return trim( (string) get_post_meta( (int) $post_id, SFAF_Submit::META_COST, true ) );
 }
 
-/** @param int $post_id @return string */
+/**
+ * The event's age range: one of SFAF_Submit::age_ranges() in its spelling, or
+ * '' (3.112.1). A value typed before the list is kept in the meta and is not
+ * shown here, so it reaches no public page.
+ *
+ * @param int $post_id
+ * @return string
+ */
 function sfaf_event_age_restriction( $post_id ) {
-    return trim( (string) get_post_meta( (int) $post_id, SFAF_Submit::META_AGE, true ) );
+    return SFAF_Submit::age_value( (string) get_post_meta( (int) $post_id, SFAF_Submit::META_AGE, true ) );
 }
 
 /**

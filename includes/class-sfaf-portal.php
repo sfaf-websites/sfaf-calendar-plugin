@@ -3885,7 +3885,7 @@ class SFAF_Portal {
         <input type="hidden" name="uc_details_extra_present" value="1" />
         <label class="uc-field">
             <span class="uc-field-label">Age range</span>
-            <input type="text" name="listing_age" maxlength="120" value="<?php echo esc_attr( $g( SFAF_Submit::META_AGE ) ); ?>" />
+            <?php SFAF_Submit::age_select( 'listing_age', $g( SFAF_Submit::META_AGE ) ); ?>
         </label>
         <fieldset class="uc-field uc-contact-group">
             <legend class="uc-field-label">Contact</legend>
@@ -3948,7 +3948,22 @@ class SFAF_Portal {
             }
         }
         if ( ! empty( $_POST['uc_details_extra_present'] ) ) {
-            $put( SFAF_Submit::META_AGE, 'listing_age', 120 );
+            /*
+             * AGE RANGE IS ONE OF THREE (3.112.1). A choice is stored in the
+             * list's spelling; an empty one clears a value the select showed.
+             * A value typed before 3.112.1 that is not on the list was never
+             * shown by the select, so the select cannot speak for it, and it
+             * is left where it is (CLAUDE.md 7, the $offered guarantee).
+             */
+            $age_now = SFAF_Submit::age_value( isset( $_POST['listing_age'] ) ? wp_unslash( $_POST['listing_age'] ) : '' );
+            $age_was = (string) get_post_meta( $event_id, SFAF_Submit::META_AGE, true );
+            if ( '' !== $age_now ) {
+                if ( $age_now !== $age_was ) {
+                    update_post_meta( $event_id, SFAF_Submit::META_AGE, $age_now );
+                }
+            } elseif ( '' === trim( $age_was ) || '' !== SFAF_Submit::age_value( $age_was ) ) {
+                delete_post_meta( $event_id, SFAF_Submit::META_AGE );
+            }
             $put( SFAF_Submit::META_CONTACT_NAME, 'contact_name', 120 );
             $put( SFAF_Submit::META_CONTACT_PHONE, 'contact_phone', 60 );
             $email = isset( $_POST['contact_email'] ) ? sanitize_email( trim( (string) wp_unslash( $_POST['contact_email'] ) ) ) : '';
@@ -21392,7 +21407,7 @@ class SFAF_Portal {
         $shot_id   = (int) get_post_meta( $event_id, SFAF_Submit::META_IMAGE, true );
         $shot      = SFAF_Uploads::url( $shot_id, 'medium' );
         $cost      = (string) get_post_meta( $event_id, SFAF_Submit::META_COST, true );
-        $age       = (string) get_post_meta( $event_id, SFAF_Submit::META_AGE, true );
+        $age       = sfaf_event_age_restriction( $event_id );
         $rsvp_url  = (string) get_post_meta( $event_id, SFAF_Submit::META_RSVP_URL, true );
 
         /*

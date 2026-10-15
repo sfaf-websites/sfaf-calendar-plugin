@@ -31,7 +31,7 @@
  *   the mark is the label's own colour and weight;
  *   the one line at the top says what the mark means.
  *
- * AND THE CONDITIONS MOVE. Cost to "Something else" and back, age likewise,
+ * AND THE CONDITIONS MOVE. Cost to "Something else" and back, an age range chosen,
  * "use my details" ticked and unticked, a venue chosen and then "enter it by
  * hand". The mark has to arrive and leave with each.
  *
@@ -103,20 +103,19 @@ $steps_def  = array(
     array( 'label' => 'as it opens',                  'act' => array(),                                             'vals' => array() ),
     array( 'label' => 'cost is Something else',       'act' => array( array( 'cost', 'other' ) ),                   'vals' => array( 'cost' => 'other' ) ),
     array( 'label' => 'cost is Free again',           'act' => array( array( 'cost', 'free' ) ),                    'vals' => array( 'cost' => 'free' ) ),
-    array( 'label' => 'age is Something else',        'act' => array( array( 'age_restriction', 'other' ) ),        'vals' => array( 'cost' => 'free', 'age_restriction' => 'other' ) ),
-    array( 'label' => 'age is back on a real answer', 'act' => array( array( 'age_restriction', 'all' ) ),          'vals' => array( 'cost' => 'free', 'age_restriction' => 'all' ) ),
+    // An age range is one of three since 3.112.1, with nothing to reveal.
+    array( 'label' => 'an age range is chosen',       'act' => array( array( 'age_restriction', 'all' ) ),          'vals' => array( 'cost' => 'free', 'age_restriction' => 'all' ) ),
     array( 'label' => 'use my details is ticked',     'act' => array( array( 'contact_same', true ) ),              'vals' => array( 'cost' => 'free', 'age_restriction' => 'all', 'contact_same' => '1' ) ),
     array( 'label' => 'use my details is unticked',   'act' => array( array( 'contact_same', false ) ),             'vals' => array( 'cost' => 'free', 'age_restriction' => 'all' ) ),
     array( 'label' => 'a venue is chosen',            'act' => array( array( 'venue', '11' ) ),                     'vals' => array( 'cost' => 'free', 'age_restriction' => 'all', 'venue' => '11' ) ),
     array( 'label' => 'back to entering it by hand',  'act' => array( array( 'venue', '0' ) ),                      'vals' => array( 'cost' => 'free', 'age_restriction' => 'all', 'venue' => '' ) ),
 );
-/* The age keys the form actually offers, so the test drives real options. */
-$age_keys = array_keys( SFAF_Submit::age_options() );
-$age_real = null;
-foreach ( $age_keys as $k ) { if ( 'other' !== $k && '' !== (string) $k ) { $age_real = (string) $k; break; } }
+/* An age range the form actually offers, so the test drives a real option. */
+$age_keys = SFAF_Submit::age_ranges();
+$age_real = isset( $age_keys[0] ) ? (string) $age_keys[0] : null;
 $cost_keys = array_keys( SFAF_Submit::cost_options() );
 rm_check( in_array( 'other', $cost_keys, true ) && in_array( 'free', $cost_keys, true ), 'the cost list no longer offers free and other, so this test drives options that do not exist' );
-rm_check( null !== $age_real && in_array( 'other', $age_keys, true ), 'the age list has no real answer and no other' );
+rm_check( null !== $age_real && ! in_array( 'other', $age_keys, true ), 'the age list has no real answer, or offers something else again' );
 foreach ( $steps_def as $s ) {
     foreach ( $s['act'] as $i => $a ) { if ( 'age_restriction' === $a[0] && 'all' === $a[1] ) { $s['act'][ $i ][1] = $age_real; } }
     if ( isset( $s['vals']['age_restriction'] ) && 'all' === $s['vals']['age_restriction'] ) { $s['vals']['age_restriction'] = $age_real; }
