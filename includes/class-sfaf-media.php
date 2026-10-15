@@ -1060,16 +1060,15 @@ class SFAF_Media {
         $text  = "A picture was uploaded for an event.\n\nEvent: " . $title . "\nUploaded by: " . $by . "\nWhen: " . $when
             . "\n\nOpen the event in caladmin: " . $link . "\n\nThe picture is attached.";
 
-        $sent = SFAF_Email::send(
-            self::UPLOAD_NOTICE_TO,
-            'Picture uploaded: ' . $title,
-            SFAF_Email::shell( 'Picture uploaded for ' . $title, $body ),
-            $text,
-            '',
-            ( '' !== $path ) ? array( $path ) : array()
-        );
+        $subject = 'Picture uploaded: ' . $title;
+        $shell   = SFAF_Email::shell( 'Picture uploaded for ' . $title, $body );
+        $files   = ( '' !== $path ) ? array( $path ) : array();
+        $sent    = SFAF_Email::send( self::UPLOAD_NOTICE_TO, $subject, $shell, $text, '', $files );
         if ( $sent ) {
             update_post_meta( $att, self::META_UPLOAD_SENT, time() );
+            // One copy for Asana, with the picture (3.112.1). Only once the
+            // notice itself went, so a retry does not make a second task.
+            SFAF_Asana::copy( 'picture', array( self::UPLOAD_NOTICE_TO ), $subject, $shell, $text, '', $files );
         }
         return (bool) $sent;
     }

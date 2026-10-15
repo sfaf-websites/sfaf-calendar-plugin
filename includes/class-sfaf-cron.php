@@ -1202,7 +1202,11 @@ class SFAF_Cron {
         $body .= "If that is set up at cron-jobs.org or a similar service, start by checking that the job is\n";
         $body .= "still enabled there and what it last reported.\n";
 
-        return (bool) wp_mail( $to, $subject, $body, array( 'Content-Type: text/plain; charset=UTF-8' ) );
+        $headers = array( 'Content-Type: text/plain; charset=UTF-8' );
+        $sent    = (bool) wp_mail( $to, $subject, $body, $headers );
+        // One copy for Asana, still plain text through wp_mail() (3.112.1).
+        SFAF_Asana::copy_plain( 'cron', array( $to ), $subject, $body, $headers );
+        return $sent;
     }
 
     /** The "it is working again" email. */
@@ -1224,7 +1228,11 @@ class SFAF_Cron {
         $body .= "that have already passed are not sent retrospectively.\n\n";
         $body .= "Run log:\n" . self::admin_url() . "\n";
 
-        return (bool) wp_mail( $to, $subject, $body, array( 'Content-Type: text/plain; charset=UTF-8' ) );
+        $headers = array( 'Content-Type: text/plain; charset=UTF-8' );
+        $sent    = (bool) wp_mail( $to, $subject, $body, $headers );
+        // One copy for Asana, still plain text through wp_mail() (3.112.1).
+        SFAF_Asana::copy_plain( 'cron', array( $to ), $subject, $body, $headers );
+        return $sent;
     }
 
     /**

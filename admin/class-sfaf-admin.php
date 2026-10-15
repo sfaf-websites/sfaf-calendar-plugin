@@ -1305,6 +1305,9 @@ class SFAF_Admin {
         }
         $out['submission_alert_emails'] = implode( ', ', $alert_out );
 
+        // The Asana copy of each admin alert (3.112.1): every key, every save.
+        SFAF_Asana::sanitize( $input, $out );
+
         // Textareas.
         foreach ( array( 'email_rsvp_body', 'email_reminder_body', 'email_dayof_body' ) as $field ) {
             $out[ $field ] = isset( $input[ $field ] ) ? sanitize_textarea_field( $input[ $field ] ) : '';
@@ -2261,6 +2264,27 @@ class SFAF_Admin {
                                 Separate several with commas. An address that is not a real one is dropped on save.
                             </p>
                         </div>
+
+                        <h3>Asana</h3>
+                        <p class="description">
+                            One copy of each message ticked below goes to this address, after everybody else's.
+                            Leave it empty to send none.
+                        </p>
+                        <input type="hidden" name="uc_settings[<?php echo esc_attr( SFAF_Asana::KEY_PRESENT ); ?>]" value="1" />
+                        <div class="uc-field-row">
+                            <label for="uc_asana_address">Asana address</label>
+                            <input type="email" id="uc_asana_address" name="uc_settings[<?php echo esc_attr( SFAF_Asana::KEY_ADDRESS ); ?>]"
+                                   value="<?php echo esc_attr( SFAF_Asana::address() ); ?>"
+                                   class="uc-input" placeholder="<?php echo esc_attr( SFAF_Asana::DEFAULT_ADDRESS ); ?>" />
+                        </div>
+                        <?php foreach ( SFAF_Asana::messages() as $asana_key => $asana_name ) : ?>
+                            <div class="uc-field-row">
+                                <label for="uc_asana_copy_<?php echo esc_attr( $asana_key ); ?>"><?php echo esc_html( $asana_name ); ?></label>
+                                <label class="uc-toggle"><input type="checkbox" id="uc_asana_copy_<?php echo esc_attr( $asana_key ); ?>"
+                                       name="uc_settings[<?php echo esc_attr( SFAF_Asana::KEY_PREFIX . $asana_key ); ?>]" value="1"
+                                       <?php checked( SFAF_Asana::enabled( $asana_key ) ); ?> /><span class="uc-toggle-slider"></span></label>
+                            </div>
+                        <?php endforeach; ?>
 
                         <h3>Morning-of Reminder</h3>
                         <p class="description">

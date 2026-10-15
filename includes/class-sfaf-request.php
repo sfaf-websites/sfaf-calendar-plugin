@@ -1430,6 +1430,8 @@ class SFAF_Request {
             $row  = SFAF_Portal::link( 'pending' ) . '#uc-q-' . (int) $event_id;
             SFAF_Email::send( $address, $subject, $mine ? $shell : str_replace( esc_url( $edit ), esc_url( $row ), $shell ), $mine ? $text : str_replace( $edit, $row, $text ), $email );
         }
+        // One copy for Asana, the alert list's version (3.112.1).
+        SFAF_Asana::copy( 'request', $to, $subject, $shell, $text, $email );
     }
 
     /**

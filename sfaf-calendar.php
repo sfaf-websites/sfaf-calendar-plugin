@@ -100,6 +100,7 @@ $sfaf_includes = array(
     'includes/class-sfaf-categories.php',
     'includes/class-sfaf-tags.php',
     'includes/class-sfaf-closure-review.php',
+    'includes/class-sfaf-asana.php',
     'includes/class-sfaf-post-types.php',
     'includes/class-sfaf-shortcodes.php',
     'includes/class-sfaf-embed.php',

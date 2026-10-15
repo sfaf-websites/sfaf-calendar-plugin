@@ -293,7 +293,8 @@ function delete_post_thumbnail( $id ) { if ( ! empty( $GLOBALS['kit_thumbs'] ) )
 function wp_get_attachment_image_url( $i, $s = '' ) { return isset( $GLOBALS['kit_images'][ (int) $i ] ) ? $GLOBALS['kit_images'][ (int) $i ] : ''; }
 /* A file's address when $GLOBALS['kit_files'] names one (3.111.0), else ''. */
 function wp_get_attachment_url( $i ) { return isset( $GLOBALS['kit_files'][ (int) $i ] ) ? $GLOBALS['kit_files'][ (int) $i ] : ''; }
-function get_attached_file( $i ) { return ''; }
+/* A file on disk when $GLOBALS['kit_attached'] names one (3.112.1), else ''. */
+function get_attached_file( $i ) { return isset( $GLOBALS['kit_attached'][ (int) $i ] ) ? $GLOBALS['kit_attached'][ (int) $i ] : ''; }
 function get_transient( $k ) { return isset( $GLOBALS['kit_trans'][ $k ] ) ? $GLOBALS['kit_trans'][ $k ] : false; }
 function set_transient( $k, $v, $e = 0 ) { $GLOBALS['kit_trans'][ $k ] = $v; return true; }
 function delete_transient( $k ) { unset( $GLOBALS['kit_trans'][ $k ] ); return true; }

@@ -227,17 +227,15 @@ class SFAF_Orphans {
         $body .= "This is sent only when the list changes. If nothing is done, it will not be sent again tomorrow.\n\n";
         $body .= SFAF_Email::POSTAL . "\n";
 
-        $sent = 0;
+        $shell = SFAF_Email::shell( sprintf( '%d event%s need a new organizer', $n, 1 === $n ? '' : 's' ), $html );
+        $sent  = 0;
         foreach ( $to as $address => $name ) {
-            if ( SFAF_Email::send(
-                $address,
-                $subject,
-                SFAF_Email::shell( sprintf( '%d event%s need a new organizer', $n, 1 === $n ? '' : 's' ), $html ),
-                $body
-            ) ) {
+            if ( SFAF_Email::send( $address, $subject, $shell, $body ) ) {
                 $sent++;
             }
         }
+        // One copy for Asana (3.112.1).
+        SFAF_Asana::copy( 'orphans', array_keys( $to ), $subject, $shell, $body );
         return $sent;
     }
 
@@ -260,13 +258,16 @@ class SFAF_Orphans {
             $was, 1 === $was ? '' : 's', 1 === $was ? 'has' : 'have', 1 === $was ? 'it' : 'them', SFAF_Email::POSTAL
         );
 
-        $sent = 0;
+        $subject = sprintf( '[%s] Every calendar event has an organizer again', $site );
+        $shell   = SFAF_Email::shell( 'Nothing is unassigned any more', $html );
+        $sent    = 0;
         foreach ( $to as $address => $name ) {
-            if ( SFAF_Email::send( $address, sprintf( '[%s] Every calendar event has an organizer again', $site ),
-                SFAF_Email::shell( 'Nothing is unassigned any more', $html ), $body ) ) {
+            if ( SFAF_Email::send( $address, $subject, $shell, $body ) ) {
                 $sent++;
             }
         }
+        // One copy for Asana (3.112.1).
+        SFAF_Asana::copy( 'orphans', array_keys( $to ), $subject, $shell, $body );
         return $sent;
     }
 }
