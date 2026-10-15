@@ -151,6 +151,16 @@ function kit_run_hook( $hook, $callback, $args = array() ) {
     }
     throw new RuntimeException( "kit_run_hook: nothing registered on $hook as " . ( is_string( $callback ) ? $callback : 'a callback' ) );
 }
+/* HOOKS FIRED, ON REQUEST (3.112.1). With kit_fire_hooks set, the post, meta,
+ * term and trash writes below fire the actions core fires for them, to every
+ * recorded callback in priority order, sliced to accepted_args. Off, nothing
+ * changes: no other test sees a hook run. */
+function kit_fire( $hook, $args ) {
+    if ( empty( $GLOBALS['kit_fire_hooks'] ) || empty( $GLOBALS['kit_hooks'][ $hook ] ) ) { return; }
+    $list = $GLOBALS['kit_hooks'][ $hook ];
+    usort( $list, function ( $a, $b ) { return $a['p'] - $b['p']; } );
+    foreach ( $list as $h ) { call_user_func_array( $h['cb'], array_slice( $args, 0, $h['n'] ) ); }
+}
 function apply_filters( $tag, $value ) { return $value; }
 function add_shortcode() {} function register_activation_hook() {} function register_deactivation_hook() {} function register_uninstall_hook() {}
 function home_url( $p = '' ) { return 'https://resources.sfaf.org' . $p; }
@@ -241,6 +251,7 @@ function kit_write_post( $arr ) {
     $id = ! empty( $arr['ID'] ) ? (int) $arr['ID'] : ++$GLOBALS['kit_next'];
     $p  = get_post( $id );
     $fresh = ! $p;
+    $kit_old_status = $fresh ? 'new' : $p->post_status;
     if ( ! $p ) { $p = new WP_Post(); $p->ID = $id; }
     /* With kit_slugs on, an insert with no address gets the one WordPress
        would make from the title (3.109.0). Off, nothing changes. */
@@ -254,8 +265,12 @@ function kit_write_post( $arr ) {
     }
     $GLOBALS['kit_writes'][] = array( 'id' => $id, 'status' => $p->post_status, 'name' => (string) $p->post_name,
         'private' => isset( $GLOBALS['kit_meta'][ $id ]['_uc_private'] ) ? (string) $GLOBALS['kit_meta'][ $id ]['_uc_private'] : '' );
+    kit_fire( 'transition_post_status', array( $p->post_status, $kit_old_status, $p ) );
+    kit_fire( 'save_post_' . $p->post_type, array( $id, $p, ! $fresh ) );
+    kit_fire( 'save_post', array( $id, $p, ! $fresh ) );
     return $id;
 }
+if ( ! function_exists( 'wp_trash_post' ) ) { function wp_trash_post( $id ) { $p = get_post( $id ); if ( ! $p ) { return false; } kit_write_post( array( 'ID' => (int) $id, 'post_status' => 'trash' ) ); kit_fire( 'trashed_post', array( (int) $id, $p->post_status ) ); return $p; } }
 function wp_insert_post( $arr, $err = false ) { return kit_write_post( $arr ); }
 function wp_update_post( $arr, $err = false ) { return kit_write_post( is_object( $arr ) ? (array) $arr : $arr ); }
 function get_post_meta( $id, $k = '', $s = false ) {
@@ -264,12 +279,12 @@ function get_post_meta( $id, $k = '', $s = false ) {
     if ( ! array_key_exists( $k, $m ) ) { return $s ? '' : array(); }
     return $s ? $m[ $k ] : array( $m[ $k ] );
 }
-function update_post_meta( $id, $k, $v, $prev = '' ) { $GLOBALS['kit_meta'][ (int) $id ][ $k ] = $v; return true; }
-function add_post_meta( $id, $k, $v, $u = false ) { if ( $u && isset( $GLOBALS['kit_meta'][ (int) $id ][ $k ] ) ) { return false; } $GLOBALS['kit_meta'][ (int) $id ][ $k ] = $v; return true; }
-function delete_post_meta( $id, $k, $v = '' ) { unset( $GLOBALS['kit_meta'][ (int) $id ][ $k ] ); return true; }
+function update_post_meta( $id, $k, $v, $prev = '' ) { $had = isset( $GLOBALS['kit_meta'][ (int) $id ] ) && array_key_exists( $k, $GLOBALS['kit_meta'][ (int) $id ] ); $GLOBALS['kit_meta'][ (int) $id ][ $k ] = $v; kit_fire( $had ? 'updated_post_meta' : 'added_post_meta', array( 1, (int) $id, $k, $v ) ); return true; }
+function add_post_meta( $id, $k, $v, $u = false ) { if ( $u && isset( $GLOBALS['kit_meta'][ (int) $id ][ $k ] ) ) { return false; } $GLOBALS['kit_meta'][ (int) $id ][ $k ] = $v; kit_fire( 'added_post_meta', array( 1, (int) $id, $k, $v ) ); return true; }
+function delete_post_meta( $id, $k, $v = '' ) { $had = isset( $GLOBALS['kit_meta'][ (int) $id ] ) && array_key_exists( $k, $GLOBALS['kit_meta'][ (int) $id ] ); unset( $GLOBALS['kit_meta'][ (int) $id ][ $k ] ); if ( $had ) { kit_fire( 'deleted_post_meta', array( array( 1 ), (int) $id, $k, $v ) ); } return true; }
 function get_term_meta( $id, $k = '', $s = false ) { if ( isset( $GLOBALS['kit_term_meta'][ (int) $id ][ $k ] ) ) { $v = $GLOBALS['kit_term_meta'][ (int) $id ][ $k ]; return $s ? $v : array( $v ); } return $s ? '' : array(); }
-function update_term_meta( $id, $k, $v, $p = '' ) { $GLOBALS['kit_term_meta'][ (int) $id ][ $k ] = $v; return true; }
-function delete_term_meta( $id, $k, $v = '' ) { unset( $GLOBALS['kit_term_meta'][ (int) $id ][ $k ] ); return true; }
+function update_term_meta( $id, $k, $v, $p = '' ) { $had = isset( $GLOBALS['kit_term_meta'][ (int) $id ] ) && array_key_exists( $k, $GLOBALS['kit_term_meta'][ (int) $id ] ); $GLOBALS['kit_term_meta'][ (int) $id ][ $k ] = $v; kit_fire( $had ? 'updated_term_meta' : 'added_term_meta', array( 1, (int) $id, $k, $v ) ); return true; }
+function delete_term_meta( $id, $k, $v = '' ) { $had = isset( $GLOBALS['kit_term_meta'][ (int) $id ] ) && array_key_exists( $k, $GLOBALS['kit_term_meta'][ (int) $id ] ); unset( $GLOBALS['kit_term_meta'][ (int) $id ][ $k ] ); if ( $had ) { kit_fire( 'deleted_term_meta', array( array( 1 ), (int) $id, $k, $v ) ); } return true; }
 function has_post_thumbnail( $id = 0 ) { return false; }
 /* A test that sets $GLOBALS['kit_thumbs'] = true gets thumbnails kept in _thumbnail_id (3.108.1); every other test keeps the old answer, none. */
 function get_post_thumbnail_id( $id = 0 ) { return empty( $GLOBALS['kit_thumbs'] ) ? 0 : (int) get_post_meta( (int) $id, '_thumbnail_id', true ); }
@@ -335,7 +350,7 @@ function wp_get_object_terms( $id, $tax, $a = array() ) {
     return $out;
 }
 function get_the_terms( $id, $tax ) { $t = wp_get_post_terms( $id, $tax ); return $t ? $t : false; }
-function wp_set_object_terms( $id, $terms, $tax, $append = false ) { $GLOBALS['kit_terms'][ (int) $id ][ $tax ] = array_values( array_map( 'intval', (array) $terms ) ); return $GLOBALS['kit_terms'][ (int) $id ][ $tax ]; }
+function wp_set_object_terms( $id, $terms, $tax, $append = false ) { $old = isset( $GLOBALS['kit_terms'][ (int) $id ][ $tax ] ) ? $GLOBALS['kit_terms'][ (int) $id ][ $tax ] : array(); $GLOBALS['kit_terms'][ (int) $id ][ $tax ] = array_values( array_map( 'intval', (array) $terms ) ); kit_fire( 'set_object_terms', array( (int) $id, $terms, $GLOBALS['kit_terms'][ (int) $id ][ $tax ], $tax, $append, $old ) ); return $GLOBALS['kit_terms'][ (int) $id ][ $tax ]; }
 function wp_set_post_terms( $id, $terms, $tax, $append = false ) { return wp_set_object_terms( $id, $terms, $tax, $append ); }
 /* Real behaviour, not null (3.107.0): sfaf_help() builds its panel id with it,
    and an empty id left every help panel open on the captured pages. */
@@ -353,7 +368,7 @@ foreach ( array(
     'sanitize_hex_color', 'wp_logout_url', 'wp_print_media_templates', 'submit_button', 'rest_url', 'settings_fields',
     'get_the_date',
     '_prime_post_caches', 'wp_nonce_url',
-    'wp_reset_postdata',
+    'wp_reset_postdata', 'wp_is_post_revision', 'wp_is_post_autosave',
 ) as $kit_fn ) {
     if ( ! function_exists( $kit_fn ) ) { eval( 'function ' . $kit_fn . '( ...$a ) { return null; }' ); }
 }

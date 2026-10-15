@@ -72,6 +72,16 @@ class SFAF_Embed {
         add_action( 'updated_post_meta', array( $this, 'flush_cache_on_meta' ), 10, 4 );
         add_action( 'added_post_meta', array( $this, 'flush_cache_on_meta' ), 10, 4 );
         add_action( 'deleted_post_meta', array( $this, 'flush_cache_on_meta' ), 10, 4 );
+        /*
+         * TERMS SET ON AN EVENT WITHOUT A SAVE (3.112.1). The events list's bulk
+         * category writes wp_set_post_terms() and nothing else, so no hook above
+         * fired and the embed kept the old categories for ten minutes.
+         */
+        add_action( 'set_object_terms', array( $this, 'flush_cache_on_terms' ), 10, 4 );
+        /* A tag archived or restored is term meta alone (3.112.1). */
+        add_action( 'added_term_meta', array( $this, 'flush_cache_on_term_meta' ), 10, 3 );
+        add_action( 'updated_term_meta', array( $this, 'flush_cache_on_term_meta' ), 10, 3 );
+        add_action( 'deleted_term_meta', array( $this, 'flush_cache_on_term_meta' ), 10, 3 );
         add_action( 'created_term', array( $this, 'flush_cache_for_term' ), 10, 3 );
         add_action( 'edited_term', array( $this, 'flush_cache_for_term' ), 10, 3 );
         add_action( 'delete_term', array( $this, 'flush_cache_for_term' ), 10, 3 );
@@ -1405,6 +1415,19 @@ class SFAF_Embed {
                 '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_gofundme_raised', '_uc_donate_choice',
                 '_uc_rsvp_enabled', '_uc_show_rsvp',
                 '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
+                /*
+                 * CANCEL, REINSTATE, REMOVE FROM THE CALENDAR AND PRIVATE
+                 * (3.112.1). Cancelling and reinstating are meta and nothing
+                 * else, from the editor, the series removal screen and a closed
+                 * day alike, so a cancelled event stayed on every embed, without
+                 * its Cancelled mark, until the cache ran out; reinstating left
+                 * it off. Private moves the slug through wp_update_post() and
+                 * was already flushed there; the key is here so a write that
+                 * does not move the slug is not missed.
+                 */
+                SFAF_Cancellation::META, SFAF_Cancellation::VISIBILITY_META, SFAF_Privacy::META,
+                // Multi-day (3.112.0): an import sets these without a save.
+                '_uc_multi_day', '_uc_last_date',
             ) );
         }
 
@@ -1425,8 +1448,35 @@ class SFAF_Embed {
         // uc_series is in this list because a series now carries the name on
         // the "Part of series" badge and the image an event falls back to, so
         // renaming one or changing its image changes what a card renders.
-        $watched = array( 'uc_event_category', 'uc_organizer', 'uc_venue', SFAF_Series::TAXONOMY );
+        $watched = self::watched_taxonomies();
         if ( ! in_array( $taxonomy, $watched, true ) ) {
+            return;
+        }
+        $this->flush_cache();
+    }
+
+    /**
+     * The taxonomies a card or the filter bar draws. Tags since 3.112.1: a
+     * renamed or deleted tag changed every pill and the filter, and flushed
+     * nothing.
+     *
+     * @return string[]
+     */
+    private static function watched_taxonomies() {
+        return array( 'uc_event_category', 'uc_organizer', 'uc_venue', SFAF_Series::TAXONOMY, SFAF_Tags::TAXONOMY );
+    }
+
+    /** Flush when an event's terms in a drawn taxonomy are set (3.112.1). */
+    public function flush_cache_on_terms( $object_id, $terms = array(), $tt_ids = array(), $taxonomy = '' ) {
+        if ( ! in_array( $taxonomy, self::watched_taxonomies(), true ) || get_post_type( $object_id ) !== 'uc_event' ) {
+            return;
+        }
+        $this->flush_cache();
+    }
+
+    /** Flush when a tag is archived or restored (3.112.1). */
+    public function flush_cache_on_term_meta( $meta_id, $term_id = 0, $meta_key = '' ) {
+        if ( SFAF_Tags::META_RETIRED !== (string) $meta_key ) {
             return;
         }
         $this->flush_cache();
