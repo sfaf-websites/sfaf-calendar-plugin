@@ -287,6 +287,8 @@ function wp_editor( $content, $id, $s = array() ) { echo '<textarea name="' . es
 
 /* ---- Terms. Two of everything, unless a test says the site has none. ---- */
 function kit_fake_terms( $tax ) {
+    /* A test that names its own terms for a taxonomy gets those (3.112.1). */
+    if ( isset( $GLOBALS['kit_tax_terms'][ $tax ] ) ) { return $GLOBALS['kit_tax_terms'][ $tax ]; }
     if ( 'uc_organizer' === $tax && empty( $GLOBALS['kit_organizers'] ) ) { return array(); }
     $o = array();
     foreach ( array( 11 => 'Alpha', 12 => 'Beta' ) as $id => $n ) {
