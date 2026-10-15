@@ -364,6 +364,25 @@ foreach ( $files as $rel ) {
                 continue;
             }
 
+            /*
+             * form= OVERRIDES NESTING (3.112.1). A submit that names a form by
+             * id belongs to that form and to no other, even sitting inside a
+             * <form>; naming one that is not there leaves it with no owner at
+             * all. The dialogs moved Delete's submit inside its form with form=
+             * on it, and a plant renaming that id passed as "inside a form".
+             */
+            if ( null !== $b['owner'] && ! in_array( $b['owner'], $ids, true ) ) {
+                $fails[] = sprintf(
+                    '%s::%s  a submit button names form="%s", and no form with that id is opened in this file: %s',
+                    $rel,
+                    $method,
+                    $b['owner'],
+                    $short
+                );
+                $rows[] = array( $rel, $method, 'DANGLING', $short );
+                continue;
+            }
+
             if ( $b['inside'] ) {
                 $rows[] = array( $rel, $method, 'inside a form', $short );
                 continue;
@@ -432,6 +451,10 @@ if ( 'self' === $mode ) {
             array( '<form id="f1"></form><button type="submit" form="f1">Publish</button>', 'pass' ),
         'a form attribute naming a form that is not on the page' =>
             array( '<form id="f1"></form><button type="submit" form="nowhere">Publish</button>', 'fail' ),
+        'form= naming no form, from inside a form, has no owner (3.112.1)' =>
+            array( '<form id="f1"><button type="submit" form="nowhere">Delete</button></form>', 'fail' ),
+        'form= naming its own form, from inside it' =>
+            array( '<form id="f1"><button type="submit" form="f1">Delete</button></form>', 'pass' ),
         'a button inside the form needs no attribute' =>
             array( '<form id="f1"><button type="submit">Save</button></form>', 'pass' ),
         'a button with NO type is a submit button by default' =>
@@ -463,6 +486,7 @@ if ( 'self' === $mode ) {
         $bad_here = false;
         foreach ( $s['buttons'] as $b ) {
             if ( ! $b['typed'] ) { $bad_here = true; continue; }
+            if ( null !== $b['owner'] && ! in_array( $b['owner'], $s['ids'], true ) ) { $bad_here = true; continue; }
             if ( $b['inside'] ) { continue; }
             if ( null === $b['owner'] || ! in_array( $b['owner'], $s['ids'], true ) ) { $bad_here = true; }
         }
