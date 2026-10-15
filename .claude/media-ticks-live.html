@@ -7235,12 +7235,20 @@ function ucDismissOnBackdrop(dialog) {
              * server never has to decide whether a stored message was meant to
              * go out. See render_cancel_card() and the handler. */
             var note = form.querySelector('[data-uc-cancel-message]');
-            var people = counter ? (parseInt(counter.getAttribute('data-uc-cancel-count'), 10) || 0) : 0;
-            /* THE WAITLIST, COUNTED APART (3.106.2). A cancellation writes to it
-             * too, so cancelling asks when either number is above nought. Putting
-             * an event back on writes to registrants only and ignores it. */
-            var waiting = (!back && counter) ? (parseInt(counter.getAttribute('data-uc-cancel-waiting'), 10) || 0) : 0;
-            var told = people + waiting;
+            /* THE COUNTS FOLLOW WHICH DATES (3.112.1). On an event with more
+             * than one upcoming date the dialog asks this date or all of them,
+             * and each answer has its own numbers on the counter. Read at
+             * submit, because the answer is given after this runs. */
+            var allDates = function () {
+                var pick = form.querySelector('input[name="cancel_scope"]:checked');
+                return !!(pick && 'all_upcoming' === pick.value);
+            };
+            var number = function (name) {
+                return counter ? (parseInt(counter.getAttribute(name + (allDates() ? '-all' : '')), 10) || 0) : 0;
+            };
+            /* Inside a Cancel event dialog the dialog was the question; with
+             * nobody to tell, a second "Cancel this event?" is the same one again. */
+            var inDialog = !!form.closest('[data-uc-dialog-panel]');
             var answered = false;
 
             form.addEventListener('submit', function (e) {
@@ -7250,9 +7258,15 @@ function ucDismissOnBackdrop(dialog) {
                 }
                 e.preventDefault();
                 var submitter = e.submitter || null;
+                var people = number('data-uc-cancel-count');
+                /* THE WAITLIST, COUNTED APART (3.106.2). A cancellation writes to it
+                 * too, so cancelling asks when either number is above nought. Putting
+                 * an event back on writes to registrants only and ignores it. */
+                var waiting = back ? 0 : number('data-uc-cancel-waiting');
+                var told = people + waiting;
 
                 if (told < 1 || !field) {
-                    if (back) {
+                    if (back || inDialog) {
                         /* Nobody was told it was off, so there is nobody to
                          * tell it is back, and nothing to confirm. */
                         answered = true;
@@ -7822,6 +7836,99 @@ function ucDismissOnBackdrop(dialog) {
         document.body.classList.add('uc-modal-open');
         dialog.showModal();
     });
+})();
+
+/* ---------------------------------------------------------------------------
+   THE CENTRED DIALOGS (3.112.1): Cancel event and Delete on Edit event and a
+   closed day, and Delete on a tag.
+
+   THE PANEL IS IN THE PAGE AND THIS LIFTS IT INTO A <dialog>, the arrangement
+   the approval prompt uses. A button with data-uc-dialog-open names its panel;
+   pressing it moves the panel into a dialog opened with showModal(), and
+   closing puts it back where it was, hidden. Escape, the dim and Keep close it
+   and change nothing.
+
+   With this script missing, or a browser with no <dialog>, the panel stays on
+   the page where it was drawn, its form works as it reads, and the Keep
+   button, which only closes a dialog, stays hidden.
+
+   The forms move with their panels, and every submit names its form by id, so
+   nothing posts with the wrong form while it is in the dialog.
+   --------------------------------------------------------------------------- */
+(function () {
+    var openers = document.querySelectorAll('[data-uc-dialog-open]');
+    if (!openers.length) { return; }
+
+    var supported = false;
+    try {
+        supported = typeof document.createElement('dialog').showModal === 'function';
+    } catch (err) {
+        supported = false;
+    }
+    if (!supported) { return; }
+
+    document.querySelectorAll('[data-uc-dialog-panel]').forEach(function (panel) {
+        panel.hidden = true;
+    });
+
+    function openPanel(panel) {
+        if (panel.closest('dialog')) { return; }
+        var home = document.createComment('uc-dialog-home');
+        panel.parentNode.insertBefore(home, panel);
+
+        var dialog = document.createElement('dialog');
+        dialog.className = 'uc-confirm-modal uc-dialog';
+        var title = panel.querySelector('.uc-dialog-title');
+        if (title && title.id) { dialog.setAttribute('aria-labelledby', title.id); }
+
+        var closers = Array.prototype.slice.call(panel.querySelectorAll('[data-uc-dialog-close]'));
+
+        /* PUT BACK BY WHATEVER CLOSED IT, ONCE. Keep, the dim and Escape each
+           close the dialog and restore the panel themselves rather than wait
+           for the close event: a browser that queues that event late (headless
+           Chrome does not send it at all) would leave the panel inside a
+           closed dialog, and the next press would find nothing to open. */
+        var restored = false;
+        var restore = function () {
+            if (restored) { return; }
+            restored = true;
+            document.body.classList.remove('uc-modal-open');
+            closers.forEach(function (b) { b.removeEventListener('click', shut); b.hidden = true; });
+            panel.hidden = true;
+            home.parentNode.insertBefore(panel, home);
+            home.parentNode.removeChild(home);
+            if (dialog.open) { dialog.close(); }
+            dialog.remove();
+        };
+        var shut = function (e) { e.preventDefault(); restore(); };
+        closers.forEach(function (b) { b.hidden = false; b.addEventListener('click', shut); });
+
+        panel.hidden = false;
+        dialog.appendChild(panel);
+        document.body.appendChild(dialog);
+
+        dialog.addEventListener('close', restore);
+        dialog.addEventListener('cancel', function (e) { e.preventDefault(); restore(); });
+        ucDismissOnBackdrop(dialog);
+        dialog.addEventListener('click', function (e) { if (e.target === dialog) { restore(); } });
+        document.body.classList.add('uc-modal-open');
+        dialog.showModal();
+        /* The answer that changes nothing has the focus, so a stray Return keeps. */
+        if (closers[0]) { closers[0].focus(); }
+    }
+
+    openers.forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            var panel = document.getElementById(btn.getAttribute('data-uc-dialog-open'));
+            if (!panel) { return; }
+            e.preventDefault();
+            openPanel(panel);
+        });
+    });
+
+    /* Arrived to cancel (the events list's Cancel carries cancel=1). */
+    var auto = document.querySelector('[data-uc-dialog-panel][data-uc-dialog-autoopen]');
+    if (auto) { openPanel(auto); }
 })();
 
 </script>

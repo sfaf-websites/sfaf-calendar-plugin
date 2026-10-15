@@ -5436,4 +5436,10 @@ body.uc-modal-open { overflow: hidden; }
 .uc-portal .uc-closed-event { font-weight: 600; }
 .uc-portal .uc-closed-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .uc-portal .uc-closed-keep { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
-.uc-portal .uc-closed-day-title { margin: 0 0 10px; }
+/* The event's own name, not a card band (3.112.1): the first heading of a card
+   takes the band in capitals, `.uc-card > h2:first-child` at (0,2,1), and an
+   event's name is not a label. Four classes, so it wins without !important. */
+.uc-portal .uc-card.uc-closed-day > .uc-closed-day-title:first-child {
+    margin: 0 0 10px; padding: 0; background: none; border: 0;
+    font-family: inherit; font-size: 20px; font-weight: 700; letter-spacing: normal; text-transform: none;
+}

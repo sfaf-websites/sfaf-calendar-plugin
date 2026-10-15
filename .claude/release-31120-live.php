@@ -288,7 +288,7 @@ foreach ( array( 'desktop' => 1280, 'wide' => 430, 'phone' => 390 ) as $wn => $w
     }
     $tag = $bar ? array_values( array_filter( $bar, function ( $d ) { return 'tag' === $d['kind']; } ) ) : array();
     $loc = $bar ? array_values( array_filter( $bar, function ( $d ) { return 'location' === $d['kind']; } ) ) : array();
-    lv( $tag && "What's included" === $tag[0]['label'] && 2 === count( $tag[0]['opts'] ) && (bool) preg_match( '/^alpha=Alpha\b.*2/', $tag[0]['opts'][0] ), "A.3: bar-$wn: What's included does not offer both tags with their counts: " . json_encode( $tag ) );
+    lv( $tag && 'Tags' === $tag[0]['label'] && 2 === count( $tag[0]['opts'] ) && (bool) preg_match( '/^alpha=Alpha\b.*2/', $tag[0]['opts'][0] ), "A.3: bar-$wn: Tags does not offer both tags with their counts: " . json_encode( $tag ) );
     lv( $loc && 'Location' === $loc[0]['label'] && 3 === count( $loc[0]['opts'] ), "B: bar-$wn: Location does not offer the venue and the two addresses: " . json_encode( $loc ) );
 
     /* The event page. */
@@ -298,7 +298,7 @@ foreach ( array( 'desktop' => 1280, 'wide' => 430, 'phone' => 390 ) as $wn => $w
         lv( $p['seen'] && false !== strpos( (string) $p['href'], 'uc_tag=' ) && $p['box']['h'] >= 24 && $p['box']['right'] <= $w, "A.3: page-$wn: a pill is hidden, unlinked, under 24px or off the screen: " . json_encode( $p ) );
         lv( null !== $v( "page-$wn", 'hostedBottom' ) && $p['box']['top'] >= $v( "page-$wn", 'hostedBottom' ), "A.3: page-$wn: the pills are not under Hosted by" );
     }
-    lv( "What's included" === $v( "page-$wn", 'pillsLabel' ), "A.4: page-$wn: the pills are not named What's included" );
+    lv( 'Tags' === $v( "page-$wn", 'pillsLabel' ), "A.4: page-$wn: the pills are not named Tags" );
 
     /* The editor. */
     $m = (array) $v( "edit-$wn", 'multi' );

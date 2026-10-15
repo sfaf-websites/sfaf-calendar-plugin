@@ -80,7 +80,7 @@ lv_event( 'Coffee social', 2 );
 lv_event( 'Harm reduction drop-in', 3 );
 $pin = lv_event( 'Autumn walk for everybody, with a route map', 30, array(
     '_uc_rsvp_enabled' => '1', '_uc_capacity' => '20', SFAF_Attachments::META_ID => 900, SFAF_Attachments::META_LABEL => 'Download the route map',
-    '_uc_cost' => 'Free', '_uc_age_restriction' => '18 and over', '_uc_contact_name' => 'Pat Example', '_uc_contact_email' => 'pat@example.org', '_uc_location_name' => 'Golden Gate Park',
+    '_uc_cost' => 'Free', '_uc_age_restriction' => '18+', '_uc_contact_name' => 'Pat Example', '_uc_contact_email' => 'pat@example.org', '_uc_location_name' => 'Golden Gate Park',
 ) );
 $store =& sfaf_rsvp_count_store();
 $store[ $pin ] = 7;
@@ -263,7 +263,7 @@ foreach ( array( 'desktop', 'wide', 'phone' ) as $wn ) {
     /* UNDER THE DESCRIPTION, AND THAT IS THE ONE PLACE ASSERTED. The share
      * buttons are in the event card, beside the description on a desktop and
      * above it on a phone (order: -1, PROJECT.md 1), so no placement is both. */
-    lv( array( 'cost:Cost Free', 'ages:Ages 18 and over', 'contact:Contact Pat Example, pat@example.org' ) === $v( "page-$wn", 'facts' ), "F.2: page-$wn: the three lines are not Cost, Ages and Contact: " . json_encode( $v( "page-$wn", 'facts' ) ) );
+    lv( array( 'cost:Cost Free', 'ages:Ages 18+', 'contact:Contact Pat Example, pat@example.org' ) === $v( "page-$wn", 'facts' ), "F.2: page-$wn: the three lines are not Cost, Ages and Contact: " . json_encode( $v( "page-$wn", 'facts' ) ) );
     $order = (array) $v( "page-$wn", 'factOrder' );
     $place = array_search( 'Golden Gate Park', $order, true );
     $costi = array_search( 'Cost Free', $order, true );

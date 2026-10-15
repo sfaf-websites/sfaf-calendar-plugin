@@ -95,8 +95,9 @@ $plants = array(
     /* ---- THE KEYBOARD. -------------------------------------------------- */
     'Enter in the title field reaches Delete, because Delete became a submit of the event form' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => "        <button type=\"submit\" form=\"uc-delete-event-<?php echo (int) \$event_id; ?>\" data-uc-saved-action=\"delete\"\n                class=\"uc-btn uc-btn-stop uc-editor-delete\"",
-        'to'   => "        <button type=\"submit\" data-uc-saved-action=\"delete\"\n                class=\"uc-btn uc-btn-stop uc-editor-delete\"",
+        /* The row's Delete only opens its dialog since 3.112.1; as a bare submit it is the event form's. */
+        'from' => '<button type="button" data-uc-dialog-open="uc-delete-this" data-uc-saved-action="delete"',
+        'to'   => '<button type="submit" data-uc-dialog-open="uc-delete-this" data-uc-saved-action="delete"',
     ),
 
     'the row is reordered in the markup instead of in CSS, putting Delete first' => array(
@@ -134,8 +135,9 @@ $plants = array(
 
     'Delete loses its confirmation' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => "                data-uc-confirm=\"Delete this event? Nothing puts it back.\">Delete</button>",
-        'to'   => ">Delete</button>",
+        /* Its confirmation is its dialog since 3.112.1. */
+        'from' => '<p class="uc-dialog-lead">It takes the event, its questions and its settings. This cannot be undone.</p>',
+        'to'   => '<p class="uc-dialog-lead"></p>',
     ),
 );
 

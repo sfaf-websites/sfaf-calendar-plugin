@@ -39,8 +39,9 @@ $plants = array(
 
     'Delete points at a form id nothing opens' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => '<button type="submit" form="uc-delete-event-<?php echo (int) $event_id; ?>"',
-        'to'   => '<button type="submit" form="uc-delete-event-nowhere"',
+        /* The submit that deletes is in its dialog since 3.112.1. */
+        'from' => '<button type="submit" class="uc-btn uc-btn-danger" form="uc-delete-event-<?php echo (int) $event_id; ?>">Delete</button>',
+        'to'   => '<button type="submit" class="uc-btn uc-btn-danger" form="uc-delete-event-nowhere">Delete</button>',
     ),
 
     'the menu toggle goes back to having no type, so it is a submit button again' => array(

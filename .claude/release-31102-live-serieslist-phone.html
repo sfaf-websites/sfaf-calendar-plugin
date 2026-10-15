@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Series - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.112.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.112.0" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.112.0" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.112.1" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.112.1" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.112.1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.112.0" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.112.1" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -278,10 +278,18 @@
                         <section class="uc-section" id="uc-tags" data-uc-tags>
             <div class="uc-section-head">
                 <h2>Tags</h2>
-                <p class="uc-section-sub">What's included at an event, such as food or childcare. Events show them as pills, and the calendar filters by them.</p>
+                <p class="uc-section-sub">Label events with anything visitors may want to filter by, such as food provided, giveaways or interpretation.</p>
             </div>
             <div class="uc-card">
-                                                    <ul class="uc-cat-list uc-tag-list">
+                <details class="uc-list-fold" open>
+                <summary class="uc-card-head uc-list-fold-head">
+                    <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                    <h2>2 tags</h2>
+                </summary>
+
+                
+                                    <p class="uc-hint">An archived tag stays on the events that have it and is not offered for new ones or in the calendar's filter.</p>
+                    <ul class="uc-cat-list uc-tag-list">
                                                     <li class="uc-cat-row uc-tag-row" data-uc-tag-row="alpha">
                                                                     <span class="uc-cat-id">
                                         <strong>Alpha</strong>
@@ -291,13 +299,31 @@
                                     </span>
                                                                             <span class="uc-cat-actions">
                                             <a class="uc-btn uc-btn-sm" href="https://resources.sfaf.org/caladmin/series?tag_edit=11#uc-tags">Rename</a>
-                                            <form method="post" action="https://resources.sfaf.org/caladmin/series">
+                                            <form method="post" action="https://resources.sfaf.org/caladmin/series" id="uc-tag-archive-11">
                                                 <input type="hidden" name="uc_action" value="retire_tag" />
                                                 <input type="hidden" name="tag_id" value="11" />
                                                 <input type="hidden" name="tag_retire" value="1" />
-                                                <input type="hidden" name="uc_nonce" value="nonce" />                                                <button type="submit" class="uc-btn uc-btn-sm">Retire</button>
+                                                <input type="hidden" name="uc_nonce" value="nonce" />                                                <button type="submit" class="uc-btn uc-btn-sm" form="uc-tag-archive-11">Archive</button>
                                             </form>
+                                            <button type="button" class="uc-link-danger uc-btn-sm" data-uc-dialog-open="uc-tag-delete-11"
+                                                    aria-haspopup="dialog">Delete</button>
                                         </span>
+                                                                                <div class="uc-dialog-panel uc-tag-delete" id="uc-tag-delete-11" data-uc-dialog-panel
+                                             role="group" aria-labelledby="uc-tag-delete-title-11">
+                                            <h2 class="uc-dialog-title" id="uc-tag-delete-title-11">Delete "Alpha"?</h2>
+                                            <p class="uc-dialog-lead">
+                                                                                                    It will be removed from 4 events, including past ones. This cannot be undone.
+                                                                                            </p>
+                                            <p class="uc-hint">To stop offering it but keep it on past events, archive it instead.</p>
+                                            <form method="post" action="https://resources.sfaf.org/caladmin/series" id="uc-tag-delete-form-11">
+                                                <input type="hidden" name="uc_action" value="delete_tag" />
+                                                <input type="hidden" name="tag_id" value="11" />
+                                                <input type="hidden" name="uc_nonce" value="nonce" />                                                <div class="uc-dialog-actions">
+                                                    <button type="button" class="uc-btn" data-uc-dialog-close form="uc-tag-delete-form-11" hidden>Keep tag</button>
+                                                    <button type="submit" class="uc-btn uc-btn-danger" form="uc-tag-delete-form-11">Delete</button>
+                                                </div>
+                                            </form>
+                                        </div>
                                                                                                 </li>
                                                     <li class="uc-cat-row uc-tag-row" data-uc-tag-row="beta">
                                                                     <span class="uc-cat-id">
@@ -308,35 +334,57 @@
                                     </span>
                                                                             <span class="uc-cat-actions">
                                             <a class="uc-btn uc-btn-sm" href="https://resources.sfaf.org/caladmin/series?tag_edit=12#uc-tags">Rename</a>
-                                            <form method="post" action="https://resources.sfaf.org/caladmin/series">
+                                            <form method="post" action="https://resources.sfaf.org/caladmin/series" id="uc-tag-archive-12">
                                                 <input type="hidden" name="uc_action" value="retire_tag" />
                                                 <input type="hidden" name="tag_id" value="12" />
                                                 <input type="hidden" name="tag_retire" value="1" />
-                                                <input type="hidden" name="uc_nonce" value="nonce" />                                                <button type="submit" class="uc-btn uc-btn-sm">Retire</button>
+                                                <input type="hidden" name="uc_nonce" value="nonce" />                                                <button type="submit" class="uc-btn uc-btn-sm" form="uc-tag-archive-12">Archive</button>
                                             </form>
+                                            <button type="button" class="uc-link-danger uc-btn-sm" data-uc-dialog-open="uc-tag-delete-12"
+                                                    aria-haspopup="dialog">Delete</button>
                                         </span>
+                                                                                <div class="uc-dialog-panel uc-tag-delete" id="uc-tag-delete-12" data-uc-dialog-panel
+                                             role="group" aria-labelledby="uc-tag-delete-title-12">
+                                            <h2 class="uc-dialog-title" id="uc-tag-delete-title-12">Delete "Beta"?</h2>
+                                            <p class="uc-dialog-lead">
+                                                                                                    It will be removed from 4 events, including past ones. This cannot be undone.
+                                                                                            </p>
+                                            <p class="uc-hint">To stop offering it but keep it on past events, archive it instead.</p>
+                                            <form method="post" action="https://resources.sfaf.org/caladmin/series" id="uc-tag-delete-form-12">
+                                                <input type="hidden" name="uc_action" value="delete_tag" />
+                                                <input type="hidden" name="tag_id" value="12" />
+                                                <input type="hidden" name="uc_nonce" value="nonce" />                                                <div class="uc-dialog-actions">
+                                                    <button type="button" class="uc-btn" data-uc-dialog-close form="uc-tag-delete-form-12" hidden>Keep tag</button>
+                                                    <button type="submit" class="uc-btn uc-btn-danger" form="uc-tag-delete-form-12">Delete</button>
+                                                </div>
+                                            </form>
+                                        </div>
                                                                                                 </li>
                                             </ul>
-                    <p class="uc-hint">A retired tag stays on the events that have it and is not offered for new ones or in the calendar's filter.</p>
-                
-                                    <form method="post" action="https://resources.sfaf.org/caladmin/series" class="uc-cat-new uc-tag-new">
-                        <input type="hidden" name="uc_action" value="save_tag" />
-                        <input type="hidden" name="tag_id" value="0" />
-                        <input type="hidden" name="uc_nonce" value="nonce" />                        <label class="uc-field">
-                            <span class="uc-field-label">New tag</span>
-                            <input type="text" name="tag_name" placeholder="e.g. Food provided" required />
-                        </label>
-                        <button type="submit" class="uc-btn">Add tag</button>
-                    </form>
+                                </details>
+
+                                    <div class="uc-cat-new">
+                        <form method="post" action="https://resources.sfaf.org/caladmin/series" class="uc-cat-form uc-tag-new" id="uc-tag-new">
+                            <input type="hidden" name="uc_action" value="save_tag" />
+                            <input type="hidden" name="tag_id" value="0" />
+                            <input type="hidden" name="uc_nonce" value="nonce" />                            <label class="uc-field">
+                                <span class="uc-field-label">New tag</span>
+                                <input type="text" name="tag_name" placeholder="e.g. Food provided" required />
+                            </label>
+                            <div class="uc-cat-form-actions">
+                                <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary" form="uc-tag-new">Add tag</button>
+                            </div>
+                        </form>
+                    </div>
                             </div>
         </section>
                                 </main>
             </div>
         </div>
         <script type="application/json" id="uc-session-config">{"ajax":"https:\/\/resources.sfaf.org\/wp-admin\/admin-ajax.php","action":"sfaf_caladmin_session","signin":"https:\/\/resources.sfaf.org\/caladmin","screen":"dashboard","signedIn":true}</script>
-<script src="../public/js/caladmin-session.js?ver=3.112.0"></script>
-<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.112.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.112.0"></script>
-<script src="../public/js/portal.js?ver=3.112.0"></script>
+<script src="../public/js/caladmin-session.js?ver=3.112.1"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.112.1"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.112.1"></script>
+<script src="../public/js/portal.js?ver=3.112.1"></script>
 <script>window.RV_PAGE="serieslist-phone";(function () {
 var P = window.RV_PAGE, out = { page: P, errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
