@@ -75,7 +75,7 @@ function hp_css_block( $css ) {
     return ( false === $at ) ? '' : substr( $css, $at );
 }
 
-$ejs   = file_get_contents( $root . '/public/js/embed.js' );
+$ejs   = file_get_contents( $root . '/public/js/embed-app.js' );
 $slice = hp_slice( $js );
 $eslice = hp_slice( $ejs );
 $block = hp_css_block( $css );

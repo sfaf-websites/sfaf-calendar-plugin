@@ -12,7 +12,7 @@
  * browser then set `hidden` on both.
  *
  * So this asserts the OUTCOME instead of the sources: run the real view
- * functions out of public/js/embed.js over a block, then count the events a
+ * functions out of public/js/embed-app.js over a block, then count the events a
  * visitor can actually see. Chrome present and zero events visible is the exact
  * failure, and it is what this file fails on.
  *
@@ -32,7 +32,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const SRC = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'embed.js'), 'utf8');
+const SRC = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'embed-app.js'), 'utf8');
 
 const fails = [];
 function check(ok, msg) {
@@ -338,7 +338,7 @@ check(threw === '', 'the sidebar mode throws in bindViewToggle: ' + threw);
  * ====================================================================== */
 
 console.log('Combined mode, as a visitor sees it');
-console.log('sliced:   ' + NEEDED.join(', ') + ' out of public/js/embed.js');
+console.log('sliced:   ' + NEEDED.join(', ') + ' out of public/js/embed-app.js');
 console.log('combined: 10 sidebar rows and 2 grid entries visible, chrome visible, one uc-view class,');
 console.log('          and a stale remembered view cannot collapse it');
 console.log('list:     cards only. calendar: grid only. the toggle still switches and remembers.');

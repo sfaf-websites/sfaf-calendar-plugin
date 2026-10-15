@@ -136,14 +136,14 @@ class SFAF_Embed {
      * src, an old calendar.css with it. New markup, old CSS, and a month grid
      * that arrived on sfaf.org with no styling for any of it.
      *
-     * Unversioned, the browser revalidates on its normal schedule and a
-     * released change reaches every embedded page without anyone re-pasting
-     * anything. Freshness comes from HTTP caching, which is the mechanism that
-     * can actually see a new release; a hardcoded string cannot.
-     *
-     * NOTE FOR ANY BLOCK PASTED BEFORE 2.10.1: it still carries the old pinned
-     * URL and will keep loading a cached old script until that cache expires.
-     * Re-copying the block from the generator replaces it for good.
+     * SINCE 3.112.1 THIS IS THE LOADER, NOT THE CALENDAR. Unversioned, it was
+     * still at the mercy of HTTP caching: after 3.112.0 was installed a host
+     * page kept a cached 3.111.0 embed.js. The loader holds no release logic.
+     * It asks this route for the version (embed_version=1, answered in
+     * handle_request() before anything is built) and loads
+     * embed-app.js?ver=<version>, so a cached loader still loads today's
+     * calendar. A block pasted before 2.10.1 with a pinned ?ver= reaches the
+     * same loader, and the pin is ignored.
      */
     public static function script_url() {
         return SFAF_PLUGIN_URL . 'public/js/embed.js';
@@ -349,6 +349,8 @@ class SFAF_Embed {
                 'tag'              => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
                 'active_tags'      => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
                 'active_locations' => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
+                // 3.112.1: the loader asks which release to load. Same route, for the CORS reason above.
+                'embed_version'    => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
             ),
         ) );
     }
@@ -361,6 +363,20 @@ class SFAF_Embed {
      * pages return just the cards, for the load-more button to append.
      */
     public function handle_request( $request ) {
+        /*
+         * THE LOADER'S QUESTION (3.112.1): which release is this site on?
+         * public/js/embed.js asks it before loading embed-app.js?ver=<answer>,
+         * so it is answered before anything is read or built, and never kept by
+         * a browser or a proxy: a kept answer would pin the page to a release,
+         * which is the fault the loader exists to end.
+         */
+        if ( '' !== (string) $request->get_param( 'embed_version' ) ) {
+            $response = new WP_REST_Response( array( 'embed_version' => self::js_version() ), 200 );
+            $this->apply_cors_to_response( $response, $request );
+            $response->header( 'Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate' );
+            return $response;
+        }
+
         $params = $this->normalize_params( $request );
 
         $payload = $this->get_cached( $params );

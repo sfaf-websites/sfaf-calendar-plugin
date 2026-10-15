@@ -409,7 +409,7 @@ $edits = array(
 
     /* The build gate stops reading embed.js. */
     'ea-version-gate' => array( '.claude/version-check.php',
-        "        'EMBED_JS_VERSION (public/js/embed.js)'      => \$read( 'public/js/embed.js', \"/EMBED_JS_VERSION = '([^']+)';/\" ),\n",
+        "        'EMBED_JS_VERSION (public/js/embed-app.js)'      => \$read( 'public/js/embed-app.js', \"/EMBED_JS_VERSION = '([^']+)';/\" ),\n",
         '' ),
 
     /* ---- 3.102.0: the digest, the day before, registering without an email. ---- */

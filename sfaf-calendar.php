@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.112.0
+ * Version: 3.112.1
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.112.0' );
+define( 'SFAF_VERSION', '3.112.1' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -496,8 +496,9 @@ function sfaf_enqueue_admin_assets( $hook ) {
     );
 
     // The embed generator previews the block by running the real embed script
-    // against the real endpoint, so it loads exactly what a remote site loads.
-    // It also needs the public calendar stylesheet, since the preview renders
+    // against the real endpoint, so it loads exactly what a remote site loads:
+    // embed-app.js at this version, which is what the loader in embed.js asks
+    // for on a host page (3.112.1). It also needs the public calendar stylesheet, since the preview renders
     // actual event cards.
     if ( isset( $_GET['page'] ) && $_GET['page'] === 'uc-embed' ) {
         wp_enqueue_style(
@@ -508,7 +509,7 @@ function sfaf_enqueue_admin_assets( $hook ) {
         );
         wp_enqueue_script(
             'sfaf-calendar-embed',
-            SFAF_PLUGIN_URL . 'public/js/embed.js',
+            SFAF_PLUGIN_URL . 'public/js/embed-app.js',
             array(),
             SFAF_VERSION,
             true

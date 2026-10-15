@@ -17,7 +17,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const SRC = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'embed.js'), 'utf8');
+const SRC = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'embed-app.js'), 'utf8');
 
 const fails = [];
 function check(ok, msg) {

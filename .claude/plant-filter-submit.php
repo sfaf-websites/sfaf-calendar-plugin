@@ -30,7 +30,7 @@ $audit = 'php ' . escapeshellarg( $root . '/.claude/form-owner-audit.php' );
 $plants = array(
 
 	'THE 3.98.1 FAULT: embed.js stops preventing the pill default' => array(
-		'file'  => 'public/js/embed.js',
+		'file'  => 'public/js/embed-app.js',
 		'from'  => "                    e.preventDefault();\n                    for (var j = 0; j < buttons.length; j++) {",
 		'to'    => "                    for (var j = 0; j < buttons.length; j++) {",
 		'check' => $live,

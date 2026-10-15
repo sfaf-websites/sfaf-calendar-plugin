@@ -17,7 +17,7 @@ function tree( $v ) {
     mkdir( $dir . '/public/js', 0777, true );
     file_put_contents( $dir . '/sfaf-calendar.php', "<?php\n/**\n * Plugin Name: SFAF Calendar\n * Version: {$v['header']}\n */\ndefine( 'SFAF_VERSION', '{$v['define']}' );\n" );
     file_put_contents( $dir . '/readme.txt', "=== SFAF Calendar ===\nStable tag: {$v['readme']}\n" );
-    file_put_contents( $dir . '/public/js/embed.js', "(function () {\n    var EMBED_JS_VERSION = '{$v['embed']}';\n})();\n" );
+    file_put_contents( $dir . '/public/js/embed-app.js', "(function () {\n    var EMBED_JS_VERSION = '{$v['embed']}';\n})();\n" );
     return $dir;
 }
 function gate( $dir, $version ) {

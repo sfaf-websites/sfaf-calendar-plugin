@@ -25,7 +25,7 @@
  * ---------------------------------------------------------------------------
  * REAL: the filter bar markup, rendered by SFAF_Shortcodes::render_calendar_block()
  * through a miniature WordPress, so the buttons, their attributes and the form
- * round them are the shipped ones. REAL: public/js/embed.js and
+ * round them are the shipped ones. REAL: public/js/embed-app.js and
  * public/js/calendar.js, loaded whole, binding their own handlers. REAL: the
  * clicks, dispatched on the elements a person would aim at.
  *
@@ -547,7 +547,7 @@ JS;
  * reads as a pass. A test that fails by passing is the worst shape there is, so
  * this is done here and the escape is invisible to JavaScript.
  */
-$embed_js = str_replace( '</script', '<\\/script', file_get_contents( $root . '/public/js/embed.js' ) );
+$embed_js = str_replace( '</script', '<\\/script', file_get_contents( $root . '/public/js/embed-app.js' ) );
 $payload  = json_encode( array(
 	'html'       => $markup,
 	'css_url'    => '',
@@ -705,7 +705,7 @@ foreach ( $GLOBALS['php_notices'] as $n ) {
  * that make that true, so a fix removed from one script and not the other is
  * reported by name rather than only by a page going red.
  * ====================================================================== */
-$emb = file_get_contents( $root . '/public/js/embed.js' );
+$emb = file_get_contents( $root . '/public/js/embed-app.js' );
 $cal = file_get_contents( $root . '/public/js/calendar.js' );
 
 fs_check( (bool) preg_match( "/addEventListener\('click', function \(e\) \{\s*(\/\*.*?\*\/\s*)?e\.preventDefault\(\);/s", $emb ),

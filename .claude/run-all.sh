@@ -98,6 +98,7 @@ for f in .claude/*.php; do
     release-31120-live.php) continue ;;  # run below with --run
     plant-31110.php) continue ;;       # a fault planter for the 3.111.0 checks, not a check
     embed-isolation-live.php) continue ;; # run below with --run
+    embed-loader-live.php) continue ;;  # run below with --run
     login-check.php) continue ;;       # run last, after every capture is rewritten
     byline-live.php) continue ;;       # run below with --run; --live checks the site itself
   esac
@@ -350,6 +351,8 @@ run "release-31120-live --run" php .claude/release-31120-live.php --run
 # The embed in its shadow root under a hostile host stylesheet, and the combined
 # sidebar ending at its content (3.111.0 J and K), at 1280px and 390px.
 run "embed-isolation-live --run" php .claude/embed-isolation-live.php --run
+# A cached embed.js, the previous release's, on a host page over HTTP (3.112.1).
+run "embed-loader-live --run" php .claude/embed-loader-live.php --run
 
 echo
 # No real name or login in a tracked file (3.106.2). Last, because the browser

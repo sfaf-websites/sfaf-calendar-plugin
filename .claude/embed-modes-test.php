@@ -768,7 +768,7 @@ check( false !== strpos( $admin, 'uc-embed-source-links' ), 'the embed generator
 $js = file_get_contents( $root . '/admin/js/admin.js' );
 check( false !== strpos( $js, "attrs['data-source-links']" ), 'the generator does not write data-source-links onto the block' );
 
-$ejs = file_get_contents( $root . '/public/js/embed.js' );
+$ejs = file_get_contents( $root . '/public/js/embed-app.js' );
 check( false !== strpos( $ejs, "data-source-links" ), 'embed.js does not send the setting back to the endpoint' );
 check(
     false !== strpos( $ejs, "configured === 'combined'" ),
@@ -1279,7 +1279,7 @@ check(
     'the renderer sorts ticked terms to the top again, so the server and the two scripts disagree about the order'
 );
 $cal_js = (string) file_get_contents( $root . '/public/js/calendar.js' );
-$emb_js = (string) file_get_contents( $root . '/public/js/embed.js' );
+$emb_js = (string) file_get_contents( $root . '/public/js/embed-app.js' );
 $strip_js = function ( $js ) {
     $js = preg_replace( '#/\*.*?\*/#s', '', $js );
     return preg_replace( '#^\s*//.*$#m', '', $js );

@@ -22,7 +22,8 @@ OUT="$ROOT/sfaf-calendar-$VERSION.zip"
 # matters now: the release tag is derived from this argument, and the updater
 # compares the tag against SFAF_VERSION, so a mismatch means either an update
 # nobody can install or one that installs and then offers itself again forever.
-# Four places since 3.101.0: embed.js carries the version too. The check is its
+# Four places since 3.101.0: embed-app.js carries the version too (embed.js until
+# 3.112.1; embed.js is now the loader and carries none). The check is its
 # own script so a test can run it against a tree that disagrees.
 php "$ROOT/.claude/version-check.php" "$ROOT" "$VERSION" || exit 1
 

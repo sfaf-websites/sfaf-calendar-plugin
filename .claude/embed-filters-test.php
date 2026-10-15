@@ -25,7 +25,7 @@ $root  = dirname( __DIR__ );
 $fails = array();
 
 $cal = file_get_contents( $root . '/public/js/calendar.js' );
-$emb = file_get_contents( $root . '/public/js/embed.js' );
+$emb = file_get_contents( $root . '/public/js/embed-app.js' );
 
 /*
  * COMMENTS STRIPPED FROM THE PHP BEFORE ANY MATCH. Every docblock in
@@ -290,6 +290,54 @@ if ( preg_match( '#reportIfStale[\s\S]{0,600}?location\.reload#', $emb ) ) {
 if ( preg_match( "#function script_url\(\)[^}]*embed\.js'\s*\.\s*'\?ver#", $php )
     || preg_match( "#embed\.js\?ver#", $php ) ) {
     $fails[] = 'the embed script URL carries a version again, which PINS every pasted snippet rather than busting its cache';
+}
+
+/* ---------------------------------------------------------------------------
+ * 9. THE LOADER HOLDS NO RELEASE (3.112.1).
+ *
+ * After 3.112.0 was installed, sfaf.org kept a cached 3.111.0 embed.js. Since
+ * 3.112.1 embed.js is a loader that asks the route for the version and loads
+ * embed-app.js?ver=<it>, so a cached loader is harmless ONLY while it carries
+ * nothing that changes between releases. A version, a payload handler or a
+ * reload in it would bring the fault back.
+ * ------------------------------------------------------------------------ */
+$loader = (string) file_get_contents( $root . '/public/js/embed.js' );
+$loader_code = preg_replace( '#/\*[\s\S]*?\*/|(?<![:\'"])//[^\n]*#', '', $loader );
+if ( preg_match( '#\d+\.\d+\.\d+#', $loader_code ) ) {
+    $fails[] = 'the loader carries a version number, so a cached copy of it pins the page to a release';
+}
+if ( false !== strpos( $loader_code, 'EMBED_JS_VERSION' ) || false !== strpos( $loader_code, 'innerHTML' ) ) {
+    $fails[] = 'the loader carries calendar code; everything that changes in a release belongs in embed-app.js';
+}
+if ( substr_count( $loader, "\n" ) > 200 ) {
+    $fails[] = 'the loader is ' . substr_count( $loader, "\n" ) . ' lines; it should only ask for the version and add one script';
+}
+if ( false === strpos( $loader_code, "'embed_version=1'" ) || false === strpos( $loader_code, "'/js/embed-app.js'" )
+    || false === strpos( $loader_code, "'?ver=' + encodeURIComponent(version)" ) ) {
+    $fails[] = 'the loader does not ask the route for the version and load embed-app.js?ver=<it>';
+}
+if ( preg_match( '#location\.(reload|replace|href\s*=)#', $loader_code ) ) {
+    $fails[] = 'the loader reloads something, which can loop on a page this plugin does not own';
+}
+if ( ! preg_match( "#'embed_version'\s*=>\s*array\(#", $php ) ) {
+    $fails[] = 'the embed route has no embed_version parameter, so the loader has nothing to ask';
+}
+$hr_at = strpos( $php, 'public function handle_request(' );
+$hr    = false === $hr_at ? '' : substr( $php, $hr_at, 1600 );
+$q_at  = strpos( $hr, "get_param( 'embed_version' )" );
+$n_at  = strpos( $hr, 'normalize_params(' );
+if ( false === $q_at || false === $n_at || $q_at > $n_at ) {
+    $fails[] = 'handle_request() does not answer the version before reading the parameters and building a payload';
+} elseif ( ! preg_match( "#get_param\( 'embed_version' \)[\s\S]{0,400}?no-store#", $hr ) ) {
+    $fails[] = 'the version answer may be kept by a browser or a proxy, which pins the page to a release';
+}
+$enq = (string) file_get_contents( $root . '/sfaf-calendar.php' );
+if ( false === strpos( $enq, "SFAF_PLUGIN_URL . 'public/js/embed-app.js'," ) ) {
+    $fails[] = 'the generator preview does not load embed-app.js, so it is not the calendar a host page gets';
+}
+$ht = (string) @file_get_contents( $root . '/public/js/.htaccess' );
+if ( false === strpos( $ht, 'max-age=31536000' ) || false === strpos( $ht, '!~ m#/embed\.js$#' ) || false === strpos( $ht, '<IfModule mod_headers.c>' ) ) {
+    $fails[] = 'public/js/.htaccess is missing, unguarded, or would keep the loader for a year';
 }
 
 /* ------------------------------------------------------------------------ */
