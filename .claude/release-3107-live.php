@@ -324,7 +324,8 @@ foreach ( array_keys( $pages ) as $t ) {
     foreach ( $btns as $b ) {
         rv_check( $b['left'] >= 0 && $b['right'] <= $v( $t, 'innerW' ) && $b['bottom'] <= $v( $t, 'innerH' ), "PLANT E: $t: " . $b['t'] . ' is outside the window: ' . json_encode( $b ) );
     }
-    rv_check( $add !== (bool) $v( $t, 'actionsNote' ), "$t: the Cancel and Delete line is " . ( $v( $t, 'actionsNote' ) ? 'shown' : 'not shown' ) );
+    /* The line under the row went into each one's dialog (3.112.1). */
+    rv_check( ! $v( $t, 'actionsNote' ), "$t: the Cancel and Delete line is shown under the row; it is in each dialog since 3.112.1" );
 
     /* B.2 and B.3 */
     $reg = (array) $v( $t, 'reg' );

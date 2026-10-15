@@ -561,6 +561,7 @@ $ALLOWED = array(
     // so an admin's alone, add, rename and retire alike.
     'POST:save_tag'               => array( 'caladmin' ),
     'POST:retire_tag'             => array( 'caladmin' ),
+    'POST:delete_tag'             => array( 'caladmin' ),
     // An event on a closed day, kept (3.112.0): a decision about one event.
     'POST:closed_keep'            => array( 'event' ),
     'GET:pending'                 => array( 'caladmin' ),

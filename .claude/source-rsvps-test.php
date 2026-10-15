@@ -302,13 +302,16 @@ check( (bool) preg_match( '/\$this->render_source_rsvp_migration_note\(\);\s*\n\
  * order. Two mechanisms keep Delete away from that, and both are asserted
  * because either one alone is an edit away from being dropped. */
 
-/* ONE: Delete is not a submit of the event form at all. */
-check( (bool) preg_match( '/<button type="submit" form="uc-delete-event-<\?php echo \(int\) \$event_id; \?>"/', $portal ),
+/* ONE: Delete is not a submit of the event form at all. Since 3.112.1 the
+ * row's Delete only opens its dialog, and the submit that deletes is in the
+ * dialog, naming the delete form. */
+check( (bool) preg_match( '/<button type="button" data-uc-dialog-open="uc-delete-this" data-uc-saved-action="delete"/', $portal )
+    && (bool) preg_match( '/<button type="submit" class="uc-btn uc-btn-danger" form="uc-delete-event-<\?php echo \(int\) \$event_id; \?>">Delete<\/button>/', $portal ),
     'the Delete button no longer names the delete form, so it became a submit of the event form and Enter can reach it' );
 
 /* TWO: Save draft is still first in the markup. Positions, not presence. */
 $save_at = strpos( $portal, "name=\"save_mode\" value=\"<?php echo \$keep_status ? 'keep' : 'draft'; ?>\"" );
-$del_at  = strpos( $portal, '<button type="submit" form="uc-delete-event-' );
+$del_at  = strpos( $portal, 'form="uc-delete-event-<?php echo (int) $event_id; ?>">Delete</button>' );
 check( false !== $save_at && false !== $del_at && $save_at < $del_at,
     'Delete comes before Save draft in the markup, and the markup is what the keyboard reads' );
 
@@ -316,7 +319,7 @@ check( false !== $save_at && false !== $del_at && $save_at < $del_at,
 $css = file_get_contents( $root . '/public/css/portal.css' );
 foreach ( array(
     'uc-editor-delete'  => 1,
-    'uc-cancel-inline'  => 2,
+    'uc-cancel-open'    => 2,
     'uc-editor-save'    => 3,
     'uc-editor-publish' => 4,
 ) as $cls => $n ) {
@@ -365,13 +368,13 @@ check( (bool) preg_match( '/\.uc-editor-actions \.uc-editor-publish,\s*\n\.uc-ed
  * public calendar and mails everybody who registered, which is Delete's
  * neighbourhood of consequence rather than "careful". The two reds are told
  * apart by their labels and by the chevron, which only this one carries. */
-check( (bool) preg_match( '/<summary class="uc-btn uc-btn-stop uc-cancel-inline-toggle"/', $portal ),
+check( (bool) preg_match( '/<button type="button" class="uc-btn uc-btn-stop uc-cancel-open" data-uc-dialog-open="uc-cancel-this"/', $portal ),
     'Cancel event is amber again, which reads as "careful" for something that mails every registrant' );
-check( false !== strpos( $portal, '<span>Cancel event</span>' ),
+check( (bool) preg_match( '/data-uc-saved-action="cancel">Cancel event<\/button>/', $portal ),
     'the cancel control is labelled just "Cancel", which beside Delete does not say what it cancels' );
 
-/* AND DELETE KEEPS ITS CONFIRMATION. */
-check( (bool) preg_match( '/data-uc-confirm="Delete this event\? Nothing puts it back\."/', $portal ),
+/* AND DELETE KEEPS ITS CONFIRMATION: its dialog, which says it cannot be undone. */
+check( (bool) preg_match( '/id="uc-delete-this-title">Delete this event\?<\/h2>\s*<p class="uc-dialog-lead">It takes the event, its questions and its settings\. This cannot be undone\.<\/p>/', $portal ),
     'the Delete button lost its confirmation' );
 
 /* =========================================================================

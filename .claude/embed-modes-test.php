@@ -1575,25 +1575,25 @@ check(
     (bool) preg_match( '/<form method="post" id="<\?php echo esc_attr\( \$form_id \); \?>"/', $code_portal ),
     'the event form has no id for Save to reach it by'
 );
-/* THE CANCEL DISCLOSURE IS THE BUTTON, not a second control that opens one. */
-/* THE SUMMARY IS THE BUTTON, and the check is that nothing but whitespace and
- * a stripped comment stands between the two. A separate button in the row that
- * opened a disclosure below would be the easy version and would leave two
- * things on the screen that both say cancel. */
+/* CANCEL EVENT AND DELETE OPEN CENTRED DIALOGS (3.112.1), and that reversed
+ * what was pinned here: a <details> whose summary was the button, opening its
+ * options under the row. Now one button in the row opens one panel, which is
+ * drawn after the row and lifted into a <dialog>; there is still exactly one
+ * control that says Cancel event. */
 check(
-    (bool) preg_match( '/<details class="uc-cancel-inline"[^>]*>[\s\S]{0,200}?<summary class="uc-btn uc-btn-stop/', $code_portal ),
-    'the cancel control is no longer a details whose summary is the button, so either it is expanded by default or there are two cancel controls'
+    1 === preg_match_all( '/data-uc-dialog-open="uc-cancel-this"/', $code_portal )
+        && (bool) preg_match( '/<div class="uc-dialog-panel" id="uc-cancel-this" data-uc-dialog-panel/', $code_portal ),
+    'Cancel event is not one button opening one panel, so either there is no dialog or there are two cancel controls'
 );
 check(
-    (bool) preg_match( '/\.uc-cancel-inline\[open\] \{[^}]*flex:\s*1 1 100%/s', $cssp ),
-    'the open cancel panel no longer takes the row width, so its options shoulder the buttons aside'
+    (bool) preg_match( '/\.uc-dialog \.uc-dialog-panel \{[^}]*max-height:/s', $cssp ),
+    'the dialog panel no longer limits its height, so a long cancel form runs off a phone'
 );
-/* AND DELETE POSTS A FORM IT IS NOT INSIDE. */
+/* AND DELETE POSTS A FORM IT IS NOT INSIDE, from inside its dialog. */
 check(
-    (bool) preg_match( '/<button type="submit" form="uc-delete-event-<\?php echo \(int\) \$event_id; \?>"/', $code_portal ),
-    'the Delete button no longer names its form, so it submits whatever form encloses it'
+    (bool) preg_match( '/<button type="submit" class="uc-btn uc-btn-danger" form="uc-delete-event-<\?php echo \(int\) \$event_id; \?>">Delete<\/button>/', $code_portal ),
+    'the Delete in its dialog no longer names its form, so it submits whatever form encloses it'
 );
-
 /* --- I. A TICKED ROW IS VISIBLE. ---------------------------------------- */
 /* THE FILL IS THE WHOLE MARK NOW (3.96.0), AND THIS ASSERTION REVERSED WITH THE
  * BEHAVIOUR IT PINNED. 3.94.0 added a 3px teal edge because the fill it had

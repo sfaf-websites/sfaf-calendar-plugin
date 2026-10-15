@@ -235,6 +235,8 @@ update_post_meta( 803, SFAF_Media::META_UPLOAD, array( 'by' => 1, 'at' => strtot
 $GLOBALS['pt_mail'] = array();
 SFAF_Media::notify_event_upload( $ev );
 SFAF_Media::notify_event_upload( $ev );
+/* To websites@: the one Asana copy (3.112.1) is asana-copy-test.php's to count. */
+$GLOBALS['pt_mail'] = array_values( array_filter( $GLOBALS['pt_mail'], function ( $m ) { return 'websites@sfaf.org' === $m['to']; } ) );
 pt( 1 === count( $GLOBALS['pt_mail'] ), 'PLANT C.2: ' . count( $GLOBALS['pt_mail'] ) . ' emails for one picture saved twice' );
 $m = isset( $GLOBALS['pt_mail'][0] ) ? $GLOBALS['pt_mail'][0] : array( 'to' => '', 'subject' => '', 'body' => '' );
 pt( 'websites@sfaf.org' === $m['to'], 'C.2: the email goes to ' . $m['to'] );

@@ -122,8 +122,8 @@ $plants = array(
      * control that mails every registrant. */
     'Cancel event goes back to amber' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => "<summary class=\"uc-btn uc-btn-stop uc-cancel-inline-toggle\"",
-        'to'   => "<summary class=\"uc-btn uc-btn-caution uc-cancel-inline-toggle\"",
+        'from' => "<button type=\"button\" class=\"uc-btn uc-btn-stop uc-cancel-open\"",
+        'to'   => "<button type=\"button\" class=\"uc-btn uc-btn-caution uc-cancel-open\"",
     ),
 
     'Publish stops being the largest control in the row' => array(

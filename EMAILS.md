@@ -287,4 +287,4 @@ Labels, buttons and the calendar file's words. These are not edited on the Templ
 | Join | Participar |
 | Join the event | Participar en el evento |
 | In person and online | En persona y en línea |
-| What's included | Qué incluye |
+| Tags | Etiquetas |

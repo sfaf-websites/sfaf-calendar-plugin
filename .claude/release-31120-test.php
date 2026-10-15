@@ -122,9 +122,9 @@ t( 'A.2: an event with its own tag keeps it', isset( $fill['tag'] ), false );
 
 $pills = SFAF_Tags::pills_html( $a_food, 'page' );
 t( 'A.3: a pill links to the calendar filtered to its tag', (bool) preg_match( '#class="uc-tag-pill" href="[^"]*uc_tag=alpha"#', $pills ), true );
-t( 'A.4: the pills are named with the public string', false !== strpos( $pills, 'aria-label="What&#039;s included"' ), true );
+t( 'A.4: the pills are named with the public string', false !== strpos( $pills, 'aria-label="Tags"' ), true );
 update_post_meta( $a_food, '_uc_language', 'es' );
-t( 'A.4: in Spanish', false !== strpos( SFAF_Tags::pills_html( $a_food, 'page' ), 'aria-label="Qué incluye"' ), true );
+t( 'A.4: in Spanish', false !== strpos( SFAF_Tags::pills_html( $a_food, 'page' ), 'aria-label="Etiquetas"' ), true );
 delete_post_meta( $a_food, '_uc_language' );
 
 $portal = ( new ReflectionClass( 'SFAF_Portal' ) )->newInstanceWithoutConstructor();

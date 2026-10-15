@@ -35,7 +35,7 @@ $plants = array(
         array( $php, "        \$is_private = \$event_id ? SFAF_Privacy::is_private( \$event_id ) : false;", "        \$is_private = \$event_id ? SFAF_Privacy::is_private( \$event_id ) : false;\n        if ( ! \$event_id ) { return; }" ),
     ) ),
     'B.3: Cancel event loses its saved-action mark' => array( $parity, 'PLANT B.3', array(
-        array( $php, '        <details class="uc-cancel-inline" id="uc-cancel-this" data-uc-saved-action="cancel" data-uc-disclosure<?php', '        <details class="uc-cancel-inline" id="uc-cancel-this" data-uc-disclosure<?php' ),
+        array( $php, "                    aria-haspopup=\"dialog\" data-uc-saved-action=\"cancel\">Cancel event</button>", "                    aria-haspopup=\"dialog\">Cancel event</button>" ),
     ) ),
     'B.3: a setting marked as a saved-event action' => array( $parity, 'PLANT B.3', array(
         array( $php, '<div class="uc-field uc-private-field" data-uc-private>', '<div class="uc-field uc-private-field" data-uc-private data-uc-saved-action="private">' ),
