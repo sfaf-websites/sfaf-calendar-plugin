@@ -16692,6 +16692,7 @@ class SFAF_Portal {
                     <details class="uc-picker uc-replyto-picker" data-uc-replyto-picker>
                         <summary class="uc-picker-toggle" aria-describedby="uc-replyto-label">
                             <span class="uc-picker-label" data-uc-replyto-summary><?php echo esc_html( $reply_label ); ?></span>
+                            <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
                         </summary>
                         <div class="uc-picker-panel">
                             <label class="uc-picker-filter">

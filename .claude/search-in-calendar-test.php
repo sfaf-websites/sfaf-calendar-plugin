@@ -116,6 +116,7 @@ class SFAF_Embed { const CACHE_VERSION_OPTION = 'sfaf_embed_cache_version'; publ
 
 // The shortcode resolves an old slug through it (3.110.3).
 require_once $root . '/includes/class-sfaf-slug-aliases.php';
+require_once $root . '/includes/class-sfaf-tags.php'; // What's included (3.112.0)
 require_once $root . '/includes/class-sfaf-shortcodes.php';
 
 $sc  = new SFAF_Shortcodes();
@@ -181,7 +182,8 @@ foreach ( token_get_all( file_get_contents( $root . '/includes/class-sfaf-shortc
         $code .= $tok;
     }
 }
-if ( ! preg_match( "#foreach\s*\(\s*array\([^)]*'s'\s*\)\s*as\s*\\\$key\s*\)#", $code ) ) {
+// 's' anywhere in the list: tag and location follow it from 3.112.0.
+if ( ! preg_match( "#foreach\s*\(\s*array\([^)]*'s'[^)]*\)\s*as\s*\\\$key\s*\)#", $code ) ) {
     $fails[] = 'ajax_load_month no longer reads s off the POST, so the term never reaches the month query';
 }
 

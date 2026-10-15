@@ -425,6 +425,10 @@ class SFAF_Search {
 class SFAF_Closures {
     public static function date_warning_markup() { return ''; }
     public static function flag_for( $date ) { return ''; }
+    // A multi-day flag and On closed days (3.112.0); no closures here.
+    public static function flag_for_event( $id ) { return ''; }
+    public static function all() { return array(); }
+    public static function name( $row ) { return ''; }
 }
 
 class SFAF_Series {
@@ -446,6 +450,9 @@ require_once $root . '/includes/class-sfaf-media-folder.php';
 require_once $root . '/includes/class-sfaf-media.php';
 require_once $root . '/includes/class-sfaf-submissions.php';
 require_once $root . '/includes/class-sfaf-submit.php';
+// On closed days, a tab of Pending (3.112.0).
+if ( ! class_exists( 'SFAF_Closures' ) ) { require_once $root . '/includes/class-sfaf-closures.php'; }
+require_once $root . '/includes/class-sfaf-closure-review.php';
 require_once $root . '/includes/class-sfaf-portal.php';
 
 /* ---------------------------------------------------------------------------
