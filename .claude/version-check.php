@@ -33,6 +33,8 @@ function sfaf_version_places( $root ) {
         'SFAF_VERSION (sfaf-calendar.php)'           => $read( 'sfaf-calendar.php', "/^define\\( 'SFAF_VERSION', '([^']+)' \\);$/m" ),
         'readme Stable tag (readme.txt)'             => $read( 'readme.txt', '/^Stable tag: (\S+)$/m' ),
         'EMBED_JS_VERSION (public/js/embed-app.js)'      => $read( 'public/js/embed-app.js', "/EMBED_JS_VERSION = '([^']+)';/" ),
+        // The fifth (3.112.2): what the loader reads, so it loads this release.
+        'sfafCalendarEmbedVersion (public/js/embed-version.js)' => $read( 'public/js/embed-version.js', "/sfafCalendarEmbedVersion = '([^']+)';/" ),
     );
 }
 
@@ -54,6 +56,6 @@ if ( isset( $argv ) && realpath( $argv[0] ) === realpath( __FILE__ ) ) {
         echo "Nothing was built. Bump every place, or build the version they agree on.\n";
         exit( 1 );
     }
-    echo "version $version agrees in all four places.\n";
+    echo "version $version agrees in all five places.\n";
     exit( 0 );
 }

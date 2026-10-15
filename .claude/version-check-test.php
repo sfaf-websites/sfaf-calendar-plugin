@@ -18,6 +18,7 @@ function tree( $v ) {
     file_put_contents( $dir . '/sfaf-calendar.php', "<?php\n/**\n * Plugin Name: SFAF Calendar\n * Version: {$v['header']}\n */\ndefine( 'SFAF_VERSION', '{$v['define']}' );\n" );
     file_put_contents( $dir . '/readme.txt', "=== SFAF Calendar ===\nStable tag: {$v['readme']}\n" );
     file_put_contents( $dir . '/public/js/embed-app.js', "(function () {\n    var EMBED_JS_VERSION = '{$v['embed']}';\n})();\n" );
+    file_put_contents( $dir . '/public/js/embed-version.js', "window.sfafCalendarEmbedVersion = '{$v['loader']}';\n" );
     return $dir;
 }
 function gate( $dir, $version ) {
@@ -25,9 +26,9 @@ function gate( $dir, $version ) {
     return array( $rc, implode( "\n", $out ) );
 }
 
-$all = array( 'header' => '9.9.9', 'define' => '9.9.9', 'readme' => '9.9.9', 'embed' => '9.9.9' );
+$all = array( 'header' => '9.9.9', 'define' => '9.9.9', 'readme' => '9.9.9', 'embed' => '9.9.9', 'loader' => '9.9.9' );
 list( $rc, $out ) = gate( tree( $all ), '9.9.9' );
-if ( 0 !== $rc ) { $fails[] = "four agreeing places were refused: $out"; }
+if ( 0 !== $rc ) { $fails[] = "five agreeing places were refused: $out"; }
 
 foreach ( array_keys( $all ) as $place ) {
     $v = $all;
@@ -48,5 +49,5 @@ if ( $fails ) {
     foreach ( $fails as $f ) { echo '  . ' . $f . "\n"; }
     exit( 1 );
 }
-echo "the build gate passes four agreeing places, refuses each of the four disagreeing alone, and build-zip.sh runs it.\n";
+echo "the build gate passes five agreeing places, refuses each of the five disagreeing alone, and build-zip.sh runs it.\n";
 exit( 0 );

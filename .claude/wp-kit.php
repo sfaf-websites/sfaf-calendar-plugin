@@ -374,6 +374,11 @@ foreach ( array(
     if ( ! function_exists( $kit_fn ) ) { eval( 'function ' . $kit_fn . '( ...$a ) { return null; }' ); }
 }
 
+/* Cache priming (3.112.2): the Location index primes meta and terms in bulk. A
+   test that counts queries defines its own before loading this file. */
+if ( ! function_exists( 'update_meta_cache' ) ) { function update_meta_cache( $type, $ids ) { return true; } }
+if ( ! function_exists( 'update_object_term_cache' ) ) { function update_object_term_cache( $ids, $type ) { return true; } }
+
 require $GLOBALS['kit_root'] . '/sfaf-calendar.php';
 
 /** A private method, called. */

@@ -77,7 +77,7 @@ class SFAF_Embed {
          * category writes wp_set_post_terms() and nothing else, so no hook above
          * fired and the embed kept the old categories for ten minutes.
          */
-        add_action( 'set_object_terms', array( $this, 'flush_cache_on_terms' ), 10, 4 );
+        add_action( 'set_object_terms', array( $this, 'flush_cache_on_terms' ), 10, 6 );
         /* A tag archived or restored is term meta alone (3.112.1). */
         add_action( 'added_term_meta', array( $this, 'flush_cache_on_term_meta' ), 10, 3 );
         add_action( 'updated_term_meta', array( $this, 'flush_cache_on_term_meta' ), 10, 3 );
@@ -1163,6 +1163,14 @@ class SFAF_Embed {
 
     /** Current cache generation. */
     private function cache_version() {
+        return self::generation();
+    }
+
+    /**
+     * The cache's generation, for anything else whose answer must be retired
+     * when the embed's is (3.112.2): the Location index keys on it.
+     */
+    public static function generation() {
         return (int) get_option( self::CACHE_VERSION_OPTION, 1 );
     }
 
@@ -1474,9 +1482,22 @@ class SFAF_Embed {
         return array( 'uc_event_category', 'uc_organizer', 'uc_venue', SFAF_Series::TAXONOMY, SFAF_Tags::TAXONOMY );
     }
 
-    /** Flush when an event's terms in a drawn taxonomy are set (3.112.1). */
-    public function flush_cache_on_terms( $object_id, $terms = array(), $tt_ids = array(), $taxonomy = '' ) {
+    /**
+     * Flush when an event's terms in a drawn taxonomy CHANGE (3.112.1; only on
+     * a change since 3.112.2). Core fires set_object_terms on every
+     * wp_set_object_terms() call, changed or not, so without the comparison a
+     * save or an import that rewrites the same terms would empty every
+     * embed's cache each time.
+     */
+    public function flush_cache_on_terms( $object_id, $terms = array(), $tt_ids = array(), $taxonomy = '', $append = false, $old_tt_ids = array() ) {
         if ( ! in_array( $taxonomy, self::watched_taxonomies(), true ) || get_post_type( $object_id ) !== 'uc_event' ) {
+            return;
+        }
+        $now = array_map( 'intval', (array) $tt_ids );
+        $was = array_map( 'intval', (array) $old_tt_ids );
+        sort( $now );
+        sort( $was );
+        if ( $now === $was ) {
             return;
         }
         $this->flush_cache();

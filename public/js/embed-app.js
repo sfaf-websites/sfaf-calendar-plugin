@@ -544,7 +544,7 @@
      * loaded this file unversioned, or two caches in front of the site are on
      * two releases; it is still named, and still never acted on.
      */
-    var EMBED_JS_VERSION = '3.112.1';
+    var EMBED_JS_VERSION = '3.112.2';
     var staleReported = false;
 
     /**

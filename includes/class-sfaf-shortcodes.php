@@ -252,6 +252,11 @@ class SFAF_Shortcodes {
      *
      * @return string[]
      */
+    /** The rows a block with no filters attribute shows (3.112.2): those it had before Tags and Location. */
+    public static function filter_rows_default() {
+        return array( 'category', 'organizer', 'series' );
+    }
+
     public static function filter_rows_available() {
         return array( 'category', 'organizer', 'series', 'tag', 'location' );
     }
@@ -288,10 +293,17 @@ class SFAF_Shortcodes {
 
         $raw = strtolower( trim( (string) $raw ) );
 
+        /*
+         * NO filters ATTRIBUTE MEANS THE THREE ROWS IT ALWAYS MEANT (3.112.2).
+         * 3.112.0 gave such a block every row, Tags and Location included, and
+         * Location's index read every published event one query at a time on
+         * every block pasted before 3.50.0 (PROJECT.md 7). Tags and Location
+         * show only where a snippet names them.
+         */
         if ( '' === $raw ) {
             $all = $this->show_filters( $legacy );
             foreach ( $rows as $key => $unused ) {
-                $rows[ $key ] = $all;
+                $rows[ $key ] = $all && in_array( $key, self::filter_rows_default(), true );
             }
             return $rows;
         }
@@ -646,6 +658,22 @@ class SFAF_Shortcodes {
         if ( null !== $index ) {
             return $index;
         }
+        /*
+         * KEPT, AND BUILT IN THREE QUERIES (3.112.2). Until then this read every
+         * published event's meta and venue one query at a time, on every block
+         * with a Location row, every time the embed cache missed: two queries
+         * per event, up to two thousand, and the likeliest reason 3.112.x took
+         * sfaf.org's calendar down (PROJECT.md 7). Now the ids come back in one
+         * query, their meta and terms are primed in one each, and the answer is
+         * kept until the embed cache's generation moves, which every event save
+         * and term change already does, or the day changes.
+         */
+        $key    = 'sfaf_loc_index_' . SFAF_Embed::generation() . '_' . current_time( 'Ymd' );
+        $cached = get_transient( $key );
+        if ( is_array( $cached ) ) {
+            $index = $cached;
+            return $index;
+        }
         $index = array();
         $args  = array(
             'post_type'      => 'uc_event',
@@ -663,13 +691,18 @@ class SFAF_Shortcodes {
             ),
         );
         SFAF_Privacy::exclude( $args );
-        foreach ( (array) get_posts( $args ) as $id ) {
-            $id  = (int) ( is_object( $id ) ? $id->ID : $id );
-            $key = self::location_key_for_event( $id );
-            if ( '' !== $key ) {
-                $index[ $key ][] = $id;
+        $ids = array_map( function ( $id ) { return (int) ( is_object( $id ) ? $id->ID : $id ); }, (array) get_posts( $args ) );
+        if ( $ids ) {
+            update_meta_cache( 'post', $ids );
+            update_object_term_cache( $ids, 'uc_event' );
+        }
+        foreach ( $ids as $id ) {
+            $loc = self::location_key_for_event( $id );
+            if ( '' !== $loc ) {
+                $index[ $loc ][] = $id;
             }
         }
+        set_transient( $key, $index, DAY_IN_SECONDS );
         return $index;
     }
 
@@ -802,7 +835,14 @@ class SFAF_Shortcodes {
      */
     private function available_locations( $filters ) {
         $out = array( 'opts' => array(), 'counts' => array() );
-        foreach ( $this->ids_without( $filters, 'location' ) as $id ) {
+        $ids = array_map( 'intval', (array) $this->ids_without( $filters, 'location' ) );
+        /* Their meta and venues in one query each, not two per event (3.112.2):
+           this is the Location row's labels and counts, on every build. */
+        if ( $ids ) {
+            update_meta_cache( 'post', $ids );
+            update_object_term_cache( $ids, 'uc_event' );
+        }
+        foreach ( $ids as $id ) {
             $key = self::location_key_for_event( $id );
             if ( '' === $key ) {
                 continue;

@@ -18,6 +18,9 @@
  * pinned (?ver=2.9.0, as before 2.10.1), each with a plain block and an
  * isolated one.
  *
+ * SINCE 3.112.2 the loader reads public/js/embed-version.js?t=<5-minute bucket>,
+ * a static file, and B's second load is five minutes later on the page's clock.
+ *
  * WHAT "THE PREVIOUS RELEASE" IS. Its embed.js is served with a year's
  * max-age, so Chrome keeps it, and the site is then moved to this release:
  *
@@ -68,6 +71,12 @@ if ( 'cli-server' === PHP_SAPI ) {
         if ( 'old' === $state['phase'] ) { return $send( 'application/javascript', file_get_contents( $dir . '/embed-3.112.0.js' ), $year ); }
         if ( 'prev' === $state['phase'] ) { return $send( 'application/javascript', file_get_contents( $root . '/public/js/embed.js' ), $year ); }
         return $send( 'application/javascript', file_get_contents( $root . '/public/js/embed.js' ), 'public, max-age=300' );
+    }
+    if ( '/wp-content/plugins/sfaf-calendar/public/js/embed-version.js' === $path ) {
+        /* What the loader reads since 3.112.2, kept five minutes as the
+           shipped .htaccess asks; the previous release named 3.112.0. */
+        $v = ( 'current' === $state['phase'] ) ? $state['current'] : '3.112.0';
+        return $send( 'application/javascript', "window.sfafCalendarEmbedVersion = '" . $v . "';\n", 'public, max-age=300' );
     }
     if ( '/wp-content/plugins/sfaf-calendar/public/js/embed-app.js' === $path ) {
         $app = file_get_contents( $root . '/public/js/embed-app.js' );
@@ -196,7 +205,7 @@ foreach ( array( 'plain' => '', 'pinned' => '?ver=2.9.0' ) as $name => $pin ) {
         . '<script src="' . $cal . '/wp-content/plugins/sfaf-calendar/public/js/embed.js' . $pin . '" async></script>' . "\n"
         . '<div class="sfaf-calendar-embed" data-sfaf-calendar data-view="list" data-per-page="4" data-isolate="yes"></div>' . "\n"
         . '<script src="' . $cal . '/wp-content/plugins/sfaf-calendar/public/js/embed.js' . $pin . '" async></script>';
-    file_put_contents( $dir . '/host-' . $name . '.html', '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Host</title><script>' . $probe . '</script></head><body><h1>A host page</h1>' . $snippet . '</body></html>' );
+    file_put_contents( $dir . '/host-' . $name . '.tpl', '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Host</title><script>{{CLOCK}}' . $probe . '</script></head><body><h1>A host page</h1>' . $snippet . '</body></html>' );
 }
 
 /* Two servers, one per origin. */
@@ -216,7 +225,11 @@ $set = function ( $phase ) use ( $dir, $current ) {
     file_put_contents( $dir . '/state.json', json_encode( array( 'phase' => $phase, 'current' => $current ) ) );
     file_put_contents( $dir . '/log.txt', '' );
 };
-$load = function ( $profile, $page ) use ( $chrome, $dir, $port_host ) {
+$load = function ( $profile, $page, $skew_ms = 0 ) use ( $chrome, $dir, $port_host ) {
+    /* The page's clock, moved on by $skew_ms: the loader's five-minute bucket
+       is read from Date.now(), so this is the time passing between loads. */
+    $clock = $skew_ms ? '(function(){var n=Date.now;Date.now=function(){return n()+' . (int) $skew_ms . ';};})();' : '';
+    file_put_contents( $dir . '/host-' . $page . '.html', str_replace( '{{CLOCK}}', $clock, file_get_contents( $dir . '/host-' . $page . '.tpl' ) ) );
     $dom = shell_exec( '"' . $chrome . '" --headless --disable-gpu --no-first-run --no-default-browser-check --user-data-dir="' . $dir . '/profile-' . $profile . '"'
         . ' --window-size=1000,1400 --virtual-time-budget=20000 --dump-dom "http://127.0.0.1:' . $port_host . '/host-' . $page . '.html" 2>NUL' );
     $log = (string) @file_get_contents( $dir . '/log.txt' );
@@ -259,7 +272,8 @@ foreach ( array( 'plain', 'pinned' ) as $page ) {
     el( $g && '3.112.0' === $g['version'], "B $page: the previous release's app did not run first, found " . json_encode( $g ? $g['version'] : null ) );
     el( 1 === $count( $log, 'embed-app.js?ver=3.112.0' ), "B $page: the previous app was fetched " . $count( $log, 'embed-app.js?ver=3.112.0' ) . ' times on its first load' );
     $set( 'current' );
-    list( $g, $log ) = $load( "b-$page", $page );
+    /* Five minutes later: the next bucket, so the version file is asked anew. */
+    list( $g, $log ) = $load( "b-$page", $page, 300000 );
     $drew( "B $page, the site on $current with the previous loader cached", $g );
     el( 0 === $count( $log, '/public/js/embed.js' ), "B $page: Chrome fetched the loader again, so this load did not test a cached loader" );
     el( 0 === $count( $log, 'embed-app.js?ver=3.112.0' ), "B $page: the previous release's app was asked for again" );
@@ -267,7 +281,9 @@ foreach ( array( 'plain', 'pinned' ) as $page ) {
     el( $g && $current === $g['version'], "B $page: the calendar that drew is " . json_encode( $g ? $g['version'] : null ) . ", not $current" );
     el( $g && ! $g['warn'], "B $page: a stale-script warning: " . json_encode( $g ? $g['warn'] : null ) );
     /* Asked once per page, however many snippets the page holds: no loop. */
-    el( 1 === $count( $log, 'embed_version=1' ), "B $page: the version was asked " . $count( $log, 'embed_version=1' ) . ' times on one page load' );
+    el( 1 === $count( $log, 'embed-version.js?t=' ), "B $page: the version file was asked " . $count( $log, 'embed-version.js?t=' ) . ' times on one page load' );
+    /* And PHP was asked nothing but the calendar's own payloads. */
+    el( 0 === $count( $log, 'embed_version' ), "B $page: the loader asked the embed route for the version" );
     $report[] = "B $page: the cached loader loaded embed-app.js?ver=$current; that release drew both blocks, unwarned.";
 }
 

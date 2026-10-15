@@ -312,15 +312,24 @@ if ( false !== strpos( $loader_code, 'EMBED_JS_VERSION' ) || false !== strpos( $
 if ( substr_count( $loader, "\n" ) > 200 ) {
     $fails[] = 'the loader is ' . substr_count( $loader, "\n" ) . ' lines; it should only ask for the version and add one script';
 }
-if ( false === strpos( $loader_code, "'embed_version=1'" ) || false === strpos( $loader_code, "'/js/embed-app.js'" )
+/* SINCE 3.112.2 IT READS A STATIC FILE, under a five-minute bucket, and asks
+ * PHP nothing: asking the route made every page view a WordPress request. */
+if ( false === strpos( $loader_code, "beside('embed-version.js') + '?t=' + bucket" ) || false === strpos( $loader_code, "beside('embed-app.js')" )
     || false === strpos( $loader_code, "'?ver=' + encodeURIComponent(version)" ) ) {
-    $fails[] = 'the loader does not ask the route for the version and load embed-app.js?ver=<it>';
+    $fails[] = 'the loader does not read embed-version.js under a bucket and load embed-app.js?ver=<it>';
+}
+if ( false !== strpos( $loader_code, 'XMLHttpRequest' ) || false !== strpos( $loader_code, 'embed_version' ) ) {
+    $fails[] = 'the loader asks the embed route again, a WordPress request on every page view';
+}
+if ( ! preg_match( "#sfafCalendarEmbedVersion = '([0-9.]+)';#", (string) @file_get_contents( $root . '/public/js/embed-version.js' ), $ev ) || ! isset( $js_v[1] ) || $ev[1] !== $js_v[1] ) {
+    $fails[] = 'embed-version.js does not name the release embed-app.js is';
 }
 if ( preg_match( '#location\.(reload|replace|href\s*=)#', $loader_code ) ) {
     $fails[] = 'the loader reloads something, which can loop on a page this plugin does not own';
 }
+/* The route still answers a 3.112.1 loader a browser may hold. */
 if ( ! preg_match( "#'embed_version'\s*=>\s*array\(#", $php ) ) {
-    $fails[] = 'the embed route has no embed_version parameter, so the loader has nothing to ask';
+    $fails[] = 'the embed route stopped answering embed_version, which a cached 3.112.1 loader asks';
 }
 $hr_at = strpos( $php, 'public function handle_request(' );
 $hr    = false === $hr_at ? '' : substr( $php, $hr_at, 1600 );
@@ -336,8 +345,9 @@ if ( false === strpos( $enq, "SFAF_PLUGIN_URL . 'public/js/embed-app.js'," ) ) {
     $fails[] = 'the generator preview does not load embed-app.js, so it is not the calendar a host page gets';
 }
 $ht = (string) @file_get_contents( $root . '/public/js/.htaccess' );
-if ( false === strpos( $ht, 'max-age=31536000' ) || false === strpos( $ht, '!~ m#/embed\.js$#' ) || false === strpos( $ht, '<IfModule mod_headers.c>' ) ) {
-    $fails[] = 'public/js/.htaccess is missing, unguarded, or would keep the loader for a year';
+if ( false === strpos( $ht, '<IfModule mod_headers.c>' ) || false === strpos( $ht, '<FilesMatch "^embed(-version)?\.js$">' )
+    || ! preg_match( '#\^embed\(-version\)\?\\\\\.js\$">\s*Header set Cache-Control "public, max-age=300"#', $ht ) || false !== strpos( $ht, '<If ' ) ) {
+    $fails[] = 'public/js/.htaccess is missing, unguarded, keeps the loader or the version file past five minutes, or uses <If>, which LiteSpeed does not fully support';
 }
 
 /* ------------------------------------------------------------------------ */

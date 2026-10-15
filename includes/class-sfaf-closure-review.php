@@ -70,6 +70,11 @@ class SFAF_Closure_Review {
             ),
         ) );
 
+        /* Every event's meta in one query, not one each (3.112.2): this runs
+           every fifteen minutes over every upcoming event. */
+        if ( $q->posts ) {
+            update_meta_cache( 'post', array_map( 'intval', (array) $q->posts ) );
+        }
         $out = array();
         foreach ( (array) $q->posts as $id ) {
             $id = (int) $id;

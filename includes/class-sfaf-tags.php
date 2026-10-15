@@ -96,7 +96,9 @@ class SFAF_Tags {
      * @return WP_Term[]
      */
     public static function for_event( $post_id ) {
-        $terms = wp_get_post_terms( (int) $post_id, self::TAXONOMY );
+        // From the term cache the listing's query primed (3.112.2): wp_get_post_terms()
+        // was a query per card.
+        $terms = get_the_terms( (int) $post_id, self::TAXONOMY );
         if ( is_wp_error( $terms ) || ! is_array( $terms ) ) {
             return array();
         }
