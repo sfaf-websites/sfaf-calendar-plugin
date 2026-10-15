@@ -7863,23 +7863,35 @@ function ucDismissOnBackdrop(dialog) {
         if (title && title.id) { dialog.setAttribute('aria-labelledby', title.id); }
 
         var closers = Array.prototype.slice.call(panel.querySelectorAll('[data-uc-dialog-close]'));
-        var shut = function (e) { e.preventDefault(); dialog.close(); };
+
+        /* PUT BACK BY WHATEVER CLOSED IT, ONCE. Keep, the dim and Escape each
+           close the dialog and restore the panel themselves rather than wait
+           for the close event: a browser that queues that event late (headless
+           Chrome does not send it at all) would leave the panel inside a
+           closed dialog, and the next press would find nothing to open. */
+        var restored = false;
+        var restore = function () {
+            if (restored) { return; }
+            restored = true;
+            document.body.classList.remove('uc-modal-open');
+            closers.forEach(function (b) { b.removeEventListener('click', shut); b.hidden = true; });
+            panel.hidden = true;
+            home.parentNode.insertBefore(panel, home);
+            home.parentNode.removeChild(home);
+            if (dialog.open) { dialog.close(); }
+            dialog.remove();
+        };
+        var shut = function (e) { e.preventDefault(); restore(); };
         closers.forEach(function (b) { b.hidden = false; b.addEventListener('click', shut); });
 
         panel.hidden = false;
         dialog.appendChild(panel);
         document.body.appendChild(dialog);
 
-        dialog.addEventListener('close', function () {
-            document.body.classList.remove('uc-modal-open');
-            closers.forEach(function (b) { b.removeEventListener('click', shut); b.hidden = true; });
-            panel.hidden = true;
-            home.parentNode.insertBefore(panel, home);
-            home.parentNode.removeChild(home);
-            dialog.remove();
-        });
-
+        dialog.addEventListener('close', restore);
+        dialog.addEventListener('cancel', function (e) { e.preventDefault(); restore(); });
         ucDismissOnBackdrop(dialog);
+        dialog.addEventListener('click', function (e) { if (e.target === dialog) { restore(); } });
         document.body.classList.add('uc-modal-open');
         dialog.showModal();
         /* The answer that changes nothing has the focus, so a stray Return keeps. */

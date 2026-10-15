@@ -190,6 +190,14 @@ casually.
 - **Permission-sensitive views get a separate renderer, never a flag.** A
   method with no capability to leak cannot leak.
 - **Shared field lists: one list, one render, one save, catch-all last.**
+- **A new caladmin section or control is built from the existing components**
+  (3.112.1). A section is `.uc-section` with its `.uc-section-head` and its
+  content in a `.uc-card`; fields are `.uc-field`; buttons come from the
+  button vocabulary in `portal.css`; a form's buttons sit in an action row.
+  No fresh markup for something a component already draws: copy the nearest
+  existing section (Categories, for anything listed and edited in rows).
+  `.claude/component-sweep.php` renders every screen and fails otherwise. The
+  Tags section in 3.112.0 was the fourth time this was learned.
 - One series per repeating event; the schedule editor lives on the series
   screen; writes are upcoming-only.
 - **Add event and Edit event offer the same settings.** Any setting or option

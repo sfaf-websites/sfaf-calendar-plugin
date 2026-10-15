@@ -17488,6 +17488,21 @@ class SFAF_Portal {
                     <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
                     <?php wp_nonce_field( 'uc_portal_cancel_event', 'uc_nonce' ); ?>
 
+                    <?php // Which dates first: it decides what the rest applies to. ?>
+                    <?php if ( $scope_ids ) : ?>
+                        <fieldset class="uc-cancel-scope" data-uc-cancel-scope>
+                            <legend>Which dates?</legend>
+                            <label class="uc-radio-opt">
+                                <input type="radio" name="cancel_scope" value="this" checked />
+                                <span><strong>This date only.</strong> The other <?php echo (int) ( count( $scope_ids ) - 1 ); ?> upcoming <?php echo esc_html( 2 === count( $scope_ids ) ? 'date stays' : 'dates stay' ); ?> on.</span>
+                            </label>
+                            <label class="uc-radio-opt">
+                                <input type="radio" name="cancel_scope" value="all_upcoming" />
+                                <span><strong>All <?php echo (int) count( $scope_ids ); ?> upcoming dates.</strong> Past dates are not changed.</span>
+                            </label>
+                        </fieldset>
+                    <?php endif; ?>
+
                     <fieldset class="uc-cancel-visibility">
                         <legend>What should happen to it on the public calendar?</legend>
                         <label class="uc-radio-opt">
@@ -17599,19 +17614,6 @@ class SFAF_Portal {
                            data-uc-cancel-count-all="<?php echo (int) $counts_all['people']; ?>" data-uc-cancel-waiting-all="<?php echo (int) $waiting_all; ?>">Nobody is registered or on the waitlist, so there is nobody to tell.</p>
                     <?php endif; ?>
 
-                    <?php if ( $scope_ids ) : ?>
-                        <fieldset class="uc-cancel-scope" data-uc-cancel-scope>
-                            <legend>Which dates?</legend>
-                            <label class="uc-radio-opt">
-                                <input type="radio" name="cancel_scope" value="this" checked />
-                                <span><strong>This date only.</strong> The other <?php echo (int) ( count( $scope_ids ) - 1 ); ?> upcoming <?php echo esc_html( 2 === count( $scope_ids ) ? 'date stays' : 'dates stay' ); ?> on.</span>
-                            </label>
-                            <label class="uc-radio-opt">
-                                <input type="radio" name="cancel_scope" value="all_upcoming" />
-                                <span><strong>All <?php echo (int) count( $scope_ids ); ?> upcoming dates.</strong> Past dates are not changed.</span>
-                            </label>
-                        </fieldset>
-                    <?php endif; ?>
 
                     <div class="uc-dialog-actions">
                         <button type="button" class="uc-btn" data-uc-dialog-close form="<?php echo esc_attr( $form_id ); ?>" hidden>Keep the event</button>

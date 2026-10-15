@@ -96,6 +96,7 @@ for f in .claude/*.php; do
     plant-31105.php) continue ;;       # a fault planter for the 3.110.5 checks, not a check
     release-31110-live.php) continue ;;  # run below with --run
     release-31120-live.php) continue ;;  # run below with --run
+    release-31121-live.php) continue ;;  # run below with --run
     plant-31110.php) continue ;;       # a fault planter for the 3.111.0 checks, not a check
     embed-isolation-live.php) continue ;; # run below with --run
     embed-loader-live.php) continue ;;  # run below with --run
@@ -258,6 +259,12 @@ echo "=== form owners ==="
 run "form-owner --self-test" php .claude/form-owner-audit.php --self-test
 
 echo
+# Every caladmin screen built from the shared components (3.112.1). The glob
+# above ran the sweep; this proves each of its rules can fail.
+echo "=== the component sweep ==="
+run "component-sweep --self-test" php .claude/component-sweep.php --self-test
+
+echo
 echo "=== PHP lint ==="
 run "lint-php" bash .claude/lint-php.sh .
 
@@ -348,6 +355,8 @@ run "release-31105-live --run" php .claude/release-31105-live.php --run
 # lines, both forms, the editor's new fields and a reviewer's Pending.
 run "release-31110-live --run" php .claude/release-31110-live.php --run
 run "release-31120-live --run" php .claude/release-31120-live.php --run
+# Cancel event, Delete and a tag's Delete as centred dialogs, and with no script (3.112.1).
+run "release-31121-live --run" php .claude/release-31121-live.php --run
 # The embed in its shadow root under a hostile host stylesheet, and the combined
 # sidebar ending at its content (3.111.0 J and K), at 1280px and 390px.
 run "embed-isolation-live --run" php .claude/embed-isolation-live.php --run

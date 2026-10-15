@@ -3713,7 +3713,9 @@ body.uc-modal-open { overflow: hidden; }
     margin: 0; padding: 22px 24px 20px; border: 0; border-radius: 0;
     max-height: calc(100vh - 48px); overflow: auto;
 }
-.uc-dialog-title { margin: 0 0 8px; font-size: 20px; font-weight: 700; }
+/* Two classes: `.uc-portal h2` is a class and a type, (0,1,1), and would set
+   the title at 16px under a 15px lead. */
+.uc-dialog-panel .uc-dialog-title { margin: 0 0 8px; font-size: 20px; font-weight: 700; }
 .uc-dialog-lead { margin: 0 0 14px; font-size: 15px; line-height: 1.5; }
 .uc-dialog-panel .uc-cancel-form { display: flex; flex-direction: column; gap: 14px; }
 .uc-dialog-panel fieldset { margin: 0; padding: 0; border: 0; }
