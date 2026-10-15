@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Series - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.111.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.111.0" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.111.0" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.112.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.112.0" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.112.0" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.111.0" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.112.0" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -275,13 +275,68 @@
                                             </div>
                             </div>
         </section>
+                        <section class="uc-section" id="uc-tags" data-uc-tags>
+            <div class="uc-section-head">
+                <h2>Tags</h2>
+                <p class="uc-section-sub">What's included at an event, such as food or childcare. Events show them as pills, and the calendar filters by them.</p>
+            </div>
+            <div class="uc-card">
+                                                    <ul class="uc-cat-list uc-tag-list">
+                                                    <li class="uc-cat-row uc-tag-row" data-uc-tag-row="alpha">
+                                                                    <span class="uc-cat-id">
+                                        <strong>Alpha</strong>
+                                        <span class="uc-muted">
+                                            alpha,
+                                            1 event                                        </span>
+                                    </span>
+                                                                            <span class="uc-cat-actions">
+                                            <a class="uc-btn uc-btn-sm" href="https://resources.sfaf.org/caladmin/series?tag_edit=11#uc-tags">Rename</a>
+                                            <form method="post" action="https://resources.sfaf.org/caladmin/series">
+                                                <input type="hidden" name="uc_action" value="retire_tag" />
+                                                <input type="hidden" name="tag_id" value="11" />
+                                                <input type="hidden" name="tag_retire" value="1" />
+                                                <input type="hidden" name="uc_nonce" value="nonce" />                                                <button type="submit" class="uc-btn uc-btn-sm">Retire</button>
+                                            </form>
+                                        </span>
+                                                                                                </li>
+                                                    <li class="uc-cat-row uc-tag-row" data-uc-tag-row="beta">
+                                                                    <span class="uc-cat-id">
+                                        <strong>Beta</strong>
+                                        <span class="uc-muted">
+                                            beta,
+                                            1 event                                        </span>
+                                    </span>
+                                                                            <span class="uc-cat-actions">
+                                            <a class="uc-btn uc-btn-sm" href="https://resources.sfaf.org/caladmin/series?tag_edit=12#uc-tags">Rename</a>
+                                            <form method="post" action="https://resources.sfaf.org/caladmin/series">
+                                                <input type="hidden" name="uc_action" value="retire_tag" />
+                                                <input type="hidden" name="tag_id" value="12" />
+                                                <input type="hidden" name="tag_retire" value="1" />
+                                                <input type="hidden" name="uc_nonce" value="nonce" />                                                <button type="submit" class="uc-btn uc-btn-sm">Retire</button>
+                                            </form>
+                                        </span>
+                                                                                                </li>
+                                            </ul>
+                    <p class="uc-hint">A retired tag stays on the events that have it and is not offered for new ones or in the calendar's filter.</p>
+                
+                                    <form method="post" action="https://resources.sfaf.org/caladmin/series" class="uc-cat-new uc-tag-new">
+                        <input type="hidden" name="uc_action" value="save_tag" />
+                        <input type="hidden" name="tag_id" value="0" />
+                        <input type="hidden" name="uc_nonce" value="nonce" />                        <label class="uc-field">
+                            <span class="uc-field-label">New tag</span>
+                            <input type="text" name="tag_name" placeholder="e.g. Food provided" required />
+                        </label>
+                        <button type="submit" class="uc-btn">Add tag</button>
+                    </form>
+                            </div>
+        </section>
                                 </main>
             </div>
         </div>
         <script type="application/json" id="uc-session-config">{"ajax":"https:\/\/resources.sfaf.org\/wp-admin\/admin-ajax.php","action":"sfaf_caladmin_session","signin":"https:\/\/resources.sfaf.org\/caladmin","screen":"dashboard","signedIn":true}</script>
-<script src="../public/js/caladmin-session.js?ver=3.111.0"></script>
-<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.111.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.111.0"></script>
-<script src="../public/js/portal.js?ver=3.111.0"></script>
+<script src="../public/js/caladmin-session.js?ver=3.112.0"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.112.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.112.0"></script>
+<script src="../public/js/portal.js?ver=3.112.0"></script>
 <script>window.CS_PAGE="caladmin-series";(function () {
 var out = { page: window.CS_PAGE, errors: [], caps: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });

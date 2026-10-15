@@ -186,6 +186,7 @@ function ucDismissOnBackdrop(dialog) {
         run('attachment', initAttachment);
         run('checkin', initCheckin);
         run('rsvpFilter', initRsvpFilter);
+        run('replyTo', initReplyTo);
     });
 
     /* ---------------------------------------------------------------------
@@ -344,6 +345,49 @@ function ucDismissOnBackdrop(dialog) {
      * button says "Checked in [time]", or "Check in" again on a second press,
      * and the count above follows.
      * ------------------------------------------------------------------ */
+    /* ---------------------------------------------------------------------
+     * REPLIES GO TO (3.112.0): a calendar user or someone else. The filter
+     * box narrows the list as you type; choosing somebody names them on the
+     * closed control; choosing Someone else puts the caret in the address,
+     * which CSS reveals for that choice alone.
+     * ------------------------------------------------------------------ */
+    function initReplyTo() {
+        document.querySelectorAll('[data-uc-replyto]').forEach(function (root) {
+            var filter = root.querySelector('[data-uc-replyto-filter]');
+            var summary = root.querySelector('[data-uc-replyto-summary]');
+            var typed = root.querySelector('input[name="event_replyto"]');
+            var empty = root.querySelector('[data-uc-replyto-empty]');
+            if (filter) {
+                filter.addEventListener('input', function () {
+                    var q = filter.value.trim().toLowerCase();
+                    var shown = 0;
+                    root.querySelectorAll('.uc-picker-option').forEach(function (opt) {
+                        var hay = opt.getAttribute('data-uc-picker-search');
+                        var keep = !q || hay === '' || hay.indexOf(q) !== -1;
+                        opt.hidden = !keep;
+                        if (keep && hay !== '') { shown++; }
+                    });
+                    if (empty) { empty.hidden = !q || shown > 0; }
+                });
+            }
+            root.addEventListener('change', function (e) {
+                var r = e.target;
+                if (!r || r.name !== 'event_replyto_pick') { return; }
+                if (r.hasAttribute('data-uc-replyto-other')) {
+                    if (summary) { summary.textContent = (typed && typed.value) ? typed.value : 'Someone else'; }
+                    if (typed) { typed.focus(); }
+                } else if (summary) {
+                    summary.textContent = r.getAttribute('data-uc-replyto-name') || r.value;
+                }
+            });
+            if (typed) {
+                typed.addEventListener('input', function () {
+                    var other = root.querySelector('[data-uc-replyto-other]');
+                    if (other && other.checked && summary) { summary.textContent = typed.value || 'Someone else'; }
+                });
+            }
+        });
+    }
     function initCheckin() {
         var count = document.querySelector('[data-uc-checked-count]');
         document.querySelectorAll('[data-uc-checkin-form]').forEach(function (form) {
@@ -5734,6 +5778,18 @@ function ucDismissOnBackdrop(dialog) {
         function hits() {
             var all = [];
             if (dateInput.value) { all.push(dateInput.value); }
+            /* Every day of a multi-day event (3.112.0). */
+            var md = form.querySelector('[data-uc-multiday-tick]');
+            var lastInput = form.querySelector('input[name="last_date"]');
+            if (md && md.checked && lastInput && dateInput.value && lastInput.value > dateInput.value) {
+                var d = new Date(dateInput.value + 'T12:00:00Z');
+                var stop = new Date(lastInput.value + 'T12:00:00Z');
+                for (var n = 0; d < stop && n < 400; n++) {
+                    d = new Date(d.getTime() + 86400000);
+                    var ymd = d.toISOString().slice(0, 10);
+                    if (all.indexOf(ymd) === -1) { all.push(ymd); }
+                }
+            }
             if (repeat) {
                 (repeat.getAttribute('data-uc-repeat-dates') || '').split(' ').forEach(function (d) {
                     if (d && all.indexOf(d) === -1) { all.push(d); }
@@ -6030,6 +6086,7 @@ function ucDismissOnBackdrop(dialog) {
         var subjectOut = root.querySelector('[data-uc-tpl-subject]');
         var stateOut = root.querySelector('[data-uc-tpl-state]');
         var editBtn = root.querySelector('[data-uc-tpl-edit]');
+        var langSel = root.querySelector('[data-uc-tpl-lang]');
 
         // The editors and their chips are chipEditors()'s (3.110.0), shared with Email registrants.
         var chips = chipEditors(root, form, data.tokens || {});
@@ -6055,6 +6112,13 @@ function ucDismissOnBackdrop(dialog) {
                 if (box) { box.value = m.fields[f] || ''; }
                 if (editors[f]) { fill(editors[f], m.fields[f] || ''); }
             });
+            /* A staff message is English only (3.112.0): the language
+               picker shows English and is off while it is chosen. */
+            var langs = (data.catalog[state.key] || {}).langs;
+            if (langSel) {
+                langSel.disabled = !!(langs && langs.length === 1);
+                if (langSel.disabled) { langSel.value = langs[0]; }
+            }
             var allowed = (data.catalog[state.key] || {}).tokens || [];
             Array.prototype.forEach.call(root.querySelectorAll('[data-uc-tpl-token]'), function (b) {
                 b.hidden = allowed.indexOf(b.getAttribute('data-uc-tpl-token')) === -1;
@@ -6072,7 +6136,6 @@ function ucDismissOnBackdrop(dialog) {
                 show();
             });
         });
-        var langSel = root.querySelector('[data-uc-tpl-lang]');
         if (langSel) {
             langSel.addEventListener('change', function () {
                 state.lang = langSel.value;

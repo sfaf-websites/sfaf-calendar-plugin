@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, nofollow" />
 <title>Submit an event</title>
-<link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.111.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.111.0" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.111.0" />
-<link rel="stylesheet" href="../public/css/portal.css?ver=3.111.0" />
+<link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.112.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.112.0" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.112.0" />
+<link rel="stylesheet" href="../public/css/portal.css?ver=3.112.0" />
 </head>
 <body class="uc-portal uc-request-page">
 <div class="uc-request-wrap">
@@ -19,10 +19,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, nofollow" />
 <title>Submit an event: Alpha</title>
-<link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.111.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.111.0" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.111.0" />
-<link rel="stylesheet" href="../public/css/portal.css?ver=3.111.0" />
+<link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.112.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.112.0" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.112.0" />
+<link rel="stylesheet" href="../public/css/portal.css?ver=3.112.0" />
 </head>
 <body class="uc-portal uc-request-page uc-submit-page">
 <div class="uc-request-wrap">
@@ -81,7 +81,21 @@
                     <span class="uc-field-label">Description<span class="uc-req" data-uc-req-mark="description" aria-hidden="true">*</span></span>
                     <textarea aria-required="true" name="description" id="uc-submit-description"></textarea>                    <span class="uc-hint">Say what it is, who it is for, and what somebody should expect.</span>
                                     </div>
-                </fieldset>
+
+                        <fieldset class="uc-field" data-uc-form-tags>
+            <legend class="uc-field-label">What&#039;s included</legend>
+            <div class="uc-check-grid">
+                                    <label class="uc-check">
+                        <input type="checkbox" name="tags[]" value="11"
+                             />
+                        Alpha                    </label>
+                                    <label class="uc-check">
+                        <input type="checkbox" name="tags[]" value="12"
+                             />
+                        Beta                    </label>
+                            </div>
+        </fieldset>
+                        </fieldset>
 
                 <fieldset class="uc-form-section-group">
                 <legend class="uc-field-group-title">When</legend>
@@ -393,9 +407,9 @@
             </form>
         </div>
         </div>
-<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.111.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/portal.js?ver=3.111.0"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.112.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/portal.js?ver=3.112.0"></script>
 </body></html></div>
-<script src="../public/js/portal.js?ver=3.111.0"></script>
+<script src="../public/js/portal.js?ver=3.112.0"></script>
 <script>window.RV_PAGE="submit-wide";(function () {
 var P = window.RV_PAGE, out = { page: P, errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });

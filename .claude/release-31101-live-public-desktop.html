@@ -12,8 +12,11 @@ window.addEventListener('load', function () { setTimeout(function () {
   var settings = q('details.uc-rsvp-settings:not(.uc-registrant-mail)');
   var mail = q('details.uc-registrant-mail');
   if (settings || q('[data-uc-reg-elsewhere]')) {
-    out.searchBoxes = qa('input[type="search"]').filter(seen).length;
-    out.searchLabel = (q('input[type="search"]') || {}).placeholder || '';
+    /* Not one inside a shut dropdown: Replies go to has its own (3.112.0),
+       and Chrome still gives a shut <details>' contents a box. */
+    var boxes = qa('input[type="search"]').filter(function (b) { return seen(b) && !b.closest('details:not([open])'); });
+    out.searchBoxes = boxes.length;
+    out.searchLabel = (boxes[0] || {}).placeholder || '';
     var bar = q('form.uc-filters-bar');
     out.searchButtonShown = bar ? seen(q('button[type="submit"]', bar)) : null;
     var card = qa('.uc-card').filter(function (c) { return q('[data-uc-rsvp-row]', c); })[0];
