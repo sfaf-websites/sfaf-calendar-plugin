@@ -4,17 +4,18 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-15, at 3.112.1, built on 3.112.0.
+**Last updated:** 2026-10-15, at 3.112.2, built on 3.112.1. **The live site is on 3.111.0.**
 
 ---
 
 ## What shipped last
 
-**3.112.1**: **embed.js is a loader** for `embed-app.js?ver=<site version>`, so a
-cached embed.js cannot hold a page on an old calendar; the embed cache retires on
-cancel; Cancel event and Delete as dialogs; Tags with Archive and Delete; three
-Age ranges; one Asana copy per admin alert (`TESTING.md` 1.277 to 1.282, 2.60 to
-2.62). **3.112.0**: Tags and Location, multi-day, closed-day emails, the keepalive.
+> **3.112.2 FIXES WHY 3.112.x TOOK sfaf.org/calendar DOWN** (`PROJECT.md` 7): old blocks
+> got the Location row, a query per event. 3.112.0/3.112.1 are GitHub pre-releases.
+> Install with `TESTING.md` **1.0**. **resources.sfaf.org is LiteSpeed on AWS with
+> LiteSpeed Cache; only www.sfaf.org is WP Engine.** The Events Calendar is still on (1.283).
+**3.112.1** (in 3.112.2): the embed loader, cancel retires the cache, dialogs, Tags
+Archive and Delete, three Age ranges, Asana copies. **3.112.0**: Tags, Location, multi-day.
 > **3.110.1: EDITORS NO LONGER HAVE EVERY EVENT.** A team decides which events a
 > person has; their level decides what they can do on them (CLAUDE.md 7,
 > `PROJECT.md` 5). An editor has what they created and what **Team and
@@ -91,8 +92,8 @@ and from 3.111.0 `calendar-files/` for PDFs, beside them.
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 343 items.** **1.277** (old
-snippets after installing 3.112.1) and **1.281** (the hidden age values) first,
+**`TESTING.md` holds the manual testing backlog: 345 items.** **1.0** (installing
+3.112.2 and its first hour), then **1.277** (old snippets) and **1.281** (the hidden age values) first,
 then **1.271** (a multi-day event) and **2.55** (closing a day with events) first, then **1.249** (signed out
 with a form open), then **1.260** (that schema 14 ran), **1.255** (no count
 anywhere public) and **1.256** (a review team), then **1.235**, **1.245**

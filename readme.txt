@@ -531,6 +531,16 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.112.2 =
+
+**The calendar on sfaf.org stops failing to load: 3.112.x made the calendar server do far more work for older embeds. Nothing else is in this release.**
+
+**THE CAUSE.** 3.112.0 gave every embed with no filter list of its own, which is most blocks pasted on sfaf.org before 3.50.0, the new Tags and Location dropdowns. The Location dropdown read every event's place one database query at a time, about 400 queries per build where 3.111.0 made 24, on every build the server's cache did not already hold. The calendar's server (LiteSpeed, resources.sfaf.org) limits each visitor's connections, and slow builds are the likeliest way an office sharing one internet address ran into that limit, so the calendar's requests were left unanswered.
+
+**THE FIX.** A block with no filter list shows Categories, Organizers and groups and Series, as it did in 3.111.0; Tags and Location appear only where a block's snippet names them. The Location dropdown reads all of its events in three queries, and its list is kept until something changes. The loader reads its version from a small static file, asked for again every five minutes, rather than asking WordPress on every page view. Saving or importing an event that changes none of its categories, organizers, venues, series or tags no longer empties every embed's cache. The scheduled check for events on closed days reads every event in one query, not one each.
+
+**SAFE TO INSTALL FROM 3.111.0**, which the live site is on. `TESTING.md` 1.0 is the install, what to watch in the first hour, and the rollback.
+
 = 3.112.1 =
 
 **An embed that cannot be left on an old release, the embed cache retired on cancel and reinstate, Cancel event and Delete as dialogs, Tags with Archive and Delete, Age range as three choices, and an Asana copy of each admin alert.**

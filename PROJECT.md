@@ -1033,8 +1033,11 @@ which also closes the 3.110.4 gap: a block scoped to a venue now sends
 `uc_loc=v-<slug>`. The generator offers both rows, ticked, and a "One tag"
 scope that writes the `tag` attribute.
 
-**A block with no `filters` attribute shows the new rows**, because absent
-means all of `filter_rows_available()`. That list is now five.
+**A block with no `filters` attribute does not show the new rows** (3.112.2;
+3.112.0 gave it all five, and that is what took the calendar down, §7). It
+shows `filter_rows_default()`, the three it had before. Tags and Location
+appear only where a snippet names them; see "A block shows Tags and Location
+only when its snippet names them" (§1).
 
 ### An event has several organizers, and every writer sets them in one call
 
@@ -1494,7 +1497,7 @@ weights, because the temptation next time will be to move them again.
 `column-rule` had a computed width and no style. Read what paints, not what is
 set.
 
-### embed.js is a loader, and the calendar is embed-app.js at a version (3.112.1)
+### embed.js is a loader, and the calendar is embed-app.js at a version (3.112.1, static since 3.112.2)
 
 **The script URL in a snippet must not carry a version**, and this is a
 decision made by a defect rather than a preference. That URL is baked into a
@@ -1502,41 +1505,72 @@ snippet somebody pastes once, so a version PINS it to whatever the plugin was on
 the day it was copied rather than busting anything. In 2.10.1 that left host
 pages loading an old script, and an old stylesheet with it.
 
-**Unversioned was not enough either.** After 3.112.0 was installed,
-sfaf.org/calendar showed "could not be loaded" until the cache was bypassed,
-and the leading explanation was a cached 3.111.0 embed.js: freshness was
-whatever the host's caches decided.
+**Unversioned was not enough either**: resources.sfaf.org sends the plugin's
+scripts with `Last-Modified` and no `Cache-Control` or `Expires`, so a browser
+keeps them for as long as its own heuristic says.
 
-**So `public/js/embed.js` is a loader that holds no release logic**, and its code
-does not change between releases. It asks the embed route `embed_version=1`
-(answered in `handle_request()` before anything is read or built, with
-`no-store`, so nothing between keeps the answer) and adds one script,
-`embed-app.js?ver=<the answer>`. A cached loader is harmless: it asks the same
-question and gets today's answer. Rules that keep it so:
+**So `public/js/embed.js` is a loader that holds no release logic.** It reads
+`public/js/embed-version.js?t=<the current time, rounded down to five minutes>`,
+a static file holding `window.sfafCalendarEmbedVersion`, and adds one script,
+`embed-app.js?ver=<that>`. A cached loader is harmless: it reads today's answer.
+**The `?t=` bucket is what keeps the answer fresh**: any cache may keep the
+version file, but only under that bucket's address, so no browser, proxy or
+LiteSpeed holds an old answer longer than five minutes. Rules that keep it so:
 
 - **Nothing in the loader may change in a release.** No version, no payload
   handling, no reload. `embed-filters-test.php` fails on a version number, on
   calendar code, and on a reload in it.
-- **It never reloads anything.** It adds one script, once. If the site cannot be
-  asked it loads `embed-app.js` unversioned, which is what every page did
-  before.
-- **The same route, a new parameter**, for the CORS reason in "Why no new REST
-  route can be added".
-- **`EMBED_JS_VERSION` lives in `embed-app.js`**, the fourth version place, and
-  `version-check.php` reads it there. The app still compares itself with the
-  payload's `js_version` and names a mismatch in the console, a warning and
-  never a reload; with the loader a mismatch means the site could not be asked
-  or two caches are on two releases.
+- **It asks PHP nothing.** In 3.112.1 it asked the embed route
+  (`embed_version=1`), which made every page view a WordPress request before the
+  calendar's own; `embed-budget-test.php` fails if it does again. The route
+  still answers that parameter, for a 3.112.1 loader a browser may hold.
+- **It never reloads anything.** It adds two scripts, once each. If the version
+  cannot be read within eight seconds it loads `embed-app.js` unversioned.
+- **Five version places**: the plugin header, `SFAF_VERSION`, the readme,
+  `EMBED_JS_VERSION` in `embed-app.js` and `embed-version.js`;
+  `version-check.php` refuses a build where they disagree. The app still names
+  a mismatch with the payload's `js_version` in the console, never a reload.
 - **The generator's preview loads `embed-app.js` directly**, at `SFAF_VERSION`.
-- **`public/js/.htaccess`** asks Apache to keep the loader five minutes and any
-  `?ver=` script a year. Where static files are served by nginx, as WP Engine
-  may, it is ignored, and nothing depends on it.
+- **`public/js/.htaccess`** asks for five minutes on the loader and the version
+  file and a day on the rest, in plain `FilesMatch` and `Header` directives,
+  since LiteSpeed does not fully support `<If>`. Nothing depends on it.
 
 **The transition happens once.** A browser holding 3.112.0's embed.js, which
 was the whole calendar, runs it until its cache lets go; no server can replace a
 file a browser chose to keep. That copy still draws against this route, which
 `embed-loader-live.php` proves along with the guarantee from here on: a cached
-loader from a previous release loads this release's app.
+loader from a previous release loads this release's app once the five-minute
+bucket turns.
+
+### Where the calendar is served from, and what caches it
+
+**resources.sfaf.org runs LiteSpeed on AWS (3.20.252.12) with the LiteSpeed
+Cache plugin; only www.sfaf.org is on WP Engine.** The Events Calendar is still
+active on resources.sfaf.org. Measured from outside on 2026-10-15:
+
+- **LiteSpeed caches the embed's REST answers.** The plugin's `Cache-Control`
+  is not what it obeys: LiteSpeed Cache sends `X-LiteSpeed-Cache-Control:
+  public,max-age=604800` on the route, and a repeat of the same URL is a cache
+  hit in about 0.2 s against about 1.9 s for a miss (3.111.0's sfaf.org block).
+  So every distinct URL and every miss pays a full build, and our own cache
+  flush does not purge LiteSpeed's copy.
+- **It does not combine or minify the plugin's scripts** on its own pages: they
+  load at their own `?ver=` addresses.
+- **Static files** carry `Last-Modified` only (see above). Whether LiteSpeed
+  applies `public/js/.htaccess` is checked after an install (`TESTING.md`).
+- **LiteSpeed limits each client IP**, on connections and dynamic requests.
+  An IP over its limit is banned for a period and its new connections are not
+  answered, which is what a browser shows as "Initial connection" that never
+  completes. An office of people behind one IP shares one allowance.
+
+### A block shows Tags and Location only when its snippet names them (3.112.2)
+
+**A block with no `filters` attribute shows category, organizer and series**,
+the three rows it had in 3.111.0 (`SFAF_Shortcodes::filter_rows_default()`).
+Tags and Location appear only where a snippet's `filters` names them; "all"
+names every row. **The sfaf.org/calendar block lists only
+`category,organizer,series`**, so it shows neither until its snippet is
+re-copied with them.
 ### What retires the embed cache (3.112.1)
 
 **Anything that changes what an embed draws must move the generation**
@@ -7217,6 +7251,39 @@ key with no secret is a widget that cannot verify; the probe's answer with
 nobody to map it is a field name in a log.
 
 ## 7. The lessons that cost time
+
+### 3.112.0 took sfaf.org's calendar down, and it was cost, not code that failed (3.112.2)
+
+**What was seen**: sfaf.org/calendar failed intermittently on 3.112.0 and never
+on 3.111.0. Both embed requests got no status at all: "Initial connection" ran
+15 s (embed.js's own timeout) and never completed, so no PHP ran for them.
+Rolling back cured it each time.
+
+**What was measured**, counting queries as WordPress would make them over a
+site of the live one's size (`embed-budget-test.php`): a block with no
+`filters` attribute went from 24 queries in 3.111.0 to 397 in 3.112.0, because
+3.112.0 gave it the Location row, and the Location row's labels and counts read
+every event's meta and venue one query at a time (`available_locations()`),
+as did its index (`location_index()`, up to a thousand events, rebuilt every
+request). The sfaf.org/calendar block itself barely moved, 80 to 94.
+
+**How cost becomes a connection that never opens**, which is inference, since
+nobody can see the host's logs: on resources.sfaf.org (LiteSpeed, above) every
+LiteSpeed cache miss pays the full build, slow builds hold connections, and
+LiteSpeed's per-client limits ban an IP that holds too many, after which its
+new connections are not answered. The office shares one IP.
+
+**The fix**: three rows on a block with no `filters`; the Location reads primed
+in one query each and the index kept until the embed cache's generation moves;
+the loader reads a static file rather than asking PHP; a term write that
+changes nothing no longer empties the cache; the closed-day task primes its
+meta (224 queries every fifteen minutes to 2).
+
+**The lesson**: a loop over events that reads per event is a query per event
+the moment the ids came from a `fields => ids` query, which primes nothing.
+Prime with `update_meta_cache()` and `update_object_term_cache()`, or query
+whole posts. And measure a public build in queries before shipping it:
+`embed-budget-test.php` holds every embed build under 120.
 
 These are recorded because each cost more than one build and each recurred.
 

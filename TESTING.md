@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 343 items.** Quick 279, needs real conditions 60, blocked on other
+**Outstanding: 345 items.** Quick 281, needs real conditions 60, blocked on other
 people 4.
 
 ---
@@ -17,6 +17,54 @@ people 4.
 ## 1. Quick — a few minutes at a desk
 
 Opening a screen and looking, loading a URL, pressing a control. Fastest first.
+
+### 1.0 FIRST: installing 3.112.2 on the live site, and the first hour (3.112.2)
+
+3.112.0 took sfaf.org/calendar down intermittently and 3.111.0 never has; the
+site stays on 3.111.0 until this passes. The calendar is served from
+resources.sfaf.org, which runs **LiteSpeed on AWS with the LiteSpeed Cache
+plugin**, not WP Engine (only www.sfaf.org is on WP Engine).
+
+**Before installing**
+- Plugins screen: SFAF Calendar shows **Enable auto-updates**, meaning they are
+  off. 3.112.0 and 3.112.1 are pre-releases on GitHub and are not offered.
+- Have `Old Calendar Files/sfaf-calendar-3.111.0.zip` to hand: it is the rollback.
+- Pick a quiet hour, and keep a phone with **Wi-Fi off** (mobile data) beside you.
+
+**Install**: Plugins > SFAF Calendar > Check for updates, then Update (or upload
+`sfaf-calendar-3.112.2.zip` and choose Replace current with uploaded). Then
+**LiteSpeed Cache > Toolbox > Purge All**, because LiteSpeed keeps the embed's
+answers for up to a week.
+
+**The first hour, four times** (at install, +15, +30, +60 minutes):
+1. **Office network, desktop Chrome**: open sfaf.org/calendar with DevTools
+   open, Network tab, **Disable cache** ticked, filter `resources`. Expect, in
+   order: `embed.js` 200, `embed-version.js?t=...` 200, `embed-app.js?ver=3.112.2`
+   200, then the `embed?...` request 200. Click the `embed?...` request, Timing
+   tab: **Initial connection under 1 s**; Waiting (TTFB) under about 3 s when the
+   response header says `x-litespeed-cache: miss`, well under 1 s on `hit`. The
+   console has no "could not be loaded" and no "running embed-app.js" warning.
+2. **The same on the phone on mobile data**: the calendar draws within a few
+   seconds. A different IP from the office's, which is part of the theory.
+3. **Two other sfaf.org pages with a calendar block** (a program page and a
+   sidebar): each draws.
+4. Once: `curl -sI https://resources.sfaf.org/wp-content/plugins/sfaf-calendar/public/js/embed-version.js`
+   shows `Cache-Control: public, max-age=300` if LiteSpeed reads the shipped
+   `.htaccess`; no Cache-Control means it does not, which the loader does not
+   depend on. Report which.
+
+**It has failed if, on any device or network, at any of the four checks:** the
+page shows "The events calendar could not be loaded just now"; any request to
+resources.sfaf.org has no status code; Initial connection runs past 5 s; or a
+`miss` takes longer than 10 s to answer. One failure on the office network with
+the phone fine still counts: it is what an office of people sharing one IP sees.
+
+**Fastest rollback** (about two minutes): Plugins > Add New > Upload Plugin,
+choose `sfaf-calendar-3.111.0.zip`, **Replace current with uploaded**; then
+LiteSpeed Cache > Toolbox > Purge All; reload sfaf.org/calendar. Then send the
+time, the network, and a screenshot of the failing request's Timing tab.
+
+**Why it needs a person:** the live server, its limits and its cache, from two networks.
 
 ### 1.1 Load the Yoast sitemap and confirm a private event is absent
 
@@ -3716,21 +3764,29 @@ preview must show it; Restore must bring the shipped text back.
 
 **Why it needs a person:** the live template screen.
 
-### 1.277 Old snippets on sfaf.org and cycletozero.org after installing 3.112.1
+### 1.277 Old snippets on sfaf.org and cycletozero.org after installing 3.112.2
 
 Without a hard refresh, open sfaf.org/calendar, a program page with a pinned
 or narrowed block, and 2027.cycletozero.org's calendar (the isolated one).
-Each must draw. In the Network tab: embed.js, then the embed route with
-`embed_version=1`, then `embed-app.js?ver=3.112.1`; in the console, no "running
-embed-app.js" warning. A browser that kept 3.112.0's embed.js runs that until
-its cache lets go and must still draw. Then run
-`curl -sI https://<calendar site>/wp-content/plugins/sfaf-calendar/public/js/embed.js`
-and the same for `embed-app.js?ver=3.112.1`: a `Cache-Control` of `max-age=300`
-and `max-age=31536000` means the server reads `public/js/.htaccess`; anything
-else means WP Engine serves them from nginx and ignores it, which the loader
-does not depend on.
+Each must draw. In the Network tab: embed.js, then `embed-version.js?t=...`
+(a static file, no PHP), then `embed-app.js?ver=3.112.2`; in the console, no
+"running embed-app.js" warning. A browser that kept 3.112.0's embed.js runs
+that until its cache lets go and must still draw. Then run
+`curl -sI https://resources.sfaf.org/wp-content/plugins/sfaf-calendar/public/js/embed.js`
+and the same for `embed-app.js?ver=3.112.2`: `max-age=300` and `max-age=86400`
+mean LiteSpeed applies `public/js/.htaccess`; no Cache-Control means it does
+not, which the loader does not depend on.
 
-**Why it needs a person:** the live host pages, real caches and WP Engine's server.
+**Why it needs a person:** the live host pages, real caches and the LiteSpeed server.
+
+### 1.283 The Events Calendar is still active on resources.sfaf.org (3.112.2)
+
+Its headers are on every page there (`X-TEC-API-*`). Decide whether it is still
+needed: the import from it ran long ago, and a second events plugin loads on
+every request to the server the calendar shares. **Do not deactivate it as part
+of the 3.112.2 install**; one change at a time.
+
+**Why it needs a person:** a decision about the live site, and its admin screen.
 
 ### 1.278 Weglot still translates the calendar on sfaf.org (3.112.1)
 
