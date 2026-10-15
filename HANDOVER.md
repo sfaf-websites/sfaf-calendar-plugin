@@ -4,18 +4,18 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-14, at 3.111.0, released on top of 3.110.5.
+**Last updated:** 2026-10-14, at 3.112.0, built on 3.111.0.
 
 ---
 
 ## What shipped last
 
-**3.111.0**: pinned events; **no registration count on any public page**; review
-teams (`PROJECT.md` 5); a rich registrant email; one PDF per event; Cost, Age range
-and Contact and **schema 14**; **nothing sent for an event registering elsewhere**;
-**an opt-in shadow root** (`data-isolate`) so a host cannot restyle it (`TESTING.md` 1.253 to 1.267, 2.53, 2.54). **3.110.5**, released first: nothing
-typed into caladmin is lost to an expired sign-in, and **an open caladmin tab
-never signs out on its own** (`PROJECT.md` 5, 1.248 to 1.252, 2.52).
+**3.112.0**: tags ("What's included") and **Location** on the bar; **multi-day
+events** (End date, never `_uc_end_date`); **an email to the organizer for each
+event on a closed day**, Keep and Cancel never acting from the link, Pending > On
+closed days; Drafts and Scheduled; Replies go to as people (`TESTING.md` 1.268 to
+1.276, 2.55 to 2.59). **The keepalive needs a click or a keystroke in the last
+thirty minutes** (`PROJECT.md` 5). **3.111.0**: pins, no public counts, schema 14.
 > **3.110.1: EDITORS NO LONGER HAVE EVERY EVENT.** A team decides which events a
 > person has; their level decides what they can do on them (CLAUDE.md 7,
 > `PROJECT.md` 5). An editor has what they created and what **Team and
@@ -92,8 +92,9 @@ and from 3.111.0 `calendar-files/` for PDFs, beside them.
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 320 items.** **1.249** (signed out
-with a form open) first, then **1.260** (that schema 14 ran), **1.255** (no count
+**`TESTING.md` holds the manual testing backlog: 334 items.** **1.271** (a
+multi-day event) and **2.55** (closing a day with events) first, then **1.249** (signed out
+with a form open), then **1.260** (that schema 14 ran), **1.255** (no count
 anywhere public) and **1.256** (a review team), then **1.235**, **1.245**
 and **1.236** (Strut's slug, See all events, retired names), then **1.225**,
 that editors have their events, then **1.218**,

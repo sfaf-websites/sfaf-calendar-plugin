@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 320 items.** Quick 264, needs real conditions 52, blocked on other
+**Outstanding: 334 items.** Quick 273, needs real conditions 57, blocked on other
 people 4.
 
 ---
@@ -3624,7 +3624,101 @@ If the site tracks link clicks, click an event in the embed and say whether the
 click is recorded, as before.
 
 **Why it needs a person:** what the host sites rely on is not in this repository.
-## 2. Needs real conditionsWaiting for an unattended job to fire, a real removal at source, or a real event
+
+### 1.268 Tags: add, rename, retire (3.112.0)
+
+As an Admin, on **Series & Categories**, find **Tags**. Add "Food", "Childcare"
+and "Interpretation", rename one, and tick two onto an event in the editor's
+Classification card under Organizer. Then retire one of the two. In the editor
+it must still be ticked on that event and missing from every other event's
+picker; on the event page its pill must still show; on the calendar it must be
+gone from the What's included dropdown. Sign in as an Editor: the Tags section
+must not offer add, rename or retire.
+
+**Why it needs a person:** real terms in a real database.
+
+### 1.269 What's included and Location on the calendar (3.112.0)
+
+On the calendar page and on one embed on sfaf.org, open **What's included** and
+**Location** beside Organizers and groups. Each must list only what the shown
+events carry, each with its count. Tick one of each and check the grid, the
+list and the sidebar all narrow, and that the address now carries `uc_tag` and
+`uc_loc`. Copy that address into a new tab: the same events. On a phone, each
+dropdown must open inside the screen. Then press a pill on an event page: the
+calendar opens filtered to that tag.
+
+**Why it needs a person:** real events with real venues and addresses, and a
+real host page.
+
+### 1.270 The generator's two new rows, and One thing included (3.112.0)
+
+In the embed generator, **What's included** and **Location** are ticked under
+filter rows; untick one and the pasted block must not show it. Choose **One
+thing included** with a tag and paste the block: only that tag's events, and
+See all events on its sidebar opens the calendar filtered to it. A block scoped
+to a venue: See all events opens the calendar filtered to that location.
+
+**Why it needs a person:** the live generator, pasted into a page.
+
+### 1.271 A multi-day event, end to end (3.112.0)
+
+Add an event, tick **Multi-day event**, and set Date and End date three days
+apart, crossing a month end if you can. Repeats must disappear while it is
+ticked. Try an End date before Date: it must be refused with a notice. Save and
+publish, then look at it on the month grid (every day), the list, the sidebar,
+the event page ("Apr 30 to May 2, 2027" form), the calendar file (it ends on
+the last day at the end time) and a registration confirmation email. Untick it
+and save: it must be a one-day event again.
+
+**Why it needs a person:** a real save, a real calendar app and real mail.
+
+### 1.272 A Spanish multi-day event with tags (3.112.0)
+
+Set a multi-day event with two tags to Spanish. The event page must read "del
+21 al 23 de mayo de 2027" in that form, and a screen reader must announce the
+pills as "Qué incluye". The tag names stay as typed. The filter bar's dropdown
+is labelled in English on every page, and that is expected.
+
+**Why it needs a person:** a Spanish reader, and a screen reader.
+
+### 1.273 Drafts and Scheduled on Events (3.112.0)
+
+On **Events**, the **Drafts** and **Scheduled** tabs show counts. Each must
+list only events you created, in that state, including as an Admin: nobody
+else's draft. Schedule one event for next week and it must move from Drafts to
+Scheduled.
+
+**Why it needs a person:** more than one real person's drafts.
+
+### 1.274 Replies go to (3.112.0)
+
+In the editor's **Replies go to**, search for a person and pick them: save, and
+reply to a confirmation email for that event; it must go to them. Choose
+**Someone else**, type an address, save: the box must still hold it when the
+editor reopens. Open an event saved before 3.112.0 with a typed address: it
+must show as Someone else with that address.
+
+**Why it needs a person:** real mail to reply to.
+
+### 1.275 What's included on both public forms (3.112.0)
+
+Fill the staff request form and the community submission form, ticking two
+tags in What's included. Each submission must arrive in Pending with those two
+tags ticked in the editor.
+
+**Why it needs a person:** real submissions.
+
+### 1.276 The two closed-day messages in Email Templates (3.112.0)
+
+In **Email Templates**, open "Event on a closed day" and its reminder. The
+language select must be disabled on English. Change a sentence, save, and the
+preview must show it; Restore must bring the shipped text back.
+
+**Why it needs a person:** the live template screen.
+
+## 2. Needs real conditions
+
+Waiting for an unattended job to fire, a real removal at source, or a real event
 with real registrations and real mail.
 
 ### 2.20 A real cancellation, with a message for the registrants (3.72.0)
@@ -4354,12 +4448,14 @@ carries no mark, so its pictures stay; say how many of those there are.
 **Why it needs real conditions:** a real rejection and the trash emptying on its
 own schedule.
 
-### 2.52 The keepalive renews a sign-in that is about to end (3.110.5)
+### 2.52 The keepalive renews a sign-in that is about to end (3.110.5; activity from 3.112.0)
 
 Sign in **without** Remember me and leave **Edit event** open in a tab, with the
 computer awake, for more than 36 hours (a sign-in lasts two days; it is renewed
-when under twelve hours are left). Then change something and **Save changes**:
-it must save with no sign-in. Repeat once **with** Remember me if there is time.
+when under twelve hours are left). **From 3.112.0 it renews only after a click
+or a keystroke in the last thirty minutes**, so at about 37 hours click somewhere
+on the page and leave it open for fifteen minutes. Then, after the 48th hour,
+change something and **Save changes**: it must save with no sign-in. Repeat once **with** Remember me if there is time.
 If a security plugin keeps a sign-in log, look at whether the renewal shows as a
 new sign-in, and say so.
 
@@ -4383,13 +4479,60 @@ gone from `calendar-files/` and the shared one is still there.
 
 **Why it needs real conditions:** the trash emptying on its own schedule.
 
-## 3. Blocked on other peopleNothing here can move until somebody outside the build answers.
+### 2.55 Closing a day that has events on it (3.112.0)
+
+Make a test event of your own on a date, then add a closure covering that date
+in **Closures**. You must get one email naming the event, the date and the
+closure, with Keep and Cancel. Open **Keep** signed out: it must ask you to sign
+in and then show the page, with nothing changed until you press Keep there.
+Press it: the event leaves **Pending > On closed days**. Do it again with a
+second event and **Cancel**: the cancel dialog must open, with the registrants
+question. Save the closure again: no second email.
+
+**Why it needs real conditions:** real mail, and a real sign-in.
+
+### 2.56 The seven-day reminder for an undecided closed day (3.112.0)
+
+Leave one event on a closure undecided. Seven days before the date, its
+organizer must get one reminder, and only one, from the "Events on closed days"
+task.
+
+**Why it needs real conditions:** the scheduled task running on its own.
+
+### 2.57 A multi-day event imported (3.112.0)
+
+When Eventbrite or GFMP next brings in a ticketed event that runs over more than
+one day, it must arrive with **Multi-day event** ticked and the End date set. A
+GFMP donation campaign with an end date must not.
+
+**Why it needs real conditions:** a real multi-day listing at source.
+
+### 2.58 An untouched tab signs out (3.112.0)
+
+Sign in without Remember me, open **Edit event**, type a few words, and do not
+touch the page or the keyboard for more than two days. Then press **Save
+changes**: it must go to sign in, and after signing in the words must be
+offered back.
+
+**Why it needs real conditions:** two days of an open tab.
+
+### 2.59 The morning-of reminder for a multi-day event (3.112.0)
+
+Register for a multi-day event. The morning-of reminder must arrive on the
+first day only, and it, the confirmation and the day-before reminder must all
+show the range.
+
+**Why it needs real conditions:** the reminder jobs running on their own.
+
+## 3. Blocked on other people
+
+Nothing here can move until somebody outside the build answers.
 
 | Who | What is needed | Status |
 |---|---|---|
 | **Aaron** | DNS records for `calendar.sfaf.org` so `events@calendar.sfaf.org` can send | Asked. From stays `websites@sfaf.org` meanwhile. It is a setting, so nothing needs deploying when the mailbox exists. |
 | **Val** | Remove the tracker's duplicates: **the 2027 Saturdays under two runs of UUIDs**, and **the coffee social under two names** ("50-Plus Saturday AM Coffee Social" and "Saturday AM Coffee Social") | Before Auto-Import goes on. The import copies what the tracker holds and de-duplicates nothing. `PROJECT.md` 3. |
-| **A Spanish-speaking reviewer**, chosen by Mark | Read `EMAILS.md`: every registrant message in English and Spanish side by side, in formal usted, including **Event cancelled, waitlist** (3.106.1), **Offer link, event off** and the three form labels under Additional information (3.106.2). Corrections go into the Email Templates screen or `class-sfaf-messages.php`, never into `EMAILS.md` | Not asked. The Spanish was written without a native reader. |
+| **A Spanish-speaking reviewer**, chosen by Mark | Read `EMAILS.md`: every registrant message in English and Spanish side by side, in formal usted, including **Event cancelled, waitlist** (3.106.1), **Offer link, event off** and the three form labels under Additional information (3.106.2); from 3.112.0 also "Qué incluye" for What's included and the date range "del 21 al 23 de mayo de 2027". Corrections go into the Email Templates screen or `class-sfaf-messages.php`, never into `EMAILS.md` | Not asked. The Spanish was written without a native reader. |
 | **Salesforce admin** | Pardot connected app: client ID and secret, Business Unit ID, service user, OAuth flow | Asked. Campaign IDs store; nothing talks to Pardot. |
 
 ---

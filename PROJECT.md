@@ -964,6 +964,45 @@ route would match none of preflight, the response headers or the
 built. That is not an exception to the toggles: it is a different shape, with a
 count rather than a page size and no pagination.
 
+### What's included and Location: two more dropdowns on the bar (3.112.0)
+
+**Tags are `uc_tag`, a flat taxonomy, `SFAF_Tags`.** They are managed in the
+Tags section of Series & Categories by an Admin: add, rename, retire. **Retiring
+is term meta (`_sfaf_tag_retired`), never a delete**, so a past event keeps its
+pills. A retired tag is gone from every picker and from the filter, and a
+retired slug in `uc_tag` is dropped before the query (`only_active_tags()`), so
+an old link reaches nothing rather than an empty page. **The editor's picker
+still shows a retired tag the event holds, ticked**, and `clean_ids()` keeps it
+on save: a form may only speak for what it offered. Nothing is seeded.
+
+- **The series default** is `_sfaf_series_tags` on the series term, and it goes
+  through `SFAF_Series::defaults_for_event()` like every other default: copied
+  once, into an event with no tags.
+- **Pills**: `SFAF_Tags::pills_html()`, on the event page under Hosted by and on
+  list rows, each a link to the calendar with `uc_tag`. The group's
+  `aria-label` is the `whats_included` public string in the event's language;
+  **tag names print as typed, in any language.**
+- **Both public forms carry the picker** and write it at submit.
+
+**Location is not a taxonomy.** It is every venue plus every one-off address an
+event names. `location_key_for_event()` gives `v-<venue slug>` or `p-` and ten
+hex of an md5 of the lowercased address line, so the same address typed on two
+events is one row. `location_index()` maps keys to the published events from
+45 days back, and the filter is a `post__in` from it.
+
+**Both dropdowns are the Organizers and groups control with one list**
+(`render_pick()`), multi-select with counts, and both list only what the
+block's own events carry: a count of zero is not offered. The counts follow the
+other filters (`ids_without()`), like the who picker's. **Both are carried in
+the address as `uc_tag` and `uc_loc`, through the AJAX handlers and the embed
+route's `tag`, `active_tags` and `active_locations`, and by See all events**,
+which also closes the 3.110.4 gap: a block scoped to a venue now sends
+`uc_loc=v-<slug>`. The generator offers both rows, ticked, and a "One thing
+included" scope that writes the `tag` attribute.
+
+**A block with no `filters` attribute shows the new rows**, because absent
+means all of `filter_rows_available()`. That list is now five.
+
 ### An event has several organizers, and every writer sets them in one call
 
 **They are equal, with no lead organizer** (3.40.0). `uc_organizer` has always
@@ -3264,6 +3303,24 @@ runs at go-live.
   as the second hidden state: any query that keeps private events out must not
   ask for `future` or `any` (plant G.2). `.claude/scheduled-publish-test.php`
   runs the save and the public builders.
+### Drafts and Scheduled are the person's own (3.112.0)
+
+Two tabs beside My events and All events, each with its count: Drafts
+(`draft`) and Scheduled (`future`), **always `post_author` = the person
+looking, admin or not**. They are not an access rule: the gate in 5 still
+decides what anybody can open. On these tabs the view is "every date", the view
+tabs and the status select are hidden, and the heading names the tab.
+`own_status_tabs()` is the one list.
+
+### Replies go to is a list of people (3.112.0)
+
+The editor's Replies go to is a searchable dropdown of calendar people plus the
+editor, defaulting to the creator, with "Someone else" revealing the typed
+address (`:has()`, and visible without it). **It is stored as before**, one
+address in `_uc_email_replyto`: a picked person's email is written, not their id, so
+a person who later changes address does not change where an event's replies
+go.
+
 ### The picture picker hides by series, and the two forms filter in different places
 
 From 3.80.0 the public forms' picker shows **only** the chosen series' pictures.
@@ -3951,6 +4008,53 @@ methods each of those files may call.
   not bring the question back.
 - **Save draft never asks**, nor does Save changes on a live event, nor either
   public form: the question guards putting an event in front of people.
+
+### A multi-day event is one event with an End date (3.112.0)
+
+**`_uc_multi_day` and `_uc_last_date`, and never `_uc_end_date`**, which is the
+GFMP fundraising window (see 3, "Which date counts"). The Schedule card's
+"Multi-day event" tick shows End date beside Date; the start time is the first
+day's and the end time the last day's. **Multi-day and Repeats exclude each
+other**, in the markup (`:has()` hides Repeats) and in the save
+(`recurrence_from_post()` returns nothing while it is ticked). It is not
+offered on an event that is already in a recurrence group. An End date that is
+not after Date is refused with a notice and not stored.
+
+- **One formatter**: `sfaf_ap_range()` ("May 21 to 23, 2027", "Apr 30 to May 2,
+  2027", "Dec 30, 2026 to Jan 2, 2027"; Spanish "del 21 al 23 de mayo de 2027"),
+  reached through `sfaf_ap_event_date()`. Every surface that printed an event's
+  date asks it: list, sidebar, preview, event page, every email and token.
+- **`sfaf_event_days()` is the list of days.** The month grid places the event
+  on each of them, with a second query for events that began before the grid;
+  the list includes an event while it is running; the calendar file ends on the
+  last day; the closed-day warning and the closure review check every day.
+- **The publish rule** adds `last_date` when the tick is on.
+- **Imports**: `SFAF_Sources::sync_multi_day()` sets the tick and End date when
+  the end is a different day: always for Eventbrite, and for GFMP only for the
+  `EVENT_TYPES`, for the same reason `last_day()` asks.
+- **The morning-of reminder** goes on the first day only.
+
+### Events on a closed day ask their organizer (3.112.0)
+
+The warning above still never blocks. **What 3.112.0 adds is a question, after
+the fact, to one person.** `SFAF_Closure_Review`: when a closure is saved,
+every published or scheduled event with a day on it gets one email to its
+`post_author`, with Keep and Cancel; seven days before a date nobody has
+decided, one reminder. Three lists of closure ids on the event record what
+happened: `_uc_closed_kept`, `_uc_closed_notified`, `_uc_closed_reminded`. Saving
+the closure again sends nothing new. A cancelled event is never undecided.
+
+- **A link never acts.** Keep and Cancel open `caladmin/closed-day/{id}`,
+  through sign-in when needed. Keep is a POST from that page
+  (`closed_keep`); Cancel there is the editor's own cancel card and dialog. A
+  mail scanner following the link changes nothing.
+- **Pending has an On closed days tab** for admins and for whoever can edit
+  the event. A team member with no other Pending business sees Pending only
+  while they have one of these.
+- **Both messages are English only** (`'langs' => array('en')` in the catalog),
+  and Email Templates disables the language select for them.
+- The scheduled task is "Events on closed days". `closure-open-test.php` allows
+  this class beside the warning's methods.
 
 ### Where the donation link goes is resolved in one place (3.105.0; email only from 3.106.0)
 
@@ -6587,8 +6691,15 @@ session record's expiry and reissuing the cookie over the same token with
 `wp_set_auth_cookie( $uid, $remember, is_ssl(), $token )`, because a nonce is
 tied to the session token and a fresh sign-in would break every form open in
 every tab. Remember me is read from the session's first length (over three days
-means yes) and stored as `uc_remember`. **Consequence, asked for in 3.110.5: an
-open caladmin tab never signs out on its own.**
+means yes) and stored as `uc_remember`.
+
+**ONLY WHILE SOMEBODY IS THERE (3.112.0, replacing 3.110.5's "an open caladmin
+tab never signs out on its own").** A tick renews only when there has been a
+click or a keystroke on that page in the last thirty minutes; the clock starts
+at page load. An abandoned tab on a shared machine signs out as it did before
+3.110.5, and what was typed is in its draft at the next sign-in. The listeners
+are `markActive`: the first build named them `touched`, which a `var touched
+= []` higher in the file overwrote, so they never ran (7).
 
 **What a restore cannot do.** It fills the fields the page drew. A repeater row
 added in the browser and never saved (a FAQ, a question, an extra date) is not
@@ -7896,6 +8007,15 @@ output:** every check on these two forms reads markup or rules, so a fault that
 lives only in geometry reaches Mark's screen with the suite green.
 
 ---
+
+### A function declaration loses to a var of the same name (3.112.0)
+
+`function touched()` was hoisted, then `var touched = []`, two hundred lines
+up in the same scope, assigned over it. `addEventListener('click', touched)`
+was handed an array and silently registered nothing. Lint, the callable audit
+and a source read all passed it. **The browser check found it, by asserting
+the outcome**: a click, thirty idle minutes later, sends a keepalive. In a long
+IIFE, a new function name is grepped for in the whole file before it is used.
 
 ## 8. Agreed, not built
 

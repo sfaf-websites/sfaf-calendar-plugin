@@ -1503,6 +1503,46 @@ place of its fields, nothing else; the fields are hidden, not removed.
 220px tall at most and scrolling, one standard tick per event with its date at
 the right of the row.
 
+### Tag pills, two more dropdowns, Multi-day and On closed days (3.112.0)
+
+Measured in Chrome by `.claude/release-31120-live.php` at 1280px, 430px and
+390px: the filter bar with all three dropdowns, each opened in turn, an event
+page with pills, Edit event with Multi-day ticked, and Pending > On closed days.
+Screenshots in `.claude/screens/`, `release-31120-<page>-<width>.png`.
+
+**What's included and Location** are the Organizers and groups control with one
+list: the same trigger, the same panel at its 340px single-column width, the
+same option rows with the quiet count. They sit after it on the bar, in that
+order, and wrap with it. **Under `pointer: coarse` all three now take 44px**:
+the trigger, every option row (12px above and below) and Clear all, which moves
+to the panel's corner to make the room. The who control had been missing from
+that rule since 3.85.0.
+
+**A tag pill is the neutral pill**: `--uc-text` on white inside the
+`--uc-border-strong` hairline, Montserrat 12/600, 3px 10px, fully round, the
+teal text ink on hover and focus. **It carries no category colour, because a
+tag is not a category**, and a category chip beside it must stay the only thing
+on the row with a hue. On the event page the pills sit under Hosted by, 8px
+below it; on a list row under the meta line, 6px below. They are inline links,
+like the category chip, and are held to 24px rather than 44px.
+
+**A date range** is the date line's own type, "Oct 24 to 26, 2026", short month
+names as AP style has them, never a dash.
+
+**Multi-day event** is a standard tick under the Date row. Ticked, End date
+appears beside Date in the same two-column row (stacking on a phone like every
+row in the card), and Repeats is hidden. The swap is `:has()`; without it all
+three show.
+
+**Replies go to** is the notification picker's closed row and panel: one radio
+per person, then Someone else, which shows a standard text field under the list.
+
+**On closed days** is the queue card with its band ("ON CLOSED DAYS" and the
+yellow count): per row, the event as a teal link in 600, then "Tuesday, November
+3, 2026, closed for Thanksgiving" in the muted ink, then **Keep**, the secondary
+grey button, and **Cancel**, the danger button. They wrap under the text on a
+phone. Nothing in it is a new colour.
+
 ---
 
 ## 5. CSS discipline

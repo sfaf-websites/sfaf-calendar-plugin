@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.111.0
+Stable tag: 3.112.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,24 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.112.0 =
+
+**What's included and Location on the filter bar, multi-day events, an email to the organizer of each event on a closed day, Drafts and Scheduled tabs, Replies go to as a list of people, and a keepalive that waits for somebody to be there.**
+
+**WHAT'S INCLUDED.** Tags, managed by an Admin in a new Tags section on Series & Categories: add, rename and retire. A retired tag stays on the events that have it and leaves every picker and the filter. Events take tags in the editor's Classification card under Organizer, and a series can give its new events default tags. Both public forms offer them. The event page and list rows show them as pills that open the calendar filtered to that tag. Nothing is seeded.
+
+**THE FILTER BAR** has What's included and Location beside Organizers and groups, each a multi-select listing what the shown events carry, with counts. Location lists every venue and every one-off address. Both filter the grid, the list and the sidebar, are carried in the address as uc_tag and uc_loc, are offered by the embed generator (with "One thing included" as a scope), and are carried by See all events, which now also carries a block's venue. On a touch screen all three dropdowns are 44px.
+
+**MULTI-DAY EVENTS.** The Schedule card has Multi-day event: ticked, End date sits beside Date, the start time is the first day's and the end time the last day's, and Repeats is hidden. Every date reads as a range, "May 21 to 23, 2027", on the grid (every day), list, sidebar, event page, calendar file, embed and every email. The morning-of reminder goes on the first day. Publishing needs the End date. Eventbrite and GFMP events that end on a later day are imported with it set.
+
+**EVENTS ON A CLOSED DAY.** Saving a closure emails the organizer of each published or scheduled event on it, once, with Keep and Cancel. Each opens a caladmin page that asks; nothing changes from the link. Seven days before a date nobody has decided, one reminder goes. Pending has On closed days for admins and the event's team. Both messages are in Email Templates, English only.
+
+**DRAFTS AND SCHEDULED** are new tabs on Events, with counts, listing only the events you created in that state.
+
+**REPLIES GO TO** is a searchable list of calendar people, the creator first, with Someone else for a typed address. It is stored as before.
+
+**THE KEEPALIVE** renews a caladmin sign-in only after a click or a keystroke in the last thirty minutes, so a tab left untouched signs out as it did before 3.110.5.
 
 = 3.111.0 =
 
