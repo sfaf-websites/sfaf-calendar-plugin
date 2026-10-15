@@ -6054,6 +6054,7 @@ function ucDismissOnBackdrop(dialog) {
         var subjectOut = root.querySelector('[data-uc-tpl-subject]');
         var stateOut = root.querySelector('[data-uc-tpl-state]');
         var editBtn = root.querySelector('[data-uc-tpl-edit]');
+        var langSel = root.querySelector('[data-uc-tpl-lang]');
 
         // The editors and their chips are chipEditors()'s (3.110.0), shared with Email registrants.
         var chips = chipEditors(root, form, data.tokens || {});
@@ -6079,6 +6080,13 @@ function ucDismissOnBackdrop(dialog) {
                 if (box) { box.value = m.fields[f] || ''; }
                 if (editors[f]) { fill(editors[f], m.fields[f] || ''); }
             });
+            /* A staff message is English only (3.112.0): the language
+               picker shows English and is off while it is chosen. */
+            var langs = (data.catalog[state.key] || {}).langs;
+            if (langSel) {
+                langSel.disabled = !!(langs && langs.length === 1);
+                if (langSel.disabled) { langSel.value = langs[0]; }
+            }
             var allowed = (data.catalog[state.key] || {}).tokens || [];
             Array.prototype.forEach.call(root.querySelectorAll('[data-uc-tpl-token]'), function (b) {
                 b.hidden = allowed.indexOf(b.getAttribute('data-uc-tpl-token')) === -1;
@@ -6096,7 +6104,6 @@ function ucDismissOnBackdrop(dialog) {
                 show();
             });
         });
-        var langSel = root.querySelector('[data-uc-tpl-lang]');
         if (langSel) {
             langSel.addEventListener('change', function () {
                 state.lang = langSel.value;

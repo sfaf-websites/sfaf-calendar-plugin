@@ -974,6 +974,8 @@ class SFAF_Admin {
                 wp_safe_redirect( add_query_arg( 'msg', 'failed', $base ) );
                 exit;
             }
+            // Each event on it: one email to its organizer, once (3.112.0).
+            SFAF_Closure_Review::on_closure_saved( (string) $done );
             wp_safe_redirect( add_query_arg( 'msg', 'saved', $base ) );
             exit;
         }

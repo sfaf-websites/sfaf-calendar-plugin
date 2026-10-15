@@ -480,6 +480,13 @@ class SFAF_Cron {
                 'on'       => array( 'SFAF_EveryAction', 'configured' ),
                 'off'      => 'EveryAction has no hub login stored.',
             ),
+            'closed_days' => array(
+                'label'    => 'Events on closed days',
+                'plain'    => 'Reminds an event\'s organizer a week before a date SFAF is closed, when nobody has kept or cancelled it.',
+                'callback' => array( 'SFAF_Closure_Review', 'run_reminders' ),
+                'on'       => '__return_true',
+                'off'      => '',
+            ),
             'orphans'   => array(
                 'label'    => 'Events with no organizer',
                 'plain'    => 'Checks once a day for events whose organizer no longer has calendar access, and emails the calendar admins when the list changes.',

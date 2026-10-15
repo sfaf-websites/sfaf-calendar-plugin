@@ -5429,3 +5429,17 @@ body.uc-modal-open { overflow: hidden; }
 .uc-portal [data-uc-card="schedule"]:has([data-uc-multiday-tick]:checked) [data-uc-repeat-wrap] { display: none; }
 .uc-portal [data-uc-card="schedule"]:has([data-uc-repeat-mode]:checked:not([value=""])) [data-uc-multiday] { display: none; }
 .uc-portal .uc-multiday { margin-top: 10px; }
+
+/* ---------------------------------------------------------------------------
+   ON CLOSED DAYS (3.112.0)
+
+   The Pending tab and the page the email's buttons open: a queue row with
+   the event and its date on the left, Keep and Cancel on the right, wrapping
+   under it on a phone. Nothing new in colour.
+   ------------------------------------------------------------------------ */
+.uc-portal .uc-closed-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.uc-portal .uc-closed-what { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.uc-portal .uc-closed-event { font-weight: 600; }
+.uc-portal .uc-closed-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.uc-portal .uc-closed-keep { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.uc-portal .uc-closed-day-title { margin: 0 0 10px; }

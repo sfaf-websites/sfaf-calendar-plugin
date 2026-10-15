@@ -845,6 +845,8 @@ class SFAF_Portal {
             case 'rsvps':      $this->render_rsvps( $user ); break;
             case 'optins':     $this->render_optins( $user ); break;
             case 'pending':    $this->render_pending( $user ); break;
+            // The page the closed-day email's buttons open (3.112.0).
+            case 'closed-day': $this->render_closed_day( $user, isset( $segments[1] ) ? intval( $segments[1] ) : 0 ); break;
             case 'automation':
                 // Moved to the WordPress admin in 2.13.0. Kept as a redirect
                 // rather than deleted, because this URL has been linked from
@@ -2302,6 +2304,10 @@ class SFAF_Portal {
                 $t_key  = sanitize_key( wp_unslash( $_POST['tpl_key'] ?? '' ) );
                 $t_var  = sanitize_key( wp_unslash( $_POST['tpl_variant'] ?? '' ) );
                 $t_lang = SFAF_Messages::lang( sanitize_key( wp_unslash( $_POST['tpl_lang'] ?? 'en' ) ) );
+                // A staff message is English only (3.112.0).
+                if ( ! in_array( $t_lang, SFAF_Messages::langs_for( sanitize_key( wp_unslash( $_POST['tpl_key'] ?? '' ) ) ), true ) ) {
+                    $t_lang = 'en';
+                }
                 $back   = array( 'key' => $t_key, 'variant' => $t_var, 'lang' => $t_lang );
                 // One route and one nonce; the button pressed says which (tpl_do).
                 if ( 'reset' === sanitize_key( wp_unslash( $_POST['tpl_do'] ?? '' ) ) ) {
@@ -2412,6 +2418,21 @@ class SFAF_Portal {
                     wp_die( 'Denied' );
                 }
                 $this->registrant_mail_route( $user, $event_id, true );
+                break;
+
+            /* ---- An event on a closed day, kept (3.112.0). --------------- */
+            case 'closed_keep':
+                $event_id   = isset( $_POST['event_id'] ) ? (int) $_POST['event_id'] : 0;
+                $closure_id = isset( $_POST['closure_id'] ) ? sanitize_text_field( wp_unslash( $_POST['closure_id'] ) ) : '';
+                $post       = $event_id ? get_post( $event_id ) : null;
+                if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
+                    wp_die( 'Denied' );
+                }
+                SFAF_Closure_Review::keep( $event_id, $closure_id );
+                if ( isset( $_POST['closed_back'] ) && 'list' === $_POST['closed_back'] ) {
+                    $this->redirect( 'pending', array( 'kind' => 'closed', 'msg' => 'closed_kept' ) );
+                }
+                $this->redirect( 'closed-day/' . $event_id, array( 'closure' => $closure_id, 'msg' => 'closed_kept' ) );
                 break;
 
             /* ---- Teams. A name and a set of users, and nothing else. ------ */
@@ -4829,7 +4850,7 @@ class SFAF_Portal {
         /* PENDING FOR A REVIEWER (3.111.0): an editor with submissions to
          * review gets the screen, showing only those. */
         $review_ids = $is_admin ? array() : $this->review_queue_ids( $user );
-        if ( ! $is_admin && $review_ids ) {
+        if ( ! $is_admin && ( $review_ids || $this->closed_items_for( $user ) ) ) {
             $nav['pending'] = array( 'Pending', 'pending', 'clock' );
         }
         // Everybody's own, last (3.102.0).
@@ -5073,6 +5094,7 @@ class SFAF_Portal {
             'tag_failed'     => 'That tag could not be saved. Give it a name and try again.',
             'tag_retired'    => 'Tag retired. Events that have it keep it, and it is no longer offered.',
             'tag_restored'   => 'Tag restored. It is offered again.',
+            'closed_kept'    => 'Kept. The event is held on the day SFAF is closed, and nobody is reminded about it again.',
             'series_failed'  => 'That series could not be saved. Give it a name and try again.',
             'faq_set_failed' => 'That set could not be saved.',
             // 'series_removed' is built from real counts further down, because
@@ -19959,6 +19981,133 @@ class SFAF_Portal {
      * @param string $orderby
      * @param string $order
      */
+/* =====================================================================
+     * Events on closed days (3.112.0). See SFAF_Closure_Review.
+     * ================================================================== */
+
+    /** The undecided closed-day rows this person can act on. */
+    private function closed_items_for( $user ) {
+        $out = array();
+        foreach ( SFAF_Closure_Review::undecided() as $item ) {
+            if ( $this->can_edit_event( $user, (int) $item['event_id'] ) ) {
+                $out[] = $item;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * The page Keep and Cancel in the email open. It asks; it never acts on
+     * being opened. Keep is a POST from here, and Cancel here is the editor's
+     * own cancel form and dialog.
+     *
+     * @param WP_User $user
+     * @param int     $event_id
+     */
+    private function render_closed_day( $user, $event_id ) {
+        $event_id   = (int) $event_id;
+        $closure_id = isset( $_GET['closure'] ) ? sanitize_text_field( wp_unslash( $_GET['closure'] ) ) : '';
+        $do         = ( isset( $_GET['do'] ) && 'cancel' === $_GET['do'] ) ? 'cancel' : 'keep';
+        $post       = $event_id ? get_post( $event_id ) : null;
+        if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
+            if ( $this->send_to_public_page( $event_id ) ) {
+                return;
+            }
+            $this->render_dashboard( $user );
+            return;
+        }
+        $item = SFAF_Closure_Review::item( $event_id, $closure_id );
+        $this->chrome_open( $user, 'pending' );
+        ?>
+        <div class="uc-page-head">
+            <h1>On a closed day</h1>
+            <a class="uc-btn" href="<?php echo esc_url( add_query_arg( 'kind', 'closed', $this->url( 'pending' ) ) ); ?>">&larr; On closed days</a>
+        </div>
+        <div class="uc-card uc-closed-day" data-uc-closed-day="<?php echo esc_attr( $do ); ?>">
+            <h2 class="uc-closed-day-title"><a href="<?php echo esc_url( $this->url( 'events/edit/' . $event_id ) ); ?>"><?php echo esc_html( get_the_title( $event_id ) ); ?></a></h2>
+            <?php if ( ! $item ) : ?>
+                <p class="uc-notice">This event is not on a day SFAF is closed any more, so there is nothing to decide.</p>
+            <?php else :
+                $name = SFAF_Closures::name( $item['closure'] );
+                ?>
+                <p>SFAF is closed on <strong><?php echo esc_html( sfaf_ap_date( $item['date'], 'full' ) ); ?></strong><?php echo '' !== $name ? ' for ' . esc_html( $name ) : ''; ?>, and this event is on that day.</p>
+                <?php if ( $item['kept'] ) : ?>
+                    <p class="uc-notice" data-uc-closed-kept>Kept. It is held on that day.</p>
+                <?php elseif ( 'keep' === $do ) : ?>
+                    <form method="post" action="<?php echo esc_url( $this->url( 'closed-day/' . $event_id ) ); ?>" class="uc-closed-keep" data-uc-closed-keep>
+                        <input type="hidden" name="uc_action" value="closed_keep" />
+                        <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
+                        <input type="hidden" name="closure_id" value="<?php echo esc_attr( $item['closure']['id'] ); ?>" />
+                        <?php wp_nonce_field( 'uc_portal_closed_keep', 'uc_nonce' ); ?>
+                        <button type="submit" class="uc-btn uc-btn-primary">Keep the event</button>
+                        <a class="uc-btn" href="<?php echo esc_url( SFAF_Closure_Review::link( $event_id, $item['closure']['id'], 'cancel' ) ); ?>">Cancel it instead</a>
+                    </form>
+                <?php else : ?>
+                    <div class="uc-closed-cancel" data-uc-closed-cancel>
+                        <?php $this->render_cancel_card( $user, $event_id ); ?>
+                    </div>
+                    <p><a href="<?php echo esc_url( SFAF_Closure_Review::link( $event_id, $item['closure']['id'], 'keep' ) ); ?>">Keep it instead</a></p>
+                <?php endif; ?>
+            <?php endif; ?>
+        </div>
+        <?php
+        $this->chrome_close();
+    }
+
+    /**
+     * On closed days: every undecided event date on a closure this person can
+     * edit, with Keep and Cancel. A tab of Pending for an admin, and the whole
+     * screen for anybody else who has one.
+     *
+     * @param WP_User $user
+     */
+    private function render_closed_days( $user ) {
+        $items = $this->closed_items_for( $user );
+        $this->chrome_open( $user, 'pending' );
+        ?>
+        <div class="uc-page-head">
+            <h1>Pending Events</h1>
+        </div>
+        <?php if ( $this->is_admin_role( $user ) ) {
+            $this->pending_tabs( $this->pending_entries( $user ), 'closed', 'received', 'desc' );
+        } ?>
+        <div class="uc-card" data-uc-closed-days>
+            <div class="uc-card-head">
+                <h2>On closed days</h2>
+                <?php if ( $items ) : ?><span class="uc-count-badge"><?php echo count( $items ); ?></span><?php endif; ?>
+            </div>
+            <?php if ( empty( $items ) ) : ?>
+                <p class="uc-empty">No event is on a day SFAF is closed without a decision.</p>
+            <?php else : ?>
+                <ul class="uc-queue-list uc-closed-list">
+                    <?php foreach ( $items as $item ) :
+                        $id   = (int) $item['event_id'];
+                        $name = SFAF_Closures::name( $item['closure'] );
+                        ?>
+                        <li class="uc-closed-row" data-uc-closed-row="<?php echo $id; ?>">
+                            <div class="uc-closed-what">
+                                <a class="uc-closed-event" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ); ?></a>
+                                <span class="uc-muted"><?php echo esc_html( sfaf_ap_date( $item['date'], 'full' ) ); ?><?php echo '' !== $name ? ', closed for ' . esc_html( $name ) : ', SFAF closed'; ?></span>
+                            </div>
+                            <div class="uc-closed-actions">
+                                <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" class="uc-inline-form">
+                                    <input type="hidden" name="uc_action" value="closed_keep" />
+                                    <input type="hidden" name="event_id" value="<?php echo $id; ?>" />
+                                    <input type="hidden" name="closure_id" value="<?php echo esc_attr( $item['closure']['id'] ); ?>" />
+                                    <input type="hidden" name="closed_back" value="list" />
+                                    <?php wp_nonce_field( 'uc_portal_closed_keep', 'uc_nonce' ); ?>
+                                    <button type="submit" class="uc-btn uc-btn-sm">Keep</button>
+                                </form>
+                                <a class="uc-btn uc-btn-sm uc-btn-stop" href="<?php echo esc_url( SFAF_Closure_Review::link( $id, $item['closure']['id'], 'cancel' ) ); ?>">Cancel</a>
+                            </div>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+        </div>
+        <?php
+        $this->chrome_close();
+    }
     private function pending_tabs( $entries, $current, $orderby, $order ) {
         $counts = array( 'all' => count( $entries ) );
         foreach ( $this->pending_kinds() as $key => $unused ) {
@@ -19988,6 +20137,12 @@ class SFAF_Portal {
                     <span class="uc-tab-count"><?php echo (int) $counts[ $key ]; ?></span>
                 </a>
             <?php endforeach; ?>
+            <?php $closed_n = count( SFAF_Closure_Review::undecided() ); ?>
+            <a class="uc-view-tab<?php echo 'closed' === $current ? ' uc-view-tab-active' : ''; ?>" data-uc-closed-tab
+               href="<?php echo esc_url( add_query_arg( 'kind', 'closed', $this->url( 'pending' ) ) ); ?>"<?php echo 'closed' === $current ? ' aria-current="page"' : ''; ?>>
+                On closed days
+                <span class="uc-tab-count"><?php echo (int) $closed_n; ?></span>
+            </a>
         </div>
         <?php
     }
@@ -20055,6 +20210,13 @@ class SFAF_Portal {
      * @param WP_User $user
      */
     private function render_pending( $user ) {
+        /* On closed days (3.112.0): a tab for an admin, the screen for anybody
+           else with one, and where a reviewer with none of those lands. */
+        $kind_asked = isset( $_GET['kind'] ) ? sanitize_key( wp_unslash( $_GET['kind'] ) ) : '';
+        if ( 'closed' === $kind_asked || ( ! $this->is_admin_role( $user ) && ! $this->review_queue_ids( $user ) && $this->closed_items_for( $user ) ) ) {
+            $this->render_closed_days( $user );
+            return;
+        }
         if ( ! $this->is_admin_role( $user ) ) {
             if ( $this->review_queue_ids( $user ) ) {
                 $this->render_review_queue( $user );

@@ -67,7 +67,22 @@ class SFAF_Messages {
             'stop_link'    => 'Stop link',
             'donate_link'  => 'Donate link',
             'count'        => 'Number of dates',
+            // The closed-day staff messages (3.112.0).
+            'closure'      => 'Closure name',
+            'keep_link'    => 'Keep link',
         );
+    }
+
+    /**
+     * The languages a message is written in: both, or English alone for a
+     * staff message (3.112.0).
+     *
+     * @param string $key
+     * @return string[]
+     */
+    public static function langs_for( $key ) {
+        $cat = self::catalog();
+        return isset( $cat[ $key ]['langs'] ) ? (array) $cat[ $key ]['langs'] : array_keys( self::languages() );
     }
 
     /** The tokens that are links, and so draw as a link or a button. */
@@ -118,6 +133,11 @@ class SFAF_Messages {
             'agreement_cancel'  => array( 'label' => 'Agreement: cancel button', 'kind' => 'line', 'variants' => array( 'default' => '' ), 'tokens' => array() ),
             // Under the phone field on the RSVP form (3.110.0).
             'text_opt_in'       => array( 'label' => 'Text opt-in', 'kind' => 'line', 'variants' => array( 'default' => '' ), 'tokens' => array() ),
+            // Staff messages, English only (3.112.0): an event on a day SFAF is closed.
+            'closed_day'     => array( 'label' => 'Event on a closed day', 'kind' => 'email', 'variants' => array( 'default' => '' ), 'langs' => array( 'en' ),
+                'tokens' => array( 'first_name', 'title', 'date', 'closure', 'keep_link', 'cancel_link' ) ),
+            'closed_day_reminder' => array( 'label' => 'Event on a closed day: a week to go', 'kind' => 'email', 'variants' => array( 'default' => '' ), 'langs' => array( 'en' ),
+                'tokens' => array( 'first_name', 'title', 'date', 'closure', 'keep_link', 'cancel_link' ) ),
             'cancel_page'    => array( 'label' => 'Cancel your place page', 'kind' => 'page',
                 'variants' => array( 'ask' => 'Asking', 'done' => 'Released', 'leave' => 'Leaving the waitlist', 'left' => 'Left the waitlist', 'nothing' => 'Nothing to cancel' ),
                 'tokens' => array( 'title', 'date', 'time' ) ),
@@ -151,6 +171,18 @@ class SFAF_Messages {
                 'es' => array( 'subject' => 'Su inscripción en {title} está confirmada', 'intro' => "Su inscripción está confirmada, {first_name}.\n\nTenemos su lugar reservado. Estos son los detalles, y cómo participar está más abajo.", 'closing' => $cancel_es ),
             ),
         );
+
+        /* Staff, English only (3.112.0). The buttons are Keep and Cancel. */
+        $d['closed_day'] = array( 'default' => array(
+            'en' => array( 'subject' => '{title} is on a day SFAF is closed',
+                'intro' => "{title} is on a day SFAF is closed, {first_name}.\n\nSFAF is closed on {date} for {closure}. Keep the event to hold it that day anyway, or cancel it. Each button opens the event in caladmin to confirm.",
+                'closing' => '' ),
+        ) );
+        $d['closed_day_reminder'] = array( 'default' => array(
+            'en' => array( 'subject' => 'A week to go: {title} is on a day SFAF is closed',
+                'intro' => "{title} is a week away, {first_name}, on a day SFAF is closed.\n\nSFAF is closed on {date} for {closure}, and nobody has kept or cancelled the event yet. Keep it to hold it that day anyway, or cancel it.",
+                'closing' => '' ),
+        ) );
 
         $d['waitlist'] = array( 'default' => array(
             'en' => array( 'subject' => 'You are on the waitlist for {title}',
@@ -429,7 +461,8 @@ class SFAF_Messages {
         if ( ! isset( $d[ $key ][ $variant ] ) ) {
             $variant = key( $d[ $key ] );
         }
-        return $d[ $key ][ $variant ][ $lang ];
+        // A staff message is English only (3.112.0).
+        return isset( $d[ $key ][ $variant ][ $lang ] ) ? $d[ $key ][ $variant ][ $lang ] : $d[ $key ][ $variant ]['en'];
     }
 
     /** The saved override of one variant, or null. */
@@ -880,6 +913,18 @@ class SFAF_Messages {
             $text .= implode( "\n", $lines ) . "\n\n";
         }
 
+        /* A row of buttons, each url, label and style (3.112.0): Keep and
+           Cancel on the closed-day messages. In the text part, a line each. */
+        if ( ! empty( $parts['buttons'] ) ) {
+            $row = array();
+            foreach ( (array) $parts['buttons'] as $b ) {
+                $row[]  = SFAF_Email::button( $b[0], $b[1], isset( $b[2] ) ? $b[2] : 'primary' );
+                $text  .= $b[1] . ': ' . $b[0] . "\n";
+            }
+            $html .= SFAF_Email::button_row( $row );
+            $text .= "\n";
+        }
+
         if ( ! empty( $parts['joining'] ) ) {
             $html .= $parts['joining'];
             $text .= isset( $parts['joining_text'] ) ? (string) $parts['joining_text'] : '';
@@ -1060,6 +1105,16 @@ class SFAF_Messages {
         if ( 'several' === $variant ) {
             $person = (object) array( 'first_name' => $s['first_name'], 'name' => $s['first_name'], 'token' => 'SAMPLE' );
             return SFAF_Announce::several_sample( $key, $person, $s );
+        }
+        if ( 'closed_day' === $key || 'closed_day_reminder' === $key ) {
+            return SFAF_Closure_Review::build( $key, array(
+                'first_name'  => $s['first_name'],
+                'title'       => $s['title'],
+                'date'        => sfaf_ap_date( '2026-11-26', 'full' ),
+                'closure'     => 'Thanksgiving',
+                'keep_link'   => 'https://resources.sfaf.org/caladmin/closed-day/123?closure=c20261126&do=keep',
+                'cancel_link' => 'https://resources.sfaf.org/caladmin/closed-day/123?closure=c20261126&do=cancel',
+            ) );
         }
         if ( 'follow_confirm' === $key ) {
             return SFAF_Follow::build_confirmation( $s['series'], 'https://resources.sfaf.org/?uc_follow_confirm=SAMPLE', $s['stop_link'], (int) $s['days'], $lang );
