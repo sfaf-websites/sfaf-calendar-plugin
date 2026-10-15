@@ -196,7 +196,28 @@ rt( '5: the embed cache retired', (int) get_option( SFAF_Embed::CACHE_VERSION_OP
 rt( '5: an address naming it reaches nothing', ( new SFAF_Shortcodes() )->clean_active_tags( 'food,free-food' ), '' );
 rt( '5: deleting it again says so', false !== strpos( rt_post( 'delete_tag', array( 'tag_id' => '31' ) ), 'msg=tag_delete_failed' ), true );
 
-echo "\nRelease 3.112.1, items 4 and 5\n" . str_repeat( '=', 72 ) . "\n";
+/* ======================================================================== 9 */
+/* "What's included" is "Tags" wherever a person reads it; the names inside do not change. */
+rt( '9: the public string, English', SFAF_Messages::label( 'whats_included', 'en' ), 'Tags' );
+rt( '9: the public string, Spanish', SFAF_Messages::label( 'whats_included', 'es' ), 'Etiquetas' );
+$src_portal = (string) file_get_contents( $GLOBALS['kit_root'] . '/includes/class-sfaf-portal.php' );
+$src_admin  = (string) file_get_contents( $GLOBALS['kit_root'] . '/admin/class-sfaf-admin.php' );
+$src_ajs    = (string) file_get_contents( $GLOBALS['kit_root'] . '/admin/js/admin.js' );
+rt( '9: the editor field is Tags, with + Add tag', false !== strpos( $src_portal, '<span class="uc-field-label">Tags <?php echo $this->field_badge( $state, $label ); ?></span>' ) && false !== strpos( $src_portal, '>+ Add tag</button>' ), true );
+rt( '9: the editor\'s empty hint stays', false !== strpos( $src_portal, 'No tags yet. An admin adds them under Series &amp; Categories.' ) || false !== strpos( $src_portal, 'No tags yet. An admin adds them under Series & Categories.' ), true );
+rt( '9: the series screen says Default tags', false !== strpos( $src_portal, '>Default tags</span>' ), true );
+rt( '9: the generator: Tags, One tag, Which tag', false !== strpos( $src_admin, '<option value="tag">One tag</option>' ) && false !== strpos( $src_admin, '>Which tag</label>' ) && false !== strpos( $src_admin, 'checked /> Tags</label>' ), true );
+rt( '9: the generator\'s summary says tags', false !== strpos( $src_ajs, "return r === 'tag' ? 'tags' : r;" ), true );
+$every = '';
+foreach ( array( 'includes', 'admin', 'templates', 'public/js' ) as $dir ) {
+    foreach ( new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $GLOBALS['kit_root'] . '/' . $dir ) ) as $file ) {
+        if ( preg_match( '/\.(php|js)$/', $file ) ) { $every .= preg_replace( '#/\*.*?\*/|^\s*//.*$|<\?php //[^?]*\?>#ms', '', (string) file_get_contents( $file ) ); }
+    }
+}
+rt( '9: no "What\'s included" or "thing included" left in anything a person reads', (bool) preg_match( "/what(&#039;|'|\\\\')s included|thing included|Qué incluye/i", $every ), false );
+rt( '9: the internal key and the data attributes are unchanged', false !== strpos( $src_portal, "'whats_included'" ) || false !== strpos( (string) file_get_contents( $GLOBALS['kit_root'] . '/includes/class-sfaf-tags.php' ), "'whats_included'" ), true );
+
+echo "\nRelease 3.112.1, items 4, 5 and 9\n" . str_repeat( '=', 72 ) . "\n";
 echo "ran $ran assertions.\n";
 if ( $fails ) { echo count( $fails ) . " failed:\n  - " . implode( "\n  - ", $fails ) . "\n"; exit( 1 ); }
 echo "Cancel event and Delete open panels a dialog lifts, cancel asks which dates and leaves the scope answered, and a tag can be archived or deleted.\n";

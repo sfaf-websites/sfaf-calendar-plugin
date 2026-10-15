@@ -98,6 +98,7 @@ for f in .claude/*.php; do
     release-31120-live.php) continue ;;  # run below with --run
     release-31121-live.php) continue ;;  # run below with --run
     plant-31110.php) continue ;;       # a fault planter for the 3.111.0 checks, not a check
+    plant-31121.php) continue ;;       # a fault planter for the 3.112.1 checks, not a check
     embed-isolation-live.php) continue ;; # run below with --run
     embed-loader-live.php) continue ;;  # run below with --run
     login-check.php) continue ;;       # run last, after every capture is rewritten
