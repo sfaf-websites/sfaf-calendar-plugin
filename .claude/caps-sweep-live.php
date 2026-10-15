@@ -115,6 +115,12 @@ $pages = array(
     'caladmin-preferences' => cs_screen( 'render_preferences', array( $user ) ),
     'caladmin-optins'      => cs_screen( 'render_optins', array( $user ) ),
     'caladmin-email-templates' => cs_screen( 'render_email_templates', array( $user ) ),
+    /* Added for the component sweep (3.112.1), which reads these pages too. */
+    'caladmin-series-remove'   => cs_screen( 'render_series_remove', array( $user, 11 ) ),
+    'caladmin-closed-days'     => cs_screen( 'render_closed_days', array( $user ) ),
+    'caladmin-closed-day'      => cs_screen( 'render_closed_day', array( $user, $ev ), array( 'closure' => 'c1', 'do' => 'cancel' ) ),
+    'caladmin-registrant-mail' => cs_screen( 'render_registrant_mail', array( $user, $ev ) ),
+    'caladmin-login'           => cs_capture( function () { $_GET = array(); kit_call( 'SFAF_Portal', 'render_login', $GLOBALS['portal'], array() ); } ),
 );
 
 /* The public calendar, in the stylesheet it loads, in each view. */

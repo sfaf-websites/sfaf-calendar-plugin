@@ -1,0 +1,92 @@
+                <details class="uc-card uc-rsvp-settings uc-registrant-mail" data-uc-disclosure data-uc-registrant-mail>
+            <summary class="uc-rsvp-settings-toggle" aria-expanded="false">
+                <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                <span class="uc-rsvp-settings-id">
+                    <span class="uc-rsvp-settings-name"><strong>Email registrants</strong></span>
+                    <span class="uc-muted">Send a message to everyone registered.</span>
+                </span>
+            </summary>
+            <div class="uc-rsvp-settings-form uc-registrant-mail-body">
+                                <form method="post" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-registrant-mail-form" data-uc-rm-form
+                      data-uc-rm-counts="{&quot;00&quot;:1,&quot;01&quot;:1,&quot;10&quot;:1,&quot;11&quot;:1}"
+                      data-uc-rm-url="https://resources.sfaf.org/caladmin/rsvps"
+                      data-uc-rm-preview-nonce="nonce"
+                      data-uc-rm-tokens="{&quot;first_name&quot;:&quot;First name&quot;,&quot;title&quot;:&quot;Event title&quot;,&quot;date&quot;:&quot;Date&quot;,&quot;time&quot;:&quot;Time&quot;,&quot;location&quot;:&quot;Location&quot;,&quot;event_link&quot;:&quot;Event page link&quot;}">
+                    <input type="hidden" name="uc_action" value="registrant_mail_send" />
+                    <input type="hidden" name="uc_nonce" value="nonce" />                    <input type="hidden" name="event_id" value="501" />
+                    <div class="uc-tpl-tokens" role="group" aria-label="Insert a token">
+                        <span class="uc-field-label">Insert</span>
+                                                    <button type="button" class="uc-tpl-token" data-uc-tpl-token="first_name">First name</button>
+                                                    <button type="button" class="uc-tpl-token" data-uc-tpl-token="title">Event title</button>
+                                                    <button type="button" class="uc-tpl-token" data-uc-tpl-token="date">Date</button>
+                                                    <button type="button" class="uc-tpl-token" data-uc-tpl-token="time">Time</button>
+                                                    <button type="button" class="uc-tpl-token" data-uc-tpl-token="location">Location</button>
+                                                    <button type="button" class="uc-tpl-token" data-uc-tpl-token="event_link">Event page link</button>
+                                            </div>
+                    <label class="uc-field">
+                        <span class="uc-field-label">Subject</span>
+                        <textarea name="rm_subject" rows="1" data-uc-tpl-text="subject"></textarea>
+                    </label>
+                                        <div class="uc-field uc-rm-body" data-uc-rm-body>
+                        <label class="uc-field-label" for="uc-rm-body">Message</label>
+                        <textarea name="rm_body" id="uc-rm-body"></textarea>                        <span class="uc-hint">Type the message under the subject, which is its heading.</span>
+                    </div>
+                    <div class="uc-rm-ticks">
+                        <label class="uc-check">
+                            <input type="checkbox" name="rm_waitlist" value="1" data-uc-rm-waitlist />
+                            Include the waitlist
+                        </label>
+                        <label class="uc-check">
+                            <input type="checkbox" name="rm_team" value="1" data-uc-rm-team />
+                            Include event team
+                        </label>
+                    </div>
+                    <div class="uc-form-actions">
+                        <button type="button" class="uc-btn" data-uc-rm-preview>Preview</button>
+                        <button type="submit" class="uc-btn uc-btn-go uc-rm-send" data-uc-rm-send
+                                data-uc-confirm="Send to 1 person?"><span class="uc-rm-send-icon" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-mail" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/></svg></span><span class="uc-rm-send-label">Send</span></button>
+                    </div>
+                    <p class="uc-notice uc-notice-error" role="alert" data-uc-rm-error hidden></p>
+                    <div class="uc-rm-preview" data-uc-rm-preview-box hidden>
+                        <p class="uc-hint" data-uc-rm-preview-to></p>
+                        <p class="uc-rm-preview-subject"><strong data-uc-rm-preview-subject></strong></p>
+                        <iframe class="uc-rm-preview-frame" title="Preview of the message" data-uc-rm-preview-frame></iframe>
+                    </div>
+                </form>
+                    </div>
+        </details>
+        <script>window.CS_PAGE="caladmin-registrant-mail";(function () {
+var out = { page: window.CS_PAGE, errors: [], caps: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function path(el) {
+  var p = [];
+  for (var n = el; n && n.nodeType === 1 && p.length < 4; n = n.parentNode) {
+    p.unshift(n.tagName.toLowerCase() + (n.className && typeof n.className === 'string' ? '.' + n.className.trim().split(/\s+/).join('.') : ''));
+  }
+  return p.join(' > ');
+}
+window.addEventListener('load', function () { setTimeout(function () {
+  Array.prototype.forEach.call(document.body.querySelectorAll('*'), function (el) {
+    if (el.closest('script, style, template, noscript, #out')) { return; }
+    var own = '';
+    Array.prototype.forEach.call(el.childNodes, function (n) { if (n.nodeType === 3) { own += n.textContent; } });
+    own = own.replace(/\s+/g, ' ').trim();
+    if (!/[a-z]/.test(own)) { return; }
+    var cs = getComputedStyle(el);
+    if (cs.textTransform !== 'uppercase' && cs.fontVariantCaps.indexOf('small-caps') < 0) { return; }
+    /* A heading's own text: the element itself, anything inside a table
+       header, or a plain wrapper inside a heading. Help panels, hints,
+       labels, controls and sentences inside a heading are NOT its text,
+       which is the whole of what this sweep is for. */
+    var heading = /^(H[1-6]|TH)$/.test(el.tagName) || !!el.closest('th')
+      || (!!el.closest('h1, h2, h3, h4, h5, h6') && !el.closest('.uc-help-body, .uc-hint, .uc-muted, .uc-field-label, label, button, p, small, select, a'));
+    var classes = [];
+    for (var n = el; n && n.nodeType === 1; n = n.parentNode) {
+      if (typeof n.className === 'string') { classes = classes.concat(n.className.trim().split(/\s+/)); }
+    }
+    out.caps.push({ text: own.slice(0, 70), heading: heading, path: path(el), classes: classes,
+      shown: el.getClientRects().length > 0 });
+  });
+  var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+}, 300); });
+})();</script>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html >
+<head>
+    <meta charset="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Sign In - SFAF Calendar</title>
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.112.1" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.112.1" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.112.1" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.112.1" />
+    <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
+        <script>
+    (function (d) {
+        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        d.setAttribute('data-uc-motion', reduced ? 'reduced' : 'on');
+        if (reduced) { return; }
+        d.className += ' uc-anim';
+        // The nav stagger is once per session, not once per navigation: every
+        // screen here is a full page load. A storage failure means it simply
+        // runs again, which is the harmless outcome.
+        try {
+            if (window.sessionStorage.getItem('ucNavIntro') !== '1') {
+                window.sessionStorage.setItem('ucNavIntro', '1');
+                d.className += ' uc-anim-nav';
+            }
+        } catch (e) {
+            d.className += ' uc-anim-nav';
+        }
+    })(document.documentElement);
+    </script>
+    </head>
+<body class="uc-portal">        <div class="uc-login-wrap">
+            <div class="uc-login-card">
+                <div class="uc-login-brand">
+                    <img src="https://resources.sfaf.org/wp-content/uploads/logos/sfaf-logo.webp" alt="San Francisco AIDS Foundation"
+                         class="uc-login-logo" width="348" height="91" data-uc-login-logo />
+                </div>
+                <h1>SFAF Calendar Admin</h1>
+                                    <p class="uc-login-sub">Sign in to manage events</p>
+                                        
+                <form method="post" action="https://resources.sfaf.org/caladmin" class="uc-login-form">
+                    <input type="hidden" name="uc_action" value="login" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                    <label>Username or Email
+                        <input type="text" name="log" autocomplete="username" required autofocus />
+                    </label>
+                    <label>Password
+                        <input type="password" name="pwd" autocomplete="current-password" required />
+                    </label>
+                    <label class="uc-login-remember">
+                        <input type="checkbox" name="rememberme" value="1" /> Remember me
+                    </label>
+                    <button type="submit" class="uc-btn uc-btn-primary uc-btn-block">Sign In</button>
+                </form>
+                <p class="uc-login-aside"><a href="https://resources.sfaf.org/caladmin/forgot" data-uc-forgot-link>Forgot your password?</a></p>
+                    </div>
+        </div>
+        <script type="application/json" id="uc-session-config">{"ajax":"https:\/\/resources.sfaf.org\/wp-admin\/admin-ajax.php","action":"sfaf_caladmin_session","signin":"https:\/\/resources.sfaf.org\/caladmin","screen":"dashboard","signedIn":true}</script>
+<script src="../public/js/caladmin-session.js?ver=3.112.1"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.112.1"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.112.1"></script>
+<script src="../public/js/portal.js?ver=3.112.1"></script>
+<script>window.CS_PAGE="caladmin-login";(function () {
+var out = { page: window.CS_PAGE, errors: [], caps: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function path(el) {
+  var p = [];
+  for (var n = el; n && n.nodeType === 1 && p.length < 4; n = n.parentNode) {
+    p.unshift(n.tagName.toLowerCase() + (n.className && typeof n.className === 'string' ? '.' + n.className.trim().split(/\s+/).join('.') : ''));
+  }
+  return p.join(' > ');
+}
+window.addEventListener('load', function () { setTimeout(function () {
+  Array.prototype.forEach.call(document.body.querySelectorAll('*'), function (el) {
+    if (el.closest('script, style, template, noscript, #out')) { return; }
+    var own = '';
+    Array.prototype.forEach.call(el.childNodes, function (n) { if (n.nodeType === 3) { own += n.textContent; } });
+    own = own.replace(/\s+/g, ' ').trim();
+    if (!/[a-z]/.test(own)) { return; }
+    var cs = getComputedStyle(el);
+    if (cs.textTransform !== 'uppercase' && cs.fontVariantCaps.indexOf('small-caps') < 0) { return; }
+    /* A heading's own text: the element itself, anything inside a table
+       header, or a plain wrapper inside a heading. Help panels, hints,
+       labels, controls and sentences inside a heading are NOT its text,
+       which is the whole of what this sweep is for. */
+    var heading = /^(H[1-6]|TH)$/.test(el.tagName) || !!el.closest('th')
+      || (!!el.closest('h1, h2, h3, h4, h5, h6') && !el.closest('.uc-help-body, .uc-hint, .uc-muted, .uc-field-label, label, button, p, small, select, a'));
+    var classes = [];
+    for (var n = el; n && n.nodeType === 1; n = n.parentNode) {
+      if (typeof n.className === 'string') { classes = classes.concat(n.className.trim().split(/\s+/)); }
+    }
+    out.caps.push({ text: own.slice(0, 70), heading: heading, path: path(el), classes: classes,
+      shown: el.getClientRects().length > 0 });
+  });
+  var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+}, 300); });
+})();</script></body></html>
