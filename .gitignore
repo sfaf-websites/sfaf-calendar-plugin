@@ -94,3 +94,6 @@ SFAF-generic-header-skyline-1200x212.png
 # Never committed: the check exists to keep them off public pages.
 .claude/fixtures/bylines/people.local.json
 .claude/byline-live/live-*.html
+
+# Document exports for the Claude.ai project. Copies, never committed.
+/handover-export/
