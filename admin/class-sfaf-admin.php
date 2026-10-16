@@ -974,8 +974,6 @@ class SFAF_Admin {
                 wp_safe_redirect( add_query_arg( 'msg', 'failed', $base ) );
                 exit;
             }
-            // Each event on it: one email to its organizer, once (3.112.0).
-            SFAF_Closure_Review::on_closure_saved( (string) $done );
             wp_safe_redirect( add_query_arg( 'msg', 'saved', $base ) );
             exit;
         }
@@ -1544,8 +1542,6 @@ class SFAF_Admin {
         $categories = get_terms( array( 'taxonomy' => 'uc_event_category', 'hide_empty' => false ) );
         $organizers = get_terms( array( 'taxonomy' => 'uc_organizer', 'hide_empty' => false ) );
         $categories = is_wp_error( $categories ) ? array() : $categories;
-        // What's included (3.112.0): the tags a block may be limited to.
-        $gen_tags   = SFAF_Tags::active();
         $organizers = is_wp_error( $organizers ) ? array() : $organizers;
 
         /*
@@ -1730,7 +1726,6 @@ class SFAF_Admin {
                             <option value="organizer">One organizer</option>
                             <option value="series">One series</option>
                             <option value="category">One category</option>
-                            <option value="tag">One tag</option>
                         </select>
                         <p class="description">All events is the default, so a block shows the whole calendar unless it is deliberately narrowed. Organizer is usually the right narrowing for a program page: a team&rsquo;s work is often several series and several categories.</p>
                     </div>
@@ -1772,20 +1767,6 @@ class SFAF_Admin {
                                 <?php foreach ( $categories as $cat ) : ?>
                                     <option value="<?php echo esc_attr( $cat->slug ); ?>"
                                             data-name="<?php echo esc_attr( $cat->name ); ?>"><?php echo esc_html( $cat->name ); ?></option>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </select>
-                    </div>
-
-                    <div class="uc-embed-field" data-when-filter="tag" hidden>
-                        <label class="uc-embed-label" for="uc-embed-tag">Which tag</label>
-                        <select id="uc-embed-tag" class="uc-input uc-embed-which">
-                            <?php if ( empty( $gen_tags ) ) : ?>
-                                <option value="">No tags yet</option>
-                            <?php else : ?>
-                                <?php foreach ( $gen_tags as $gt ) : ?>
-                                    <option value="<?php echo esc_attr( $gt->slug ); ?>"
-                                            data-name="<?php echo esc_attr( $gt->name ); ?>"><?php echo esc_html( $gt->name ); ?></option>
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </select>
@@ -1852,8 +1833,6 @@ class SFAF_Admin {
                             <label class="uc-embed-check"><input type="checkbox" id="uc-embed-filter-category" checked /> Category</label>
                             <label class="uc-embed-check"><input type="checkbox" id="uc-embed-filter-organizer" checked /> Organizer</label>
                             <label class="uc-embed-check"><input type="checkbox" id="uc-embed-filter-series" checked /> Series</label>
-                            <label class="uc-embed-check"><input type="checkbox" id="uc-embed-filter-tag" checked /> Tags</label>
-                            <label class="uc-embed-check"><input type="checkbox" id="uc-embed-filter-location" checked /> Location</label>
                         </div>
                         <p class="description">Any combination, including none. The search box appears whenever at least one is on.</p>
                     </div>

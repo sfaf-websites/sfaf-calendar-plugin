@@ -72,16 +72,6 @@ class SFAF_Embed {
         add_action( 'updated_post_meta', array( $this, 'flush_cache_on_meta' ), 10, 4 );
         add_action( 'added_post_meta', array( $this, 'flush_cache_on_meta' ), 10, 4 );
         add_action( 'deleted_post_meta', array( $this, 'flush_cache_on_meta' ), 10, 4 );
-        /*
-         * TERMS SET ON AN EVENT WITHOUT A SAVE (3.112.1). The events list's bulk
-         * category writes wp_set_post_terms() and nothing else, so no hook above
-         * fired and the embed kept the old categories for ten minutes.
-         */
-        add_action( 'set_object_terms', array( $this, 'flush_cache_on_terms' ), 10, 6 );
-        /* A tag archived or restored is term meta alone (3.112.1). */
-        add_action( 'added_term_meta', array( $this, 'flush_cache_on_term_meta' ), 10, 3 );
-        add_action( 'updated_term_meta', array( $this, 'flush_cache_on_term_meta' ), 10, 3 );
-        add_action( 'deleted_term_meta', array( $this, 'flush_cache_on_term_meta' ), 10, 3 );
         add_action( 'created_term', array( $this, 'flush_cache_for_term' ), 10, 3 );
         add_action( 'edited_term', array( $this, 'flush_cache_for_term' ), 10, 3 );
         add_action( 'delete_term', array( $this, 'flush_cache_for_term' ), 10, 3 );
@@ -146,14 +136,14 @@ class SFAF_Embed {
      * src, an old calendar.css with it. New markup, old CSS, and a month grid
      * that arrived on sfaf.org with no styling for any of it.
      *
-     * SINCE 3.112.1 THIS IS THE LOADER, NOT THE CALENDAR. Unversioned, it was
-     * still at the mercy of HTTP caching: after 3.112.0 was installed a host
-     * page kept a cached 3.111.0 embed.js. The loader holds no release logic.
-     * It asks this route for the version (embed_version=1, answered in
-     * handle_request() before anything is built) and loads
-     * embed-app.js?ver=<version>, so a cached loader still loads today's
-     * calendar. A block pasted before 2.10.1 with a pinned ?ver= reaches the
-     * same loader, and the pin is ignored.
+     * Unversioned, the browser revalidates on its normal schedule and a
+     * released change reaches every embedded page without anyone re-pasting
+     * anything. Freshness comes from HTTP caching, which is the mechanism that
+     * can actually see a new release; a hardcoded string cannot.
+     *
+     * NOTE FOR ANY BLOCK PASTED BEFORE 2.10.1: it still carries the old pinned
+     * URL and will keep loading a cached old script until that cache expires.
+     * Re-copying the block from the generator replaces it for good.
      */
     public static function script_url() {
         return SFAF_PLUGIN_URL . 'public/js/embed.js';
@@ -354,13 +344,6 @@ class SFAF_Embed {
                 'filters'          => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
                 // 3.111.0: event ids shown first, from data-pin. Same route, for the CORS reason above.
                 'pin'              => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
-                // 3.112.0: the snippet's tag scope, and what the visitor chose in
-                // What's included and Location. Same route, for the CORS reason above.
-                'tag'              => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
-                'active_tags'      => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
-                'active_locations' => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
-                // 3.112.1: the loader asks which release to load. Same route, for the CORS reason above.
-                'embed_version'    => array( 'type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_text_field' ),
             ),
         ) );
     }
@@ -373,20 +356,6 @@ class SFAF_Embed {
      * pages return just the cards, for the load-more button to append.
      */
     public function handle_request( $request ) {
-        /*
-         * THE LOADER'S QUESTION (3.112.1): which release is this site on?
-         * public/js/embed.js asks it before loading embed-app.js?ver=<answer>,
-         * so it is answered before anything is read or built, and never kept by
-         * a browser or a proxy: a kept answer would pin the page to a release,
-         * which is the fault the loader exists to end.
-         */
-        if ( '' !== (string) $request->get_param( 'embed_version' ) ) {
-            $response = new WP_REST_Response( array( 'embed_version' => self::js_version() ), 200 );
-            $this->apply_cors_to_response( $response, $request );
-            $response->header( 'Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate' );
-            return $response;
-        }
-
         $params = $this->normalize_params( $request );
 
         $payload = $this->get_cached( $params );
@@ -438,9 +407,7 @@ class SFAF_Embed {
         $narrowed = ( '' !== trim( (string) $params['s'] ) )
             || ( '' !== trim( (string) $params['active_organizer'] ) )
             || ( '' !== trim( (string) $params['active_groups'] ) )
-            || ( '' !== trim( (string) $params['active_category'] ) )
-            || ( '' !== trim( (string) $params['active_tags'] ) )
-            || ( '' !== trim( (string) $params['active_locations'] ) );
+            || ( '' !== trim( (string) $params['active_category'] ) );
 
         $browser_ttl = (int) apply_filters( 'sfaf_embed_browser_cache_ttl', MINUTE_IN_SECONDS );
         if ( $narrowed ) {
@@ -510,10 +477,6 @@ class SFAF_Embed {
              * generated without. */
             'filters'            => (string) $request->get_param( 'filters' ),
             'pin'                => SFAF_Shortcodes::pin_list( (string) $request->get_param( 'pin' ) ),
-            // What's included and Location (3.112.0).
-            'tag'                => $al( SFAF_Tags::TAXONOMY, 'tag' ),
-            'active_tags'        => $this->shortcodes->clean_active_tags( (string) $request->get_param( 'active_tags' ) ),
-            'active_locations'   => SFAF_Shortcodes::location_list( (string) $request->get_param( 'active_locations' ) ),
             'venue'        => (string) $request->get_param( 'venue' ),
             'series'       => absint( $request->get_param( 'series' ) ),
             /*
@@ -584,11 +547,7 @@ class SFAF_Embed {
          */
         $resolved['groups'] = $this->shortcodes->clamp_groups( $resolved, $params['active_groups'] );
         /* Pins stand aside while a visitor narrows, as in render_calendar_block(). */
-        /* What's included and Location for items and month (3.112.0); the
-           block mode clamps its own, because it also draws the dropdowns. */
-        $resolved['tag']      = $this->shortcodes->effective_organizer( $params['tag'], $params['active_tags'] );
-        $resolved['location'] = $params['active_locations'];
-        if ( '' !== $params['active_category'] || '' !== $params['active_organizer'] || '' !== $params['active_groups'] || '' !== $params['active_tags'] || '' !== $params['active_locations'] || '' !== trim( (string) $params['s'] ) ) {
+        if ( '' !== $params['active_category'] || '' !== $params['active_organizer'] || '' !== $params['active_groups'] || '' !== trim( (string) $params['s'] ) ) {
             $resolved['pin'] = '';
         }
 
@@ -1163,14 +1122,6 @@ class SFAF_Embed {
 
     /** Current cache generation. */
     private function cache_version() {
-        return self::generation();
-    }
-
-    /**
-     * The cache's generation, for anything else whose answer must be retired
-     * when the embed's is (3.112.2): the Location index keys on it.
-     */
-    public static function generation() {
         return (int) get_option( self::CACHE_VERSION_OPTION, 1 );
     }
 
@@ -1213,10 +1164,6 @@ class SFAF_Embed {
             's'         => isset( $params['s'] ) ? $params['s'] : '',
             // Two blocks pinning different events are two payloads (3.111.0).
             'pin'       => isset( $params['pin'] ) ? $params['pin'] : '',
-            // What's included and Location (3.112.0), each choice its own payload.
-            'tag'              => isset( $params['tag'] ) ? $params['tag'] : '',
-            'active_tags'      => isset( $params['active_tags'] ) ? $params['active_tags'] : '',
-            'active_locations' => isset( $params['active_locations'] ) ? $params['active_locations'] : '',
         );
 
         if ( 'month' === $params['mode'] ) {
@@ -1338,15 +1285,7 @@ class SFAF_Embed {
      * @param mixed $b Unused.
      */
     public function flush_cache( $a = null, $b = null ) {
-        self::retire_all();
-    }
-
-    /**
-     * Retire every cached payload, for a caller with no instance at hand
-     * (3.112.1): a tag deleted is the first.
-     */
-    public static function retire_all() {
-        update_option( self::CACHE_VERSION_OPTION, (int) get_option( self::CACHE_VERSION_OPTION, 1 ) + 1 );
+        update_option( self::CACHE_VERSION_OPTION, $this->cache_version() + 1 );
     }
 
     /**
@@ -1431,19 +1370,6 @@ class SFAF_Embed {
                 '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_gofundme_raised', '_uc_donate_choice',
                 '_uc_rsvp_enabled', '_uc_show_rsvp',
                 '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
-                /*
-                 * CANCEL, REINSTATE, REMOVE FROM THE CALENDAR AND PRIVATE
-                 * (3.112.1). Cancelling and reinstating are meta and nothing
-                 * else, from the editor, the series removal screen and a closed
-                 * day alike, so a cancelled event stayed on every embed, without
-                 * its Cancelled mark, until the cache ran out; reinstating left
-                 * it off. Private moves the slug through wp_update_post() and
-                 * was already flushed there; the key is here so a write that
-                 * does not move the slug is not missed.
-                 */
-                SFAF_Cancellation::META, SFAF_Cancellation::VISIBILITY_META, SFAF_Privacy::META,
-                // Multi-day (3.112.0): an import sets these without a save.
-                '_uc_multi_day', '_uc_last_date',
             ) );
         }
 
@@ -1464,48 +1390,8 @@ class SFAF_Embed {
         // uc_series is in this list because a series now carries the name on
         // the "Part of series" badge and the image an event falls back to, so
         // renaming one or changing its image changes what a card renders.
-        $watched = self::watched_taxonomies();
+        $watched = array( 'uc_event_category', 'uc_organizer', 'uc_venue', SFAF_Series::TAXONOMY );
         if ( ! in_array( $taxonomy, $watched, true ) ) {
-            return;
-        }
-        $this->flush_cache();
-    }
-
-    /**
-     * The taxonomies a card or the filter bar draws. Tags since 3.112.1: a
-     * renamed or deleted tag changed every pill and the filter, and flushed
-     * nothing.
-     *
-     * @return string[]
-     */
-    private static function watched_taxonomies() {
-        return array( 'uc_event_category', 'uc_organizer', 'uc_venue', SFAF_Series::TAXONOMY, SFAF_Tags::TAXONOMY );
-    }
-
-    /**
-     * Flush when an event's terms in a drawn taxonomy CHANGE (3.112.1; only on
-     * a change since 3.112.2). Core fires set_object_terms on every
-     * wp_set_object_terms() call, changed or not, so without the comparison a
-     * save or an import that rewrites the same terms would empty every
-     * embed's cache each time.
-     */
-    public function flush_cache_on_terms( $object_id, $terms = array(), $tt_ids = array(), $taxonomy = '', $append = false, $old_tt_ids = array() ) {
-        if ( ! in_array( $taxonomy, self::watched_taxonomies(), true ) || get_post_type( $object_id ) !== 'uc_event' ) {
-            return;
-        }
-        $now = array_map( 'intval', (array) $tt_ids );
-        $was = array_map( 'intval', (array) $old_tt_ids );
-        sort( $now );
-        sort( $was );
-        if ( $now === $was ) {
-            return;
-        }
-        $this->flush_cache();
-    }
-
-    /** Flush when a tag is archived or restored (3.112.1). */
-    public function flush_cache_on_term_meta( $meta_id, $term_id = 0, $meta_key = '' ) {
-        if ( SFAF_Tags::META_RETIRED !== (string) $meta_key ) {
             return;
         }
         $this->flush_cache();

@@ -827,7 +827,7 @@
                  * who is putting it on, then which run of that programme. Built
                  * as a list rather than three booleans so the attribute and the
                  * summary below cannot disagree about the order. */
-                filterRows: ['category', 'organizer', 'series', 'tag', 'location'].filter(function (row) {
+                filterRows: ['category', 'organizer', 'series'].filter(function (row) {
                     return $('#uc-embed-filter-' + row).is(':checked');
                 }),
                 // Pinned event ids, in the order ticked down the list (3.111.0).
@@ -862,8 +862,7 @@
                 ? ({
                     organizer: 'events from ' + choices.filterName,
                     series: 'the ' + choices.filterName + ' series',
-                    category: choices.filterName + ' events',
-                    tag: 'events with ' + choices.filterName
+                    category: choices.filterName + ' events'
                 })[choices.filterType]
                 : 'all upcoming events';
 
@@ -883,7 +882,7 @@
             var summary = 'SFAF Calendar: ' + what + ', ' + how;
             if (choices.view !== 'sidebar') {
                 summary += choices.filterRows.length
-                    ? ', filtered by ' + choices.filterRows.map(function (r) { return r === 'tag' ? 'tags' : r; }).join(', ')
+                    ? ', filtered by ' + choices.filterRows.join(', ')
                     : ', without visitor filters';
             }
             // Said in the comment above the snippet, because somebody reading a

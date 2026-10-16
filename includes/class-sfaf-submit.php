@@ -582,9 +582,6 @@ class SFAF_Submit {
          * decision taken at approval, on the screen built for it, once somebody
          * knows it will be used again.
          */
-        // What's included (3.112.0): real tags that are not retired.
-        $clean['tags'] = SFAF_Tags::from_form( $post );
-
         $clean['venue'] = 0;
         if ( ! empty( $post['venue'] ) ) {
             $id = (int) $post['venue'];
@@ -943,12 +940,6 @@ class SFAF_Submit {
          */
         if ( $c['venue'] ) {
             SFAF_Venues::set_for_event( $event_id, (int) $c['venue'] );
-        }
-
-        /* What's included, before the join, so the series default fills it
-           only when the submitter ticked nothing (3.112.0). */
-        if ( ! empty( $c['tags'] ) ) {
-            wp_set_object_terms( $event_id, $c['tags'], SFAF_Tags::TAXONOMY );
         }
 
         /* join(): an empty category and organizer take the series defaults
@@ -1514,8 +1505,6 @@ class SFAF_Submit {
                     <span class="uc-hint">Say what it is, who it is for, and what somebody should expect.</span>
                     <?php SFAF_Submissions::field_error( $err( 'description' ) ); ?>
                 </div>
-
-                <?php SFAF_Tags::form_fieldset( (array) $v( 'tags', array() ) ); ?>
                 </fieldset>
 
                 <fieldset class="uc-form-section-group">

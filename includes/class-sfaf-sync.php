@@ -97,16 +97,6 @@ class SFAF_Sync {
             'date'            => get_post_meta( $post_id, '_uc_event_date', true ),
             'start_time'      => get_post_meta( $post_id, '_uc_start_time', true ),
             'end_time'        => get_post_meta( $post_id, '_uc_end_time', true ),
-            /*
-             * MULTI-DAY (3.112.1), ADDED, NOTHING RENAMED. `date` stays the
-             * first day, as a reader before 3.112.0 expects. last_date is the
-             * last day (the same as `date` on a one-day event), days is every
-             * day from the first to the last, and multi_day says which. start_time
-             * is on the first day and end_time on the last.
-             */
-            'multi_day'       => '' !== sfaf_event_last_date( $post_id ),
-            'last_date'       => sfaf_event_last_date( $post_id ) ?: (string) get_post_meta( $post_id, '_uc_event_date', true ),
-            'days'            => sfaf_event_days( $post_id ),
             'location'        => sfaf_event_location( $post_id ),
             'recurrence'      => SFAF_Recurrence::pattern_of( $post_id ),
             'capacity'        => get_post_meta( $post_id, '_uc_capacity', true ),

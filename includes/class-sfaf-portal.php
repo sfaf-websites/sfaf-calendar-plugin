@@ -845,8 +845,6 @@ class SFAF_Portal {
             case 'rsvps':      $this->render_rsvps( $user ); break;
             case 'optins':     $this->render_optins( $user ); break;
             case 'pending':    $this->render_pending( $user ); break;
-            // The page the closed-day email's buttons open (3.112.0).
-            case 'closed-day': $this->render_closed_day( $user, isset( $segments[1] ) ? intval( $segments[1] ) : 0 ); break;
             case 'automation':
                 // Moved to the WordPress admin in 2.13.0. Kept as a redirect
                 // rather than deleted, because this URL has been linked from
@@ -1608,38 +1606,6 @@ class SFAF_Portal {
                 $this->schedule_publish_from_post();
                 break;
 
-            /* ---- Tags, "What's included" (3.112.0). Admins only. ---------- */
-            case 'save_tag':
-                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
-                $tag_id = isset( $_POST['tag_id'] ) ? intval( $_POST['tag_id'] ) : 0;
-                $saved  = SFAF_Tags::save( $tag_id, isset( $_POST['tag_name'] ) ? wp_unslash( $_POST['tag_name'] ) : '' );
-                if ( ! is_wp_error( $saved ) && $tag_id && isset( $_POST['tag_slug'] ) ) {
-                    $moved = SFAF_Slug_Aliases::rename( $tag_id, SFAF_Tags::TAXONOMY, wp_unslash( $_POST['tag_slug'] ) );
-                    if ( is_wp_error( $moved ) ) {
-                        $saved = $moved;
-                    }
-                }
-                if ( is_wp_error( $saved ) ) {
-                    set_transient( 'sfaf_tag_error_' . $user->ID, $saved->get_error_message(), 60 );
-                    $this->redirect( 'series', array( 'msg' => 'tag_failed' ) );
-                }
-                $this->redirect( 'series', array( 'msg' => 'tag_saved' ) );
-                break;
-
-            case 'retire_tag':
-                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
-                $retire = ! empty( $_POST['tag_retire'] );
-                SFAF_Tags::set_retired( isset( $_POST['tag_id'] ) ? intval( $_POST['tag_id'] ) : 0, $retire );
-                $this->redirect( 'series', array( 'msg' => $retire ? 'tag_retired' : 'tag_restored' ) );
-                break;
-
-            /* Delete a tag (3.112.1): from every event and series default. */
-            case 'delete_tag':
-                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
-                $gone = SFAF_Tags::delete( isset( $_POST['tag_id'] ) ? intval( $_POST['tag_id'] ) : 0 );
-                $this->redirect( 'series', array( 'msg' => $gone ? 'tag_deleted' : 'tag_delete_failed' ) );
-                break;
-
             /* ---- Categories. What kind of event this is. ------------------ */
             case 'save_category':
                 if ( ! $this->can_view_all( $user ) ) { wp_die( 'Denied' ); }
@@ -2340,10 +2306,6 @@ class SFAF_Portal {
                 $t_key  = sanitize_key( wp_unslash( $_POST['tpl_key'] ?? '' ) );
                 $t_var  = sanitize_key( wp_unslash( $_POST['tpl_variant'] ?? '' ) );
                 $t_lang = SFAF_Messages::lang( sanitize_key( wp_unslash( $_POST['tpl_lang'] ?? 'en' ) ) );
-                // A staff message is English only (3.112.0).
-                if ( ! in_array( $t_lang, SFAF_Messages::langs_for( sanitize_key( wp_unslash( $_POST['tpl_key'] ?? '' ) ) ), true ) ) {
-                    $t_lang = 'en';
-                }
                 $back   = array( 'key' => $t_key, 'variant' => $t_var, 'lang' => $t_lang );
                 // One route and one nonce; the button pressed says which (tpl_do).
                 if ( 'reset' === sanitize_key( wp_unslash( $_POST['tpl_do'] ?? '' ) ) ) {
@@ -2454,21 +2416,6 @@ class SFAF_Portal {
                     wp_die( 'Denied' );
                 }
                 $this->registrant_mail_route( $user, $event_id, true );
-                break;
-
-            /* ---- An event on a closed day, kept (3.112.0). --------------- */
-            case 'closed_keep':
-                $event_id   = isset( $_POST['event_id'] ) ? (int) $_POST['event_id'] : 0;
-                $closure_id = isset( $_POST['closure_id'] ) ? sanitize_text_field( wp_unslash( $_POST['closure_id'] ) ) : '';
-                $post       = $event_id ? get_post( $event_id ) : null;
-                if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
-                    wp_die( 'Denied' );
-                }
-                SFAF_Closure_Review::keep( $event_id, $closure_id );
-                if ( isset( $_POST['closed_back'] ) && 'list' === $_POST['closed_back'] ) {
-                    $this->redirect( 'pending', array( 'kind' => 'closed', 'msg' => 'closed_kept' ) );
-                }
-                $this->redirect( 'closed-day/' . $event_id, array( 'closure' => $closure_id, 'msg' => 'closed_kept' ) );
                 break;
 
             /* ---- Teams. A name and a set of users, and nothing else. ------ */
@@ -2917,15 +2864,6 @@ class SFAF_Portal {
         }
         $filled['location'] = (bool) $where;
 
-        /* End date, only when Multi-day is ticked (3.112.0), and after Date. */
-        if ( isset( $_POST['uc_multiday_present'] ) && ! $is_locked( 'date' ) ) {
-            $md_date = $post_str( 'date' );
-            $md_last = $post_str( 'last_date' );
-            $filled['last_date'] = empty( $_POST['multi_day'] ) || ( '' !== $md_last && '' !== $md_date && $md_last > $md_date );
-        } else {
-            $filled['last_date'] = ! $event_id || ! in_array( 'last_date', SFAF_Sources::publish_missing( $event_id ), true );
-        }
-
         $missing = array();
         foreach ( array_keys( SFAF_Sources::publish_fields() ) as $field ) {
             if ( empty( $filled[ $field ] ) ) {
@@ -3253,31 +3191,6 @@ class SFAF_Portal {
             }
             if ( isset( $_POST[ $field ] ) ) {
                 update_post_meta( $event_id, $key, sanitize_text_field( wp_unslash( $_POST[ $field ] ) ) );
-            }
-        }
-
-        /*
-         * MULTI-DAY (3.112.0), under its marker so a form that did not draw it
-         * leaves it alone. The End date is kept only after the Date; one that is
-         * not is reported and not stored, and the tick stays so the publish
-         * rule can name it.
-         */
-        if ( isset( $_POST['uc_multiday_present'] ) && ! $is_locked( 'date' ) ) {
-            if ( ! empty( $_POST['multi_day'] ) ) {
-                update_post_meta( $event_id, '_uc_multi_day', '1' );
-                $md_date = (string) get_post_meta( $event_id, '_uc_event_date', true );
-                $md_last = isset( $_POST['last_date'] ) ? sanitize_text_field( wp_unslash( $_POST['last_date'] ) ) : '';
-                if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $md_last ) && $md_last > $md_date ) {
-                    update_post_meta( $event_id, '_uc_last_date', $md_last );
-                } else {
-                    delete_post_meta( $event_id, '_uc_last_date' );
-                    if ( '' !== $md_last ) {
-                        set_transient( 'sfaf_last_date_rejected_' . $user->ID . '_' . $event_id, $md_last, 5 * MINUTE_IN_SECONDS );
-                    }
-                }
-            } else {
-                delete_post_meta( $event_id, '_uc_multi_day' );
-                delete_post_meta( $event_id, '_uc_last_date' );
             }
         }
 
@@ -4901,7 +4814,7 @@ class SFAF_Portal {
         /* PENDING FOR A REVIEWER (3.111.0): an editor with submissions to
          * review gets the screen, showing only those. */
         $review_ids = $is_admin ? array() : $this->review_queue_ids( $user );
-        if ( ! $is_admin && ( $review_ids || $this->closed_items_for( $user ) ) ) {
+        if ( ! $is_admin && $review_ids ) {
             $nav['pending'] = array( 'Pending', 'pending', 'clock' );
         }
         // Everybody's own, last (3.102.0).
@@ -5141,13 +5054,6 @@ class SFAF_Portal {
             'series_slug_refused' => 'Series saved, and its slug was not changed: it was empty or another series has it.',
             'category_saved' => 'Category saved. Its color and icon are what a card and its placeholder are drawn from, so events in it change appearance straight away.',
             'category_failed'=> 'That category could not be saved. Give it a name and try again.',
-            'tag_saved'      => 'Tag saved.',
-            'tag_failed'     => 'That tag could not be saved. Give it a name and try again.',
-            'tag_retired'    => 'Tag archived. Events that have it keep it, and it is no longer offered.',
-            'tag_deleted'    => 'Tag deleted. No event has it now.',
-            'tag_delete_failed' => 'That tag could not be deleted. It may have been deleted already.',
-            'tag_restored'   => 'Tag restored. It is offered again.',
-            'closed_kept'    => 'Kept. The event is held on the day SFAF is closed, and nobody is reminded about it again.',
             'series_failed'  => 'That series could not be saved. Give it a name and try again.',
             'faq_set_failed' => 'That set could not be saved.',
             // 'series_removed' is built from real counts further down, because
@@ -6810,16 +6716,8 @@ class SFAF_Portal {
             // Carried so paging, sorting and the view tabs keep the chosen
             // scope. Without it, page two of All events would be page two of
             // My events and the count above it would stop matching the table.
-            'scope'    => $this->scope_choice( true ),
+            'scope'    => $this->scope_choice(),
         );
-        /* Drafts and Scheduled hold every date: the Upcoming and Archived views
-           do not apply to them, so the view is All and its tabs are not drawn. */
-        $own_tab = isset( self::own_status_tabs()[ $filters['scope'] ] );
-        if ( $own_tab ) {
-            $view              = 'all';
-            $filters['view']   = 'all';
-            $filters['status'] = '';
-        }
 
         // SORT LIVES IN THE URL so a view can be linked, bookmarked and shared,
         // and so it survives paging and filtering without a session or a cookie
@@ -6858,7 +6756,7 @@ class SFAF_Portal {
          * or an action. is_public_scope() is the one question that decides it,
          * asked once here and answered the same way everywhere below.
          */
-        $scope  = $this->scope_choice( true );
+        $scope  = $this->scope_choice();
         $public = $this->is_public_scope( $user, $scope );
 
         /* The dashboard's "Set organizers" link lands here. Read from the URL
@@ -6878,7 +6776,7 @@ class SFAF_Portal {
         $pages = $this->last_query_pages;
         ?>
         <div class="uc-page-head">
-            <h1><?php echo esc_html( $own_tab ? self::own_status_tabs()[ $scope ]['label'] : ( 'all' === $scope ? 'All Events' : 'My Events' ) ); ?></h1>
+            <h1><?php echo 'all' === $scope ? 'All Events' : 'My Events'; ?></h1>
             <a href="<?php echo esc_url( $this->url( 'events/new' ) ); ?>" class="uc-btn uc-btn-primary">+ New Event</a>
         </div>
 
@@ -6902,9 +6800,6 @@ class SFAF_Portal {
             'status'  => $filters['status'],
             'orderby' => $orderby,
             'order'   => $order,
-        ), array(
-            'drafts'    => $this->own_status_count( $user, 'draft' ),
-            'scheduled' => $this->own_status_count( $user, 'future' ),
         ) );
         ?>
 
@@ -6915,7 +6810,7 @@ class SFAF_Portal {
             </p>
         <?php endif; ?>
 
-        <?php if ( ! $own_tab ) { $this->view_tabs( $view, $filters, $sort ); } ?>
+        <?php $this->view_tabs( $view, $filters, $sort ); ?>
 
         <?php
         /*
@@ -6951,14 +6846,12 @@ class SFAF_Portal {
                     <option value="<?php echo (int) $c->term_id; ?>" <?php selected( $filters['cat'], $c->term_id ); ?>><?php echo esc_html( $c->name ); ?></option>
                 <?php endforeach; endif; ?>
             </select>
-            <?php if ( ! $own_tab ) : ?>
             <select name="status">
                 <option value="">Any status</option>
                 <?php foreach ( array( 'publish', 'pending', 'draft', 'future' ) as $k ) : ?>
                     <option value="<?php echo esc_attr( $k ); ?>" <?php selected( $filters['status'], $k ); ?>><?php echo esc_html( sfaf_status_label( $k ) ); ?></option>
                 <?php endforeach; ?>
             </select>
-            <?php endif; ?>
             <input type="date" name="from" value="<?php echo esc_attr( $filters['from'] ); ?>" title="From date" />
             <input type="date" name="to" value="<?php echo esc_attr( $filters['to'] ); ?>" title="To date" />
             <?php
@@ -7125,38 +7018,8 @@ class SFAF_Portal {
      *
      * @return string 'mine'|'all'
      */
-    private function scope_choice( $with_tabs = false ) {
-        $asked = isset( $_GET['scope'] ) ? sanitize_key( wp_unslash( $_GET['scope'] ) ) : '';
-        if ( $with_tabs && in_array( $asked, array( 'drafts', 'scheduled' ), true ) ) {
-            return $asked;
-        }
-        return ( 'all' === $asked ) ? 'all' : 'mine';
-    }
-
-    /*
-     * DRAFTS AND SCHEDULED (3.112.0): two more tabs beside My events and All
-     * events, on the events screen. Each is THIS PERSON'S OWN events in that
-     * state, by post_author and nothing wider: a teammate's draft is theirs to
-     * finish, and Team and access decides editing, not whose list it is on.
-     * The status each tab means, and its label.
-     */
-    private static function own_status_tabs() {
-        return array(
-            'drafts'    => array( 'label' => 'Drafts', 'status' => 'draft' ),
-            'scheduled' => array( 'label' => 'Scheduled', 'status' => 'future' ),
-        );
-    }
-
-    /** How many of this person's own events are in a status. */
-    private function own_status_count( $user, $status ) {
-        $q = new WP_Query( array(
-            'post_type'      => 'uc_event',
-            'post_status'    => $status,
-            'author'         => (int) $user->ID,
-            'posts_per_page' => 1,
-            'fields'         => 'ids',
-        ) );
-        return (int) $q->found_posts;
+    private function scope_choice() {
+        return ( isset( $_GET['scope'] ) && 'all' === $_GET['scope'] ) ? 'all' : 'mine';
     }
 
     /**
@@ -7172,17 +7035,12 @@ class SFAF_Portal {
      * @param string $path  Portal path this control lives on.
      * @param array  $carry Query args to preserve across the switch.
      */
-    private function render_scope_toggle( $scope, $path, $carry = array(), $counts = array() ) {
+    private function render_scope_toggle( $scope, $path, $carry = array() ) {
         $carry = array_filter( (array) $carry, function ( $v ) { return '' !== $v && null !== $v; } );
         $options = array(
             'mine' => 'My events',
             'all'  => 'All events',
         );
-        foreach ( self::own_status_tabs() as $key => $tab ) {
-            if ( isset( $counts[ $key ] ) ) {
-                $options[ $key ] = $tab['label'] . ' (' . (int) $counts[ $key ] . ')';
-            }
-        }
         ?>
         <div class="uc-scope-switch" role="group" aria-label="Which events to show">
             <?php foreach ( $options as $key => $label ) :
@@ -9067,7 +8925,7 @@ class SFAF_Portal {
      * @return string[]
      */
     private function manager_field_order() {
-        return array( 'image', 'description', 'category', 'organizer', 'tag', 'fundraising_progress', 'private' );
+        return array( 'image', 'description', 'category', 'organizer', 'fundraising_progress', 'private' );
     }
 
     /**
@@ -9100,8 +8958,6 @@ class SFAF_Portal {
             'note'     => $adapter ? (string) $adapter->manager_fields_note() : '',
             'cats'     => get_terms( array( 'taxonomy' => 'uc_event_category', 'hide_empty' => false ) ),
             'orgs'     => get_terms( array( 'taxonomy' => 'uc_organizer', 'hide_empty' => false ) ),
-            // Tags a picker may offer (3.112.0): every one not retired.
-            'tags'     => SFAF_Tags::active(),
             'allowed'  => $this->allowed_categories( $user ),
             // Unique per event so several panels can sit on the queue screen
             // without two elements sharing an id.
@@ -9145,12 +9001,6 @@ class SFAF_Portal {
          * save_listing_fields() rather than offered here when one had a value.
          */
         $fields = array_diff( $fields, array( 'listing_detail' ) );
-
-        // What's included (3.112.0), on every event: no platform supplies tags,
-        // so an imported event has the control as a native one does.
-        if ( ! in_array( 'tag', $fields, true ) ) {
-            $fields[] = 'tag';
-        }
 
         /*
          * PRIVATE IS ON EVERY EVENT, NATIVE OR IMPORTED, AND ONLY ONCE SAVED.
@@ -9976,48 +9826,6 @@ class SFAF_Portal {
                 <?php
                 break;
 
-            case 'tag':
-                /*
-                 * WHAT'S INCLUDED (3.112.0): the categories' picker pattern,
-                 * chips over checkboxes. A retired tag the event already holds
-                 * is offered too, ticked, so saving cannot drop it by not
-                 * showing it; no other retired tag is offered.
-                 */
-                $held = $event_id ? array_map( 'intval', wp_list_pluck( SFAF_Tags::for_event( $event_id ), 'term_id' ) ) : array();
-                $offer = $ctx['tags'];
-                foreach ( $held as $hid ) {
-                    if ( ! in_array( $hid, array_map( 'intval', wp_list_pluck( $offer, 'term_id' ) ), true ) ) {
-                        $ht = SFAF_Tags::get( $hid );
-                        if ( $ht ) { $offer[] = $ht; }
-                    }
-                }
-                ?>
-                <div class="uc-field uc-cat-field uc-tag-field<?php echo esc_attr( $this->field_class( $state ) ); ?>" data-uc-chips>
-                    <span class="uc-field-label">Tags <?php echo $this->field_badge( $state, $label ); ?></span>
-                    <input type="hidden" name="uc_tag_present" value="1" />
-                    <div class="uc-chips" data-uc-chips-list hidden></div>
-                    <p class="uc-chips-empty" data-uc-chips-empty hidden>Nothing chosen yet.</p>
-                    <div class="uc-chips-add" data-uc-chips-add hidden>
-                        <button type="button" class="uc-btn uc-btn-sm" data-uc-chips-toggle
-                                aria-expanded="false">+ Add tag</button>
-                    </div>
-                    <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
-                        <?php foreach ( $offer as $t ) : ?>
-                            <label class="uc-check" data-uc-chip-label="<?php echo esc_attr( $t->name ); ?>">
-                                <input type="checkbox" name="tag[]" value="<?php echo (int) $t->term_id; ?>"
-                                       <?php checked( in_array( (int) $t->term_id, $held, true ) ); ?> />
-                                <?php echo esc_html( $t->name ); ?>
-                            </label>
-                        <?php endforeach; ?>
-                    </div>
-                    <?php if ( empty( $offer ) ) : ?>
-                        <span class="uc-hint">No tags yet. An admin adds them under Series &amp; Categories.</span>
-                    <?php endif; ?>
-                    <?php $this->series_filled_note( $event_id, 'tag' ); ?>
-                </div>
-                <?php
-                break;
-
             case 'fundraising_progress':
                 $on     = ( '1' === (string) get_post_meta( $event_id, sfaf_fundraising_progress_meta_key(), true ) );
                 $goal   = (float) get_post_meta( $event_id, '_uc_gofundme_goal', true );
@@ -10150,11 +9958,6 @@ class SFAF_Portal {
             $posted = array_values( array_unique( array_filter( $posted ) ) );
             wp_set_object_terms( $event_id, $posted, 'uc_event_category' );
         }
-        if ( isset( $_POST['uc_tag_present'] ) ) {
-            $held = array_map( 'intval', wp_list_pluck( SFAF_Tags::for_event( $event_id ), 'term_id' ) );
-            $tags = isset( $_POST['tag'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['tag'] ) ) : array();
-            wp_set_object_terms( $event_id, SFAF_Tags::clean_ids( $tags, $held ), SFAF_Tags::TAXONOMY );
-        }
         if ( isset( $_POST['uc_organizer_present'] ) ) {
             /*
              * EVERY TICKED BOX, NOT ONE VALUE (3.40.0).
@@ -10276,7 +10079,6 @@ class SFAF_Portal {
         if ( isset( $_POST['uc_series_defaults_present'] ) ) {
             $args['categories'] = isset( $_POST['series_categories'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['series_categories'] ) ) : array();
             $args['organizers'] = isset( $_POST['series_organizers'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['series_organizers'] ) ) : array();
-            $args['tags']       = isset( $_POST['series_tags'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['series_tags'] ) ) : array();
         }
 
         /*
@@ -10561,7 +10363,6 @@ class SFAF_Portal {
         </section>
 
         <?php $this->render_categories( $user ); ?>
-        <?php $this->render_tags( $user ); ?>
         <?php
         $this->chrome_close();
     }
@@ -10592,146 +10393,6 @@ class SFAF_Portal {
      *
      * @param WP_User $user
      */
-    /**
-     * Tags (3.112.0): add, rename, archive, restore, delete (3.112.1).
-     *
-     * Admins only, because a tag is a public filter every event can use. An
-     * archived tag stays on the events that carry it and leaves every picker
-     * and filter; storage still calls it retired (_sfaf_tag_retired). Editing
-     * is a mode in the URL, as categories are.
-     *
-     * BUILT FROM THE CATEGORIES SECTION'S COMPONENTS (3.112.1): the fold card
-     * with its count, the same rows and row actions, and the new-tag form in
-     * .uc-cat-new with its own action row. See CLAUDE.md 7.
-     *
-     * @param WP_User $user
-     */
-    private function render_tags( $user ) {
-        $can_edit = $this->is_admin_role( $user );
-        $tags     = SFAF_Tags::all();
-        $editing  = isset( $_GET['tag_edit'] ) ? (int) $_GET['tag_edit'] : 0;
-        $base     = $this->url( 'series' );
-        $err      = get_transient( 'sfaf_tag_error_' . $user->ID );
-        if ( false !== $err ) {
-            delete_transient( 'sfaf_tag_error_' . $user->ID );
-        }
-        ?>
-        <section class="uc-section" id="uc-tags" data-uc-tags>
-            <div class="uc-section-head">
-                <h2>Tags</h2>
-                <p class="uc-section-sub">Label events with anything visitors may want to filter by, such as food provided, giveaways or interpretation.</p>
-            </div>
-            <div class="uc-card">
-                <details class="uc-list-fold"<?php echo sfaf_fold_open( count( $tags ) ) ? ' open' : ''; ?>>
-                <summary class="uc-card-head uc-list-fold-head">
-                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
-                    <h2><?php echo count( $tags ); ?> <?php echo esc_html( 1 === count( $tags ) ? 'tag' : 'tags' ); ?></h2>
-                </summary>
-
-                <?php if ( $err ) : ?>
-                    <div class="uc-flash uc-flash-error"><?php echo esc_html( $err ); ?></div>
-                <?php endif; ?>
-
-                <?php if ( empty( $tags ) ) : ?>
-                    <p class="uc-empty">No tags yet.<?php echo $can_edit ? ' Add one below.' : ''; ?></p>
-                <?php else : ?>
-                    <p class="uc-hint">An archived tag stays on the events that have it and is not offered for new ones or in the calendar's filter.</p>
-                    <ul class="uc-cat-list uc-tag-list">
-                        <?php foreach ( $tags as $t ) :
-                            $tid      = (int) $t->term_id;
-                            $archived = SFAF_Tags::is_retired( $tid );
-                            $used     = SFAF_Tags::events_using( $tid );
-                            $open     = ( $can_edit && $editing === $tid );
-                            ?>
-                            <li class="uc-cat-row uc-tag-row<?php echo $open ? ' uc-cat-row-open' : ''; ?><?php echo $archived ? ' is-archived' : ''; ?>" data-uc-tag-row="<?php echo esc_attr( $t->slug ); ?>">
-                                <?php if ( $open ) : ?>
-                                    <form method="post" action="<?php echo esc_url( $base ); ?>" class="uc-cat-form" id="uc-tag-form-<?php echo $tid; ?>">
-                                        <input type="hidden" name="uc_action" value="save_tag" />
-                                        <input type="hidden" name="tag_id" value="<?php echo $tid; ?>" />
-                                        <?php wp_nonce_field( 'uc_portal_save_tag', 'uc_nonce' ); ?>
-                                        <label class="uc-field">
-                                            <span class="uc-field-label">Name</span>
-                                            <input type="text" name="tag_name" value="<?php echo esc_attr( $t->name ); ?>" required autofocus />
-                                        </label>
-                                        <?php $this->render_slug_field( 'tag_slug', $t->slug ); ?>
-                                        <div class="uc-cat-form-actions">
-                                            <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary" form="uc-tag-form-<?php echo $tid; ?>">Save tag</button>
-                                            <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( $base . '#uc-tags' ); ?>">Cancel</a>
-                                        </div>
-                                    </form>
-                                <?php else : ?>
-                                    <span class="uc-cat-id">
-                                        <strong><?php echo esc_html( $t->name ); ?></strong>
-                                        <span class="uc-muted">
-                                            <?php echo esc_html( $t->slug ); ?>,
-                                            <?php echo (int) $used; ?> <?php echo esc_html( 1 === $used ? 'event' : 'events' ); ?><?php echo $archived ? ', archived' : ''; ?>
-                                        </span>
-                                    </span>
-                                    <?php if ( $can_edit ) :
-                                        $tagged = SFAF_Tags::events_tagged( $tid );
-                                        ?>
-                                        <span class="uc-cat-actions">
-                                            <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( add_query_arg( 'tag_edit', $tid, $base ) . '#uc-tags' ); ?>">Rename</a>
-                                            <form method="post" action="<?php echo esc_url( $base ); ?>" id="uc-tag-archive-<?php echo $tid; ?>">
-                                                <input type="hidden" name="uc_action" value="retire_tag" />
-                                                <input type="hidden" name="tag_id" value="<?php echo $tid; ?>" />
-                                                <input type="hidden" name="tag_retire" value="<?php echo $archived ? '0' : '1'; ?>" />
-                                                <?php wp_nonce_field( 'uc_portal_retire_tag', 'uc_nonce' ); ?>
-                                                <button type="submit" class="uc-btn uc-btn-sm" form="uc-tag-archive-<?php echo $tid; ?>"><?php echo $archived ? 'Restore' : 'Archive'; ?></button>
-                                            </form>
-                                            <button type="button" class="uc-link-danger uc-btn-sm" data-uc-dialog-open="uc-tag-delete-<?php echo $tid; ?>"
-                                                    aria-haspopup="dialog">Delete</button>
-                                        </span>
-                                        <?php /* The Delete dialog (3.112.1). With no script it is in the page under its row. */ ?>
-                                        <div class="uc-dialog-panel uc-tag-delete" id="uc-tag-delete-<?php echo $tid; ?>" data-uc-dialog-panel
-                                             role="group" aria-labelledby="uc-tag-delete-title-<?php echo $tid; ?>">
-                                            <h2 class="uc-dialog-title" id="uc-tag-delete-title-<?php echo $tid; ?>">Delete "<?php echo esc_html( $t->name ); ?>"?</h2>
-                                            <p class="uc-dialog-lead">
-                                                <?php if ( $tagged > 0 ) : ?>
-                                                    It will be removed from <?php echo (int) $tagged; ?> <?php echo esc_html( 1 === $tagged ? 'event' : 'events' ); ?>, including past ones. This cannot be undone.
-                                                <?php else : ?>
-                                                    This cannot be undone.
-                                                <?php endif; ?>
-                                            </p>
-                                            <p class="uc-hint">To stop offering it but keep it on past events, archive it instead.</p>
-                                            <form method="post" action="<?php echo esc_url( $base ); ?>" id="uc-tag-delete-form-<?php echo $tid; ?>">
-                                                <input type="hidden" name="uc_action" value="delete_tag" />
-                                                <input type="hidden" name="tag_id" value="<?php echo $tid; ?>" />
-                                                <?php wp_nonce_field( 'uc_portal_delete_tag', 'uc_nonce' ); ?>
-                                                <div class="uc-dialog-actions">
-                                                    <button type="button" class="uc-btn" data-uc-dialog-close form="uc-tag-delete-form-<?php echo $tid; ?>" hidden>Keep tag</button>
-                                                    <button type="submit" class="uc-btn uc-btn-danger" form="uc-tag-delete-form-<?php echo $tid; ?>">Delete</button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    <?php endif; ?>
-                                <?php endif; ?>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                <?php endif; ?>
-                </details>
-
-                <?php if ( $can_edit ) : ?>
-                    <div class="uc-cat-new">
-                        <form method="post" action="<?php echo esc_url( $base ); ?>" class="uc-cat-form uc-tag-new" id="uc-tag-new">
-                            <input type="hidden" name="uc_action" value="save_tag" />
-                            <input type="hidden" name="tag_id" value="0" />
-                            <?php wp_nonce_field( 'uc_portal_save_tag', 'uc_nonce' ); ?>
-                            <label class="uc-field">
-                                <span class="uc-field-label">New tag</span>
-                                <input type="text" name="tag_name" placeholder="e.g. Food provided" required />
-                            </label>
-                            <div class="uc-cat-form-actions">
-                                <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary" form="uc-tag-new">Add tag</button>
-                            </div>
-                        </form>
-                    </div>
-                <?php endif; ?>
-            </div>
-        </section>
-        <?php
-    }
     private function render_categories( $user ) {
         $can_edit = $this->can_view_all( $user );
         $cats     = SFAF_Categories::all();
@@ -11213,29 +10874,6 @@ class SFAF_Portal {
                         </div>
                     <?php endif; ?>
                     <span class="uc-hint">Given to an event that joins this series with no organizer. Events already in it keep their own.</span>
-                </div>
-
-                <?php
-                /* What's included (3.112.0), the same rule as the two above. */
-                $def_tags = $term_id ? SFAF_Tags::series_default( $term_id ) : array();
-                $all_tags = SFAF_Tags::active();
-                ?>
-                <div class="uc-field uc-series-default" data-uc-series-default="tag" role="group" aria-labelledby="uc-series-default-tag">
-                    <span class="uc-field-label" id="uc-series-default-tag">Default tags</span>
-                    <?php if ( empty( $all_tags ) ) : ?>
-                        <p class="uc-hint">There are no tags yet.</p>
-                    <?php else : ?>
-                        <div class="uc-check-grid">
-                            <?php foreach ( $all_tags as $t ) : ?>
-                                <label class="uc-check">
-                                    <input type="checkbox" name="series_tags[]" value="<?php echo (int) $t->term_id; ?>"
-                                           <?php checked( in_array( (int) $t->term_id, $def_tags, true ) ); ?> />
-                                    <?php echo esc_html( $t->name ); ?>
-                                </label>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
-                    <span class="uc-hint">Given to an event that joins this series with no tags. Events already in it keep their own.</span>
                 </div>
 
                 <label class="uc-field">
@@ -14963,48 +14601,12 @@ class SFAF_Portal {
                     $s_start = $st( 'start_time' );
                     $s_end   = $st( 'end_time' );
                     ?>
-                    <?php
-                    /*
-                     * MULTI-DAY (3.112.0). Unticked, the card is as it was.
-                     * Ticked, End date sits beside Date; the start time is the
-                     * first day's and the end time the last day's. Multi-day
-                     * and Repeats are never on one event: ticking this hides
-                     * Repeats, and a repeat cadence hides this, by CSS :has().
-                     * Not offered on a date in a recurrence group.
-                     */
-                    $md_on    = '1' === (string) $g( '_uc_multi_day' );
-                    $md_last  = (string) $g( '_uc_last_date' );
-                    $md_show  = ! ( $event_id && '' !== SFAF_Recurrence::group_of( $event_id ) );
-                    $md_error = $event_id ? get_transient( 'sfaf_last_date_rejected_' . $user->ID . '_' . $event_id ) : false;
-                    if ( $md_error ) {
-                        delete_transient( 'sfaf_last_date_rejected_' . $user->ID . '_' . $event_id );
-                    }
-                    ?>
-                    <div class="uc-field-row uc-date-row" data-uc-multiday-row>
-                        <label class="uc-field<?php echo esc_attr( $this->field_class( $s_date ) ); ?>"<?php echo $this->field_watch_attr( 'date', $s_date ); ?>>
-                            <span class="uc-field-label">Date<?php echo $this->publish_mark( 'date' ); ?> <?php echo $this->field_badge( $s_date, $prov['label'] ); ?></span>
-                            <input type="date" name="date" value="<?php echo esc_attr( $g( '_uc_event_date' ) ); ?>"<?php echo $this->field_disabled( $s_date ); ?> />
-                            <?php // Names a closure the date falls on (3.105.0). A warning, never a refusal. ?>
-                            <?php echo SFAF_Closures::date_warning_markup(); ?>
-                        </label>
-                        <?php if ( $md_show ) : ?>
-                            <label class="uc-field uc-multiday-end" data-uc-multiday-end>
-                                <span class="uc-field-label">End date<?php echo $this->publish_mark( 'last_date' ); ?></span>
-                                <input type="date" name="last_date" value="<?php echo esc_attr( $md_last ); ?>"<?php echo $this->field_disabled( $s_date ); ?>
-                                       <?php echo $md_error ? ' class="uc-invalid" aria-invalid="true" aria-describedby="uc-last-date-error"' : ''; ?> />
-                                <?php if ( $md_error ) : ?>
-                                    <p class="uc-field-error" id="uc-last-date-error" role="alert">The end date must be after the date, so it was not saved.</p>
-                                <?php endif; ?>
-                            </label>
-                        <?php endif; ?>
-                    </div>
-                    <?php if ( $md_show ) : ?>
-                        <input type="hidden" name="uc_multiday_present" value="1" />
-                        <label class="uc-check uc-multiday" data-uc-multiday>
-                            <input type="checkbox" name="multi_day" value="1" data-uc-multiday-tick <?php checked( $md_on ); ?><?php echo $this->field_disabled( $s_date ); ?> />
-                            Multi-day event
-                        </label>
-                    <?php endif; ?>
+                    <label class="uc-field<?php echo esc_attr( $this->field_class( $s_date ) ); ?>"<?php echo $this->field_watch_attr( 'date', $s_date ); ?>>
+                        <span class="uc-field-label">Date<?php echo $this->publish_mark( 'date' ); ?> <?php echo $this->field_badge( $s_date, $prov['label'] ); ?></span>
+                        <input type="date" name="date" value="<?php echo esc_attr( $g( '_uc_event_date' ) ); ?>"<?php echo $this->field_disabled( $s_date ); ?> />
+                        <?php // Names a closure the date falls on (3.105.0). A warning, never a refusal. ?>
+                        <?php echo SFAF_Closures::date_warning_markup(); ?>
+                    </label>
                     <div class="uc-field-row">
                         <label class="uc-field<?php echo esc_attr( $this->field_class( $s_start ) ); ?>">
                             <span class="uc-field-label">Start<?php echo $this->publish_mark( 'start_time' ); ?> <?php echo $this->field_badge( $s_start, $prov['label'] ); ?></span>
@@ -15062,9 +14664,7 @@ class SFAF_Portal {
                             ); ?>
                         </p>
                     <?php else : ?>
-                        <div data-uc-repeat-wrap>
-                            <?php $this->render_recurrence_control( $event_id, (string) $g( '_uc_event_date' ) ); ?>
-                        </div>
+                        <?php $this->render_recurrence_control( $event_id, (string) $g( '_uc_event_date' ) ); ?>
                     <?php endif; ?>
                 </section>
 
@@ -15195,7 +14795,7 @@ class SFAF_Portal {
                 <?php // ---- Classification: how it is found. --------------- ?>
                 <section class="uc-bento-card" data-uc-card="classification">
                     <h2 class="uc-bento-title">Classification</h2>
-                    <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'category', 'organizer', 'tag' ), $placed ) ); ?>
+                    <?php $placed = array_merge( $placed, $this->render_manager_fields( $mgr_ctx, array( 'category', 'organizer' ), $placed ) ); ?>
                 </section>
 
                 <?php
@@ -15865,10 +15465,6 @@ class SFAF_Portal {
      *         occurrence limit, explicit dates.
      */
     private function recurrence_from_post() {
-        // A multi-day event does not repeat (3.112.0): the tick wins.
-        if ( ! empty( $_POST['multi_day'] ) ) {
-            return array( '', '', 0, array() );
-        }
         return SFAF_Recurrence::from_post( $_POST );
     }
 
@@ -16766,90 +16362,29 @@ class SFAF_Portal {
                 ?>
                 <div class="uc-notify-section">
                 <h4 class="uc-notify-subhead">Replies</h4>
-                <?php
-                /*
-                 * A CALENDAR USER, OR SOMEONE ELSE (3.112.0). The people are
-                 * radios in a <details> with a filter box over them, the shape
-                 * the notification picker already uses; "Someone else" shows
-                 * the typed address, by CSS :has() so it works with no script.
-                 * What is stored is unchanged: one address in
-                 * _uc_email_replyto, from save_event_from_post().
-                 */
-                $reply_shown  = ( '' !== $reply_current ) ? $reply_current : $reply_resolved;
-                $reply_people = $this->replyto_people( $user );
-                $reply_pick   = 'other';
-                foreach ( $reply_people as $rp ) {
-                    if ( '' !== $reply_shown && 0 === strcasecmp( $rp->user_email, $reply_shown ) ) {
-                        $reply_pick = $rp->user_email;
-                        break;
-                    }
-                }
-                $reply_label = 'Someone else';
-                foreach ( $reply_people as $rp ) {
-                    if ( $reply_pick === $rp->user_email ) {
-                        $reply_label = $rp->display_name . ' (' . $rp->user_email . ')';
-                    }
-                }
-                if ( 'other' === $reply_pick && '' !== $reply_shown ) {
-                    $reply_label = $reply_shown;
-                }
-                ?>
-                <div class="uc-field uc-replyto" data-uc-replyto>
-                    <span class="uc-field-label" id="uc-replyto-label">Replies go to</span>
-                    <details class="uc-picker uc-replyto-picker" data-uc-replyto-picker>
-                        <summary class="uc-picker-toggle" aria-describedby="uc-replyto-label">
-                            <span class="uc-picker-label" data-uc-replyto-summary><?php echo esc_html( $reply_label ); ?></span>
-                            <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
-                        </summary>
-                        <div class="uc-picker-panel">
-                            <label class="uc-picker-filter">
-                                <span class="uc-visually-hidden">Filter people by name or address</span>
-                                <input type="search" placeholder="Type to filter people…" data-uc-replyto-filter autocomplete="off" />
-                            </label>
-                            <div class="uc-picker-options" role="radiogroup" aria-labelledby="uc-replyto-label">
-                                <?php foreach ( $reply_people as $rp ) : ?>
-                                    <label class="uc-check uc-picker-option"
-                                           data-uc-picker-search="<?php echo esc_attr( strtolower( $rp->display_name . ' ' . $rp->user_email ) ); ?>">
-                                        <input type="radio" name="event_replyto_pick" value="<?php echo esc_attr( $rp->user_email ); ?>"
-                                               data-uc-replyto-name="<?php echo esc_attr( $rp->display_name . ' (' . $rp->user_email . ')' ); ?>"
-                                               <?php checked( $reply_pick, $rp->user_email ); ?> />
-                                        <span><?php echo esc_html( $rp->display_name ); ?>
-                                            <span class="uc-muted"><?php echo esc_html( $rp->user_email ); ?></span></span>
-                                    </label>
-                                <?php endforeach; ?>
-                                <label class="uc-check uc-picker-option uc-replyto-other-opt" data-uc-picker-search="">
-                                    <input type="radio" name="event_replyto_pick" value="other" data-uc-replyto-other
-                                           <?php checked( $reply_pick, 'other' ); ?> />
-                                    <span>Someone else</span>
-                                </label>
-                            </div>
-                            <p class="uc-muted uc-picker-empty" data-uc-replyto-empty hidden>Nobody matches that.</p>
-                        </div>
-                    </details>
-                    <label class="uc-field uc-replyto-typed">
-                        <span class="uc-field-label">Their email address</span>
-                        <?php
-                        // A server-side rejection renders in exactly the shape the
-                        // client-side validator uses, so the two are
-                        // indistinguishable to the person reading them and to a
-                        // screen reader.
-                        ?>
-                        <input type="email" name="event_replyto" id="uc-event-replyto"
-                               value="<?php echo esc_attr( 'other' === $reply_pick ? $reply_shown : '' ); ?>"
-                               <?php echo $reply_rejected ? ' class="uc-invalid" aria-invalid="true" aria-describedby="uc-event-replyto-error"' : ''; ?>
-                               placeholder="events@sfaf.org" />
-                    </label>
+                <label class="uc-field">
+                    <span class="uc-field-label">Replies go to</span>
+                    <?php
+                    // A server-side rejection renders in exactly the shape the
+                    // client-side validator uses, so the two are
+                    // indistinguishable to the person reading them and to a
+                    // screen reader.
+                    ?>
+                    <input type="email" name="event_replyto" id="uc-event-replyto"
+                           value="<?php echo esc_attr( '' !== $reply_current ? $reply_current : $reply_resolved ); ?>"
+                           <?php echo $reply_rejected ? ' class="uc-invalid" aria-invalid="true" aria-describedby="uc-event-replyto-error"' : ''; ?>
+                           placeholder="events@sfaf.org" />
                     <?php if ( $reply_rejected ) : ?>
                         <p class="uc-field-error" id="uc-event-replyto-error" data-uc-for="uc-event-replyto" role="alert">
                             <?php echo esc_html( 'Not an email address, so it was not saved: ' . $reply_rejected ); ?>
                         </p>
                     <?php endif; ?>
                     <?php if ( '' === $reply_current && 'setting' === $reply_source ) : ?>
-                        <span class="uc-hint">An empty address sends replies to the site-wide default in Settings.</span>
+                        <span class="uc-hint">Empty sends replies to the site-wide default in Settings.</span>
                     <?php elseif ( '' === $reply_current && 'author' !== $reply_source ) : ?>
-                        <span class="uc-hint">An empty address sends replies to the address the mail comes from.</span>
+                        <span class="uc-hint">Empty sends replies to the address the mail comes from.</span>
                     <?php endif; ?>
-                </div>
+                </label>
                 </div>
                 <?php
                 break;
@@ -16989,22 +16524,8 @@ class SFAF_Portal {
             $want = isset( $_POST['email_required'] ) || sfaf_email_required_locked( $event_id );
             update_post_meta( $event_id, '_uc_email_required', $want ? '1' : '0' );
         }
-        if ( isset( $_POST['event_replyto'] ) || isset( $_POST['event_replyto_pick'] ) ) {
-            /*
-             * A CALENDAR USER CHOSEN FROM THE LIST WINS, and only one the list
-             * offered: a posted address that is not a calendar user's is read
-             * as "Someone else" and the typed box decides (3.112.0).
-             */
-            $pick = isset( $_POST['event_replyto_pick'] ) ? sanitize_email( wp_unslash( $_POST['event_replyto_pick'] ) ) : '';
-            $raw  = isset( $_POST['event_replyto'] ) ? trim( (string) wp_unslash( $_POST['event_replyto'] ) ) : '';
-            if ( '' !== $pick ) {
-                foreach ( $this->replyto_people( $user ) as $rp ) {
-                    if ( 0 === strcasecmp( $rp->user_email, $pick ) ) {
-                        $raw = $rp->user_email;
-                        break;
-                    }
-                }
-            }
+        if ( isset( $_POST['event_replyto'] ) ) {
+            $raw = trim( (string) wp_unslash( $_POST['event_replyto'] ) );
             if ( '' === $raw ) {
                 delete_post_meta( $event_id, '_uc_email_replyto' );
             } else {
@@ -18325,27 +17846,6 @@ class SFAF_Portal {
      *
      * @return WP_User[] Display-name order.
      */
-    /**
-     * Who "Replies go to" offers (3.112.0): every calendar user with an
-     * address, and the person editing even when they have no calendar record,
-     * so the default can always be the creator.
-     *
-     * @param WP_User|null $user
-     * @return WP_User[]
-     */
-    private function replyto_people( $user ) {
-        $out = array();
-        foreach ( $this->calendar_people() as $p ) {
-            if ( is_email( $p->user_email ) ) {
-                $out[ strtolower( $p->user_email ) ] = $p;
-            }
-        }
-        if ( $user && is_email( $user->user_email ) && ! isset( $out[ strtolower( $user->user_email ) ] ) ) {
-            $out[ strtolower( $user->user_email ) ] = $user;
-        }
-        uasort( $out, function ( $a, $b ) { return strcasecmp( $a->display_name, $b->display_name ); } );
-        return array_values( $out );
-    }
     private function calendar_people() {
         $people = get_users( array(
             'meta_key'     => '_uc_calendar_role',
@@ -20134,133 +19634,6 @@ class SFAF_Portal {
      * @param string $orderby
      * @param string $order
      */
-/* =====================================================================
-     * Events on closed days (3.112.0). See SFAF_Closure_Review.
-     * ================================================================== */
-
-    /** The undecided closed-day rows this person can act on. */
-    private function closed_items_for( $user ) {
-        $out = array();
-        foreach ( SFAF_Closure_Review::undecided() as $item ) {
-            if ( $this->can_edit_event( $user, (int) $item['event_id'] ) ) {
-                $out[] = $item;
-            }
-        }
-        return $out;
-    }
-
-    /**
-     * The page Keep and Cancel in the email open. It asks; it never acts on
-     * being opened. Keep is a POST from here, and Cancel here is the editor's
-     * own cancel form and dialog.
-     *
-     * @param WP_User $user
-     * @param int     $event_id
-     */
-    private function render_closed_day( $user, $event_id ) {
-        $event_id   = (int) $event_id;
-        $closure_id = isset( $_GET['closure'] ) ? sanitize_text_field( wp_unslash( $_GET['closure'] ) ) : '';
-        $do         = ( isset( $_GET['do'] ) && 'cancel' === $_GET['do'] ) ? 'cancel' : 'keep';
-        $post       = $event_id ? get_post( $event_id ) : null;
-        if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
-            if ( $this->send_to_public_page( $event_id ) ) {
-                return;
-            }
-            $this->render_dashboard( $user );
-            return;
-        }
-        $item = SFAF_Closure_Review::item( $event_id, $closure_id );
-        $this->chrome_open( $user, 'pending' );
-        ?>
-        <div class="uc-page-head">
-            <h1>On a closed day</h1>
-            <a class="uc-btn" href="<?php echo esc_url( add_query_arg( 'kind', 'closed', $this->url( 'pending' ) ) ); ?>">&larr; On closed days</a>
-        </div>
-        <div class="uc-card uc-closed-day" data-uc-closed-day="<?php echo esc_attr( $do ); ?>">
-            <h2 class="uc-closed-day-title"><a href="<?php echo esc_url( $this->url( 'events/edit/' . $event_id ) ); ?>"><?php echo esc_html( get_the_title( $event_id ) ); ?></a></h2>
-            <?php if ( ! $item ) : ?>
-                <p class="uc-notice">This event is not on a day SFAF is closed any more, so there is nothing to decide.</p>
-            <?php else :
-                $name = SFAF_Closures::name( $item['closure'] );
-                ?>
-                <p>SFAF is closed on <strong><?php echo esc_html( sfaf_ap_date( $item['date'], 'full' ) ); ?></strong><?php echo '' !== $name ? ' for ' . esc_html( $name ) : ''; ?>, and this event is on that day.</p>
-                <?php if ( $item['kept'] ) : ?>
-                    <p class="uc-notice" data-uc-closed-kept>Kept. It is held on that day.</p>
-                <?php elseif ( 'keep' === $do ) : ?>
-                    <form method="post" action="<?php echo esc_url( $this->url( 'closed-day/' . $event_id ) ); ?>" class="uc-closed-keep" data-uc-closed-keep>
-                        <input type="hidden" name="uc_action" value="closed_keep" />
-                        <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
-                        <input type="hidden" name="closure_id" value="<?php echo esc_attr( $item['closure']['id'] ); ?>" />
-                        <?php wp_nonce_field( 'uc_portal_closed_keep', 'uc_nonce' ); ?>
-                        <button type="submit" class="uc-btn uc-btn-primary">Keep the event</button>
-                        <a class="uc-btn" href="<?php echo esc_url( SFAF_Closure_Review::link( $event_id, $item['closure']['id'], 'cancel' ) ); ?>">Cancel it instead</a>
-                    </form>
-                <?php else : ?>
-                    <div class="uc-closed-cancel" data-uc-closed-cancel>
-                        <?php $this->render_cancel_card( $user, $event_id ); ?>
-                    </div>
-                    <p><a href="<?php echo esc_url( SFAF_Closure_Review::link( $event_id, $item['closure']['id'], 'keep' ) ); ?>">Keep it instead</a></p>
-                <?php endif; ?>
-            <?php endif; ?>
-        </div>
-        <?php
-        $this->chrome_close();
-    }
-
-    /**
-     * On closed days: every undecided event date on a closure this person can
-     * edit, with Keep and Cancel. A tab of Pending for an admin, and the whole
-     * screen for anybody else who has one.
-     *
-     * @param WP_User $user
-     */
-    private function render_closed_days( $user ) {
-        $items = $this->closed_items_for( $user );
-        $this->chrome_open( $user, 'pending' );
-        ?>
-        <div class="uc-page-head">
-            <h1>Pending Events</h1>
-        </div>
-        <?php if ( $this->is_admin_role( $user ) ) {
-            $this->pending_tabs( $this->pending_entries( $user ), 'closed', 'received', 'desc' );
-        } ?>
-        <div class="uc-card" data-uc-closed-days>
-            <div class="uc-card-head">
-                <h2>On closed days</h2>
-                <?php if ( $items ) : ?><span class="uc-count-badge"><?php echo count( $items ); ?></span><?php endif; ?>
-            </div>
-            <?php if ( empty( $items ) ) : ?>
-                <p class="uc-empty">No event is on a day SFAF is closed without a decision.</p>
-            <?php else : ?>
-                <ul class="uc-queue-list uc-closed-list">
-                    <?php foreach ( $items as $item ) :
-                        $id   = (int) $item['event_id'];
-                        $name = SFAF_Closures::name( $item['closure'] );
-                        ?>
-                        <li class="uc-closed-row" data-uc-closed-row="<?php echo $id; ?>">
-                            <div class="uc-closed-what">
-                                <a class="uc-closed-event" href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ); ?></a>
-                                <span class="uc-muted"><?php echo esc_html( sfaf_ap_date( $item['date'], 'full' ) ); ?><?php echo '' !== $name ? ', closed for ' . esc_html( $name ) : ', SFAF closed'; ?></span>
-                            </div>
-                            <div class="uc-closed-actions">
-                                <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>" class="uc-inline-form">
-                                    <input type="hidden" name="uc_action" value="closed_keep" />
-                                    <input type="hidden" name="event_id" value="<?php echo $id; ?>" />
-                                    <input type="hidden" name="closure_id" value="<?php echo esc_attr( $item['closure']['id'] ); ?>" />
-                                    <input type="hidden" name="closed_back" value="list" />
-                                    <?php wp_nonce_field( 'uc_portal_closed_keep', 'uc_nonce' ); ?>
-                                    <button type="submit" class="uc-btn uc-btn-sm">Keep</button>
-                                </form>
-                                <a class="uc-btn uc-btn-sm uc-btn-stop" href="<?php echo esc_url( SFAF_Closure_Review::link( $id, $item['closure']['id'], 'cancel' ) ); ?>">Cancel</a>
-                            </div>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
-        </div>
-        <?php
-        $this->chrome_close();
-    }
     private function pending_tabs( $entries, $current, $orderby, $order ) {
         $counts = array( 'all' => count( $entries ) );
         foreach ( $this->pending_kinds() as $key => $unused ) {
@@ -20290,12 +19663,6 @@ class SFAF_Portal {
                     <span class="uc-tab-count"><?php echo (int) $counts[ $key ]; ?></span>
                 </a>
             <?php endforeach; ?>
-            <?php $closed_n = count( SFAF_Closure_Review::undecided() ); ?>
-            <a class="uc-view-tab<?php echo 'closed' === $current ? ' uc-view-tab-active' : ''; ?>" data-uc-closed-tab
-               href="<?php echo esc_url( add_query_arg( 'kind', 'closed', $this->url( 'pending' ) ) ); ?>"<?php echo 'closed' === $current ? ' aria-current="page"' : ''; ?>>
-                On closed days
-                <span class="uc-tab-count"><?php echo (int) $closed_n; ?></span>
-            </a>
         </div>
         <?php
     }
@@ -20363,13 +19730,6 @@ class SFAF_Portal {
      * @param WP_User $user
      */
     private function render_pending( $user ) {
-        /* On closed days (3.112.0): a tab for an admin, the screen for anybody
-           else with one, and where a reviewer with none of those lands. */
-        $kind_asked = isset( $_GET['kind'] ) ? sanitize_key( wp_unslash( $_GET['kind'] ) ) : '';
-        if ( 'closed' === $kind_asked || ( ! $this->is_admin_role( $user ) && ! $this->review_queue_ids( $user ) && $this->closed_items_for( $user ) ) ) {
-            $this->render_closed_days( $user );
-            return;
-        }
         if ( ! $this->is_admin_role( $user ) ) {
             if ( $this->review_queue_ids( $user ) ) {
                 $this->render_review_queue( $user );
@@ -21138,7 +20498,7 @@ class SFAF_Portal {
                         /* ON A CLOSED DAY (3.105.0), beside the date and in words.
                            A flag for whoever approves it, never a hold: the publish
                            rule does not know about closures and must not. */
-                        $closed_flag = $id ? SFAF_Closures::flag_for_event( $id ) : SFAF_Closures::flag_for( $date );
+                        $closed_flag = SFAF_Closures::flag_for( $date );
                         ?>
                         <?php if ( '' !== $closed_flag ) : ?>
                             <span class="uc-closed-flag" data-uc-closed-flag><?php echo esc_html( $closed_flag ); ?></span>
@@ -23202,13 +22562,8 @@ class SFAF_Portal {
          */
         $scope        = isset( $args['scope'] ) ? (string) $args['scope'] : '';
 
-        $own_tabs = self::own_status_tabs();
         if ( 'all' === $scope ) {
             // Nothing added: the caller has said so in as many words.
-        } elseif ( isset( $own_tabs[ $scope ] ) ) {
-            // Drafts or Scheduled (3.112.0): this person's own, in that status.
-            $q['author']      = $user->ID;
-            $q['post_status'] = $own_tabs[ $scope ]['status'];
         } elseif ( 'mine' === $scope && $this->is_admin_role( $user ) ) {
             // An admin has every event, so My events is a filter on a list
             // they may see either way, not a gate, and it stays literal.

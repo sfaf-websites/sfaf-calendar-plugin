@@ -294,8 +294,7 @@ class SFAF_Notifications {
 
         return array(
             'title'    => get_the_title( $event_id ),
-            // The range for a multi-day event (3.112.0).
-            'date'     => ( '' !== sfaf_event_last_date( $event_id ) ) ? sfaf_ap_event_date( $event_id, 'full', $lang ) : sfaf_ap_date( $date, 'full', $lang ),
+            'date'     => sfaf_ap_date( $date, 'full', $lang ),
             'time'     => sfaf_ap_time_range( $start, $end, 'zone', $lang ),
             'location' => $location,
             'url'      => (string) get_permalink( $event_id ),

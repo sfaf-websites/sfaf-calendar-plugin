@@ -1518,11 +1518,6 @@
     .uc-calendar .uc-group-clear, .uc-calendar .uc-search,
     .uc-calendar .uc-organizer-select { min-height: 44px; }
     .uc-groups-list > summary { min-height: 44px; }
-    /* The three dropdowns (3.112.0): Organizers and groups, What's included
-       and Location share these. */
-    .uc-calendar .uc-who-trigger { min-height: 44px; }
-    .uc-calendar .uc-who-clear { top: 0; right: 0; min-height: 44px; padding: 0 12px; }
-    .uc-calendar .uc-who-panel .uc-who-opt { padding-top: 12px; padding-bottom: 12px; }
 }
 
 /* ---------- Breadcrumb ----------
@@ -5305,28 +5300,3 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
    leaves a <p> with no margin. */
 .uc-agree-dialog .uc-agree-text p { margin: 0 0 10px; }
 .uc-agree-dialog .uc-agree-text p:last-child { margin-bottom: 0; }
-
-/* ---------------------------------------------------------------------------
-   WHAT'S INCLUDED AND LOCATION (3.112.0)
-
-   The two dropdowns are the Organizers and groups control with one list, so
-   the panel is that control's single-column width. The tag pills are the
-   neutral pill: --uc-text on white inside the --uc-border-strong hairline,
-   Montserrat 12px/600 like a category chip, and the teal text color on hover
-   and focus. They carry no category color, because a tag is not a category.
-   ------------------------------------------------------------------------ */
-.uc-pick .uc-who-panel { width: 340px; }
-.uc-tag-pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
-.uc-tag-pills > li { margin: 0; padding: 0; list-style: none; }
-.uc-tag-pills-card { margin-top: 6px; }
-.uc-calendar .uc-tag-pill,
-.uc-single .uc-tag-pill {
-    display: inline-block; padding: 3px 10px; border-radius: 99px;
-    border: 1px solid var(--uc-border-strong); background: #fff; color: var(--uc-text);
-    font-family: var(--uc-font-heading); font-size: 12px; font-weight: 600; line-height: 1.5;
-    text-decoration: none; text-transform: none; letter-spacing: 0.01em;
-}
-.uc-calendar .uc-tag-pill:hover, .uc-calendar .uc-tag-pill:focus-visible,
-.uc-single .uc-tag-pill:hover, .uc-single .uc-tag-pill:focus-visible {
-    border-color: var(--uc-teal-text); color: var(--uc-teal-text);
-}

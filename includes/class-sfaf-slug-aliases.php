@@ -40,7 +40,6 @@ class SFAF_Slug_Aliases {
         'uc_event_category' => 'uc_cat',
         'uc_organizer'      => 'uc_org',
         'uc_series'         => 'uc_group',
-        'uc_tag'            => 'uc_tag',
     );
 
     public static function register() {
@@ -135,27 +134,6 @@ class SFAF_Slug_Aliases {
         unset( $all[ $taxonomy ][ $new ] );
         update_option( self::OPTION, $all, false );
         return true;
-    }
-
-    /**
-     * Forget every old slug of a term, when the term itself is deleted
-     * (3.112.1). An address naming one then reaches nothing, as an unknown
-     * slug does, rather than pointing at an id that is gone.
-     *
-     * @param string $taxonomy
-     * @param int    $term_id
-     */
-    public static function forget( $taxonomy, $term_id ) {
-        $all = self::all();
-        if ( empty( $all[ $taxonomy ] ) ) {
-            return;
-        }
-        $left = array_filter( $all[ $taxonomy ], function ( $id ) use ( $term_id ) { return (int) $id !== (int) $term_id; } );
-        if ( count( $left ) === count( $all[ $taxonomy ] ) ) {
-            return;
-        }
-        $all[ $taxonomy ] = $left;
-        update_option( self::OPTION, $all, false );
     }
 
     /**

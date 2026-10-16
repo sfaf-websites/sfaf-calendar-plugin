@@ -709,15 +709,7 @@ function sfaf_event_datetimes( $post_id ) {
     }
 
     $end = null;
-    // A multi-day event ends on its last day (3.112.0).
-    $last_day = sfaf_event_last_date( $post_id );
-    if ( '' !== $last_day ) {
-        try {
-            $end = new DateTime( $last_day . ' ' . ( $end_time ?: '23:59' ), $tz );
-        } catch ( Exception $e ) {
-            $end = null;
-        }
-    } elseif ( $end_time ) {
+    if ( $end_time ) {
         try {
             $end = new DateTime( $date . ' ' . $end_time, $tz );
         } catch ( Exception $e ) {
@@ -1436,8 +1428,7 @@ function sfaf_replace_tokens( $text, $event_id, $data = array() ) {
      * public surface and takes the same rules the cards do.
      */
     $date     = get_post_meta( $event_id, '_uc_event_date', true );
-    // The range for a multi-day event (3.112.0).
-    $date_fmt = sfaf_ap_event_date( $event_id, 'full' );
+    $date_fmt = sfaf_ap_date( $date, 'full' );
 
     // THE PHRASE, not a comma-joined list: this is the {organizer} token a
     // manager writes into an email body and the ORGANIZER line on an .ics, and
@@ -3772,111 +3763,6 @@ function sfaf_event_language( $event_id ) {
     return in_array( $inherit, array( 'en', 'es' ), true ) ? $inherit : 'en';
 }
 
-/*
- * MULTI-DAY EVENTS (3.112.0).
- *
- * An event with the Multi-day tick runs from its Date to its End date: the
- * start time applies to the first day and the end time to the last. Two meta
- * keys of its own, _uc_multi_day and _uc_last_date, and deliberately NOT
- * _uc_end_date: on a GoFundMe Pro campaign that key is the close of the
- * fundraising window (SFAF_Sources::last_day()), and reading it as an event's
- * last day would paint a campaign across months of the grid.
- *
- * A multi-day event and a repeating one are different things, so the two are
- * never on one event; see the Schedule card.
- */
-
-/**
- * An event's last day, or '' when it is not a multi-day event (the tick is
- * off, or the End date is missing or not after the Date).
- *
- * @param int $post_id
- * @return string Y-m-d or ''.
- */
-function sfaf_event_last_date( $post_id ) {
-    $post_id = (int) $post_id;
-    if ( '1' !== (string) get_post_meta( $post_id, '_uc_multi_day', true ) ) {
-        return '';
-    }
-    $first = (string) get_post_meta( $post_id, '_uc_event_date', true );
-    $last  = (string) get_post_meta( $post_id, '_uc_last_date', true );
-    return ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $last ) && '' !== $first && $last > $first ) ? $last : '';
-}
-
-/**
- * Every day an event is on, first to last, as Y-m-d.
- *
- * @param int $post_id
- * @return string[]
- */
-function sfaf_event_days( $post_id ) {
-    $first = (string) get_post_meta( (int) $post_id, '_uc_event_date', true );
-    if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $first ) ) {
-        return array();
-    }
-    $last = sfaf_event_last_date( $post_id );
-    if ( '' === $last ) {
-        return array( $first );
-    }
-    $days = array();
-    $ts   = strtotime( $first . ' 12:00:00 UTC' );
-    $end  = strtotime( $last . ' 12:00:00 UTC' );
-    while ( $ts <= $end && count( $days ) < 400 ) {
-        $days[] = gmdate( 'Y-m-d', $ts );
-        $ts    += DAY_IN_SECONDS;
-    }
-    return $days;
-}
-
-/**
- * Two dates as one range, in the one formatter (3.112.0).
- *
- * English: "May 21 to 23, 2027", "Apr 30 to May 2, 2027",
- * "Dec 30, 2026 to Jan 2, 2027". Spanish: "del 21 al 23 de mayo de 2027",
- * "del 30 de abril al 2 de mayo de 2027",
- * "del 30 de diciembre de 2026 al 2 de enero de 2027". Every part is a
- * sfaf_ap_date() style, so the range cannot spell a day differently from a
- * single date.
- *
- * @param string $start Y-m-d.
- * @param string $end   Y-m-d.
- * @param string $lang
- * @return string
- */
-function sfaf_ap_range( $start, $end, $lang = 'en' ) {
-    $s = (string) $start;
-    $e = (string) $end;
-    if ( '' === $e || $e === $s ) {
-        return sfaf_ap_date( $s, 'day_year', $lang );
-    }
-    $same_year  = substr( $s, 0, 4 ) === substr( $e, 0, 4 );
-    $same_month = $same_year && substr( $s, 0, 7 ) === substr( $e, 0, 7 );
-    if ( 'es' === $lang ) {
-        if ( $same_month ) {
-            return 'del ' . sfaf_ap_date( $s, 'daynum', 'es' ) . ' al ' . sfaf_ap_date( $e, 'day_year', 'es' );
-        }
-        return 'del ' . sfaf_ap_date( $s, $same_year ? 'day' : 'day_year', 'es' ) . ' al ' . sfaf_ap_date( $e, 'day_year', 'es' );
-    }
-    if ( $same_month ) {
-        return sfaf_ap_date( $s, 'short' ) . ' to ' . sfaf_ap_date( $e, 'daynum' ) . ', ' . substr( $e, 0, 4 );
-    }
-    return sfaf_ap_date( $s, $same_year ? 'short' : 'short_year' ) . ' to ' . sfaf_ap_date( $e, 'short_year' );
-}
-
-/**
- * An event's date as people read it: its day in the given style, or its range
- * when it is a multi-day event.
- *
- * @param int    $post_id
- * @param string $style A sfaf_ap_date() style, for a one-day event.
- * @param string $lang
- * @return string
- */
-function sfaf_ap_event_date( $post_id, $style = 'full', $lang = 'en' ) {
-    $first = (string) get_post_meta( (int) $post_id, '_uc_event_date', true );
-    $last  = sfaf_event_last_date( $post_id );
-    return ( '' === $last ) ? sfaf_ap_date( $first, $style, $lang ) : sfaf_ap_range( $first, $last, $lang );
-}
 function sfaf_ap_date_range( $start, $end ) {
     $s = strtotime( trim( (string) $start ) . ' 12:00:00' );
     $e = strtotime( trim( (string) $end ) . ' 12:00:00' );

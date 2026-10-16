@@ -859,7 +859,7 @@ class SFAF_Reminders {
         $event_id = (int) $event_id;
         return array(
             'title' => get_the_title( $event_id ),
-            'date'  => sfaf_ap_event_date( $event_id, 'full', $lang ),
+            'date'  => sfaf_ap_date( (string) get_post_meta( $event_id, '_uc_event_date', true ), 'full', $lang ),
             'time'  => sfaf_ap_time_range(
                 (string) get_post_meta( $event_id, '_uc_start_time', true ),
                 (string) get_post_meta( $event_id, '_uc_end_time', true ),

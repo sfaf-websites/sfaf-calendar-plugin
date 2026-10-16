@@ -130,9 +130,6 @@ while ( have_posts() ) :
                     <p class="uc-single-organizer">Hosted by <?php echo esc_html( $organizer_phrase ); ?></p>
                 <?php endif; ?>
 
-                <?php // What's included (3.112.0), under the category and organizer. ?>
-                <?php echo SFAF_Tags::pills_html( $post_id, 'page' ); ?>
-
                 <?php
                 $series_link = sfaf_series_link( $post_id );
                 if ( $series_link ) {
@@ -232,7 +229,7 @@ while ( have_posts() ) :
                             <?php if ( $date_ts ) : ?>
                                 <li>
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'calendar' ); ?></span>
-                                    <span><strong><?php echo esc_html( sfaf_ap_event_date( $post_id, 'full' ) ); ?></strong></span>
+                                    <span><strong><?php echo esc_html( sfaf_ap_date( $date_ts, 'full' ) ); ?></strong></span>
                                 </li>
                             <?php endif; ?>
                             <?php if ( $start_time ) : ?>
