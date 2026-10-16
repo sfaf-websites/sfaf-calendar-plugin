@@ -531,6 +531,19 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.113.1 =
+
+**Six small changes to caladmin, and the contact email on the event page is a link. The embed is 3.113.0's.**
+
+**THE EMBED IS UNCHANGED.** Its route, answers and headers, its script and stylesheet, the [sfaf_calendar] block, the scheduled tasks, the taxonomies and the rewrite rules are 3.113.0's; only the version number embed.js and its answers carry has moved. The one public change is the event page's Contact line (below).
+
+* **Pending: Dismissed starts shut.** The list of dismissed imports is behind one button, "Show dismissed (12)", shut every time the screen opens. Pressed, it says "Hide dismissed (12)".
+* **Approve: the registrations tick only with RSVP on.** "Send [name] registrations for this event" and its note appear only when the event takes RSVPs. With RSVP off, Approve approves, and a tick posted anyway adds nobody.
+* **Emails for this event: two are always sent.** "Confirmation to the person who registers" and "Morning-of reminder to everybody registered" are listed with no tick and an "Always sent" label; the other four keep their ticks. The line above reads "All 6 are on." or, for example, "1 switched off, 5 on." **An event on which either of the two had been switched off now sends it.** The stored setting is ignored, and the event's next save drops it.
+* **Classification: + Add category and + Add organizer show their state.** Each has a chevron that points down while the list is shut and up while it is open, and the button looks pressed while open.
+* **Event page: the contact email is a link.** It opens a new message to that address. The name and phone stay plain text, and the emails that carry the contact line are unchanged.
+* **Team and access: no limit on teams.** "Pick up to 2." is gone and any number of teams can be ticked. Until now a third tick was dropped on save without a word. The series default and its "apply to upcoming events" step add every team, and the staff Request an event form no longer says "up to 2" or refuses a third.
+
 = 3.113.0 =
 
 **Built from 3.111.0, not from 3.112.2. Age range as three choices, Cancel event and Delete as dialogs, an Asana copy of each admin alert, and the Notifications card's two rows as buttons. Nothing on the public calendar has changed since 3.111.0.**

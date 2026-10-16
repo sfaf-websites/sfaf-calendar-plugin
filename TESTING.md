@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 346 items.** Quick 282, needs real conditions 60, blocked on other
+**Outstanding: 352 items.** Quick 288, needs real conditions 60, blocked on other
 people 4.
 
 ---
@@ -18,12 +18,14 @@ people 4.
 
 Opening a screen and looking, loading a URL, pressing a control. Fastest first.
 
-### 1.0 FIRST: installing 3.113.0 on the live site, and the first hour (3.113.0)
+### 1.0 FIRST: installing 3.113.1 on the live site, and the first hour (3.113.0, 3.113.1)
 
 3.112.0 and 3.112.2 failed from the office network (no connection to
 resources.sfaf.org at all) and 3.111.0 cured it each time. **3.113.0 is built
-from 3.111.0 and its public calendar is 3.111.0's**, proved by
-`.claude/embed-identity-test.php`; only the version number moves. So this
+from 3.111.0 and its public calendar is 3.111.0's**, and **3.113.1's embed is
+3.113.0's**, both proved by `.claude/embed-identity-test.php`; only the version
+number moves. 3.113.1 also changes the event page's contact line (1.289). If
+3.113.0 was never installed, install 3.113.1 directly; the steps are the same. So this
 install says whether a version change and caladmin work alone bring the fault
 back. The calendar is served from resources.sfaf.org, **LiteSpeed on AWS with
 the LiteSpeed Cache plugin**; only www.sfaf.org is on WP Engine.
@@ -36,7 +38,7 @@ the LiteSpeed Cache plugin**; only www.sfaf.org is on WP Engine.
   condition that failed.
 
 **Install**: Plugins > SFAF Calendar > Check for updates, then Update (or upload
-`sfaf-calendar-3.113.0.zip` and choose Replace current with uploaded). Then
+`sfaf-calendar-3.113.1.zip` and choose Replace current with uploaded). Then
 **LiteSpeed Cache > Toolbox > Purge All**.
 
 **The first hour, four times** (at install, +15, +30, +60 minutes):
@@ -3856,9 +3858,90 @@ and a grey button, Choose people and Choose emails. Press Choose people, tick
 somebody: the line changes at once to name them and the total. Press Choose
 emails, untick one: its line says "1 of 6 switched off." Save changes and
 reopen: both lines say the same, and the emails list is open because one is
-off. On a phone, both buttons fit in the card.
+off. On a phone, both buttons fit in the card. From 3.113.1 the line reads
+"1 switched off, 5 on." and two of the six have no tick (1.287).
 
 **Why it needs a person:** the live editor with real calendar users.
+
+### 1.285 Pending's Dismissed list starts shut (3.113.1)
+
+On a site with dismissed imports, open Pending. Under the work list there is
+one grey button, **Show dismissed (N)** with a chevron pointing down, and no
+list. Press it: the list opens, the button says **Hide dismissed (N)**, looks
+pressed, and the chevron points up. Restore one: the page reloads with the
+list shut again and N one smaller. Reload Pending: shut.
+
+**Why it needs a person:** the live Pending queue with real dismissed imports.
+
+### 1.286 Approve on a submission with RSVP off (3.113.1)
+
+Take a pending community submission and switch RSVP off on it (Edit, untick,
+Save changes). In Pending, press Approve: the dialog shows who submitted it,
+the "Email ... that this event is published" tick, and the picture question if
+it has a picture, and **no** "Send ... registrations for this event" tick or
+its note. Approve: it publishes, and the event's Who hears about this event
+does not gain the submitter. Then a second submission **with** RSVP on: the
+tick is there, ticked, as before.
+
+**Why it needs a person:** a real submission through the live queue.
+
+### 1.287 The two emails that are always sent, and the events they now reach (3.113.1)
+
+Open any event's Notifications card, Choose emails. **Confirmation to the
+person who registers** and **Morning-of reminder to everybody registered** have
+no tick and an "Always sent" label; the other four keep their ticks. Untick
+one: the line above says "1 switched off, 5 on."
+
+Then count the events where somebody had switched either of the two off,
+since they now send. In phpMyAdmin on resources.sfaf.org (change `wp_` if the
+table prefix differs):
+
+```sql
+SELECT COUNT(DISTINCT p.ID) AS events,
+       COUNT(DISTINCT CASE WHEN d.meta_value >= CURDATE() THEN p.ID END) AS upcoming
+FROM wp_posts p
+JOIN wp_postmeta o ON o.post_id = p.ID AND o.meta_key = '_uc_notify_off'
+LEFT JOIN wp_postmeta d ON d.post_id = p.ID AND d.meta_key = '_uc_event_date'
+WHERE p.post_type = 'uc_event' AND p.post_status NOT IN ('trash', 'auto-draft')
+  AND (o.meta_value LIKE '%"confirmation"%' OR o.meta_value LIKE '%"reminder"%');
+```
+
+Report both numbers. For each upcoming one, its registrants will now get the
+confirmation and the morning-of reminder; if one of those was switched off on
+purpose, say which event.
+
+**Why it needs a person:** the live database, which the build cannot see.
+
+### 1.288 + Add category and + Add organizer show whether they are open (3.113.1)
+
+On Add event, Classification: each button has a chevron pointing down. Press
++ Add category: the list opens, the chevron points up and the button looks
+pressed (darker grey, teal edge, sunk). Press it again: the list shuts and
+the button is as it was. The same for + Add organizer, and on a phone.
+
+**Why it needs a person:** the live editor in a real browser.
+
+### 1.289 The contact email on the event page is a link (3.113.1)
+
+Open the public page of an event whose Contact has an email (Edit event, Event
+details, Contact). The Contact line shows the name, the email and the phone;
+the email is a link in the page's link style, and clicking it opens a new
+message to that address. The name and phone are plain text. On a phone, check
+the email link looks like the phone number when the phone's browser makes
+that a link. This is the one public-facing change in 3.113.1.
+
+**Why it needs a person:** the live event page and a mail program.
+
+### 1.290 Three teams on one event (3.113.1)
+
+On an event's Team and access, there is no "Pick up to 2." Tick three teams,
+Save changes, reopen: all three are ticked, and somebody on the third team has
+the event under My events. On the staff Request an event form, the hint no
+longer says "up to 2"; choose three teams and send: the request is accepted and
+all three can open it in caladmin.
+
+**Why it needs a person:** the live editor and request form, with real teams
+and a real member of each.
 
 ## 2. Needs real conditions
 

@@ -98,6 +98,8 @@ for f in .claude/*.php; do
     release-3113-live.php) continue ;;   # run below with --run
     plant-31110.php) continue ;;       # a fault planter for the 3.111.0 checks, not a check
     plant-3113.php) continue ;;        # a fault planter for the 3.113.0 checks, not a check
+    release-31131-live.php) continue ;;  # run below with --run
+    plant-31131.php) continue ;;       # a fault planter for the 3.113.1 checks, not a check
     embed-identity-probe.php) continue ;; # run by embed-identity-test.php in two trees, not a check
     embed-isolation-live.php) continue ;; # run below with --run
     # SET ASIDE WITH 3.112.x (3.113.0). 3.113.0 is built from 3.111.0, and these
@@ -367,6 +369,9 @@ run "release-31110-live --run" php .claude/release-31110-live.php --run
 # rows as a status line and a button (3.113.0), at 1280px and 390px, with and
 # without the script.
 run "release-3113-live --run" php .claude/release-3113-live.php --run
+# The add buttons' chevron and pressed face, and Pending's Dismissed fold
+# (3.113.1), at 1280px and 390px, with and without the script.
+run "release-31131-live --run" php .claude/release-31131-live.php --run
 # The embed in its shadow root under a hostile host stylesheet, and the combined
 # sidebar ending at its content (3.111.0 J and K), at 1280px and 390px.
 run "embed-isolation-live --run" php .claude/embed-isolation-live.php --run

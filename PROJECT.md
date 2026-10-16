@@ -295,13 +295,10 @@ while a typed name or address is a string that is correct on the day it is typed
 and nobody's job afterwards. The requester sees team **names** and never who is
 on them.
 
-- **The cap is `SFAF_Teams::MAX_PER_EVENT`, asked rather than restated.** A
-  second number here would be a second answer to the same question, free to
-  disagree with the one caladmin enforces.
-- **Over the cap is an error, not a silent trim.** With scripting off nothing
-  stops a third box being ticked, and dropping one quietly would leave the
-  requester believing they had said something they had not. The ticks are kept
-  so the form comes back showing what they chose.
+- **No limit on how many (3.113.1).** It was two, `SFAF_Teams::MAX_PER_EVENT`,
+  enforced here as an error and in caladmin as a silent trim of the third tick.
+  Mark removed it; the constant is gone, so neither form can bring it back by
+  asking.
 - **It is written through `SFAF_Teams::set_access_for_event()`**, the call the
   portal makes. `_uc_event_teams` is never touched from this file, and
   `request-form-test.php` asserts that absence.
@@ -678,6 +675,10 @@ Contact's Name where the three were empty. `sfaf_event_public_contact()` is the 
 wins where it exists**, and anything that wants to show what a submitter gave
 asks that function rather than a meta key. The pending row read the old key
 directly for nineteen releases and rendered an empty line for it.
+**The event page prints `sfaf_event_public_contact_html()` (3.113.1)**: the same
+line, escaped, with the email address a `mailto:` link. The emails keep the
+plain line. The 3.46.0 single box is linked only when the whole of it is one
+address.
 
 ### Cost, Age range and Contact, on every event (3.111.0; the Listing detail card until then)
 
@@ -810,6 +811,10 @@ hook on the status, so an event published by any other route sends nothing.
 > not receive their own registrations has a real problem. The label says both
 > things rather than saying "registrations", because the person deciding has to
 > be told what it actually sends.
+>
+> **Offered only when the event takes RSVPs (3.113.1)**, by
+> `sfaf_event_takes_rsvps()`. With RSVP off there are no registrations to send,
+> and Approve approves; the route ignores the tick on such an event too.
 
 - **A typed address, treated as one.** `user_id` 0, no caladmin link offered, no
   capability inferred. One more entry on an existing list rather than a
@@ -5654,6 +5659,14 @@ All six are **on** by default. `_uc_notify_off` records only what somebody has
 switched off, so a default costs no writes and an event created before any of
 this existed behaves like one created after.
 
+**`confirmation` and `reminder` are always sent (3.113.1),**
+`SFAF_Notifications::ALWAYS`. They go to the person who registered, so the card
+lists them with no tick and an "Always sent" pill. `choosable()` is the other
+four: `set_off()` stores only those, the save offers only those, and
+`stored_on()` and `off_count()` ignore an "off" for either of the two stored
+before 3.113.1. Such a value is left in the meta and dropped by the event's
+next save of the card.
+
 | Kind | To | When |
 |---|---|---|
 | `confirmation` | the person registering | immediately |
@@ -5665,8 +5678,8 @@ this existed behaves like one created after.
 | `reinstated` | everybody registered | when a cancelled event is put back on, and only on an explicit yes |
 
 **`kinds()` is a shared field list**, so adding a key to it is the whole of the
-wiring: `on()` reads it, `set_off()` intersects against `array_keys( kinds() )`
-so the form saves it, `off_count()` counts it, and the caladmin card renders it
+wiring: `on()` reads it, `set_off()` intersects against `choosable()`, which is
+`kinds()` less `ALWAYS`, so the form saves it, `off_count()` counts it, and the caladmin card renders it
 by iterating. That is how `cancel_alert` was added in 3.56.0 without a new
 mechanism.
 
@@ -6746,8 +6759,8 @@ for a series default: the next page load reads them afresh.
 
 ### Team and access (3.110.1; "Who can edit this" until then)
 
-**One card on Add event and Edit event alike**: the organizer, up to two teams
-(`_uc_event_teams`, `SFAF_Teams::MAX_PER_EVENT`) and people by name
+**One card on Add event and Edit event alike**: the organizer, any number of
+teams (`_uc_event_teams`; two until 3.113.1) and people by name
 (`_uc_event_people`, anybody with calendar access, up to
 `SFAF_Access::MAX_PEOPLE`), and the tick that also puts the teams on the
 notification list. The series screen has a **Default team and access**
@@ -6781,7 +6794,8 @@ notification list. The series screen has a **Default team and access**
   for email the RSVP lists of those events on the day of the update. Same resolve-at-read-time rule teams already followed
 for notifications, and the reason a team is a set of ids rather than a snapshot.
 
-**An event may name up to two teams**, in `_uc_event_teams`. That is a
+**An event may name any number of teams** (two until 3.113.1, when the limit
+was removed), in `_uc_event_teams`. That is a
 **different key** from `_uc_notify_teams`, deliberately and permanently. Reusing
 the notification key would have made this a retroactive permission change: every
 event that had ever named a team for notification would have granted that team

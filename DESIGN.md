@@ -1157,9 +1157,20 @@ at 1280px and 390px.
 | Part | Values |
 |---|---|
 | Subhead | `.uc-notify-subhead`, as before |
-| Status line | 14px/400 at 1.5 `--p-text`: "Nobody else yet.", "2 individuals. 4 people in total.", "All 6 are on.", "1 of 6 switched off." It is the card's one empty state |
+| Status line | 14px/400 at 1.5 `--p-text`: "Nobody else yet.", "2 individuals. 4 people in total.", "All 6 are on.", "1 switched off, 5 on." (3.113.1). It is the card's one empty state |
 | Button | the small secondary button, `.uc-btn .uc-btn-sm`: Light Gray `--p-btn-face`, the `--p-border-strong` edge, 13px/600, sized to its label, with the 14px chevron, since it opens something. "Choose people", "Choose emails" |
 | Panel | opens 10px under the button in the picker's box: 1px `--p-border`, 10px radius, white, the 12px 14px 14px padding |
+| Always sent (3.113.1) | the confirmation and the morning-of reminder: no box, the label indented 26px to where the ticked labels' text starts, then `.uc-pill` "Always sent" 6px after it, not capitalized |
+
+**A button that shows or hides a list shows which (3.113.1).** + Add category,
++ Add organizer and Pending's Show dismissed carry the 14px chevron, which points
+down while the list is shut and up while it is open (the glyph is drawn pointing
+right, so 90deg and -90deg). Open, the button keeps the secondary shape and wears
+the hover face `--p-btn-face-hover`, the `--uc-accent-text` edge and an inset
+shadow, `inset 0 2px 3px rgba(55, 52, 51, 0.22)`, so it reads as pressed; a
+second press puts all three back. Keyed on `aria-expanded="true"` for a
+button and `[open]` for a `<summary>`. Measured by
+`.claude/release-31131-live.php`.
 
 The section's 10px gap is the space between the three; Choose people's status
 line keeps 10px under it inside the picker. The button is the `<summary>` of the
@@ -1338,7 +1349,7 @@ any of the three widths.
 
 **Team and access** is a standard side-column card on both editors, last in the
 column: the organizer line, "Calendar admins can open every event.", then two
-fieldsets 12px below it, Teams (up to two ticks, each with its member count in
+fieldsets 12px below it, Teams (a tick each, with its member count in
 `--p-muted`) and People (a list of ticks that scrolls past 260px, on
 `--p-panel` with a 1px `--p-border` and 8px radius), then the notify tick
 under its rule. A contributor sees one muted line naming who else has it.
