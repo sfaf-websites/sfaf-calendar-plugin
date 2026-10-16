@@ -2725,6 +2725,32 @@ function sfaf_event_public_contact( $post_id ) {
 }
 
 /**
+ * The same line as HTML for the event page, with the email address a mailto
+ * link (3.113.1). Escaped here; echo it as it comes. The single open box from
+ * 3.46.0 is linked only when the whole of it is one address.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_event_public_contact_html( $post_id ) {
+    $line = sfaf_event_public_contact( $post_id );
+    if ( '' === $line ) {
+        return '';
+    }
+    $email = trim( (string) get_post_meta( (int) $post_id, SFAF_Submit::META_CONTACT_EMAIL, true ) );
+    if ( '' === $email && is_email( $line ) ) {
+        $email = $line;
+    }
+    $at = ( '' !== $email && is_email( $email ) ) ? strpos( $line, $email ) : false;
+    if ( false === $at ) {
+        return esc_html( $line );
+    }
+    return esc_html( substr( $line, 0, $at ) )
+        . '<a href="' . esc_url( 'mailto:' . $email ) . '">' . esc_html( $email ) . '</a>'
+        . esc_html( substr( $line, $at + strlen( $email ) ) );
+}
+
+/**
  * The venue's own website, when one was given.
  *
  * BESIDE THE ADDRESS, AND NOT ON THE CARD. A card already carries a date, a

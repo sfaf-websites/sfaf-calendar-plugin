@@ -62,6 +62,24 @@ class SFAF_Notifications {
     /** The day-before pass for this event has completed (3.102.0). */
     const DAY_BEFORE_DONE_META = '_uc_day_before_sent_at';
 
+    /*
+     * ALWAYS SENT (3.113.1): the confirmation and the morning-of reminder go to
+     * the person who registered and cannot be switched off. Listed in kinds()
+     * so the card shows them, refused by set_off(), and an "off" stored before
+     * 3.113.1 is ignored by stored_on() and off_count().
+     */
+    const ALWAYS = array( 'confirmation', 'reminder' );
+
+    /** Whether this kind is always sent, with no switch (3.113.1). */
+    public static function is_always( $kind ) {
+        return in_array( (string) $kind, self::ALWAYS, true );
+    }
+
+    /** The kinds a manager can switch off, in order (3.113.1). */
+    public static function choosable() {
+        return array_values( array_diff( array_keys( self::kinds() ), self::ALWAYS ) );
+    }
+
     /** Every kind, and what a manager is turning off when they untick it. */
     public static function kinds() {
         return array(
@@ -135,6 +153,9 @@ class SFAF_Notifications {
 
     /** The event's own switch for a kind, whatever registration does (3.111.0). */
     public static function stored_on( $event_id, $kind ) {
+        if ( self::is_always( $kind ) ) {
+            return true;
+        }
         $off = get_post_meta( (int) $event_id, self::OFF_META, true );
         $off = is_array( $off ) ? $off : array();
         return ! in_array( $kind, $off, true );
@@ -151,7 +172,7 @@ class SFAF_Notifications {
 
     /** Store the set that is off. Pass every key the form offered. */
     public static function set_off( $event_id, $off_keys ) {
-        $valid = array_keys( self::kinds() );
+        $valid = self::choosable();
         $off   = array_values( array_intersect( $valid, array_map( 'strval', (array) $off_keys ) ) );
         if ( empty( $off ) ) {
             delete_post_meta( (int) $event_id, self::OFF_META );
@@ -160,10 +181,10 @@ class SFAF_Notifications {
         update_post_meta( (int) $event_id, self::OFF_META, $off );
     }
 
-    /** How many of the five are off, for the disclosure summary line. */
+    /** How many of the choosable kinds are off, for the status line. */
     public static function off_count( $event_id ) {
         $off = get_post_meta( (int) $event_id, self::OFF_META, true );
-        return is_array( $off ) ? count( $off ) : 0;
+        return is_array( $off ) ? count( array_intersect( self::choosable(), $off ) ) : 0;
     }
 
     /* =====================================================================

@@ -17,10 +17,10 @@
 $root = dirname( __DIR__ );
 
 $plants = array(
-    'E: an embed header changes' => array( 'embed-identity-test.php', 'headers > Cache-Control differs from 3.111.0', array(
+    'E: an embed header changes' => array( 'embed-identity-test.php', 'headers > Cache-Control differs from', array(
         array( 'includes/class-sfaf-embed.php', "\$response->header( 'Cache-Control', 'public, max-age=' . \$browser_ttl );", "\$response->header( 'Cache-Control', 'public, max-age=' . ( \$browser_ttl + 1 ) );" ),
     ) ),
-    'E: the embed body changes' => array( 'embed-identity-test.php', 'data > html differs from 3.111.0', array(
+    'E: the embed body changes' => array( 'embed-identity-test.php', 'data > html differs from', array(
         array( 'includes/class-sfaf-embed.php', "        \$payload['css_url'] = self::style_url();", "        \$payload['css_url'] = self::style_url();\n        \$payload['html'] = (string) \$payload['html'] . ' ';" ),
     ) ),
     'E: a taxonomy registered differently' => array( 'embed-identity-test.php', 'taxonomies > uc_event_category', array(
@@ -29,7 +29,7 @@ $plants = array(
     'E: a scheduled task renamed' => array( 'embed-identity-test.php', 'cron_tasks > reminders', array(
         array( 'includes/class-sfaf-cron.php', "'label'    => 'Reminder emails',", "'label'    => 'Reminder emails, sent',"),
     ) ),
-    'E: the public stylesheet changes' => array( 'embed-identity-test.php', 'B: public/css/calendar.css differs from 3.111.0', array(
+    'E: the public stylesheet changes' => array( 'embed-identity-test.php', 'B: public/css/calendar.css differs from', array(
         array( 'public/css/calendar.css', "/* SFAF Calendar Frontend Styles */\n", "/* SFAF Calendar Frontend Styles. */\n" ),
     ) ),
     '4: Delete in the row submits again' => array( 'release-3113-test.php', '4: one Delete opener', array(

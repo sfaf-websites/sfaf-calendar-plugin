@@ -106,12 +106,8 @@ class SFAF_Portal {
     public static function link( $p = '' ) { return 'https://example.org/caladmin/' . $p; }
 }
 /*
- * TEAMS, WITH THE REAL CAP AND THE REAL WRITER'S SHAPE (3.66.0).
- *
- * The staff form offers a team picker, so validate() reads the team list. The
- * cap is NOT restated here: MAX_PER_EVENT is taken from the real class so the
- * form and the portal cannot end up enforcing two different numbers, which is
- * the whole reason the form asks SFAF_Teams rather than carrying a literal.
+ * TEAMS, WITH THE REAL WRITER'S SHAPE (3.66.0). No limit on how many from
+ * 3.113.1.
  *
  * set_access_for_event() records what it was handed, so the assertions below
  * can ask what actually reached the one writer rather than reading the meta and
@@ -119,7 +115,6 @@ class SFAF_Portal {
  */
 $GLOBALS['team_writes'] = array();
 class SFAF_Teams {
-    const MAX_PER_EVENT = 2;
     public static function all() {
         return array(
             'marcom'  => array( 'id' => 'marcom',  'name' => 'MarCom',        'users' => array( 1 ) ),
@@ -412,13 +407,12 @@ expect( 'a real team is kept',       $out['clean']['teams'], array( 'clinic' ) )
 expect_no_error( 'and raises nothing', $out['errors'], 'request_teams' );
 
 $out = SFAF_Request::validate( good_post( array( 'request_teams' => array( 'clinic', 'marcom' ) ) ) );
-expect( 'two teams are kept, which is the cap', $out['clean']['teams'], array( 'clinic', 'marcom' ) );
+expect( 'two teams are kept', $out['clean']['teams'], array( 'clinic', 'marcom' ) );
 
-/* Over the cap is an ERROR, not a silent trim. With scripting off nothing stops
-   a third box being ticked, and dropping one quietly would leave the requester
-   believing they had said something they had not. */
+/* No limit (3.113.1): three are kept, and nothing is said about it. */
 $out = SFAF_Request::validate( good_post( array( 'request_teams' => array( 'clinic', 'marcom', 'harmred' ) ) ) );
-expect_error( 'three teams is refused out loud', $out['errors'], 'request_teams' );
+expect( 'three teams are kept', $out['clean']['teams'], array( 'clinic', 'marcom', 'harmred' ) );
+expect_no_error( 'and raise nothing', $out['errors'], 'request_teams' );
 
 $out = SFAF_Request::validate( good_post( array( 'request_teams' => array( 'clinic', 'clinic' ) ) ) );
 expect( 'the same team twice is one team', $out['clean']['teams'], array( 'clinic' ) );
@@ -458,17 +452,7 @@ foreach ( $hostile as $i => $sent ) {
         array_values( array_diff( $got, $known_team_ids ) ), array() );
     expect( "case $i has no duplicates", count( $got ), count( array_unique( $got ) ) );
 
-    /*
-     * OVER THE CAP IS ALLOWED IN $clean AND ONLY THERE. The ticks are kept so
-     * the form comes back showing what the person actually chose, with an error
-     * telling them to drop one; store() is never reached while there is an
-     * error, and set_access_for_event() caps again on the way in. So the
-     * contract is "within the cap, OR refused by name", and asserting only the
-     * first was what this test got wrong first time.
-     */
-    expect( "case $i is within the cap or refused by name",
-        count( $got ) <= SFAF_Teams::MAX_PER_EVENT || isset( $res['errors']['request_teams'] ),
-        true );
+    expect( "case $i raises no team error", isset( $res['errors']['request_teams'] ), false );
 }
 
 /* An invented id alongside a real one takes the real one and nothing else,
@@ -499,8 +483,8 @@ expect( 'the access list is written through SFAF_Teams',
     (bool) strpos( $request_code, 'SFAF_Teams::set_access_for_event( $event_id, $c[\'teams\'] )' ), true );
 expect( 'and the meta key is never touched directly',
     false !== strpos( $request_code, '_uc_event_teams' ), false );
-expect( 'the cap is asked of SFAF_Teams rather than written out',
-    substr_count( $request_src, 'SFAF_Teams::MAX_PER_EVENT' ) >= 2, true );
+expect( 'and no team limit is applied (3.113.1)',
+    false !== strpos( $request_code, 'MAX_PER_EVENT' ) || false !== strpos( $request_src, 'Choose up to' ), false );
 
 $out = SFAF_Request::validate( good_post() );
 expect( 'naming no team is allowed and is the default', $out['clean']['teams'], array() );

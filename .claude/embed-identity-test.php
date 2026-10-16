@@ -19,24 +19,34 @@
  *      except embed.js's EMBED_JS_VERSION line, and the caladmin files in
  *      CALADMIN_ONLY, which no public calendar page loads.
  *
- * BASE is 3.111.0's release commit. When a release is meant to change the
- * public calendar, it says so here, by name, in ALLOWED.
+ * BASE is the release compared against: 3.113.0's commit from 3.113.1. Its
+ * public calendar is 3.111.0's (this check passed against f7450c7 for it).
+ * When a release is meant to change the public calendar, it says so here, by
+ * name, in ALLOWED or ALLOWED_FILES.
  */
 
-const BASE = 'f7450c7';
+const BASE      = '84fd1ab';
+const BASE_NAME = '3.113.0';
+
+/* Files under public/ and templates/ a release means to change, as path =>
+   why. Probe A still compares every embed answer, so none of these can reach
+   the embed unseen. */
+const ALLOWED_FILES = array(
+    'templates/single-uc_event.php' => '3.113.1: the event page contact email is a mailto link',
+);
 
 /* Loaded by caladmin and the two public forms, never by the calendar, an event
    page or an embed. sfaf_enqueue_frontend_assets() enqueues neither. */
 const CALADMIN_ONLY = array( 'public/css/portal.css', 'public/js/portal.js', 'public/js/caladmin-session.js' );
 
-/* Differences a release means to make, as 'key path' => why. None in 3.113.0. */
+/* Differences a release means to make, as 'key path' => why. None in 3.113.0 or 3.113.1. */
 const ALLOWED = array();
 
 $root    = str_replace( '\\', '/', dirname( __DIR__ ) );
 $verbose = in_array( '--verbose', $argv, true );
 $fails   = array();
 
-/* ---- the 3.111.0 tree, from git ----------------------------------------- */
+/* ---- the base tree, from git ----------------------------------------- */
 $tmp = str_replace( '\\', '/', sys_get_temp_dir() ) . '/sfaf-identity-' . getmypid();
 @mkdir( $tmp, 0777, true );
 $tar = $tmp . '/base.tar';
@@ -96,7 +106,7 @@ foreach ( $diffs as $path => $pair ) {
         $at = strspn( $pair[0] ^ $pair[1], "\0" );
         $show = function ( $v ) use ( $at ) { return '...' . substr( (string) $v, max( 0, $at - 60 ), 160 ) . '...'; };
     }
-    $fails[] = "A: $path differs from 3.111.0:\n      was " . $show( $pair[0] ) . "\n      now " . $show( $pair[1] );
+    $fails[] = "A: $path differs from " . BASE_NAME . ":\n      was " . $show( $pair[0] ) . "\n      now " . $show( $pair[1] );
 }
 
 /* ---- B: the files ------------------------------------------------------- */
@@ -115,22 +125,22 @@ $fw = ei_files( $base );
 $fn = ei_files( $root );
 $files_same = 0;
 foreach ( array_unique( array_merge( array_keys( $fw ), array_keys( $fn ) ) ) as $rel ) {
-    if ( in_array( $rel, CALADMIN_ONLY, true ) ) { continue; }
+    if ( in_array( $rel, CALADMIN_ONLY, true ) || isset( ALLOWED_FILES[ $rel ] ) ) { continue; }
     $a = isset( $fw[ $rel ] ) ? $fw[ $rel ] : null;
     $b = isset( $fn[ $rel ] ) ? $fn[ $rel ] : null;
-    if ( null === $a || null === $b ) { $fails[] = "B: $rel is " . ( null === $a ? 'new' : 'gone' ) . ' since 3.111.0'; continue; }
+    if ( null === $a || null === $b ) { $fails[] = "B: $rel is " . ( null === $a ? 'new' : 'gone' ) . ' since ' . BASE_NAME; continue; }
     if ( 'public/js/embed.js' === $rel ) {
         $strip = function ( $s ) { return preg_replace( "/var EMBED_JS_VERSION = '[^']+';/", "var EMBED_JS_VERSION = '{VERSION}';", str_replace( "\r\n", "\n", $s ) ); };
         $a = $strip( $a ); $b = $strip( $b );
     }
-    if ( $a !== $b ) { $fails[] = "B: $rel differs from 3.111.0"; } else { $files_same++; }
+    if ( $a !== $b ) { $fails[] = "B: $rel differs from " . BASE_NAME; } else { $files_same++; }
 }
 
 /* ---- clean up ----------------------------------------------------------- */
 $rm = function ( $d ) use ( &$rm ) { foreach ( (array) @scandir( $d ) as $e ) { if ( '.' === $e || '..' === $e ) { continue; } $p = "$d/$e"; is_dir( $p ) && ! is_link( $p ) ? $rm( $p ) : @unlink( $p ); } @rmdir( $d ); };
 $rm( $tmp );
 
-echo "\nThe public calendar against 3.111.0 (" . BASE . ")\n" . str_repeat( '=', 72 ) . "\n";
+echo "\nThe public calendar against " . BASE_NAME . " (" . BASE . ")\n" . str_repeat( '=', 72 ) . "\n";
 if ( ! isset( $now['error'] ) ) {
     printf( "probe: %d taxonomies, %d post types, %d routes, %d rewrite rules, %d scripts, %d styles, %d tasks, %d embed answers, %d shortcode blocks\n",
         count( (array) $now['taxonomies'] ), count( (array) $now['post_types'] ), count( (array) $now['rest'] ), count( (array) $now['rewrite'] ),
@@ -141,5 +151,5 @@ if ( $fails ) {
     echo count( $fails ) . " difference(s):\n  - " . implode( "\n  - ", $verbose ? $fails : array_slice( $fails, 0, 25 ) ) . "\n";
     exit( 1 );
 }
-echo "Registrations, tasks, every embed answer and header, the shortcode and the public files are 3.111.0's.\n";
+echo "Registrations, tasks, every embed answer and header, the shortcode and the public files are " . BASE_NAME . "'s.\n";
 exit( 0 );

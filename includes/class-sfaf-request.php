@@ -780,14 +780,7 @@ class SFAF_Request {
          * has no business seeing who is in it, so this offers names and nothing
          * else. See SFAF_Teams.
          *
-         * THE CAP IS THE ONE THAT ALREADY EXISTS. An event names at most
-         * SFAF_Teams::MAX_PER_EVENT teams in caladmin, and a second number here
-         * would be a second answer to the same question, free to disagree.
-         *
-         * OVER THE CAP IS AN ERROR, NOT A SILENT TRIM. set_access_for_event()
-         * stops at the cap, so passing three would quietly drop one and the
-         * requester would never know which. With scripting off there is nothing
-         * to stop a third box being ticked, so the server has to say so.
+         * NO LIMIT ON HOW MANY (3.113.1), as in caladmin's Team and access.
          */
         $clean['teams'] = array();
         $known_teams    = SFAF_Teams::all();
@@ -802,13 +795,6 @@ class SFAF_Request {
             if ( '' !== $team_id && isset( $known_teams[ $team_id ] ) && ! in_array( $team_id, $clean['teams'], true ) ) {
                 $clean['teams'][] = $team_id;
             }
-        }
-        if ( count( $clean['teams'] ) > SFAF_Teams::MAX_PER_EVENT ) {
-            $errors['request_teams'] = sprintf(
-                'Choose at most %d %s.',
-                SFAF_Teams::MAX_PER_EVENT,
-                ( 1 === SFAF_Teams::MAX_PER_EVENT ) ? 'team' : 'teams'
-            );
         }
 
         /* ---- The video. ----
@@ -1181,7 +1167,7 @@ class SFAF_Request {
          *
          * SFAF_Teams::set_access_for_event() is what caladmin calls, so this is
          * the same path rather than a second one: it drops ids that name no
-         * team, refuses duplicates, stops at MAX_PER_EVENT and deletes the meta
+         * team, refuses duplicates and deletes the meta
          * when nothing is left. Writing _uc_event_teams here directly would be
          * a second definition of what a valid access list is, free to drift
          * from the one the portal enforces.
@@ -2215,7 +2201,6 @@ class SFAF_Request {
         }
 
         $chosen = array_map( 'strval', (array) $chosen );
-        $cap    = SFAF_Teams::MAX_PER_EVENT;
         ?>
         <?php // NO .uc-field ON A SECTION. That class is (0,2,1) inside
               // .uc-request-card and strips the border and padding this one is
@@ -2223,7 +2208,7 @@ class SFAF_Request {
         <fieldset class="uc-form-section-group uc-request-teams">
             <legend class="uc-field-group-title">Who should be able to edit it</legend>
             <p class="uc-hint">
-                Choose up to <?php echo (int) $cap; ?> teams whose members may open this event in the calendar tool, or none to leave it with the MarCom team.
+                Choose the teams whose members may open this event in the calendar tool, or none to leave it with the MarCom team.
             </p>
             <?php self::field_error( $error ); ?>
             <div class="uc-picker-options">

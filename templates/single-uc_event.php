@@ -362,7 +362,7 @@ while ( have_posts() ) :
                             <?php if ( '' !== $contact ) : ?>
                                 <li>
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'mail' ); ?></span>
-                                    <span data-uc-fact="contact"><span class="uc-fact-label">Contact</span> <?php echo esc_html( $contact ); ?></span>
+                                    <span data-uc-fact="contact"><span class="uc-fact-label">Contact</span> <?php echo sfaf_event_public_contact_html( $post_id ); ?></span>
                                 </li>
                             <?php endif; ?>
                             <?php if ( '' !== $signup ) : ?>

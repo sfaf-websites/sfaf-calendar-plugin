@@ -314,7 +314,7 @@ foreach ( $g as $name => $r ) {
     if ( 'js' === $mode ) {
         rl( 0 === strpos( (string) $r['afterPick'], '1 individual.' ) && 'Nobody else yet.' === $r['afterUnpick'],
             "NL: $name: the people status line does not follow the ticks: " . json_encode( array( $r['afterPick'], $r['afterUnpick'] ) ) );
-        rl( "1 of $kinds_n switched off." === $r['afterOff'] && "All $kinds_n are on." === $r['afterOn'],
+        rl( '1 switched off, ' . ( $kinds_n - 1 ) . ' on.' === $r['afterOff'] && "All $kinds_n are on." === $r['afterOn'],
             "NL: $name: the emails status line does not follow the ticks: " . json_encode( array( $r['afterOff'], $r['afterOn'] ) ) );
     }
 }

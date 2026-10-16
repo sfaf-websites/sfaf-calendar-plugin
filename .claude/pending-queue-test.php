@@ -160,6 +160,7 @@ function is_wp_error( $t ) { return ( $t instanceof WP_Error ); }
 function wp_reset_postdata() {}
 function sfaf_prime_rsvp_counts( $ids ) {}
 function sfaf_get_rsvp_count( $id ) { return 0; }
+function sfaf_event_takes_rsvps( $id ) { return '1' === (string) get_post_meta( $id, '_uc_rsvp_enabled', true ); }
 function sfaf_event_categories( $id ) { return array(); }
 function sfaf_ap_date( $d, $f = 'full' ) { return (string) $d; }
 /* The real SFAF_Cron::local_time() formats through this and nothing else, so

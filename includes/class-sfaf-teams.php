@@ -75,8 +75,8 @@ class SFAF_Teams {
      */
     const ACCESS_META = '_uc_event_teams';
 
-    /** How many teams one event may name. Two, per the access model. */
-    const MAX_PER_EVENT = 2;
+    /* NO LIMIT ON HOW MANY TEAMS ONE EVENT NAMES (3.113.1). It was two, and
+     * a third ticked box was dropped on save without a word. */
 
     /** A sanity ceiling, so a runaway loop cannot fill the option. */
     const MAX_TEAMS = 100;
@@ -373,8 +373,7 @@ class SFAF_Teams {
     }
 
     /**
-     * Set the teams that own an event. Unknown ids are dropped, and no more
-     * than MAX_PER_EVENT are kept.
+     * Set the teams that own an event. Unknown ids and repeats are dropped.
      *
      * @param int      $event_id
      * @param string[] $ids
@@ -386,9 +385,6 @@ class SFAF_Teams {
             $id = sanitize_key( (string) $id );
             if ( isset( $known[ $id ] ) && ! in_array( $id, $keep, true ) ) {
                 $keep[] = $id;
-            }
-            if ( count( $keep ) >= self::MAX_PER_EVENT ) {
-                break;
             }
         }
 

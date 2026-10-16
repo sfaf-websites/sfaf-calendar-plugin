@@ -88,7 +88,8 @@ nc( $new > 0, true, 'the new event is saved' );
 nc( array_map( 'intval', (array) get_post_meta( $new, SFAF_Reminders::NOTIFY_USERS_META, true ) ), array( 7 ), 'PLANT D: it carries the chosen recipient' );
 nc( (array) get_post_meta( $new, SFAF_Reminders::NOTIFY_EMAILS_META, true ), array( 'cohost@example.org' ), 'and the extra address' );
 nc( SFAF_Reminders::author_opted_out( $new ), true, 'and the creator, unticked, is off the list' );
-nc( SFAF_Notifications::on( $new, 'alert' ) && ! SFAF_Notifications::on( $new, 'reminder' ), true, 'and the message ticks as chosen' );
+nc( SFAF_Notifications::on( $new, 'alert' ) && ! SFAF_Notifications::on( $new, 'summary' ), true, 'and the message ticks as chosen' );
+nc( SFAF_Notifications::on( $new, 'reminder' ), true, 'and the reminder, which has no tick, is sent (3.113.1)' );
 nc( (string) get_post_meta( $new, '_uc_email_replyto', true ), 'events@example.org', 'and the reply-to' );
 
 /* ===========================================================================

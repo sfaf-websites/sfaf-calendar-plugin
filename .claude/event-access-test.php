@@ -275,10 +275,10 @@ SFAF_Teams::set_access_for_event( 100, array( 'alpha', 'beta' ) );
 expect( 'first team edits',  may( TEAMMATE, 100 ),   true );
 expect( 'second team edits', may( OTHER_TEAM, 100 ), true );
 
+/* No limit on how many (3.113.1); a repeat is still one team. */
 SFAF_Teams::set_access_for_event( 100, array( 'alpha', 'beta', 'alpha' ) );
-if ( count( SFAF_Teams::access_for_event( 100 ) ) > SFAF_Teams::MAX_PER_EVENT ) {
-    $fails[] = 'more than MAX_PER_EVENT teams were stored on one event';
-}
+expect( 'a team named twice is stored once', SFAF_Teams::access_for_event( 100 ), array( 'alpha', 'beta' ) );
+expect( 'and the class has no limit to apply', defined( 'SFAF_Teams::MAX_PER_EVENT' ), false );
 
 /* --- An unknown team grants nothing. --------------------------------------
  *
@@ -378,8 +378,8 @@ expect( 'D: and gains the default person',                            may( EDITO
 expect( 'D: an event following the series has the default anyway',   may( OTHER_TEAM, 601 ), true );
 if ( SFAF_Access::has_own( 601 ) ) { $fails[] = 'D: an event following the series was given a copy instead of following'; }
 expect( 'D: an event with two teams gains the person',                may( EDITOR, 602 ),     true );
-expect( 'D: but no third team',                                       may( OTHER_TEAM, 602 ), false );
-if ( array( 'updated' => 2, 'full' => 1 ) !== $res ) { $fails[] = 'D: apply reported ' . json_encode( $res ) . ', wanted 2 updated and 1 full'; }
+expect( 'D: and a third team, with no limit from 3.113.1',            may( OTHER_TEAM, 602 ), true );
+if ( array( 'updated' => 2 ) !== $res ) { $fails[] = 'D: apply reported ' . json_encode( $res ) . ', wanted 2 updated (601 follows the series)'; }
 
 /* --- Notification teams grant nothing. ----------------------------------- */
 SFAF_Teams::set_for_event( 200, array( 'alpha' ) );

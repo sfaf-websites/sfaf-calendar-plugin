@@ -190,7 +190,7 @@ rt( 'N: the status sits above its button', strpos( $who, 'data-uc-picker-count' 
 rt( 'N: the old rows are gone', false === strpos( $h, 'Choose who else gets it' ) && false === strpos( $h, 'Emails for this event:' ) && false === strpos( $h, 'uc-picker-label' ), true );
 rt( 'N: one empty state on the card', substr_count( $h, 'Nobody else yet.' ), 1 );
 rt( 'N: the emails panel is shut with every email on', false === strpos( $emails, 'data-uc-disclosure open' ), true );
-rt( 'N: both panels still hold their controls', substr_count( $who, 'name="notify_users[]"' ) >= 1 && substr_count( $emails, 'name="notify_kinds[]"' ) === count( SFAF_Notifications::kinds() ), true );
+rt( 'N: both panels still hold their controls', substr_count( $who, 'name="notify_users[]"' ) >= 1 && substr_count( $emails, 'name="notify_kinds[]"' ) === count( SFAF_Notifications::choosable() ), true );
 
 /* Somebody chosen, an email off, a typed address. */
 update_post_meta( $ev, SFAF_Reminders::NOTIFY_USERS_META, array( 21, 22 ) );
@@ -199,7 +199,7 @@ $h = $card( $ev );
 $who = $section( $h, 'Who hears about this event' ); $emails = $section( $h, 'Emails for this event' );
 $total = count( SFAF_Reminders::notify_list( $ev ) );
 rt( 'N: the people status line names what is chosen and the total', $status( $who, 'data-uc-picker-count' ), '2 individuals. ' . $total . ' ' . ( 1 === $total ? 'person' : 'people' ) . ' in total.' );
-rt( 'N: the emails status line counts what is off', $status( $emails, 'data-uc-notify-kinds-status' ), '1 of ' . count( SFAF_Notifications::kinds() ) . ' switched off.' );
+rt( 'N: the emails status line counts what is off', $status( $emails, 'data-uc-notify-kinds-status' ), '1 switched off, ' . ( count( SFAF_Notifications::kinds() ) - 1 ) . ' on.' );
 rt( 'N: the emails panel opens with one off, as it did', (bool) preg_match( '#data-uc-disclosure open>#', $emails ), true );
 rt( 'N: no empty state with people chosen', substr_count( $h, 'Nobody else yet.' ), 0 );
 update_post_meta( $ev, SFAF_Reminders::NOTIFY_USERS_META, array() );
@@ -217,7 +217,7 @@ rt( 'N: Add event says nobody else yet and all on', array( $status( $add_card, '
 
 /* The script writes the same words. */
 $js = (string) file_get_contents( $GLOBALS['kit_root'] . '/public/js/portal.js' );
-rt( 'N: portal.js recounts the emails status in the same words', false !== strpos( $js, "status.textContent = off ? (off + ' of ' + total + ' switched off.') : ('All ' + total + ' are on.');" ) && false !== strpos( $js, "run('notifyKinds', initNotifyKinds);" ), true );
+rt( 'N: portal.js recounts the emails status in the same words', false !== strpos( $js, "status.textContent = off ? (off + ' switched off, ' + (total - off) + ' on.') : ('All ' + total + ' are on.');" ) && false !== strpos( $js, "run('notifyKinds', initNotifyKinds);" ), true );
 rt( 'N: portal.js writes the empty state where the server does', false !== strpos( $js, "countEl.textContent = typedCount() ? inTotal : 'Nobody else yet.';" ), true );
 
 echo "\nRelease 3.113.0: the dialogs and the Notifications card\n" . str_repeat( '=', 72 ) . "\n";

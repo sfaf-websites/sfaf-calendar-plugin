@@ -38,7 +38,7 @@ class SFAF_Access {
     const SERIES_PEOPLE = '_sfaf_series_access_people';
     const MAX_PEOPLE    = 20;
 
-    /** Team ids that exist, in order, no repeats, at most MAX_PER_EVENT. */
+    /** Team ids that exist, in order, no repeats. */
     private static function clean_teams( $ids ) {
         $known = SFAF_Teams::all();
         $out   = array();
@@ -46,9 +46,6 @@ class SFAF_Access {
             $id = sanitize_key( (string) $id );
             if ( '' !== $id && isset( $known[ $id ] ) && ! in_array( $id, $out, true ) ) {
                 $out[] = $id;
-            }
-            if ( count( $out ) >= SFAF_Teams::MAX_PER_EVENT ) {
-                break;
             }
         }
         return $out;
@@ -184,15 +181,15 @@ class SFAF_Access {
      * own Team and access (3.110.2), so a team added today reaches events made
      * before it. An event that follows the series already has it and is not
      * touched. Additive: an event keeps what it had, and gains the default's
-     * people and as many of its teams as fit under MAX_PER_EVENT.
+     * people and teams.
      *
-     * @return array{updated:int,full:int} full: events with no room for a team.
+     * @return array{updated:int}
      */
     public static function apply_series_to_upcoming( $series_id ) {
         $series_id = (int) $series_id;
         $teams     = self::series_teams( $series_id );
         $people    = self::series_people( $series_id );
-        $out       = array( 'updated' => 0, 'full' => 0 );
+        $out       = array( 'updated' => 0 );
         if ( ! $series_id || ( ! $teams && ! $people ) ) {
             return $out;
         }
@@ -204,11 +201,7 @@ class SFAF_Access {
             }
             $own_t = SFAF_Teams::access_for_event( $id );
             $own_p = self::people( $id );
-            $want_t = array_values( array_unique( array_merge( $own_t, $teams ) ) );
-            $new_t  = array_slice( $want_t, 0, SFAF_Teams::MAX_PER_EVENT );
-            if ( count( $want_t ) > count( $new_t ) ) {
-                $out['full']++;
-            }
+            $new_t = array_values( array_unique( array_merge( $own_t, $teams ) ) );
             $new_p = array_values( array_unique( array_merge( $own_p, $people ) ) );
             sort( $new_p );
             if ( $new_t === $own_t && $new_p === $own_p ) {

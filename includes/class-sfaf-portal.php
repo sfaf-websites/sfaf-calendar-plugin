@@ -1779,7 +1779,8 @@ class SFAF_Portal {
                      * message from here at all.
                      */
                     $listed = false;
-                    if ( ! empty( $_POST['notify_submitter'] ) ) {
+                    // Offered only when the event takes RSVPs (3.113.1).
+                    if ( ! empty( $_POST['notify_submitter'] ) && sfaf_event_takes_rsvps( $event_id ) ) {
                         foreach ( SFAF_Submissions::notify_addresses( $event_id ) as $n => $addr ) {
                             $added = SFAF_Submissions::add_to_notify_list( $event_id, $addr );
                             if ( 0 === $n ) {
@@ -3425,7 +3426,7 @@ class SFAF_Portal {
          * which is what makes the default free.
          */
         if ( isset( $_POST['uc_notify_kinds_present'] ) ) {
-            $offered = array_keys( SFAF_Notifications::kinds() );
+            $offered = SFAF_Notifications::choosable();
             $on      = isset( $_POST['notify_kinds'] ) ? array_map( 'sanitize_key', (array) wp_unslash( $_POST['notify_kinds'] ) ) : array();
             SFAF_Notifications::set_off( $event_id, array_diff( $offered, $on ) );
         }
@@ -9708,7 +9709,8 @@ class SFAF_Portal {
 
                     <div class="uc-chips-add" data-uc-chips-add hidden>
                         <button type="button" class="uc-btn uc-btn-sm" data-uc-chips-toggle
-                                aria-expanded="false">+ Add category</button>
+                                aria-expanded="false"><span>+ Add category</span>
+                            <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '14px' ) ); ?></span></button>
                     </div>
 
                     <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
@@ -9774,7 +9776,8 @@ class SFAF_Portal {
 
                     <div class="uc-chips-add" data-uc-chips-add hidden>
                         <button type="button" class="uc-btn uc-btn-sm" data-uc-chips-toggle
-                                aria-expanded="false">+ Add organizer</button>
+                                aria-expanded="false"><span>+ Add organizer</span>
+                            <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '14px' ) ); ?></span></button>
                     </div>
 
                     <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
@@ -17336,8 +17339,7 @@ class SFAF_Portal {
             <?php if ( empty( $teams ) ) : ?>
                 <p class="uc-muted">No teams exist yet. Teams are created under Users &amp; Teams.</p>
             <?php else : ?>
-                <p class="uc-hint">Pick up to <?php echo (int) SFAF_Teams::MAX_PER_EVENT; ?>.</p>
-                <div class="uc-access-teams" data-uc-access-teams data-uc-access-max="<?php echo (int) SFAF_Teams::MAX_PER_EVENT; ?>">
+                <div class="uc-access-teams" data-uc-access-teams>
                     <?php foreach ( $teams as $team ) :
                         $on = in_array( (string) $team['id'], $chosen_t, true ); ?>
                         <label class="uc-check">
@@ -17446,13 +17448,10 @@ class SFAF_Portal {
                 ?>
                 <p class="uc-notice" role="status" data-uc-series-access-applied><?php
                     echo esc_html( sprintf( 'Added to %d upcoming %s that set their own.', (int) $applied['updated'], 1 === (int) $applied['updated'] ? 'event' : 'events' ) );
-                    if ( ! empty( $applied['full'] ) ) {
-                        echo ' ' . esc_html( sprintf( '%d already %s two teams, so only the people were added there.', (int) $applied['full'], 1 === (int) $applied['full'] ? 'has' : 'have' ) );
-                    }
                 ?></p>
             <?php endif; ?>
             <?php if ( $teams ) : ?>
-                <div class="uc-access-teams" data-uc-access-teams data-uc-access-max="<?php echo (int) SFAF_Teams::MAX_PER_EVENT; ?>">
+                <div class="uc-access-teams" data-uc-access-teams>
                     <?php foreach ( $teams as $team ) : ?>
                         <label class="uc-check">
                             <input type="checkbox" name="series_access_teams[]" value="<?php echo esc_attr( $team['id'] ); ?>" <?php checked( in_array( (string) $team['id'], $ct, true ) ); ?> />
@@ -17759,6 +17758,13 @@ class SFAF_Portal {
                         <p class="uc-hint">Untick one to stop it for this event only.</p>
                         <input type="hidden" name="uc_notify_kinds_present" value="1" />
                         <?php foreach ( SFAF_Notifications::kinds() as $key => $kind ) : ?>
+                            <?php if ( SFAF_Notifications::is_always( $key ) ) : ?>
+                            <p class="uc-notify-always" data-uc-notify-always="<?php echo esc_attr( $key ); ?>">
+                                <?php echo esc_html( $kind['label'] ); ?>
+                                <span class="uc-pill uc-notify-always-tag">Always sent</span>
+                            </p>
+                            <p class="uc-hint uc-notify-kind-note"><?php echo esc_html( $kind['note'] ); ?></p>
+                            <?php continue; endif; ?>
                             <label class="uc-check">
                                 <input type="checkbox" name="notify_kinds[]" value="<?php echo esc_attr( $key ); ?>"
                                        <?php checked( SFAF_Notifications::stored_on( $event_id, $key ) ); ?> />
@@ -18123,15 +18129,15 @@ class SFAF_Portal {
      * The status line under "Emails for this event" (3.113.0). portal.js
      * writes the same words as boxes are ticked.
      *
-     * @param int $off_count
-     * @param int $kinds_n
+     * @param int $off_count Of the kinds with a tick.
+     * @param int $kinds_n   Every kind, the two always sent included.
      * @return string
      */
     private function notify_kinds_status( $off_count, $kinds_n ) {
         if ( ! $off_count ) {
             return 'All ' . (int) $kinds_n . ' are on.';
         }
-        return (int) $off_count . ' of ' . (int) $kinds_n . ' switched off.';
+        return (int) $off_count . ' switched off, ' . ( (int) $kinds_n - (int) $off_count ) . ' on.';
     }
 
     /**
@@ -19342,6 +19348,9 @@ class SFAF_Portal {
                  */
                 $addresses = SFAF_Submissions::notify_addresses( $event_id );
                 $others    = array_slice( $addresses, 1 );
+                /* ONLY WHEN THE EVENT TAKES RSVPS (3.113.1). With RSVP off
+                 * there are no registrations to send, and Approve approves. */
+                if ( sfaf_event_takes_rsvps( $event_id ) ) :
                 ?>
                 <label class="uc-check">
                     <input type="checkbox" name="notify_submitter" value="1" checked form="<?php echo esc_attr( $form ); ?>" />
@@ -19361,6 +19370,7 @@ class SFAF_Portal {
                     They get an email each time somebody registers, and a list of everybody registered
                     on the morning of the event, with names and email addresses. Untick it if that is not right.
                 </p>
+                <?php endif; ?>
             <?php endif; ?>
             <?php $this->render_approve_picture( $event_id, $form ); ?>
         </div>
@@ -20746,18 +20756,24 @@ class SFAF_Portal {
      * is the whole reason the status exists, and nothing here is waiting on
      * anybody. Drawn only when there are some: an empty "Dismissed" heading on
      * every visit is a permanent reminder of nothing.
+     *
+     * SHUT ON EVERY VISIT (3.113.1): a <details> with no open attribute, and
+     * nothing remembers it. The button carries the count.
      */
     private function render_dismissed_queue() {
         $dismissed = SFAF_Sources::queue_ids( SFAF_Sources::STATUS_DISMISSED );
         if ( empty( $dismissed ) ) {
             return;
         }
+        $n = count( $dismissed );
         ?>
         <div class="uc-card">
-            <div class="uc-card-head">
-                <h2>Dismissed</h2>
-                <span class="uc-count-badge"><?php echo count( $dismissed ); ?></span>
-            </div>
+            <details class="uc-dismissed-fold" data-uc-dismissed-fold>
+            <summary class="uc-btn uc-btn-sm uc-dismissed-toggle">
+                <span class="uc-dismissed-show">Show dismissed (<?php echo (int) $n; ?>)</span>
+                <span class="uc-dismissed-hide">Hide dismissed (<?php echo (int) $n; ?>)</span>
+                <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '14px' ) ); ?></span>
+            </summary>
             <p class="uc-help">Dismissed events are kept so they are never fetched again. Restore one to put it back in the list above.</p>
             <ul class="uc-queue-list">
                 <?php foreach ( $dismissed as $id ) :
@@ -20796,6 +20812,7 @@ class SFAF_Portal {
                     </li>
                 <?php endforeach; ?>
             </ul>
+            </details>
         </div>
         <?php
     }
