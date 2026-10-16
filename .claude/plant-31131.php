@@ -17,7 +17,7 @@ $root = dirname( __DIR__ );
 
 $plants = array(
     'E: the series page template changes' => array( 'embed-identity-test.php', 'B: templates/taxonomy-uc_series.php differs from 3.113.0', array(
-        array( 'templates/taxonomy-uc_series.php', '<?php', "<?php\n// changed" ),
+        array( 'templates/taxonomy-uc_series.php', ' * The public page for one series.', ' * The public page for one series, changed.' ),
     ) ),
     'E: the event page stylesheet changes' => array( 'embed-identity-test.php', 'B: public/css/calendar.css differs from 3.113.0', array(
         array( 'public/css/calendar.css', "/* SFAF Calendar Frontend Styles */\n", "/* SFAF Calendar Frontend Styles. */\n" ),
