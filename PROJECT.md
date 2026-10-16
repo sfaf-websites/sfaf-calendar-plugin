@@ -9,7 +9,7 @@ typography, layout, CSS failure modes) or `CLAUDE.md` (standing working rules,
 the build gate, shell rules). When something here contradicts one of those,
 those win in their own remit and this file is wrong and should be fixed.
 
-Current version at last update of this file: **3.106.3**.
+Current version at last update of this file: **3.113.0**.
 
 ---
 
@@ -979,66 +979,6 @@ route would match none of preflight, the response headers or the
 built. That is not an exception to the toggles: it is a different shape, with a
 count rather than a page size and no pagination.
 
-### Tags and Location: two more dropdowns on the bar (3.112.0; called What's included until 3.112.1)
-
-**Tags are `uc_tag`, a flat taxonomy, `SFAF_Tags`.** People read "Tags"
-everywhere ("Etiquetas" on a Spanish page); the internal names
-(`whats_included`, `uc_tag`, the data attributes) kept their 3.112.0 spelling.
-They are managed in the Tags section of Series & Categories by an Admin: add,
-rename, archive, restore, delete. **Archiving is term meta
-(`_sfaf_tag_retired`, the name storage kept), never a delete**, so a past event
-keeps its pills. An archived tag is gone from every picker and from the filter,
-and an archived slug in `uc_tag` is dropped before the query
-(`only_active_tags()`), so an old link reaches nothing rather than an empty
-page. **The editor's picker still shows an archived tag the event holds,
-ticked**, and `clean_ids()` keeps it on save: a form may only speak for what it
-offered. Nothing is seeded.
-
-**Delete (3.112.1) is the irreversible one**, behind a dialog that counts every
-event that has the tag in any status, past and trashed included
-(`SFAF_Tags::events_tagged()`). `SFAF_Tags::delete()` takes it off every series
-default, forgets its old slugs (`SFAF_Slug_Aliases::forget()`), deletes the
-term (which takes the relationships) and retires the embed cache. A `uc_tag`
-address naming it then reaches nothing, as an archived one does.
-
-**A block scoped to a tag clamps the visitor's choice with
-`effective_organizer()`**, which is a plain intersection and so the right clamp
-for tags too: a choice inside the scope narrows it, one outside is dropped, an
-archived one is dropped before it gets there, and an old slug is resolved on
-both sides first. `tag-scope-test.php` proves all four through the route in all
-three modes.
-
-- **The series default** is `_sfaf_series_tags` on the series term, and it goes
-  through `SFAF_Series::defaults_for_event()` like every other default: copied
-  once, into an event with no tags.
-- **Pills**: `SFAF_Tags::pills_html()`, on the event page under Hosted by and on
-  list rows, each a link to the calendar with `uc_tag`. The group's
-  `aria-label` is the `whats_included` public string in the event's language;
-  **tag names print as typed, in any language.**
-- **Both public forms carry the picker** and write it at submit.
-
-**Location is not a taxonomy.** It is every venue plus every one-off address an
-event names. `location_key_for_event()` gives `v-<venue slug>` or `p-` and ten
-hex of an md5 of the lowercased address line, so the same address typed on two
-events is one row. `location_index()` maps keys to the published events from
-45 days back, and the filter is a `post__in` from it.
-
-**Both dropdowns are the Organizers and groups control with one list**
-(`render_pick()`), multi-select with counts, and both list only what the
-block's own events carry: a count of zero is not offered. The counts follow the
-other filters (`ids_without()`), like the who picker's. **Both are carried in
-the address as `uc_tag` and `uc_loc`, through the AJAX handlers and the embed
-route's `tag`, `active_tags` and `active_locations`, and by See all events**,
-which also closes the 3.110.4 gap: a block scoped to a venue now sends
-`uc_loc=v-<slug>`. The generator offers both rows, ticked, and a "One tag"
-scope that writes the `tag` attribute.
-
-**A block with no `filters` attribute does not show the new rows** (3.112.2;
-3.112.0 gave it all five, and that is what took the calendar down, §7). It
-shows `filter_rows_default()`, the three it had before. Tags and Location
-appear only where a snippet names them; see "A block shows Tags and Location
-only when its snippet names them" (§1).
-
 ### An event has several organizers, and every writer sets them in one call
 
 **They are equal, with no lead organizer** (3.40.0). `uc_organizer` has always
@@ -1497,51 +1437,6 @@ weights, because the temptation next time will be to move them again.
 `column-rule` had a computed width and no style. Read what paints, not what is
 set.
 
-### embed.js is a loader, and the calendar is embed-app.js at a version (3.112.1, static since 3.112.2)
-
-**The script URL in a snippet must not carry a version**, and this is a
-decision made by a defect rather than a preference. That URL is baked into a
-snippet somebody pastes once, so a version PINS it to whatever the plugin was on
-the day it was copied rather than busting anything. In 2.10.1 that left host
-pages loading an old script, and an old stylesheet with it.
-
-**Unversioned was not enough either**: resources.sfaf.org sends the plugin's
-scripts with `Last-Modified` and no `Cache-Control` or `Expires`, so a browser
-keeps them for as long as its own heuristic says.
-
-**So `public/js/embed.js` is a loader that holds no release logic.** It reads
-`public/js/embed-version.js?t=<the current time, rounded down to five minutes>`,
-a static file holding `window.sfafCalendarEmbedVersion`, and adds one script,
-`embed-app.js?ver=<that>`. A cached loader is harmless: it reads today's answer.
-**The `?t=` bucket is what keeps the answer fresh**: any cache may keep the
-version file, but only under that bucket's address, so no browser, proxy or
-LiteSpeed holds an old answer longer than five minutes. Rules that keep it so:
-
-- **Nothing in the loader may change in a release.** No version, no payload
-  handling, no reload. `embed-filters-test.php` fails on a version number, on
-  calendar code, and on a reload in it.
-- **It asks PHP nothing.** In 3.112.1 it asked the embed route
-  (`embed_version=1`), which made every page view a WordPress request before the
-  calendar's own; `embed-budget-test.php` fails if it does again. The route
-  still answers that parameter, for a 3.112.1 loader a browser may hold.
-- **It never reloads anything.** It adds two scripts, once each. If the version
-  cannot be read within eight seconds it loads `embed-app.js` unversioned.
-- **Five version places**: the plugin header, `SFAF_VERSION`, the readme,
-  `EMBED_JS_VERSION` in `embed-app.js` and `embed-version.js`;
-  `version-check.php` refuses a build where they disagree. The app still names
-  a mismatch with the payload's `js_version` in the console, never a reload.
-- **The generator's preview loads `embed-app.js` directly**, at `SFAF_VERSION`.
-- **`public/js/.htaccess`** asks for five minutes on the loader and the version
-  file and a day on the rest, in plain `FilesMatch` and `Header` directives,
-  since LiteSpeed does not fully support `<If>`. Nothing depends on it.
-
-**The transition happens once.** A browser holding 3.112.0's embed.js, which
-was the whole calendar, runs it until its cache lets go; no server can replace a
-file a browser chose to keep. That copy still draws against this route, which
-`embed-loader-live.php` proves along with the guarantee from here on: a cached
-loader from a previous release loads this release's app once the five-minute
-bucket turns.
-
 ### Where the calendar is served from, and what caches it
 
 **resources.sfaf.org runs LiteSpeed on AWS (3.20.252.12) with the LiteSpeed
@@ -1558,34 +1453,12 @@ active on resources.sfaf.org. Measured from outside on 2026-10-15:
   load at their own `?ver=` addresses.
 - **Static files** carry `Last-Modified` only (see above). Whether LiteSpeed
   applies `public/js/.htaccess` is checked after an install (`TESTING.md`).
-- **LiteSpeed limits each client IP**, on connections and dynamic requests.
-  An IP over its limit is banned for a period and its new connections are not
-  answered, which is what a browser shows as "Initial connection" that never
-  completes. An office of people behind one IP shares one allowance.
-
-### A block shows Tags and Location only when its snippet names them (3.112.2)
-
-**A block with no `filters` attribute shows category, organizer and series**,
-the three rows it had in 3.111.0 (`SFAF_Shortcodes::filter_rows_default()`).
-Tags and Location appear only where a snippet's `filters` names them; "all"
-names every row. **The sfaf.org/calendar block lists only
-`category,organizer,series`**, so it shows neither until its snippet is
-re-copied with them.
-### What retires the embed cache (3.112.1)
-
-**Anything that changes what an embed draws must move the generation**
-(`sfaf_embed_cache_version`), or every embed keeps the old answer for ten
-minutes. A save, a status change and a trash do it through core's hooks. **Meta
-and term writes reach it only through the keys and taxonomies `SFAF_Embed`
-watches**, and until 3.112.1 four actions wrote nothing it watched: cancelling
-and reinstating (`_uc_cancelled`, `_uc_cancelled_visibility`, from the editor, a
-closed day and the series removal screen alike), Remove from the calendar, the
-events list's bulk category (`wp_set_post_terms()` alone, now `set_object_terms`)
-and a tag archived or restored (term meta). Tags joined the watched taxonomies,
-and the multi-day keys and `_uc_private` the watched meta. `cache-flush-test.php`
-runs every one through its route with core's hooks firing (`kit_fire_hooks` in
-wp-kit.php) and asserts the generation moved; a new action that changes the
-public calendar belongs in it.
+- **NOT MEASURED: whether anything on the host limits each client IP.**
+  LiteSpeed can (per-client throttling, a ban period), and so can a firewall
+  such as CSF or Imunify360; nobody has seen this server's settings or logs.
+  This line was listed as measured until 3.113.0, and it was not: it was the
+  inference §7 rested on. An office of people behind one IP would share any
+  such allowance.
 
 ### The embed has its own script, and that is where fixes go missing
 
@@ -2781,7 +2654,8 @@ portal.js lifts the panel into a `<dialog>` opened with `showModal()` and puts
 it back, hidden, when Keep, the dim or Escape closes it; the component restores
 the panel itself rather than waiting for the close event. **With no script the
 panels are simply on the page** and their Keep buttons stay hidden, the same
-arrangement as the approval prompt. The same component draws a tag's Delete.
+arrangement as the approval prompt. (3.112.1 drew a tag's Delete with it too;
+Tags are set aside, §8.)
 
 - **Cancel asks which dates** on an event with more than one upcoming date in
   its group (`cancel_scope`: this, or `all_upcoming`, the group a save to all
@@ -3420,24 +3294,6 @@ runs at go-live.
   as the second hidden state: any query that keeps private events out must not
   ask for `future` or `any` (plant G.2). `.claude/scheduled-publish-test.php`
   runs the save and the public builders.
-### Drafts and Scheduled are the person's own (3.112.0)
-
-Two tabs beside My events and All events, each with its count: Drafts
-(`draft`) and Scheduled (`future`), **always `post_author` = the person
-looking, admin or not**. They are not an access rule: the gate in 5 still
-decides what anybody can open. On these tabs the view is "every date", the view
-tabs and the status select are hidden, and the heading names the tab.
-`own_status_tabs()` is the one list.
-
-### Replies go to is a list of people (3.112.0)
-
-The editor's Replies go to is a searchable dropdown of calendar people plus the
-editor, defaulting to the creator, with "Someone else" revealing the typed
-address (`:has()`, and visible without it). **It is stored as before**, one
-address in `_uc_email_replyto`: a picked person's email is written, not their id, so
-a person who later changes address does not change where an event's replies
-go.
-
 ### The picture picker hides by series, and the two forms filter in different places
 
 From 3.80.0 the public forms' picker shows **only** the chosen series' pictures.
@@ -4125,53 +3981,6 @@ methods each of those files may call.
   not bring the question back.
 - **Save draft never asks**, nor does Save changes on a live event, nor either
   public form: the question guards putting an event in front of people.
-
-### A multi-day event is one event with an End date (3.112.0)
-
-**`_uc_multi_day` and `_uc_last_date`, and never `_uc_end_date`**, which is the
-GFMP fundraising window (see 3, "Which date counts"). The Schedule card's
-"Multi-day event" tick shows End date beside Date; the start time is the first
-day's and the end time the last day's. **Multi-day and Repeats exclude each
-other**, in the markup (`:has()` hides Repeats) and in the save
-(`recurrence_from_post()` returns nothing while it is ticked). It is not
-offered on an event that is already in a recurrence group. An End date that is
-not after Date is refused with a notice and not stored.
-
-- **One formatter**: `sfaf_ap_range()` ("May 21 to 23, 2027", "Apr 30 to May 2,
-  2027", "Dec 30, 2026 to Jan 2, 2027"; Spanish "del 21 al 23 de mayo de 2027"),
-  reached through `sfaf_ap_event_date()`. Every surface that printed an event's
-  date asks it: list, sidebar, preview, event page, every email and token.
-- **`sfaf_event_days()` is the list of days.** The month grid places the event
-  on each of them, with a second query for events that began before the grid;
-  the list includes an event while it is running; the calendar file ends on the
-  last day; the closed-day warning and the closure review check every day.
-- **The publish rule** adds `last_date` when the tick is on.
-- **Imports**: `SFAF_Sources::sync_multi_day()` sets the tick and End date when
-  the end is a different day: always for Eventbrite, and for GFMP only for the
-  `EVENT_TYPES`, for the same reason `last_day()` asks.
-- **The morning-of reminder** goes on the first day only.
-
-### Events on a closed day ask their organizer (3.112.0)
-
-The warning above still never blocks. **What 3.112.0 adds is a question, after
-the fact, to one person.** `SFAF_Closure_Review`: when a closure is saved,
-every published or scheduled event with a day on it gets one email to its
-`post_author`, with Keep and Cancel; seven days before a date nobody has
-decided, one reminder. Three lists of closure ids on the event record what
-happened: `_uc_closed_kept`, `_uc_closed_notified`, `_uc_closed_reminded`. Saving
-the closure again sends nothing new. A cancelled event is never undecided.
-
-- **A link never acts.** Keep and Cancel open `caladmin/closed-day/{id}`,
-  through sign-in when needed. Keep is a POST from that page
-  (`closed_keep`); Cancel there is the editor's own cancel card and dialog. A
-  mail scanner following the link changes nothing.
-- **Pending has an On closed days tab** for admins and for whoever can edit
-  the event. A team member with no other Pending business sees Pending only
-  while they have one of these.
-- **Both messages are English only** (`'langs' => array('en')` in the catalog),
-  and Email Templates disables the language select for them.
-- The scheduled task is "Events on closed days". `closure-open-test.php` allows
-  this class beside the warning's methods.
 
 ### Where the donation link goes is resolved in one place (3.105.0; email only from 3.106.0)
 
@@ -6833,13 +6642,9 @@ tied to the session token and a fresh sign-in would break every form open in
 every tab. Remember me is read from the session's first length (over three days
 means yes) and stored as `uc_remember`.
 
-**ONLY WHILE SOMEBODY IS THERE (3.112.0, replacing 3.110.5's "an open caladmin
-tab never signs out on its own").** A tick renews only when there has been a
-click or a keystroke on that page in the last thirty minutes; the clock starts
-at page load. An abandoned tab on a shared machine signs out as it did before
-3.110.5, and what was typed is in its draft at the next sign-in. The listeners
-are `markActive`: the first build named them `touched`, which a `var touched
-= []` higher in the file overwrote, so they never ran (7).
+**So an open caladmin tab never signs out on its own** (3.110.5). 3.112.0 made
+a tick wait for a click or keystroke in the last thirty minutes; that is set
+aside with the rest of 3.112.x (§8).
 
 **What a restore cannot do.** It fills the fields the page drew. A repeater row
 added in the browser and never saved (a FAQ, a question, an extra date) is not
@@ -7198,11 +7003,8 @@ returns 403, and that reversal is what makes clearing the key a safe way to turn
 it off. **It carries no registration count since 3.110.2**: `SFAF_Sync::event_to_array()`
 had `rsvp_count`, nothing read it, and a count is registration data that has
 no business leaving the site. `.claude/team-access-test.php` asserts the payload
-has none (plant C). **A row carries a multi-day event's range since 3.112.1**:
-`multi_day`, `last_date` (the same as `date` on a one-day event) and `days`,
-every day from first to last; `date` is still the first day and nothing was
-renamed. A reader shows the range from `date` to `last_date`, with
-`start_time` on the first day and `end_time` on the last.
+has none (plant C). Its multi-day fields (3.112.1) are set aside with
+multi-day events (§8).
 
 What *is* actually proven: the PHP linter and the callable audit run on every
 build (see `CLAUDE.md` §2), and the committed test scripts in `.claude/`: the
@@ -7252,38 +7054,51 @@ nobody to map it is a field name in a log.
 
 ## 7. The lessons that cost time
 
-### 3.112.0 took sfaf.org's calendar down, and it was cost, not code that failed (3.112.2)
+### 3.112.x failed from the office, the cause is not known, and 3.113.0 starts again from 3.111.0
 
-**What was seen**: sfaf.org/calendar failed intermittently on 3.112.0 and never
-on 3.111.0. Both embed requests got no status at all: "Initial connection" ran
-15 s (embed.js's own timeout) and never completed, so no PHP ran for them.
-Rolling back cured it each time.
+**What was seen**: sfaf.org/calendar failed on 3.112.0, and again on 3.112.2,
+from the office network and never on 3.111.0. Both embed requests got no status
+at all: "Initial connection" ran 15 s (embed.js's own timeout) with no SSL
+phase, so the TCP connection never opened and no PHP ran for them. A phone on
+mobile data loaded 3.112.2 at once; resources.sfaf.org opened at once in a new
+tab while the embed failed. **Rolling back to 3.111.0, itself an install and a
+Purge All, cured it at once, twice.**
 
-**What was measured**, counting queries as WordPress would make them over a
-site of the live one's size (`embed-budget-test.php`): a block with no
-`filters` attribute went from 24 queries in 3.111.0 to 397 in 3.112.0, because
-3.112.0 gave it the Location row, and the Location row's labels and counts read
-every event's meta and venue one query at a time (`available_locations()`),
-as did its index (`location_index()`, up to a thousand events, rebuilt every
-request). The sfaf.org/calendar block itself barely moved, 80 to 94.
+**What 3.112.2 believed, and why it was wrong.** It took the cause to be cost:
+a block with no `filters` attribute went from 24 queries to 397 because 3.112.0
+gave it the Location row, read one event at a time, and slow builds were taken
+to trip a per-IP limit on the host. 3.112.2 removed the cost and failed the same
+way, and the sfaf.org/calendar block had only gone from 80 queries to 94. **The
+per-IP limit was never seen**; it was listed as measured and was inference (§1).
 
-**How cost becomes a connection that never opens**, which is inference, since
-nobody can see the host's logs: on resources.sfaf.org (LiteSpeed, above) every
-LiteSpeed cache miss pays the full build, slow builds hold connections, and
-LiteSpeed's per-client limits ban an IP that holds too many, after which its
-new connections are not answered. The office shares one IP.
+**What the code does and does not show**, compared release against release:
+3.112.0 sends the same requests from an office browser as 3.111.0 for this
+block (same URLs, no new headers, no preflight; its new parameters are dropped
+when empty), no new polling or background fetch on any screen, and nothing that
+contacts the office network. So whatever 3.112.x does to the office's new
+connections is not visible in the request list; the host's or the office's
+logs would show it, and nobody has read them.
 
-**The fix**: three rows on a block with no `filters`; the Location reads primed
-in one query each and the index kept until the embed cache's generation moves;
-the loader reads a static file rather than asking PHP; a term write that
-changes nothing no longer empties the cache; the closed-day task primes its
-meta (224 queries every fifteen minutes to 2).
+**What 3.113.0 does about it**: builds from 3.111.0 and brings 3.112.x back a
+small group at a time (§8), and **proves each release leaves the public
+calendar as 3.111.0 had it until a release means to change it**:
+`embed-identity-test.php` runs one probe in 3.111.0, exported from git, and in
+the tree being built, and compares every registration, task, embed answer and
+header, the shortcode and every public file.
 
-**The lesson**: a loop over events that reads per event is a query per event
-the moment the ids came from a `fields => ids` query, which primes nothing.
-Prime with `update_meta_cache()` and `update_object_term_cache()`, or query
-whole posts. And measure a public build in queries before shipping it:
-`embed-budget-test.php` holds every embed build under 120.
+**The lessons**:
+
+- **A fix that does not cure the symptom disproves its cause.** 3.112.2 shipped
+  the cost fix as the cause because the arithmetic fit, and nothing was
+  measured on the failing path. Look for what changes with the version on the
+  path that fails, here a connection that never opens, before explaining it.
+- **An inference written into the "measured" list is read as measured.** Say
+  which is which where it is written down.
+- Still true from 3.112.2: a loop over events that reads per event is a query
+  per event the moment the ids came from a `fields => ids` query, which primes
+  nothing. Prime with `update_meta_cache()` and `update_object_term_cache()`, or
+  query whole posts, and count a public build's queries before shipping it
+  (`embed-budget-test.php`, set aside until Location returns).
 
 These are recorded because each cost more than one build and each recurred.
 
@@ -8199,6 +8014,243 @@ IIFE, a new function name is grepped for in the whole file before it is used.
 Decisions settled in conversation that have no code yet. They live here because
 a chat ends and this file does not. Move an entry into the body of this document
 when it ships, and delete it here.
+
+### Set aside with 3.112.x: built and released, then rolled back (3.113.0)
+
+**3.112.0 to 3.112.2 failed to load on sfaf.org from the office network**, and
+3.111.0 cured it each time it was rolled back to (§7). The cause is not known.
+So 3.113.0 is built from 3.111.0, and the 3.112.x work comes back **a small group
+per release, lowest risk to the public calendar first**, so that if the fault
+returns, the release it returns with names the change.
+
+**THE CODE IS IN GIT, COMPLETE AND TESTED**, at `f2488c6` (3.112.2) and the
+commits under it; the checks for it are in `.claude` and set aside in
+`run-all.sh` until their feature is back. Carried into 3.113.0 already: Age
+range as three choices, Cancel event and Delete as dialogs, and the Asana copy.
+
+**3.113.1 is the sidebar's month buttons**, which are not 3.112.x work. The
+order after that is Mark's to settle; `HANDOVER.md` carries it as an open
+decision until he does. Tags, Location and the loader go last.
+
+**Until the cache-retire work returns**, cancelling or reinstating an event, Remove
+from the calendar and the events list's bulk category leave every embed's answer
+in place for up to ten minutes, as they did in 3.111.0. Cancel now offers All
+upcoming dates, so that can be several dates at once.
+
+What each one is, as it was written when it shipped:
+
+#### Tags and Location: two more dropdowns on the bar (3.112.0; called What's included until 3.112.1)
+
+**Tags are `uc_tag`, a flat taxonomy, `SFAF_Tags`.** People read "Tags"
+everywhere ("Etiquetas" on a Spanish page); the internal names
+(`whats_included`, `uc_tag`, the data attributes) kept their 3.112.0 spelling.
+They are managed in the Tags section of Series & Categories by an Admin: add,
+rename, archive, restore, delete. **Archiving is term meta
+(`_sfaf_tag_retired`, the name storage kept), never a delete**, so a past event
+keeps its pills. An archived tag is gone from every picker and from the filter,
+and an archived slug in `uc_tag` is dropped before the query
+(`only_active_tags()`), so an old link reaches nothing rather than an empty
+page. **The editor's picker still shows an archived tag the event holds,
+ticked**, and `clean_ids()` keeps it on save: a form may only speak for what it
+offered. Nothing is seeded.
+
+**Delete (3.112.1) is the irreversible one**, behind a dialog that counts every
+event that has the tag in any status, past and trashed included
+(`SFAF_Tags::events_tagged()`). `SFAF_Tags::delete()` takes it off every series
+default, forgets its old slugs (`SFAF_Slug_Aliases::forget()`), deletes the
+term (which takes the relationships) and retires the embed cache. A `uc_tag`
+address naming it then reaches nothing, as an archived one does.
+
+**A block scoped to a tag clamps the visitor's choice with
+`effective_organizer()`**, which is a plain intersection and so the right clamp
+for tags too: a choice inside the scope narrows it, one outside is dropped, an
+archived one is dropped before it gets there, and an old slug is resolved on
+both sides first. `tag-scope-test.php` proves all four through the route in all
+three modes.
+
+- **The series default** is `_sfaf_series_tags` on the series term, and it goes
+  through `SFAF_Series::defaults_for_event()` like every other default: copied
+  once, into an event with no tags.
+- **Pills**: `SFAF_Tags::pills_html()`, on the event page under Hosted by and on
+  list rows, each a link to the calendar with `uc_tag`. The group's
+  `aria-label` is the `whats_included` public string in the event's language;
+  **tag names print as typed, in any language.**
+- **Both public forms carry the picker** and write it at submit.
+
+**Location is not a taxonomy.** It is every venue plus every one-off address an
+event names. `location_key_for_event()` gives `v-<venue slug>` or `p-` and ten
+hex of an md5 of the lowercased address line, so the same address typed on two
+events is one row. `location_index()` maps keys to the published events from
+45 days back, and the filter is a `post__in` from it.
+
+**Both dropdowns are the Organizers and groups control with one list**
+(`render_pick()`), multi-select with counts, and both list only what the
+block's own events carry: a count of zero is not offered. The counts follow the
+other filters (`ids_without()`), like the who picker's. **Both are carried in
+the address as `uc_tag` and `uc_loc`, through the AJAX handlers and the embed
+route's `tag`, `active_tags` and `active_locations`, and by See all events**,
+which also closes the 3.110.4 gap: a block scoped to a venue now sends
+`uc_loc=v-<slug>`. The generator offers both rows, ticked, and a "One tag"
+scope that writes the `tag` attribute.
+
+**A block with no `filters` attribute does not show the new rows** (3.112.2;
+3.112.0 gave it all five, which 3.112.2 took to be what took the calendar
+down; 3.112.2 failed the same way, so it was not, §7). It
+shows `filter_rows_default()`, the three it had before. Tags and Location
+appear only where a snippet names them; see "A block shows Tags and Location
+only when its snippet names them" (§1).
+
+#### embed.js is a loader, and the calendar is embed-app.js at a version (3.112.1, static since 3.112.2)
+
+**The script URL in a snippet must not carry a version**, and this is a
+decision made by a defect rather than a preference. That URL is baked into a
+snippet somebody pastes once, so a version PINS it to whatever the plugin was on
+the day it was copied rather than busting anything. In 2.10.1 that left host
+pages loading an old script, and an old stylesheet with it.
+
+**Unversioned was not enough either**: resources.sfaf.org sends the plugin's
+scripts with `Last-Modified` and no `Cache-Control` or `Expires`, so a browser
+keeps them for as long as its own heuristic says.
+
+**So `public/js/embed.js` is a loader that holds no release logic.** It reads
+`public/js/embed-version.js?t=<the current time, rounded down to five minutes>`,
+a static file holding `window.sfafCalendarEmbedVersion`, and adds one script,
+`embed-app.js?ver=<that>`. A cached loader is harmless: it reads today's answer.
+**The `?t=` bucket is what keeps the answer fresh**: any cache may keep the
+version file, but only under that bucket's address, so no browser, proxy or
+LiteSpeed holds an old answer longer than five minutes. Rules that keep it so:
+
+- **Nothing in the loader may change in a release.** No version, no payload
+  handling, no reload. `embed-filters-test.php` fails on a version number, on
+  calendar code, and on a reload in it.
+- **It asks PHP nothing.** In 3.112.1 it asked the embed route
+  (`embed_version=1`), which made every page view a WordPress request before the
+  calendar's own; `embed-budget-test.php` fails if it does again. The route
+  still answers that parameter, for a 3.112.1 loader a browser may hold.
+- **It never reloads anything.** It adds two scripts, once each. If the version
+  cannot be read within eight seconds it loads `embed-app.js` unversioned.
+- **Five version places**: the plugin header, `SFAF_VERSION`, the readme,
+  `EMBED_JS_VERSION` in `embed-app.js` and `embed-version.js`;
+  `version-check.php` refuses a build where they disagree. The app still names
+  a mismatch with the payload's `js_version` in the console, never a reload.
+- **The generator's preview loads `embed-app.js` directly**, at `SFAF_VERSION`.
+- **`public/js/.htaccess`** asks for five minutes on the loader and the version
+  file and a day on the rest, in plain `FilesMatch` and `Header` directives,
+  since LiteSpeed does not fully support `<If>`. Nothing depends on it.
+
+**The transition happens once.** A browser holding 3.112.0's embed.js, which
+was the whole calendar, runs it until its cache lets go; no server can replace a
+file a browser chose to keep. That copy still draws against this route, which
+`embed-loader-live.php` proves along with the guarantee from here on: a cached
+loader from a previous release loads this release's app once the five-minute
+bucket turns.
+
+#### A block shows Tags and Location only when its snippet names them (3.112.2)
+
+**A block with no `filters` attribute shows category, organizer and series**,
+the three rows it had in 3.111.0 (`SFAF_Shortcodes::filter_rows_default()`).
+Tags and Location appear only where a snippet's `filters` names them; "all"
+names every row. **The sfaf.org/calendar block lists only
+`category,organizer,series`**, so it shows neither until its snippet is
+re-copied with them.
+#### What retires the embed cache (3.112.1)
+
+**Anything that changes what an embed draws must move the generation**
+(`sfaf_embed_cache_version`), or every embed keeps the old answer for ten
+minutes. A save, a status change and a trash do it through core's hooks. **Meta
+and term writes reach it only through the keys and taxonomies `SFAF_Embed`
+watches**, and until 3.112.1 four actions wrote nothing it watched: cancelling
+and reinstating (`_uc_cancelled`, `_uc_cancelled_visibility`, from the editor, a
+closed day and the series removal screen alike), Remove from the calendar, the
+events list's bulk category (`wp_set_post_terms()` alone, now `set_object_terms`)
+and a tag archived or restored (term meta). Tags joined the watched taxonomies,
+and the multi-day keys and `_uc_private` the watched meta. `cache-flush-test.php`
+runs every one through its route with core's hooks firing (`kit_fire_hooks` in
+wp-kit.php) and asserts the generation moved; a new action that changes the
+public calendar belongs in it.
+
+#### Drafts and Scheduled are the person's own (3.112.0)
+
+Two tabs beside My events and All events, each with its count: Drafts
+(`draft`) and Scheduled (`future`), **always `post_author` = the person
+looking, admin or not**. They are not an access rule: the gate in 5 still
+decides what anybody can open. On these tabs the view is "every date", the view
+tabs and the status select are hidden, and the heading names the tab.
+`own_status_tabs()` is the one list.
+
+#### Replies go to is a list of people (3.112.0)
+
+The editor's Replies go to is a searchable dropdown of calendar people plus the
+editor, defaulting to the creator, with "Someone else" revealing the typed
+address (`:has()`, and visible without it). **It is stored as before**, one
+address in `_uc_email_replyto`: a picked person's email is written, not their id, so
+a person who later changes address does not change where an event's replies
+go.
+
+#### A multi-day event is one event with an End date (3.112.0)
+
+**`_uc_multi_day` and `_uc_last_date`, and never `_uc_end_date`**, which is the
+GFMP fundraising window (see 3, "Which date counts"). The Schedule card's
+"Multi-day event" tick shows End date beside Date; the start time is the first
+day's and the end time the last day's. **Multi-day and Repeats exclude each
+other**, in the markup (`:has()` hides Repeats) and in the save
+(`recurrence_from_post()` returns nothing while it is ticked). It is not
+offered on an event that is already in a recurrence group. An End date that is
+not after Date is refused with a notice and not stored.
+
+- **One formatter**: `sfaf_ap_range()` ("May 21 to 23, 2027", "Apr 30 to May 2,
+  2027", "Dec 30, 2026 to Jan 2, 2027"; Spanish "del 21 al 23 de mayo de 2027"),
+  reached through `sfaf_ap_event_date()`. Every surface that printed an event's
+  date asks it: list, sidebar, preview, event page, every email and token.
+- **`sfaf_event_days()` is the list of days.** The month grid places the event
+  on each of them, with a second query for events that began before the grid;
+  the list includes an event while it is running; the calendar file ends on the
+  last day; the closed-day warning and the closure review check every day.
+- **The publish rule** adds `last_date` when the tick is on.
+- **Imports**: `SFAF_Sources::sync_multi_day()` sets the tick and End date when
+  the end is a different day: always for Eventbrite, and for GFMP only for the
+  `EVENT_TYPES`, for the same reason `last_day()` asks.
+- **The morning-of reminder** goes on the first day only.
+
+#### Events on a closed day ask their organizer (3.112.0)
+
+The warning above still never blocks. **What 3.112.0 adds is a question, after
+the fact, to one person.** `SFAF_Closure_Review`: when a closure is saved,
+every published or scheduled event with a day on it gets one email to its
+`post_author`, with Keep and Cancel; seven days before a date nobody has
+decided, one reminder. Three lists of closure ids on the event record what
+happened: `_uc_closed_kept`, `_uc_closed_notified`, `_uc_closed_reminded`. Saving
+the closure again sends nothing new. A cancelled event is never undecided.
+
+- **A link never acts.** Keep and Cancel open `caladmin/closed-day/{id}`,
+  through sign-in when needed. Keep is a POST from that page
+  (`closed_keep`); Cancel there is the editor's own cancel card and dialog. A
+  mail scanner following the link changes nothing.
+- **Pending has an On closed days tab** for admins and for whoever can edit
+  the event. A team member with no other Pending business sees Pending only
+  while they have one of these.
+- **Both messages are English only** (`'langs' => array('en')` in the catalog),
+  and Email Templates disables the language select for them.
+- The scheduled task is "Events on closed days". `closure-open-test.php` allows
+  this class beside the warning's methods.
+
+#### The keepalive waits for somebody (3.112.0)
+
+**ONLY WHILE SOMEBODY IS THERE (3.112.0, replacing 3.110.5's "an open caladmin
+tab never signs out on its own").** A tick renews only when there has been a
+click or a keystroke on that page in the last thirty minutes; the clock starts
+at page load. An abandoned tab on a shared machine signs out as it did before
+3.110.5, and what was typed is in its draft at the next sign-in. The listeners
+are `markActive`: the first build named them `touched`, which a `var touched
+= []` higher in the file overwrote, so they never ran (7).
+
+#### The /events feed carries a multi-day range (3.112.1)
+
+**A row carries a multi-day event's range since 3.112.1**:
+`multi_day`, `last_date` (the same as `date` on a one-day event) and `days`,
+every day from first to last; `date` is still the first day and nothing was
+renamed. A reader shows the range from `date` to `last_date`, with
+`start_time` on the first day and `end_time` on the last.
 
 ### Where a submitted picture lives, and why "Use this image" does not work (3.94.0)
 

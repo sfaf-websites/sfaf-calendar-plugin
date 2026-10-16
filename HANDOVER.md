@@ -4,18 +4,22 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-15, at 3.112.2, built on 3.112.1. **The live site is on 3.111.0.**
+**Last updated:** 2026-10-16, at 3.113.0, **built from 3.111.0, not from 3.112.2.** **The live site is on 3.111.0.**
 
 ---
 
 ## What shipped last
 
-> **3.112.2 FIXES WHY 3.112.x TOOK sfaf.org/calendar DOWN** (`PROJECT.md` 7): old blocks
-> got the Location row, a query per event. 3.112.0/3.112.1 are GitHub pre-releases.
-> Install with `TESTING.md` **1.0**. **resources.sfaf.org is LiteSpeed on AWS with
-> LiteSpeed Cache; only www.sfaf.org is WP Engine.** The Events Calendar is still on (1.283).
-**3.112.1** (in 3.112.2): the embed loader, cancel retires the cache, dialogs, Tags
-Archive and Delete, three Age ranges, Asana copies. **3.112.0**: Tags, Location, multi-day.
+> **3.112.x FAILED FROM THE OFFICE AND THE CAUSE IS NOT KNOWN** (`PROJECT.md` 7).
+> 3.112.2's query fix did not cure it, so it was not the cause. **3.113.0 starts
+> again from 3.111.0** and brings 3.112.x back a small group per release
+> (`PROJECT.md` 8, "Set aside"); the code is in git at `f2488c6`. Install with
+> `TESTING.md` **1.0**, which says what to capture before any rollback.
+> **resources.sfaf.org is LiteSpeed on AWS with LiteSpeed Cache; only www.sfaf.org
+> is WP Engine.** The Events Calendar is still on (1.283).
+**3.113.0**: Age range as three choices, Cancel event and Delete as dialogs, the
+Asana copy, and the Notifications card's two rows as a status line and a button.
+**Its public calendar is 3.111.0's**, proved by `embed-identity-test.php`.
 > **3.110.1: EDITORS NO LONGER HAVE EVERY EVENT.** A team decides which events a
 > person has; their level decides what they can do on them (CLAUDE.md 7,
 > `PROJECT.md` 5). An editor has what they created and what **Team and
@@ -38,22 +42,9 @@ Earlier: **`readme.txt` is the changelog**. **3.101.0 IMPORTS EVERYACTION**, **A
 > a one-time pass switched it off where it was on, and **it deleted nobody**. A
 > hand-made event is untouched whatever links it carries. `PROJECT.md` 3.
 
-> **THE EDITOR'S BUTTON ROW IS OUTSIDE THE EVENT FORM**, so every button in it
-> lives or dies by its `form=` attribute and says its `type`; `form-owner-audit.php`
-> sweeps both. Green and largest is the main action, yellow the in-between save
-> (**Mark's decision**, in `DESIGN.md`). **Delete must never be first in the
-> MARKUP**: Enter presses the first submit, and the order on screen is CSS `order`.
-
 **FOUR FOLDERS OF PICTURES, NONE INSIDE ANOTHER**: `calendar/` series pictures,
 `calendar-other/` Other images, `calendar-submissions/`, `calendar-descriptions/`;
 and from 3.111.0 `calendar-files/` for PDFs, beside them.
-
-> **HYBRID EVENTS ARE SHIPPED, AND THREE THINGS ARE DELIBERATELY NOT IN THEM.**
-> A registrant cannot change format after registering, neither public form
-> offers hybrid, and there is no per-registrant approval. **These are decisions,
-> not gaps**, so do not re-open them as oversights. One capacity PER FORMAT.
-> **EVERY PERSON OBJECT REACHING A MAIL BUILDER CARRIES `format` (3.97.3)**, or
-> the gates refuse the link to the one person it is for. `PROJECT.md` 2 and 7.
 
 > **EVERY UPLOAD IS 1200 BY 675 AND 500KB** from 3.110.3, the public forms too;
 > the editor uploads into Other images. **CHECK THE INSTALLED VERSION BEFORE BUILDING
@@ -92,9 +83,10 @@ and from 3.111.0 `calendar-files/` for PDFs, beside them.
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 345 items.** **1.0** (installing
-3.112.2 and its first hour), then **1.277** (old snippets) and **1.281** (the hidden age values) first,
-then **1.271** (a multi-day event) and **2.55** (closing a day with events) first, then **1.249** (signed out
+**`TESTING.md` holds the manual testing backlog: 346 items**, 19 of them marked set
+aside until their 3.112.x feature returns. **1.0** (installing 3.113.0 and its
+first hour), then **1.281** (the hidden age values), **1.279** (the dialogs) and
+**1.284** (the Notifications card) first, then **1.249** (signed out
 with a form open), then **1.260** (that schema 14 ran), **1.255** (no count
 anywhere public) and **1.256** (a review team), then **1.235**, **1.245**
 and **1.236** (Strut's slug, See all events, retired names), then **1.225**,
@@ -110,6 +102,11 @@ live. Assume everything else unverified.
 
 **Waiting on a decision or an address**, each with its reasoning in `PROJECT.md`
 8 unless another section is named:
+
+- **The order of the releases after 3.113.1** (the sidebar's month buttons).
+  Proposed in the 3.113.0 report: caladmin-only work first, then multi-day and
+  closed days, then Tags, then Location with the 3.112.2 query work, the loader
+  last and probably not at all.
 
 - **Two pieces of public copy nobody has read**, the rejection notice and the
   "back on" message. Unticked, so nothing sends. `TESTING.md` 2.21 and 2.24.

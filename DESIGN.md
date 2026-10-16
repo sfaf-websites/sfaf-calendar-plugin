@@ -1148,11 +1148,23 @@ above; Field label, 13px/600 at 1.45. A failure in the same place is
 series prefill, the FAQ set and Insert image say after they act. **Caladmin's
 page-level `.uc-flash` banners are unchanged** and still use their own greens.
 
-**The emails row** is the `.uc-picker` row "Choose who else gets it" uses: full
-width, 1px `--p-border`, 10px radius, the label left at 14px/600 with 11px 14px
-padding, the chevron right, and the same 12px 14px 14px panel. It keeps its
-sentence, "Emails for this event: all 6 are on", as the label. It is the first
-thing in its own section of the card, so the space above it is the section's.
+**Who hears about this event and Emails for this event (3.113.0)** are each a
+subhead, a status line and a button, in that order; until 3.113.0 each was a
+full-width bordered row whose label was a sentence, which read as status rather
+than as something to press. Measured in Chrome by `.claude/release-3113-live.php`
+at 1280px and 390px.
+
+| Part | Values |
+|---|---|
+| Subhead | `.uc-notify-subhead`, as before |
+| Status line | 14px/400 at 1.5 `--p-text`: "Nobody else yet.", "2 individuals. 4 people in total.", "All 6 are on.", "1 of 6 switched off." It is the card's one empty state |
+| Button | the small secondary button, `.uc-btn .uc-btn-sm`: Light Gray `--p-btn-face`, the `--p-border-strong` edge, 13px/600, sized to its label, with the 14px chevron, since it opens something. "Choose people", "Choose emails" |
+| Panel | opens 10px under the button in the picker's box: 1px `--p-border`, 10px radius, white, the 12px 14px 14px padding |
+
+The section's 10px gap is the space between the three; Choose people's status
+line keeps 10px under it inside the picker. The button is the `<summary>` of the
+panel's `<details>`, so it opens with no script, and the status line follows the
+ticks with it.
 
 ### Restore what you were typing, and the session-ended page (3.110.5)
 
@@ -1504,6 +1516,10 @@ the right of the row.
 
 ### Tag pills, two more dropdowns, Multi-day and On closed days (3.112.0)
 
+> **SET ASIDE IN 3.113.0** with the rest of 3.112.x (`PROJECT.md` 8). None of
+> this is on screen until the release that brings each part back; it is kept
+> because it is the design that release will ship.
+
 Measured in Chrome by `.claude/release-31120-live.php` at 1280px, 430px and
 390px: the filter bar with all three dropdowns, each opened in turn, an event
 page with pills, Edit event with Multi-day ticked, and Pending > On closed days.
@@ -1561,7 +1577,8 @@ window less 48px, scrolling inside.
 is drawn in the page as a card (1px `--p-border`, 12px radius, 18px 20px) under
 the row it belongs to, and Keep, which only closes a dialog, is hidden.
 
-**Tags is the Categories section, row for row**: the fold card with "N TAGS" in
+**Tags is the Categories section, row for row** (set aside in 3.113.0 with Tags;
+the dialogs above shipped in 3.113.0 on Edit event): the fold card with "N TAGS" in
 its band, the hint, `.uc-cat-row` rows with Rename and Archive as the small
 secondary button and Delete as the red text link, and the new-tag form in
 `.uc-cat-new` with Add tag the primary yellow in its own action row, 14px under
