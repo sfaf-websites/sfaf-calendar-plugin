@@ -68,7 +68,7 @@ $plants = array(
         array( 'templates/single-uc_event.php', '<?php echo sfaf_event_public_contact_html( $post_id ); ?>', '<?php echo esc_html( $contact ); ?>' ),
     ) ),
     '6: two teams again' => array( 'release-31131-test.php', '6: three teams are kept', array(
-        array( 'includes/class-sfaf-teams.php', "                \$keep[] = \$id;\n            }\n", "                \$keep[] = \$id;\n            }\n            if ( count( \$keep ) >= 2 ) {\n                break;\n            }\n" ),
+        array( 'includes/class-sfaf-teams.php', "            if ( isset( \$known[ \$id ] ) && ! in_array( \$id, \$keep, true ) ) {\n                \$keep[] = \$id;\n            }\n", "            if ( isset( \$known[ \$id ] ) && ! in_array( \$id, \$keep, true ) ) {\n                \$keep[] = \$id;\n            }\n            if ( count( \$keep ) >= 2 ) {\n                break;\n            }\n" ),
     ) ),
     '6: Pick up to back' => array( 'release-31131-test.php', '6: no "Pick up to"', array(
         array( 'includes/class-sfaf-portal.php', "            <?php else : ?>\n                <div class=\"uc-access-teams\" data-uc-access-teams>", "            <?php else : ?>\n                <p class=\"uc-hint\">Pick up to 2.</p>\n                <div class=\"uc-access-teams\" data-uc-access-teams>" ),
