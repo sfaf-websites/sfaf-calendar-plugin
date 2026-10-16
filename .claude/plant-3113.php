@@ -20,7 +20,7 @@ $plants = array(
     'E: an embed header changes' => array( 'embed-identity-test.php', 'headers > Cache-Control differs from 3.111.0', array(
         array( 'includes/class-sfaf-embed.php', "\$response->header( 'Cache-Control', 'public, max-age=' . \$browser_ttl );", "\$response->header( 'Cache-Control', 'public, max-age=' . ( \$browser_ttl + 1 ) );" ),
     ) ),
-    'E: the embed's body changes' => array( 'embed-identity-test.php', 'data > html differs from 3.111.0', array(
+    'E: the embed body changes' => array( 'embed-identity-test.php', 'data > html differs from 3.111.0', array(
         array( 'includes/class-sfaf-embed.php', "        \$payload['css_url'] = self::style_url();", "        \$payload['css_url'] = self::style_url();\n        \$payload['html'] = (string) \$payload['html'] . ' ';" ),
     ) ),
     'E: a taxonomy registered differently' => array( 'embed-identity-test.php', 'taxonomies > uc_event_category', array(
