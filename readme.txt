@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.112.2
+Stable tag: 3.113.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,22 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.113.0 =
+
+**Built from 3.111.0, not from 3.112.2. Age range as three choices, Cancel event and Delete as dialogs, an Asana copy of each admin alert, and the Notifications card's two rows as buttons. Nothing on the public calendar has changed since 3.111.0.**
+
+**WHY FROM 3.111.0.** 3.112.0 to 3.112.2 failed to load on sfaf.org from the office network, and the cause has not been found. This release and the ones after it bring the 3.112.x work back a small group at a time, so a return of the fault names the change that brought it. Tags, Location, multi-day events, events on closed days, Drafts and Scheduled, Replies go to, the keepalive that needs a click or keystroke, the embed loader, and the embed cache retired on cancel are not in this release.
+
+**THE PUBLIC CALENDAR IS 3.111.0's.** The embed, its route, its answers and headers, its script and stylesheet, the [sfaf_calendar] block, the scheduled tasks, the taxonomies and the rewrite rules are unchanged; only the version number embed.js and its answers carry has moved. An event page shows an age range only when it is All ages, 18+ or 21+ (below).
+
+**AGE RANGE** is All ages, 18+ or 21+, chosen from a list on Event details and the community form, or left empty. A value typed before this release that is not one of the three stays stored and is shown nowhere, on the event page included. As in 3.112.1.
+
+**CANCEL EVENT AND DELETE** on Edit event each open a centered dialog with the explanation and the button that does it. On an event with more than one upcoming date, Cancel asks This date only or All upcoming dates, and the editor does not ask "How should this save apply?" after a cancel. With nobody registered, the dialog's own button cancels with no second question. An event with registrations still cannot be deleted until it is cancelled. With scripting off, both appear on the page. As in 3.112.1.
+
+**AN ASANA COPY.** Event requested, Event submitted, Picture uploaded, Events with no organizer (and its all-clear) and Scheduled tasks failing (and working again) each send one copy to the Asana address on Settings, after the normal recipients. Each has its own tick on Settings, all on. An empty address sends none. As in 3.112.1.
+
+**THE NOTIFICATIONS CARD.** "Who hears about this event" and "Emails for this event" each have a heading, a line saying what is chosen ("Nobody else yet.", "2 individuals. 4 people in total.", "All 6 are on.", "1 of 6 switched off."), and a button, Choose people or Choose emails, that opens the list. The line changes as boxes are ticked. On Add event and Edit event alike.
 
 = 3.112.2 =
 

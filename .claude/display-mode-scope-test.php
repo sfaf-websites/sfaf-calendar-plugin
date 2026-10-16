@@ -132,8 +132,6 @@ function wp_list_pluck( $list, $field ) {
 }
 function get_terms( $args = array() ) { return array(); }
 function wp_get_post_terms( $id, $tax, $args = array() ) { return array(); }
-// The tag pills read the term cache since 3.112.2.
-function get_the_terms( $id, $tax ) { $t = wp_get_post_terms( $id, $tax ); return $t ? $t : false; }
 function taxonomy_exists( $t ) { return true; }
 function get_term_by( $a, $b, $c ) { return false; }
 function wp_json_encode( $v, $f = 0 ) { return json_encode( $v, $f ); }
@@ -168,10 +166,6 @@ function sfaf_ap_date( $d, $style = 'full' ) {
     }
 }
 function sfaf_ap_date_range( $a, $b ) { return sfaf_ap_date( $a, 'short' ) . ' to ' . sfaf_ap_date( $b, 'short' ); }
-/* Multi-day (3.112.0): this world has none, so every event is its one day. */
-function sfaf_event_last_date( $id ) { return ''; }
-function sfaf_event_days( $id ) { $d = (string) get_post_meta( (int) $id, '_uc_event_date', true ); return '' === $d ? array() : array( $d ); }
-function sfaf_ap_event_date( $id, $style = 'full', $lang = 'en' ) { return sfaf_ap_date( (string) get_post_meta( (int) $id, '_uc_event_date', true ), $style ); }
 function sfaf_ap_time_range( $s, $e ) { return $s . ' to ' . $e; }
 function sfaf_ap_time( $t ) { return (string) $t; }
 function sfaf_category_shades( $hex ) { return array( 'ink' => '#0C666F', 'tint' => '#F2FCFD', 'media' => '#D5F3F6', 'chip' => '#E3F7F9' ); }
@@ -306,16 +300,11 @@ class WP_REST_Request {
     public function get_param( $key ) { return isset( $this->params[ $key ] ) ? $this->params[ $key ] : null; }
 }
 
-/* The Location filter reads an event's venue and address (3.112.0). This
-   world has neither, so every event has no location and the row stays empty. */
-if ( ! class_exists( 'SFAF_Venues' ) ) { class SFAF_Venues { public static function for_event( $id ) { return null; } public static function parts( $id ) { return array( 'street' => '', 'city' => '', 'state' => '', 'zip' => '' ); } } }
-if ( ! function_exists( 'sfaf_event_location_parts' ) ) { function sfaf_event_location_parts( $id ) { return array(); } }
 // The shortcode resolves an old slug through it (3.110.3).
 /* No Calendar home URL, so See all events takes the archive (3.110.4). */
 if ( ! function_exists( 'sfaf_calendar_home_url' ) ) { function sfaf_calendar_home_url() { return ''; } }
 require_once $root . '/includes/class-sfaf-slug-aliases.php';
 require_once $root . '/includes/class-sfaf-attachments.php'; // the list row's PDF button (3.111.0)
-require_once $root . '/includes/class-sfaf-tags.php'; // What's included (3.112.0)
 require_once $root . '/includes/class-sfaf-shortcodes.php';
 require_once $root . '/includes/class-sfaf-embed.php';
 

@@ -557,13 +557,6 @@ $ALLOWED = array(
     'POST:set_user_role'          => array( 'caladmin' ),
     'POST:save_team'              => array( 'caladmin' ),
     'POST:delete_team'            => array( 'caladmin' ),
-    // Tags, "What's included" (3.112.0): a public filter every event can use,
-    // so an admin's alone, add, rename and retire alike.
-    'POST:save_tag'               => array( 'caladmin' ),
-    'POST:retire_tag'             => array( 'caladmin' ),
-    'POST:delete_tag'             => array( 'caladmin' ),
-    // An event on a closed day, kept (3.112.0): a decision about one event.
-    'POST:closed_keep'            => array( 'event' ),
     'GET:pending'                 => array( 'caladmin' ),
     'GET:users'                   => array( 'caladmin' ),
     // The words of every registrant message (3.106.0): administrators only,

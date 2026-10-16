@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Events - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.112.2" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.112.2" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.112.2" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.111.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.111.0" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.111.0" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.112.2" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.111.0" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -222,22 +222,11 @@
 
                                 <section class="uc-bento-card" data-uc-card="schedule">
                     <h2 class="uc-bento-title">Schedule</h2>
-                                                            <div class="uc-field-row uc-date-row" data-uc-multiday-row>
-                        <label class="uc-field">
-                            <span class="uc-field-label">Date<span class="uc-req" aria-hidden="true">*</span> </span>
-                            <input type="date" name="date" value="" />
-                                                                                </label>
-                                                    <label class="uc-field uc-multiday-end" data-uc-multiday-end>
-                                <span class="uc-field-label">End date<span class="uc-req" aria-hidden="true">*</span></span>
-                                <input type="date" name="last_date" value=""                                        />
-                                                            </label>
-                                            </div>
-                                            <input type="hidden" name="uc_multiday_present" value="1" />
-                        <label class="uc-check uc-multiday" data-uc-multiday>
-                            <input type="checkbox" name="multi_day" value="1" data-uc-multiday-tick  />
-                            Multi-day event
-                        </label>
-                                        <div class="uc-field-row">
+                                        <label class="uc-field">
+                        <span class="uc-field-label">Date<span class="uc-req" aria-hidden="true">*</span> </span>
+                        <input type="date" name="date" value="" />
+                                                                    </label>
+                    <div class="uc-field-row">
                         <label class="uc-field">
                             <span class="uc-field-label">Start<span class="uc-req" aria-hidden="true">*</span> </span>
                                 <span class="uc-timepick" role="group" aria-label="Start time">
@@ -343,8 +332,7 @@
                     </div>
 
                                         
-                                                                <div data-uc-repeat-wrap>
-                                            <div class="uc-repeat" data-uc-repeat data-uc-repeat-date="" data-uc-repeat-follow>
+                                                                                <div class="uc-repeat" data-uc-repeat data-uc-repeat-date="" data-uc-repeat-follow>
 
             <span class="uc-field-label">Repeats
                 <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-repeat-0" aria-label="More about repeating">?</button><span class="uc-help-body" id="uc-help-repeat-0" data-uc-help-body>Saving creates one event per date; edit the schedule on the series after that.</span>            </span>
@@ -405,13 +393,13 @@
                         </label>
                                             <label class="uc-day">
                             <input type="checkbox" name="repeat_days[]" value="3"
-                                    data-uc-repeat-day />
+                                    checked="checked" data-uc-repeat-day />
                             <span aria-hidden="true">W</span>
                             <span class="uc-visually-hidden">Wednesday</span>
                         </label>
                                             <label class="uc-day">
                             <input type="checkbox" name="repeat_days[]" value="4"
-                                    checked="checked" data-uc-repeat-day />
+                                    data-uc-repeat-day />
                             <span aria-hidden="true">T</span>
                             <span class="uc-visually-hidden">Thursday</span>
                         </label>
@@ -452,8 +440,8 @@
                                                     <option value="0" >Sunday</option>
                                                     <option value="1" >Monday</option>
                                                     <option value="2" >Tuesday</option>
-                                                    <option value="3" >Wednesday</option>
-                                                    <option value="4"  selected="selected">Thursday</option>
+                                                    <option value="3"  selected="selected">Wednesday</option>
+                                                    <option value="4" >Thursday</option>
                                                     <option value="5" >Friday</option>
                                                     <option value="6" >Saturday</option>
                                             </select>
@@ -516,8 +504,7 @@
                         <p class="uc-repeat-summary" data-uc-repeat-summary aria-live="polite">
                 Does not repeat. One event will be created.            </p>
         </div>
-                                </div>
-                                    </section>
+                                            </section>
 
                                                 <section class="uc-bento-card" data-uc-card="location">
                     <h2 class="uc-bento-title">Location<span class="uc-req" aria-hidden="true">*</span></h2>
@@ -1037,13 +1024,8 @@
                                                         <input type="hidden" name="uc_details_extra_present" value="1" />
         <label class="uc-field">
             <span class="uc-field-label">Age range</span>
-                    <select name="listing_age">
-            <option value="" selected="selected">No age range</option>
-                            <option value="All ages">All ages</option>
-                            <option value="18+">18+</option>
-                            <option value="21+">21+</option>
-                    </select>
-                </label>
+            <input type="text" name="listing_age" maxlength="120" value="" />
+        </label>
         <fieldset class="uc-field uc-contact-group">
             <legend class="uc-field-label">Contact</legend>
             <span class="uc-hint">Shown on the event page. Leave all three empty for no contact line.</span>
@@ -1179,27 +1161,7 @@
 
                                                         </div>
 
-                                                <div class="uc-field uc-cat-field uc-tag-field" data-uc-chips>
-                    <span class="uc-field-label">Tags </span>
-                    <input type="hidden" name="uc_tag_present" value="1" />
-                    <div class="uc-chips" data-uc-chips-list hidden></div>
-                    <p class="uc-chips-empty" data-uc-chips-empty hidden>Nothing chosen yet.</p>
-                    <div class="uc-chips-add" data-uc-chips-add hidden>
-                        <button type="button" class="uc-btn uc-btn-sm" data-uc-chips-toggle
-                                aria-expanded="false">+ Add tag</button>
-                    </div>
-                    <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
-                                                    <label class="uc-check" data-uc-chip-label="Alpha">
-                                <input type="checkbox" name="tag[]" value="11"
-                                        />
-                                Alpha                            </label>
-                                                    <label class="uc-check" data-uc-chip-label="Beta">
-                                <input type="checkbox" name="tag[]" value="12"
-                                        />
-                                Beta                            </label>
-                                            </div>
-                                                        </div>
-                                </section>
+                                                </section>
 
                 
                                     <section class="uc-bento-card" data-uc-card="notifications" data-uc-notifications-card>
@@ -1336,42 +1298,12 @@
                     </div>
                         <div class="uc-notify-section">
                 <h4 class="uc-notify-subhead">Replies</h4>
-                                <div class="uc-field uc-replyto" data-uc-replyto>
-                    <span class="uc-field-label" id="uc-replyto-label">Replies go to</span>
-                    <details class="uc-picker uc-replyto-picker" data-uc-replyto-picker>
-                        <summary class="uc-picker-toggle" aria-describedby="uc-replyto-label">
-                            <span class="uc-picker-label" data-uc-replyto-summary>Admin (admin@sfaf.org)</span>
-                            <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
-                        </summary>
-                        <div class="uc-picker-panel">
-                            <label class="uc-picker-filter">
-                                <span class="uc-visually-hidden">Filter people by name or address</span>
-                                <input type="search" placeholder="Type to filter people…" data-uc-replyto-filter autocomplete="off" />
-                            </label>
-                            <div class="uc-picker-options" role="radiogroup" aria-labelledby="uc-replyto-label">
-                                                                    <label class="uc-check uc-picker-option"
-                                           data-uc-picker-search="admin admin@sfaf.org">
-                                        <input type="radio" name="event_replyto_pick" value="admin@sfaf.org"
-                                               data-uc-replyto-name="Admin (admin@sfaf.org)"
-                                                checked="checked" />
-                                        <span>Admin                                            <span class="uc-muted">admin@sfaf.org</span></span>
-                                    </label>
-                                                                <label class="uc-check uc-picker-option uc-replyto-other-opt" data-uc-picker-search="">
-                                    <input type="radio" name="event_replyto_pick" value="other" data-uc-replyto-other
-                                            />
-                                    <span>Someone else</span>
-                                </label>
-                            </div>
-                            <p class="uc-muted uc-picker-empty" data-uc-replyto-empty hidden>Nobody matches that.</p>
-                        </div>
-                    </details>
-                    <label class="uc-field uc-replyto-typed">
-                        <span class="uc-field-label">Their email address</span>
-                                                <input type="email" name="event_replyto" id="uc-event-replyto"
-                               value=""
-                                                              placeholder="events@sfaf.org" />
-                    </label>
-                                                        </div>
+                <label class="uc-field">
+                    <span class="uc-field-label">Replies go to</span>
+                                        <input type="email" name="event_replyto" id="uc-event-replyto"
+                           value="admin@sfaf.org"
+                                                      placeholder="events@sfaf.org" />
+                                                        </label>
                 </div>
                                         </div>
                     </section>
@@ -1536,15 +1468,15 @@
                         <button type="submit" form="uc-event-form-0" name="save_mode" value="publish" class="uc-btn uc-btn-go uc-editor-publish" data-uc-publish-btn
                                                                 >Publish</button>
                                                                                 </div>
-                        
+                                    
         
                         </main>
             </div>
         </div>
         <script type="application/json" id="uc-session-config">{"ajax":"https:\/\/resources.sfaf.org\/wp-admin\/admin-ajax.php","action":"sfaf_caladmin_session","signin":"https:\/\/resources.sfaf.org\/caladmin","screen":"dashboard","signedIn":true}</script>
-<script src="../public/js/caladmin-session.js?ver=3.112.2"></script>
-<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.112.2"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.112.2"></script>
-<script src="../public/js/portal.js?ver=3.112.2"></script>
+<script src="../public/js/caladmin-session.js?ver=3.111.0"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.111.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.111.0"></script>
+<script src="../public/js/portal.js?ver=3.111.0"></script>
 <script>window.RV_PAGE="add-phone";(function () {
 var P = window.RV_PAGE, out = { page: P, errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });

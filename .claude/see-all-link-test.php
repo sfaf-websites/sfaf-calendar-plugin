@@ -41,9 +41,7 @@ st_check( 'S: the sidebar with no filter', st_href( $sc->render_sidebar( array()
 st_check( 'PLANT S.2: an organizer sidebar', st_href( $sc->render_sidebar( array( 'organizer' => 'alpha' ), 5 ) ), $home . '?uc_org=alpha' );
 st_check( 'S: a category sidebar', st_href( $sc->render_sidebar( array( 'category' => 'beta' ), 5 ) ), $home . '?uc_cat=beta' );
 st_check( 'S: a series sidebar carries the slug as uc_group', st_href( $sc->render_sidebar( array( 'series' => 11 ), 5 ) ), $home . '?uc_group=alpha' );
-/* A venue is carried as uc_loc from 3.112.0, which closes the 3.110.4 gap. */
-st_check( 'PLANT B: a venue is carried as a location', st_href( $sc->render_sidebar( array( 'venue' => 'castro' ), 5 ) ), $home . '?uc_loc=v-castro' );
-st_check( 'S: a tag is carried as uc_tag', st_href( $sc->render_sidebar( array( 'tag' => 'food' ), 5 ) ), $home . '?uc_tag=food' );
+st_check( 'S: a venue has no public key and is not carried', st_href( $sc->render_sidebar( array( 'venue' => 'castro' ), 5 ) ), $home );
 st_check( 'S: the combined mode\'s sidebar, bound to a month', st_href( $sc->render_sidebar( array( 'organizer' => 'alpha' ), 5, null, '2026-11' ) ), $home . '?uc_org=alpha' );
 
 /* ---- No setting: the archive, with the query vars it reads. ---- */

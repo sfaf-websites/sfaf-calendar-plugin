@@ -209,7 +209,6 @@ require_once $root . '/includes/class-sfaf-recurrence.php';
 require_once $root . '/includes/class-sfaf-faq-sets.php';
 require_once $root . '/includes/class-sfaf-submissions.php';
 require_once $root . '/includes/class-sfaf-submit.php';
-require_once $root . '/includes/class-sfaf-tags.php'; // What's included (3.112.0)
 require_once $root . '/includes/class-sfaf-request.php';
 
 function expect( $label, $got, $want ) {

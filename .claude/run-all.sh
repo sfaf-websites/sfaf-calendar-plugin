@@ -95,13 +95,20 @@ for f in .claude/*.php; do
     release-31105-live.php) continue ;;  # run below with --run
     plant-31105.php) continue ;;       # a fault planter for the 3.110.5 checks, not a check
     release-31110-live.php) continue ;;  # run below with --run
-    release-31120-live.php) continue ;;  # run below with --run
-    release-31121-live.php) continue ;;  # run below with --run
+    release-3113-live.php) continue ;;   # run below with --run
     plant-31110.php) continue ;;       # a fault planter for the 3.111.0 checks, not a check
-    plant-31121.php) continue ;;       # a fault planter for the 3.112.1 checks, not a check
-    plant-31122.php) continue ;;       # a fault planter for the 3.112.2 checks, not a check
+    plant-3113.php) continue ;;        # a fault planter for the 3.113.0 checks, not a check
+    embed-identity-probe.php) continue ;; # run by embed-identity-test.php in two trees, not a check
     embed-isolation-live.php) continue ;; # run below with --run
-    embed-loader-live.php) continue ;;  # run below with --run
+    # SET ASIDE WITH 3.112.x (3.113.0). 3.113.0 is built from 3.111.0, and these
+    # check what 3.112.0 to 3.112.2 built and it does not have: Tags, Location,
+    # multi-day, the closed-days review, the loader, the cache retired on cancel
+    # and the query budget. Each comes back into the suite with the release that
+    # brings its feature back (PROJECT.md, "Agreed, not built"). Kept, not deleted.
+    release-31120-live.php|release-31120-test.php|plant-31120.php) continue ;;
+    release-31121-live.php|release-31121-test.php|plant-31121.php) continue ;;
+    plant-31122.php|embed-budget-test.php|embed-loader-live.php) continue ;;
+    tag-scope-test.php|feed-multiday-test.php|cache-flush-test.php|multiday-shim.php) continue ;;
     login-check.php) continue ;;       # run last, after every capture is rewritten
     byline-live.php) continue ;;       # run below with --run; --live checks the site itself
   esac
@@ -356,14 +363,13 @@ run "release-31105-live --run" php .claude/release-31105-live.php --run
 # 3.111.0: the pinned sidebar and list, the event page's attachment and three
 # lines, both forms, the editor's new fields and a reviewer's Pending.
 run "release-31110-live --run" php .claude/release-31110-live.php --run
-run "release-31120-live --run" php .claude/release-31120-live.php --run
-# Cancel event, Delete and a tag's Delete as centred dialogs, and with no script (3.112.1).
-run "release-31121-live --run" php .claude/release-31121-live.php --run
+# Cancel event and Delete as centred dialogs, and the Notifications card's two
+# rows as a status line and a button (3.113.0), at 1280px and 390px, with and
+# without the script.
+run "release-3113-live --run" php .claude/release-3113-live.php --run
 # The embed in its shadow root under a hostile host stylesheet, and the combined
 # sidebar ending at its content (3.111.0 J and K), at 1280px and 390px.
 run "embed-isolation-live --run" php .claude/embed-isolation-live.php --run
-# A cached embed.js, the previous release's, on a host page over HTTP (3.112.1).
-run "embed-loader-live --run" php .claude/embed-loader-live.php --run
 
 echo
 # No real name or login in a tracked file (3.106.2). Last, because the browser

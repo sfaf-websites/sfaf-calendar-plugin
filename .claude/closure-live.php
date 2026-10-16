@@ -40,8 +40,6 @@
  */
 
 require __DIR__ . '/wp-kit.php';
-// Saving a closure with an event on it emails the organizer (3.112.0).
-if ( ! function_exists( 'wp_mail' ) ) { function wp_mail( $to, $s, $b, $h = '', $a = array() ) { $GLOBALS['cl_mail'][] = array( $to, $s ); return true; } }
 
 $fails = array();
 function cl_check( $ok, $why ) { global $fails; if ( ! $ok ) { $fails[] = $why; } }

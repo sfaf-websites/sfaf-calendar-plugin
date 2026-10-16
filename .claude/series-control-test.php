@@ -635,7 +635,6 @@ require_once $root . '/includes/class-sfaf-attachments.php'; // Event details' P
 require_once $root . '/includes/class-sfaf-desc-images.php';
 require_once $root . '/includes/class-sfaf-submissions.php';
 require_once $root . '/includes/class-sfaf-submit.php';
-require_once $root . '/includes/class-sfaf-tags.php'; // What's included (3.112.0)
 require_once $root . '/includes/class-sfaf-portal.php';
 
 /* ===========================================================================

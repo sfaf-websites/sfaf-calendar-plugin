@@ -84,6 +84,7 @@ function ucDismissOnBackdrop(dialog) {
         run('questions', initQuestions);
         run('rsvpDetails', initRsvpDetails);
         run('notifyPicker', initNotifyPicker);
+        run('notifyKinds', initNotifyKinds);
         run('imagePicker', initImagePicker);
         // ORDER MATTERS between these three. Both the scope confirmation and
         // the completeness confirmation bind a click listener to the same save
@@ -3840,6 +3841,24 @@ function ucDismissOnBackdrop(dialog) {
      * them server-side. The creator and any typed addresses are in the total
      * too, because they are also going to get one.
      * ------------------------------------------------------------------- */
+    /* EMAILS FOR THIS EVENT: the status line follows the ticks (3.113.0),
+     * in the words notify_kinds_status() writes. */
+    function initNotifyKinds() {
+        document.querySelectorAll('[data-uc-notify-kinds]').forEach(function (root) {
+            var status = root.querySelector('[data-uc-notify-kinds-status]');
+            if (!status) { return; }
+            var total = parseInt(status.getAttribute('data-uc-kinds-total'), 10) || 0;
+            root.addEventListener('change', function (e) {
+                if (!e.target || e.target.name !== 'notify_kinds[]') { return; }
+                var off = 0;
+                Array.prototype.forEach.call(root.querySelectorAll('input[name="notify_kinds[]"]'), function (box) {
+                    if (!box.checked) { off++; }
+                });
+                status.textContent = off ? (off + ' of ' + total + ' switched off.') : ('All ' + total + ' are on.');
+            });
+        });
+    }
+
     function initNotifyPicker() {
         document.querySelectorAll('[data-uc-notify-picker]').forEach(function (root) {
             var dataNode = root.querySelector('[data-uc-notify-data]');
@@ -3965,7 +3984,6 @@ function ucDismissOnBackdrop(dialog) {
              * ------------------------------------------------------------ */
             var chipWrap = root.querySelector('[data-uc-notify-chips]');
             var chipList = root.querySelector('[data-uc-notify-chips-list]');
-            var chipEmpty = root.querySelector('[data-uc-notify-chips-empty]');
             var chipLabel = root.querySelector('[data-uc-notify-chips-label]');
 
             function pickerBoxes() {
@@ -4024,16 +4042,19 @@ function ucDismissOnBackdrop(dialog) {
                     chipList.appendChild(chip);
                 });
 
-                /* ONE EMPTY STATE FOR THE CARD (3.107.0): "Nobody else yet."
-                 * only when nobody beyond the creator is on the list, and a
-                 * typed address counts. The label is there only over chips. */
+                /* ONE EMPTY STATE FOR THE CARD (3.107.0), the status line
+                 * since 3.113.0; see summarise(). The label is there only
+                 * over chips. */
+                if (chipLabel) { chipLabel.hidden = (n === 0); }
+                chipList.hidden = (n === 0);
+            }
+
+            function typedCount() {
                 var typed = 0;
                 Array.prototype.forEach.call(document.querySelectorAll('[data-uc-email-pill]'), function (box) {
                     if (box.checked) { typed++; }
                 });
-                if (chipEmpty) { chipEmpty.hidden = (n + typed !== 0); }
-                if (chipLabel) { chipLabel.hidden = (n === 0); }
-                chipList.hidden = (n === 0);
+                return typed;
             }
 
             /* ---- The live count ------------------------------------------ */
@@ -4090,13 +4111,16 @@ function ucDismissOnBackdrop(dialog) {
                     }
                 );
 
+                /* The status line, as notify_summary_text() writes it
+                 * (3.113.0): the card's one empty state when nobody beyond
+                 * the creator is picked or typed. */
+                var total = Object.keys(addresses).length;
+                var inTotal = total + (total === 1 ? ' person' : ' people') + ' in total.';
                 if (!picked.length) {
-                    countEl.textContent = '';
+                    countEl.textContent = typedCount() ? inTotal : 'Nobody else yet.';
                     return;
                 }
-                var total = Object.keys(addresses).length;
-                countEl.textContent = picked.join(', ') + '. '
-                    + total + (total === 1 ? ' person' : ' people') + ' in total.';
+                countEl.textContent = picked.join(', ') + '. ' + inTotal;
             }
 
             function refreshBoth() { drawChips(); summarise(); }

@@ -4130,10 +4130,28 @@ body.uc-modal-open { overflow: hidden; }
    checkbox, so the four notes line up with the four things they describe
    rather than with the boxes.
    ------------------------------------------------------------------------- */
-.uc-notify-kinds { margin-top: 6px; }
 .uc-notify-kinds .uc-check { margin-top: 12px; }
 .uc-notify-kinds .uc-check:first-of-type { margin-top: 4px; }
 .uc-notify-kind-note { margin: 2px 0 0 26px; }
+
+/* ---------------------------------------------------------------------------
+   WHO HEARS AND EMAILS FOR THIS EVENT ARE CONTROLS (3.113.0).
+
+   Each is a subhead, a status line and the secondary button. The button is
+   the <summary> of the disclosure that holds the panel, so it opens with no
+   script; it is sized to its label, and the panel opens under it in the
+   picker's bordered box. The status line is 14px --p-text, the card's body
+   line, and the section's 10px gap is the only space around it.
+   --------------------------------------------------------------------------- */
+.uc-portal .uc-notify-status { margin: 0; font-size: 14px; line-height: 1.5; color: var(--p-text); }
+.uc-portal .uc-notify-picker > .uc-notify-status { margin-bottom: 10px; }
+.uc-notify-choose > .uc-notify-choose-btn { width: fit-content; list-style: none; }
+.uc-notify-choose > .uc-notify-choose-btn::-webkit-details-marker { display: none; }
+.uc-notify-choose > .uc-notify-choose-btn::marker { content: ""; }
+.uc-notify-choose > .uc-picker-panel {
+    margin-top: 10px;
+    border: 1px solid var(--p-border); border-radius: 10px; background: #fff;
+}
 
 /* ---------------------------------------------------------------------------
    TEAMS AS AN ACCESS MODEL (3.35.0).

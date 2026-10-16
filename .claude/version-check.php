@@ -8,8 +8,7 @@
  * build-zip.sh runs it before anything is staged, so a disagreeing release is
  * never built.
  *
- * THE FOURTH PLACE IS embed-app.js (embed.js until 3.112.1, when embed.js became
- * a loader that carries no version). EMBED_JS_VERSION is how a stale cached script
+ * THE FOURTH PLACE IS embed.js. EMBED_JS_VERSION is how a stale cached script
  * says so (PROJECT.md 1), and it was bumped by hand with nothing checking it
  * until the embed filter test caught 3.100.2 without it. The build gate checked
  * three places and the release steps named three, so the fourth was found by a
@@ -32,9 +31,7 @@ function sfaf_version_places( $root ) {
         'plugin header (sfaf-calendar.php)'          => $read( 'sfaf-calendar.php', '/^ \* Version: (\S+)$/m' ),
         'SFAF_VERSION (sfaf-calendar.php)'           => $read( 'sfaf-calendar.php', "/^define\\( 'SFAF_VERSION', '([^']+)' \\);$/m" ),
         'readme Stable tag (readme.txt)'             => $read( 'readme.txt', '/^Stable tag: (\S+)$/m' ),
-        'EMBED_JS_VERSION (public/js/embed-app.js)'      => $read( 'public/js/embed-app.js', "/EMBED_JS_VERSION = '([^']+)';/" ),
-        // The fifth (3.112.2): what the loader reads, so it loads this release.
-        'sfafCalendarEmbedVersion (public/js/embed-version.js)' => $read( 'public/js/embed-version.js', "/sfafCalendarEmbedVersion = '([^']+)';/" ),
+        'EMBED_JS_VERSION (public/js/embed.js)'      => $read( 'public/js/embed.js', "/EMBED_JS_VERSION = '([^']+)';/" ),
     );
 }
 
@@ -56,6 +53,6 @@ if ( isset( $argv ) && realpath( $argv[0] ) === realpath( __FILE__ ) ) {
         echo "Nothing was built. Bump every place, or build the version they agree on.\n";
         exit( 1 );
     }
-    echo "version $version agrees in all five places.\n";
+    echo "version $version agrees in all four places.\n";
     exit( 0 );
 }

@@ -34,8 +34,7 @@ function em( $label, $got, $want ) {
 $count = 0;
 foreach ( SFAF_Messages::catalog() as $key => $m ) {
     foreach ( array_keys( $m['variants'] ) as $variant ) {
-        // Both languages, or English alone for a staff message (3.112.0).
-        foreach ( SFAF_Messages::langs_for( $key ) as $lang ) {
+        foreach ( array( 'en', 'es' ) as $lang ) {
             $r = SFAF_Messages::render_sample( $key, $variant, $lang );
             $count++;
             foreach ( array( 'subject', 'html', 'text' ) as $part ) {
@@ -59,8 +58,8 @@ foreach ( SFAF_Messages::catalog() as $key => $m ) {
 }
 // Every variant in the catalog, in both languages: the four offer messages went in 3.110.0.
 $expect = 0;
-foreach ( SFAF_Messages::catalog() as $mk => $m ) { $expect += count( SFAF_Messages::langs_for( $mk ) ) * count( $m['variants'] ); }
-em( 'every message and variant rendered in each of its languages', array( $count, $count >= 40 ), array( $expect, true ) );
+foreach ( SFAF_Messages::catalog() as $m ) { $expect += 2 * count( $m['variants'] ); }
+em( 'every message and variant rendered in both languages', array( $count, $count >= 40 ), array( $expect, true ) );
 
 /* The shipped text uses only the tokens its message can fill. */
 $cat = SFAF_Messages::catalog();

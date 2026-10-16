@@ -151,14 +151,11 @@ $portal = ( new ReflectionClass( 'SFAF_Portal' ) )->newInstanceWithoutConstructo
 $labels = array(
     'title' => 'Title', 'date' => 'Date', 'start_time' => 'Start', 'end_time' => 'End',
     'organizer' => 'Organizer', 'category' => 'Categories', 'description' => 'Description', 'location' => 'Location',
-    // End date's first word, which the probe reads; Multi-day only (3.112.0).
-    'last_date' => 'End',
 );
 rm_check( array_keys( $labels ) === array_keys( SFAF_Sources::publish_fields() ) || count( array_diff( array_keys( SFAF_Sources::publish_fields() ), array_keys( $labels ) ) ) === 0,
     'publish_fields() names a field this test does not know the label of' );
 $want_labels = array();
 foreach ( array_keys( SFAF_Sources::publish_fields() ) as $k ) { $want_labels[] = isset( $labels[ $k ] ) ? $labels[ $k ] : $k; }
-$want_labels = array_values( array_unique( $want_labels ) ); // the probe dedupes, and End is two labels
 sort( $want_labels );
 $pages['editor'] = array(
     'html'   => rm_capture( function () use ( $portal ) { kit_call( 'SFAF_Portal', 'render_event_form', $portal, array( new WP_User(), 0 ) ); } ),

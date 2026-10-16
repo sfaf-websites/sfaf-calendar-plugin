@@ -200,7 +200,6 @@ function ucDismissOnBackdrop(dialog) {
         run('attachment', initAttachment);
         run('checkin', initCheckin);
         run('rsvpFilter', initRsvpFilter);
-        run('replyTo', initReplyTo);
     });
 
     /* ---------------------------------------------------------------------
@@ -359,49 +358,6 @@ function ucDismissOnBackdrop(dialog) {
      * button says "Checked in [time]", or "Check in" again on a second press,
      * and the count above follows.
      * ------------------------------------------------------------------ */
-    /* ---------------------------------------------------------------------
-     * REPLIES GO TO (3.112.0): a calendar user or someone else. The filter
-     * box narrows the list as you type; choosing somebody names them on the
-     * closed control; choosing Someone else puts the caret in the address,
-     * which CSS reveals for that choice alone.
-     * ------------------------------------------------------------------ */
-    function initReplyTo() {
-        document.querySelectorAll('[data-uc-replyto]').forEach(function (root) {
-            var filter = root.querySelector('[data-uc-replyto-filter]');
-            var summary = root.querySelector('[data-uc-replyto-summary]');
-            var typed = root.querySelector('input[name="event_replyto"]');
-            var empty = root.querySelector('[data-uc-replyto-empty]');
-            if (filter) {
-                filter.addEventListener('input', function () {
-                    var q = filter.value.trim().toLowerCase();
-                    var shown = 0;
-                    root.querySelectorAll('.uc-picker-option').forEach(function (opt) {
-                        var hay = opt.getAttribute('data-uc-picker-search');
-                        var keep = !q || hay === '' || hay.indexOf(q) !== -1;
-                        opt.hidden = !keep;
-                        if (keep && hay !== '') { shown++; }
-                    });
-                    if (empty) { empty.hidden = !q || shown > 0; }
-                });
-            }
-            root.addEventListener('change', function (e) {
-                var r = e.target;
-                if (!r || r.name !== 'event_replyto_pick') { return; }
-                if (r.hasAttribute('data-uc-replyto-other')) {
-                    if (summary) { summary.textContent = (typed && typed.value) ? typed.value : 'Someone else'; }
-                    if (typed) { typed.focus(); }
-                } else if (summary) {
-                    summary.textContent = r.getAttribute('data-uc-replyto-name') || r.value;
-                }
-            });
-            if (typed) {
-                typed.addEventListener('input', function () {
-                    var other = root.querySelector('[data-uc-replyto-other]');
-                    if (other && other.checked && summary) { summary.textContent = typed.value || 'Someone else'; }
-                });
-            }
-        });
-    }
     function initCheckin() {
         var count = document.querySelector('[data-uc-checked-count]');
         document.querySelectorAll('[data-uc-checkin-form]').forEach(function (form) {
@@ -5792,18 +5748,6 @@ function ucDismissOnBackdrop(dialog) {
         function hits() {
             var all = [];
             if (dateInput.value) { all.push(dateInput.value); }
-            /* Every day of a multi-day event (3.112.0). */
-            var md = form.querySelector('[data-uc-multiday-tick]');
-            var lastInput = form.querySelector('input[name="last_date"]');
-            if (md && md.checked && lastInput && dateInput.value && lastInput.value > dateInput.value) {
-                var d = new Date(dateInput.value + 'T12:00:00Z');
-                var stop = new Date(lastInput.value + 'T12:00:00Z');
-                for (var n = 0; d < stop && n < 400; n++) {
-                    d = new Date(d.getTime() + 86400000);
-                    var ymd = d.toISOString().slice(0, 10);
-                    if (all.indexOf(ymd) === -1) { all.push(ymd); }
-                }
-            }
             if (repeat) {
                 (repeat.getAttribute('data-uc-repeat-dates') || '').split(' ').forEach(function (d) {
                     if (d && all.indexOf(d) === -1) { all.push(d); }
@@ -6100,7 +6044,6 @@ function ucDismissOnBackdrop(dialog) {
         var subjectOut = root.querySelector('[data-uc-tpl-subject]');
         var stateOut = root.querySelector('[data-uc-tpl-state]');
         var editBtn = root.querySelector('[data-uc-tpl-edit]');
-        var langSel = root.querySelector('[data-uc-tpl-lang]');
 
         // The editors and their chips are chipEditors()'s (3.110.0), shared with Email registrants.
         var chips = chipEditors(root, form, data.tokens || {});
@@ -6126,13 +6069,6 @@ function ucDismissOnBackdrop(dialog) {
                 if (box) { box.value = m.fields[f] || ''; }
                 if (editors[f]) { fill(editors[f], m.fields[f] || ''); }
             });
-            /* A staff message is English only (3.112.0): the language
-               picker shows English and is off while it is chosen. */
-            var langs = (data.catalog[state.key] || {}).langs;
-            if (langSel) {
-                langSel.disabled = !!(langs && langs.length === 1);
-                if (langSel.disabled) { langSel.value = langs[0]; }
-            }
             var allowed = (data.catalog[state.key] || {}).tokens || [];
             Array.prototype.forEach.call(root.querySelectorAll('[data-uc-tpl-token]'), function (b) {
                 b.hidden = allowed.indexOf(b.getAttribute('data-uc-tpl-token')) === -1;
@@ -6150,6 +6086,7 @@ function ucDismissOnBackdrop(dialog) {
                 show();
             });
         });
+        var langSel = root.querySelector('[data-uc-tpl-lang]');
         if (langSel) {
             langSel.addEventListener('change', function () {
                 state.lang = langSel.value;
@@ -7262,20 +7199,12 @@ function ucDismissOnBackdrop(dialog) {
              * server never has to decide whether a stored message was meant to
              * go out. See render_cancel_card() and the handler. */
             var note = form.querySelector('[data-uc-cancel-message]');
-            /* THE COUNTS FOLLOW WHICH DATES (3.112.1). On an event with more
-             * than one upcoming date the dialog asks this date or all of them,
-             * and each answer has its own numbers on the counter. Read at
-             * submit, because the answer is given after this runs. */
-            var allDates = function () {
-                var pick = form.querySelector('input[name="cancel_scope"]:checked');
-                return !!(pick && 'all_upcoming' === pick.value);
-            };
-            var number = function (name) {
-                return counter ? (parseInt(counter.getAttribute(name + (allDates() ? '-all' : '')), 10) || 0) : 0;
-            };
-            /* Inside a Cancel event dialog the dialog was the question; with
-             * nobody to tell, a second "Cancel this event?" is the same one again. */
-            var inDialog = !!form.closest('[data-uc-dialog-panel]');
+            var people = counter ? (parseInt(counter.getAttribute('data-uc-cancel-count'), 10) || 0) : 0;
+            /* THE WAITLIST, COUNTED APART (3.106.2). A cancellation writes to it
+             * too, so cancelling asks when either number is above nought. Putting
+             * an event back on writes to registrants only and ignores it. */
+            var waiting = (!back && counter) ? (parseInt(counter.getAttribute('data-uc-cancel-waiting'), 10) || 0) : 0;
+            var told = people + waiting;
             var answered = false;
 
             form.addEventListener('submit', function (e) {
@@ -7285,15 +7214,9 @@ function ucDismissOnBackdrop(dialog) {
                 }
                 e.preventDefault();
                 var submitter = e.submitter || null;
-                var people = number('data-uc-cancel-count');
-                /* THE WAITLIST, COUNTED APART (3.106.2). A cancellation writes to it
-                 * too, so cancelling asks when either number is above nought. Putting
-                 * an event back on writes to registrants only and ignores it. */
-                var waiting = back ? 0 : number('data-uc-cancel-waiting');
-                var told = people + waiting;
 
                 if (told < 1 || !field) {
-                    if (back || inDialog) {
+                    if (back) {
                         /* Nobody was told it was off, so there is nobody to
                          * tell it is back, and nothing to confirm. */
                         answered = true;
@@ -7863,99 +7786,6 @@ function ucDismissOnBackdrop(dialog) {
         document.body.classList.add('uc-modal-open');
         dialog.showModal();
     });
-})();
-
-/* ---------------------------------------------------------------------------
-   THE CENTRED DIALOGS (3.112.1): Cancel event and Delete on Edit event and a
-   closed day, and Delete on a tag.
-
-   THE PANEL IS IN THE PAGE AND THIS LIFTS IT INTO A <dialog>, the arrangement
-   the approval prompt uses. A button with data-uc-dialog-open names its panel;
-   pressing it moves the panel into a dialog opened with showModal(), and
-   closing puts it back where it was, hidden. Escape, the dim and Keep close it
-   and change nothing.
-
-   With this script missing, or a browser with no <dialog>, the panel stays on
-   the page where it was drawn, its form works as it reads, and the Keep
-   button, which only closes a dialog, stays hidden.
-
-   The forms move with their panels, and every submit names its form by id, so
-   nothing posts with the wrong form while it is in the dialog.
-   --------------------------------------------------------------------------- */
-(function () {
-    var openers = document.querySelectorAll('[data-uc-dialog-open]');
-    if (!openers.length) { return; }
-
-    var supported = false;
-    try {
-        supported = typeof document.createElement('dialog').showModal === 'function';
-    } catch (err) {
-        supported = false;
-    }
-    if (!supported) { return; }
-
-    document.querySelectorAll('[data-uc-dialog-panel]').forEach(function (panel) {
-        panel.hidden = true;
-    });
-
-    function openPanel(panel) {
-        if (panel.closest('dialog')) { return; }
-        var home = document.createComment('uc-dialog-home');
-        panel.parentNode.insertBefore(home, panel);
-
-        var dialog = document.createElement('dialog');
-        dialog.className = 'uc-confirm-modal uc-dialog';
-        var title = panel.querySelector('.uc-dialog-title');
-        if (title && title.id) { dialog.setAttribute('aria-labelledby', title.id); }
-
-        var closers = Array.prototype.slice.call(panel.querySelectorAll('[data-uc-dialog-close]'));
-
-        /* PUT BACK BY WHATEVER CLOSED IT, ONCE. Keep, the dim and Escape each
-           close the dialog and restore the panel themselves rather than wait
-           for the close event: a browser that queues that event late (headless
-           Chrome does not send it at all) would leave the panel inside a
-           closed dialog, and the next press would find nothing to open. */
-        var restored = false;
-        var restore = function () {
-            if (restored) { return; }
-            restored = true;
-            document.body.classList.remove('uc-modal-open');
-            closers.forEach(function (b) { b.removeEventListener('click', shut); b.hidden = true; });
-            panel.hidden = true;
-            home.parentNode.insertBefore(panel, home);
-            home.parentNode.removeChild(home);
-            if (dialog.open) { dialog.close(); }
-            dialog.remove();
-        };
-        var shut = function (e) { e.preventDefault(); restore(); };
-        closers.forEach(function (b) { b.hidden = false; b.addEventListener('click', shut); });
-
-        panel.hidden = false;
-        dialog.appendChild(panel);
-        document.body.appendChild(dialog);
-
-        dialog.addEventListener('close', restore);
-        dialog.addEventListener('cancel', function (e) { e.preventDefault(); restore(); });
-        ucDismissOnBackdrop(dialog);
-        dialog.addEventListener('click', function (e) { if (e.target === dialog) { restore(); } });
-        document.body.classList.add('uc-modal-open');
-        dialog.showModal();
-        /* The answer that changes nothing has the focus, so a stray Return keeps. */
-        if (closers[0]) { closers[0].focus(); }
-    }
-
-    openers.forEach(function (btn) {
-        btn.addEventListener('click', function (e) {
-            var panel = document.getElementById(btn.getAttribute('data-uc-dialog-open'));
-            if (!panel) { return; }
-            e.preventDefault();
-            openPanel(panel);
-        });
-    });
-
-    /* Arrived to cancel (the events list's Cancel carries cancel=1). */
-    var auto = document.querySelector('[data-uc-dialog-panel][data-uc-dialog-autoopen]');
-    if (auto) { openPanel(auto); }
 })();
 
 </script>

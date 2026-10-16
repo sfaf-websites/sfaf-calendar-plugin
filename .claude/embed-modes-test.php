@@ -768,7 +768,7 @@ check( false !== strpos( $admin, 'uc-embed-source-links' ), 'the embed generator
 $js = file_get_contents( $root . '/admin/js/admin.js' );
 check( false !== strpos( $js, "attrs['data-source-links']" ), 'the generator does not write data-source-links onto the block' );
 
-$ejs = file_get_contents( $root . '/public/js/embed-app.js' );
+$ejs = file_get_contents( $root . '/public/js/embed.js' );
 check( false !== strpos( $ejs, "data-source-links" ), 'embed.js does not send the setting back to the endpoint' );
 check(
     false !== strpos( $ejs, "configured === 'combined'" ),
@@ -1073,11 +1073,9 @@ check(
     'who_counts() leaves the organizer filter applied to its own counts, so ticking one zeroes the rest'
 );
 /* QUOTED EXACTLY, for the same reason as `uc-day-event-text` above. */
-/* Three since 3.112.0: organizers, groups, and render_pick(), which draws What's
-   included and Location with the same count. */
 check(
-    3 === substr_count( $code, 'class="uc-who-count"' ),
-    'the count is missing from one of the lists, so organizers, groups and the two dropdowns no longer answer the same question'
+    2 === substr_count( $code, 'class="uc-who-count"' ),
+    'the count is missing from one of the two lists, so organizers and groups no longer answer the same question'
 );
 check(
     false !== strpos( $code, 'if ( 0 === $n && ! $on ) { continue; }' ),
@@ -1279,7 +1277,7 @@ check(
     'the renderer sorts ticked terms to the top again, so the server and the two scripts disagree about the order'
 );
 $cal_js = (string) file_get_contents( $root . '/public/js/calendar.js' );
-$emb_js = (string) file_get_contents( $root . '/public/js/embed-app.js' );
+$emb_js = (string) file_get_contents( $root . '/public/js/embed.js' );
 $strip_js = function ( $js ) {
     $js = preg_replace( '#/\*.*?\*/#s', '', $js );
     return preg_replace( '#^\s*//.*$#m', '', $js );

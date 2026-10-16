@@ -164,8 +164,7 @@ gate_is( $r['status'], 'publish', 'a stored category and organizer were ignored 
 
 /* ---- 13. The list the marks and the hold both read. ---- */
 gate_is( array_keys( SFAF_Sources::publish_fields() ),
-    // last_date (3.112.0): required only when Multi-day is ticked.
-    array( 'title', 'date', 'start_time', 'end_time', 'organizer', 'category', 'description', 'location', 'last_date' ),
+    array( 'title', 'date', 'start_time', 'end_time', 'organizer', 'category', 'description', 'location' ),
     'publish_fields() is not the list the brief gives' );
 
 /* ---- 14. requirement() still answers its old five-argument callers. ---- */

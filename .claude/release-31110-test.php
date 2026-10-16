@@ -129,7 +129,7 @@ rt( false !== strpos( $block['html'], 'data-uc-featured' ) && false !== strpos( 
 $narrow = $sc->render_calendar_block( array( 'view' => 'list', 'pin' => (string) $pin, 'toggle' => 'no', 's' => 'ordinary' ) );
 rt( false === strpos( $narrow['html'], 'data-uc-featured' ) && false !== strpos( $narrow['html'], 'data-pin="' . $pin . '"' ) && false !== strpos( $narrow['html'], 'data-filter-pin=""' ),
     'A.1: a search does not set the pin aside while keeping it on the block' );
-rt( false !== strpos( file_get_contents( $GLOBALS['kit_root'] . '/public/js/embed-app.js' ), "pin: container.getAttribute('data-pin') || ''" ), 'A.1: embed.js does not send data-pin' );
+rt( false !== strpos( file_get_contents( $GLOBALS['kit_root'] . '/public/js/embed.js' ), "pin: container.getAttribute('data-pin') || ''" ), 'A.1: embed.js does not send data-pin' );
 $admin_src = file_get_contents( $GLOBALS['kit_root'] . '/admin/class-sfaf-admin.php' );
 rt( false !== strpos( $admin_src, 'Pin an event' ) && false !== strpos( $admin_src, 'SFAF_Privacy::exclude( $args );' ), 'A.2: the generator has no Pin an event, or its list is not private-free' );
 $choices = kit_call( 'SFAF_Admin', 'pin_choices', ( new ReflectionClass( 'SFAF_Admin' ) )->newInstanceWithoutConstructor() );

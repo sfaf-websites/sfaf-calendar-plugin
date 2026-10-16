@@ -150,8 +150,6 @@ function get_userdata( $id ) { return false; }
 function has_post_thumbnail( $id = 0 ) { return false; }
 function get_post_thumbnail_id( $id = 0 ) { return 0; }
 function wp_get_post_terms( $id, $tax, $args = array() ) { return array(); }
-// The tag pills read the term cache since 3.112.2.
-function get_the_terms( $id, $tax ) { $t = wp_get_post_terms( $id, $tax ); return $t ? $t : false; }
 function wp_get_attachment_image_url( $id, $s = 'thumbnail' ) { return ''; }
 function get_terms( $a = array() ) { return array(); }
 function get_term( $id, $tax = '' ) { return null; }
@@ -427,23 +425,16 @@ class SFAF_Search {
 class SFAF_Closures {
     public static function date_warning_markup() { return ''; }
     public static function flag_for( $date ) { return ''; }
-    // A multi-day flag and On closed days (3.112.0); no closures here.
-    public static function flag_for_event( $id ) { return ''; }
-    public static function all() { return array(); }
-    public static function name( $row ) { return ''; }
 }
 
 class SFAF_Series {
     const TAXONOMY = 'uc_series';
     public static function all() { return array(); }
-    /* The editor's What's included note asks it (3.112.0). */
-    public static function filled_from( $id, $field ) { return ''; }
 }
 /* The bulk bar's pickers (3.103.0). Empty lists are enough to draw it. */
 class SFAF_Categories { public static function all() { return array(); } public static function exists( $id ) { return false; } }
 class SFAF_Organizers { public static function all() { return array(); } public static function exists( $id ) { return false; } }
 
-require_once $root . '/includes/class-sfaf-tags.php'; // What's included (3.112.0)
 require_once $root . '/includes/class-sfaf-request.php';
 require_once $root . '/includes/class-sfaf-uploads.php';
 require_once $root . '/includes/class-sfaf-attachments.php'; // Event details' PDF (3.111.0)
@@ -452,9 +443,6 @@ require_once $root . '/includes/class-sfaf-media-folder.php';
 require_once $root . '/includes/class-sfaf-media.php';
 require_once $root . '/includes/class-sfaf-submissions.php';
 require_once $root . '/includes/class-sfaf-submit.php';
-// On closed days, a tab of Pending (3.112.0).
-if ( ! class_exists( 'SFAF_Closures' ) ) { require_once $root . '/includes/class-sfaf-closures.php'; }
-require_once $root . '/includes/class-sfaf-closure-review.php';
 require_once $root . '/includes/class-sfaf-portal.php';
 
 /* ---------------------------------------------------------------------------

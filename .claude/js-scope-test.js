@@ -43,7 +43,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.dirname(__dirname);
-const FILES = ['public/js/portal.js', 'public/js/calendar.js', 'public/js/embed-app.js'];
+const FILES = ['public/js/portal.js', 'public/js/calendar.js', 'public/js/embed.js'];
 
 /* ---------------------------------------------------------------------------
  * Comments and string literals are removed first, so a helper's NAME appearing

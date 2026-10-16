@@ -181,20 +181,6 @@ Words in a message that come from the event, such as its title, location and org
 |---|---|---|
 | Text | Text me about this event | Envíenme mensajes de texto sobre este evento |
 
-## Event on a closed day
-
-| | English (staff, not translated) |
-|---|---|
-| Subject | Coffee and Conversation is on a day SFAF is closed |
-| Text | Coffee and Conversation is on a day SFAF is closed, Alex.<br><br>SFAF is closed on Thursday, November 26, 2026 for Thanksgiving. Keep the event to hold it that day anyway, or cancel it. Each button opens the event in caladmin to confirm.<br><br>Event: Coffee and Conversation<br>Date: Thursday, November 26, 2026<br>SFAF closed: Thanksgiving<br><br>Keep the event: https://resources.sfaf.org/caladmin/closed-day/123?closure=c20261126&do=keep<br>Cancel the event: https://resources.sfaf.org/caladmin/closed-day/123?closure=c20261126&do=cancel<br><br><br>San Francisco AIDS Foundation, 940 Howard Street, San Francisco, CA 94103 |
-
-## Event on a closed day: a week to go
-
-| | English (staff, not translated) |
-|---|---|
-| Subject | A week to go: Coffee and Conversation is on a day SFAF is closed |
-| Text | Coffee and Conversation is a week away, Alex, on a day SFAF is closed.<br><br>SFAF is closed on Thursday, November 26, 2026 for Thanksgiving, and nobody has kept or cancelled the event yet. Keep it to hold it that day anyway, or cancel it.<br><br>Event: Coffee and Conversation<br>Date: Thursday, November 26, 2026<br>SFAF closed: Thanksgiving<br><br>Keep the event: https://resources.sfaf.org/caladmin/closed-day/123?closure=c20261126&do=keep<br>Cancel the event: https://resources.sfaf.org/caladmin/closed-day/123?closure=c20261126&do=cancel<br><br><br>San Francisco AIDS Foundation, 940 Howard Street, San Francisco, CA 94103 |
-
 ## Cancel your place page
 
 ### Asking
@@ -287,4 +273,3 @@ Labels, buttons and the calendar file's words. These are not edited on the Templ
 | Join | Participar |
 | Join the event | Participar en el evento |
 | In person and online | En persona y en línea |
-| Tags | Etiquetas |

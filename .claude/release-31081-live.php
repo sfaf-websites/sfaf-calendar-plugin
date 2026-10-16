@@ -169,10 +169,11 @@ window.addEventListener('load', function () { setTimeout(function () {
   out.faqToggleCss = css(q('[data-uc-faq-toggle]'), ['fontSize', 'fontWeight', 'color']);
 
   /* E: the two Notifications rows. */
-  var kinds = q('.uc-notify-kinds'), pick = q('[data-uc-notify-picker] .uc-picker');
+  /* Since 3.113.0 each is a button (the summary) that opens its panel. */
+  var kinds = q('.uc-notify-kinds'), pick = q('[data-uc-notify-picker] .uc-notify-choose');
   function row(d) {
     if (!d) { return null; }
-    var s = q(':scope > summary', d), ch = s ? q('.uc-disclosure-chevron', s) : null, lb = s ? q('.uc-picker-label', s) : null;
+    var s = q(':scope > summary', d), ch = s ? q('.uc-disclosure-chevron', s) : null, lb = s ? q(':scope > span:not(.uc-disclosure-chevron)', s) : null;
     return { box: rect(d), summary: rect(s), chevron: rect(ch), label: rect(lb), labelText: text(lb),
       css: css(d, ['borderTopColor', 'borderTopWidth', 'borderTopLeftRadius', 'backgroundColor']),
       scss: css(s, ['paddingTop', 'paddingLeft', 'paddingRight', 'fontSize', 'fontWeight', 'color']) };
@@ -321,11 +322,12 @@ foreach ( array_keys( $g ) as $t ) {
     /* E, wherever both rows are drawn. */
     $k = (array) $v( $t, 'kinds' ); $p = (array) $v( $t, 'pick' );
     if ( $k && $p ) {
-        rf_check( $k['box']['w'] === $p['box']['w'] && $k['box']['left'] === $p['box']['left'] && $k['summary']['h'] === $p['summary']['h'] && $k['css'] === $p['css'] && $k['scss'] === $p['scss'],
+        /* The same button, not the same width: each is sized to its label (3.113.0). */
+        rf_check( $k['box']['left'] === $p['box']['left'] && $k['summary']['h'] === $p['summary']['h'] && $k['css'] === $p['css'] && $k['scss'] === $p['scss'],
             "PLANT E: $t: the Notifications rows differ: " . json_encode( array( 'kinds' => $k, 'pick' => $p ) ) );
-        rf_check( 0 === strpos( (string) $k['labelText'], 'Emails for this event:' ) && $k['label'] && $k['chevron'] && $k['label']['left'] < $k['chevron']['left']
+        rf_check( 'Choose emails' === (string) $k['labelText'] && 'Choose people' === (string) $p['labelText'] && $k['label'] && $k['chevron'] && $k['label']['left'] < $k['chevron']['left']
             && abs( ( $k['summary']['right'] - $k['chevron']['right'] ) - ( $p['summary']['right'] - $p['chevron']['right'] ) ) <= 1,
-            "PLANT E: $t: the emails row is not label left, chevron right: " . json_encode( $k ) );
+            "PLANT E: $t: the two buttons are not Choose people and Choose emails, label left and chevron right: " . json_encode( array( $k, $p ) ) );
         rf_check( null !== $v( $t, 'kindsPanel' ) && $v( $t, 'kindsPanel' ) === $v( $t, 'pickPanel' ), "PLANT E: $t: the two rows' panels are padded differently: " . json_encode( array( $v( $t, 'kindsPanel' ), $v( $t, 'pickPanel' ) ) ) );
     }
 

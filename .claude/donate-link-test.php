@@ -83,7 +83,7 @@ dn_check( 'a changed default is used', dl_href( dl_event() ), 'https://example.o
  * The link appears only as one line in the confirmation and the reminder
  * (email-messages-test.php). Nothing that draws a public page may read it. */
 $root = dirname( __DIR__ );
-foreach ( array( 'templates/single-uc_event.php', 'includes/class-sfaf-shortcodes.php', 'includes/class-sfaf-embed.php', 'public/js/calendar.js', 'public/js/embed-app.js' ) as $file ) {
+foreach ( array( 'templates/single-uc_event.php', 'includes/class-sfaf-shortcodes.php', 'includes/class-sfaf-embed.php', 'public/js/calendar.js', 'public/js/embed.js' ) as $file ) {
     $code = preg_replace( '#/\*.*?\*/#s', '', (string) file_get_contents( $root . '/' . $file ) );
     $code = preg_replace( '#^\s*//.*$#m', '', $code );
     dn_check( "PLANT: $file draws no donate button", (bool) preg_match( '/sfaf_donate_(resolve|url|block)\s*\(|>Donate<|uc-lrow-donate/', $code ), false );

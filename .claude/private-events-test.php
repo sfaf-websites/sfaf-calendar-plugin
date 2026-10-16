@@ -525,11 +525,6 @@ $WHITELIST = array(
     'class-sfaf-venues.php'          => 'which events use a venue, for the deletion refusal',
     'class-sfaf-organizers.php'      => 'which events name an organizer, for the count and the deletion confirmation',
     'class-sfaf-categories.php'      => 'which events use a category, for the deletion refusal',
-    'class-sfaf-tags.php::events_using' => 'how many events carry a tag, a count on the Tags section of a staff screen',
-    'class-sfaf-tags.php::events_tagged' => 'how many events a Delete removes a tag from, every status, in the Delete dialog on a staff screen',
-    // A private event on a day SFAF is closed still needs its organizer to
-    // keep or cancel it, so this one must see private events (3.112.0).
-    'class-sfaf-closure-review.php'  => 'events on a closed day, for their organizer\'s staff email and the On closed days tab',
     /*
      * THE SAME SHAPE AS THE FOUR DELETION REFUSALS ABOVE, and it MUST see
      * private events for the same reason (3.81.0). uses_of() answers "what is

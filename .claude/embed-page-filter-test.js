@@ -17,7 +17,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const SRC = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'embed-app.js'), 'utf8');
+const SRC = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'embed.js'), 'utf8');
 
 const fails = [];
 function check(ok, msg) {
@@ -53,9 +53,9 @@ function run(search, attrs) {
     const window = { location: { search: search } };
     const noop = function () {};
     const make = new Function('window', 'bindAddToCalendar', 'bindChips', 'bindGroups', 'bindOrganizer',
-        'bindWho', 'bindPickers', 'ensureStylesheet', 'setLoading', 'loadBlock',
+        'bindWho', 'ensureStylesheet', 'setLoading', 'loadBlock',
         slice('pageParam') + '\n' + slice('init') + '\nreturn init;');
-    const init = make(window, noop, noop, noop, noop, noop, noop, noop, noop, noop);
+    const init = make(window, noop, noop, noop, noop, noop, noop, noop, noop);
     const c = container(attrs || {});
     init(c);
     return c.attrs;
@@ -76,11 +76,6 @@ check(a['data-active-groups'] === '', 'no uc_group is not an empty group list: '
 a = run('?uc_org=%E0%A4%A');
 check(a['data-active-organizer'] === undefined, 'a malformed uc_org was applied rather than ignored');
 
-/* What's included and Location ride the address too (3.112.0): See all events carries them. */
-a = run('?uc_tag=food%2Cchildcare&uc_loc=v-strut');
-check(a['data-active-tags'] === 'food,childcare', 'uc_tag was not applied: ' + JSON.stringify(a['data-active-tags']));
-check(a['data-active-locations'] === 'v-strut', 'uc_loc was not applied: ' + JSON.stringify(a['data-active-locations']));
-
 a = run('?not_uc_org=x');
 check(a['data-active-organizer'] === undefined, 'a parameter ending in uc_org was read as uc_org');
 
@@ -88,4 +83,4 @@ if (fails.length) {
     console.log('FAIL\n  ' + fails.join('\n  '));
     process.exit(1);
 }
-console.log('OK: an embed takes uc_cat, uc_org, uc_group, uc_tag and uc_loc from the host page\'s address, and leaves what it does not name alone.');
+console.log('OK: an embed takes uc_cat, uc_org and uc_group from the host page\'s address, and leaves what it does not name alone.');

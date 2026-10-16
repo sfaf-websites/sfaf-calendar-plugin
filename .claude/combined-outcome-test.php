@@ -142,10 +142,6 @@ function sfaf_ap_date( $d, $style = 'full' ) {
     }
 }
 function sfaf_ap_date_range( $a, $b ) { return sfaf_ap_date( $a, 'short' ) . ' to ' . sfaf_ap_date( $b, 'short' ); }
-/* Multi-day (3.112.0): this world has none, so every event is its one day. */
-function sfaf_event_last_date( $id ) { return ''; }
-function sfaf_event_days( $id ) { $d = (string) get_post_meta( (int) $id, '_uc_event_date', true ); return '' === $d ? array() : array( $d ); }
-function sfaf_ap_event_date( $id, $style = 'full', $lang = 'en' ) { return sfaf_ap_date( (string) get_post_meta( (int) $id, '_uc_event_date', true ), $style ); }
 function sfaf_ap_time_range( $s, $e ) { return $s . ' to ' . $e; }
 function sfaf_set_source_links( $v ) {}
 function sfaf_ap_time( $t ) { return (string) $t; }
@@ -252,7 +248,6 @@ function wp_reset_postdata() {}
 /* No Calendar home URL, so See all events takes the archive (3.110.4). */
 if ( ! function_exists( 'sfaf_calendar_home_url' ) ) { function sfaf_calendar_home_url() { return ''; } }
 require_once $root . '/includes/class-sfaf-slug-aliases.php';
-require_once $root . '/includes/class-sfaf-tags.php'; // What's included (3.112.0)
 require_once $root . '/includes/class-sfaf-shortcodes.php';
 
 /* ---------------------------------------------------------------------------

@@ -26,7 +26,7 @@
    XMLHttpRequest is left alone, so the cron nudge and anything added later
    still behave as they would. */
 (function () {
-  var PAYLOAD = {"html":"        <div class=\"uc-calendar uc-view-list\"\n                          data-view=\"list\"\n             data-category=\"\"\n             data-render=\"card\"\n             data-per-page=\"12\"\n                          data-scope-category=\"\"\n             data-active-category=\"\"\n             data-active-groups=\"\"\n                          data-scope-tag=\"\"\n             data-active-tags=\"\"\n             data-active-locations=\"\"\n             data-filter-tag=\"\"\n             data-filter-location=\"\"\n                          data-filters=\"category,organizer,series\"\n             data-scope-organizer=\"\"\n             data-active-organizer=\"\"\n             data-filter-category=\"\"\n             data-filter-organizer=\"\"\n             data-filter-series=\"0\"\n             data-filter-venue=\"\"\n                          data-filter-s=\"\"\n                          data-pin=\"\"\n             data-filter-pin=\"\"\n             data-pagination=\"load_more\"\n             data-page=\"1\"\n                                       data-month=\"2026-10-15 22:40:27\"\n             data-max-pages=\"1\">\n\n                                                <form class=\"uc-filter-form\" method=\"get\" action=\"\" data-uc-filter-form>\n                                            <div class=\"uc-filters\">\n                <div class=\"uc-search-wrap\">\n                    <svg class=\"sfaf-icon sfaf-icon-search uc-search-icon\" width=\"1em\" height=\"1em\" viewBox=\"0 0 24 24\" xmlns=\"http:\/\/www.w3.org\/2000\/svg\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><circle cx=\"10.5\" cy=\"10.5\" r=\"6.5\"\/><path d=\"m15.4 15.4 4.6 4.6\"\/><\/svg>                    <input type=\"search\" class=\"uc-search\" value=\"\"\n                           aria-label=\"Search events\" placeholder=\"Search events...\" \/>\n                <\/div>\n                                <div class=\"uc-filter-buttons\">\n                                                            <button type=\"submit\" name=\"uc_cat\" value=\"\"\n                            class=\"uc-filter-btn active\"\n                            data-category=\"all\" aria-pressed=\"true\">All Events<\/button>\n                                            <button type=\"submit\" name=\"uc_cat\" value=\"support-groups\"\n                                class=\"uc-filter-btn\"\n                                data-category=\"support-groups\"\n                                aria-pressed=\"false\"\n                                style=\"--cat-color: #16BECF\">\n                                                        <span class=\"uc-filter-dot\" aria-hidden=\"true\"><\/span>\n                            Support Groups                        <\/button>\n                                            <button type=\"submit\" name=\"uc_cat\" value=\"testing\"\n                                class=\"uc-filter-btn\"\n                                data-category=\"testing\"\n                                aria-pressed=\"false\"\n                                style=\"--cat-color: #16BECF\">\n                                                        <span class=\"uc-filter-dot\" aria-hidden=\"true\"><\/span>\n                            Testing                        <\/button>\n                                            <button type=\"submit\" name=\"uc_cat\" value=\"volunteering\"\n                                class=\"uc-filter-btn\"\n                                data-category=\"volunteering\"\n                                aria-pressed=\"false\"\n                                style=\"--cat-color: #16BECF\">\n                                                        <span class=\"uc-filter-dot\" aria-hidden=\"true\"><\/span>\n                            Volunteering                        <\/button>\n                                    <\/div>\n                \n                                                <details class=\"uc-who\" data-uc-who>\n            <summary class=\"uc-who-trigger\"\n                    data-uc-who-trigger\n                    aria-label=\"Filter by organizer or group\">\n                <span class=\"uc-who-label\" data-uc-who-label>Organizers and groups<\/span>\n                <svg class=\"sfaf-icon sfaf-icon-chevron uc-who-chevron\" width=\"1em\" height=\"1em\" viewBox=\"0 0 24 24\" xmlns=\"http:\/\/www.w3.org\/2000\/svg\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"m9 5 7 7-7 7\"\/><\/svg>            <\/summary>\n\n            <div class=\"uc-who-panel\" id=\"uc-who-2967\" data-uc-who-panel>\n                                <button type=\"button\" class=\"uc-who-clear\" data-uc-who-clear>Clear all<\/button>\n                                <div class=\"uc-who-cols\">\n                                            <section class=\"uc-who-col uc-who-col-org\">\n                            <p class=\"uc-who-heading\" id=\"uc-who-2967-org\">Organizers<\/p>\n                            <div class=\"uc-who-list\" role=\"group\" aria-labelledby=\"uc-who-2967-org\">\n                                                                    <label class=\"uc-who-opt\">\n                                        <input type=\"checkbox\" name=\"uc_org[]\"\n                                               value=\"sfaf\"\n                                               data-uc-who-organizer\n                                                \/>\n                                        <span>SFAF <span class=\"uc-who-count\" aria-hidden=\"true\">(1)<\/span><\/span>\n                                                                                    <span class=\"uc-visually-hidden\">1 upcoming event<\/span>\n                                                                            <\/label>\n                                                                    <label class=\"uc-who-opt\">\n                                        <input type=\"checkbox\" name=\"uc_org[]\"\n                                               value=\"strut\"\n                                               data-uc-who-organizer\n                                                \/>\n                                        <span>Strut <span class=\"uc-who-count\" aria-hidden=\"true\">(1)<\/span><\/span>\n                                                                                    <span class=\"uc-visually-hidden\">1 upcoming event<\/span>\n                                                                            <\/label>\n                                                            <\/div>\n                        <\/section>\n                    \n                                    <\/div>\n\n                                <noscript>\n                <div class=\"uc-who-foot\">\n                                                            <button type=\"submit\" name=\"uc_cat\" value=\"\"\n                            class=\"uc-who-apply\" data-uc-who-apply>Apply<\/button>\n                <\/div>\n                <\/noscript>\n            <\/div>\n        <\/details>\n                                                    <\/div>\n            <\/form>\n\n                        \n            <div class=\"uc-view-bar\">\n                                                                    <div class=\"uc-event-count\">\n                        <span class=\"uc-count-number\">0<\/span>\n                        events coming up                    <\/div>\n                                            <\/div>\n\n            \n            \n                        <div class=\"uc-view-panels\"\n                 >\n                            <div class=\"uc-view-panel uc-panel-list\">\n                                    <div class=\"uc-event-list\">\n                                                    <div class=\"uc-no-events\">\n                                <p>No upcoming events found.<\/p>\n                            <\/div>\n                                            <\/div>\n                                                <\/div>\n                                    <div class=\"uc-view-panel uc-panel-calendar\" hidden>\n                            <\/div>\n                        <\/div>\n\n                    <\/div>\n        ","css_url":"","js_version":"","total":0,"max_pages":1,"has_more":false,"card_style":""};
+  var PAYLOAD = {"html":"        <div class=\"uc-calendar uc-view-list\"\n                          data-view=\"list\"\n             data-category=\"\"\n             data-render=\"card\"\n             data-per-page=\"12\"\n                          data-scope-category=\"\"\n             data-active-category=\"\"\n             data-active-groups=\"\"\n                          data-filters=\"category,organizer,series\"\n             data-scope-organizer=\"\"\n             data-active-organizer=\"\"\n             data-filter-category=\"\"\n             data-filter-organizer=\"\"\n             data-filter-series=\"0\"\n             data-filter-venue=\"\"\n                          data-filter-s=\"\"\n                          data-pin=\"\"\n             data-filter-pin=\"\"\n             data-pagination=\"load_more\"\n             data-page=\"1\"\n                                       data-month=\"2026-10-14 23:12:22\"\n             data-max-pages=\"1\">\n\n                                                <form class=\"uc-filter-form\" method=\"get\" action=\"\" data-uc-filter-form>\n                                            <div class=\"uc-filters\">\n                <div class=\"uc-search-wrap\">\n                    <svg class=\"sfaf-icon sfaf-icon-search uc-search-icon\" width=\"1em\" height=\"1em\" viewBox=\"0 0 24 24\" xmlns=\"http:\/\/www.w3.org\/2000\/svg\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><circle cx=\"10.5\" cy=\"10.5\" r=\"6.5\"\/><path d=\"m15.4 15.4 4.6 4.6\"\/><\/svg>                    <input type=\"search\" class=\"uc-search\" value=\"\"\n                           aria-label=\"Search events\" placeholder=\"Search events...\" \/>\n                <\/div>\n                                <div class=\"uc-filter-buttons\">\n                                                            <button type=\"submit\" name=\"uc_cat\" value=\"\"\n                            class=\"uc-filter-btn active\"\n                            data-category=\"all\" aria-pressed=\"true\">All Events<\/button>\n                                            <button type=\"submit\" name=\"uc_cat\" value=\"support-groups\"\n                                class=\"uc-filter-btn\"\n                                data-category=\"support-groups\"\n                                aria-pressed=\"false\"\n                                style=\"--cat-color: #16BECF\">\n                                                        <span class=\"uc-filter-dot\" aria-hidden=\"true\"><\/span>\n                            Support Groups                        <\/button>\n                                            <button type=\"submit\" name=\"uc_cat\" value=\"testing\"\n                                class=\"uc-filter-btn\"\n                                data-category=\"testing\"\n                                aria-pressed=\"false\"\n                                style=\"--cat-color: #16BECF\">\n                                                        <span class=\"uc-filter-dot\" aria-hidden=\"true\"><\/span>\n                            Testing                        <\/button>\n                                            <button type=\"submit\" name=\"uc_cat\" value=\"volunteering\"\n                                class=\"uc-filter-btn\"\n                                data-category=\"volunteering\"\n                                aria-pressed=\"false\"\n                                style=\"--cat-color: #16BECF\">\n                                                        <span class=\"uc-filter-dot\" aria-hidden=\"true\"><\/span>\n                            Volunteering                        <\/button>\n                                    <\/div>\n                \n                                                <details class=\"uc-who\" data-uc-who>\n            <summary class=\"uc-who-trigger\"\n                    data-uc-who-trigger\n                    aria-label=\"Filter by organizer or group\">\n                <span class=\"uc-who-label\" data-uc-who-label>Organizers and groups<\/span>\n                <svg class=\"sfaf-icon sfaf-icon-chevron uc-who-chevron\" width=\"1em\" height=\"1em\" viewBox=\"0 0 24 24\" xmlns=\"http:\/\/www.w3.org\/2000\/svg\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"m9 5 7 7-7 7\"\/><\/svg>            <\/summary>\n\n            <div class=\"uc-who-panel\" id=\"uc-who-3192\" data-uc-who-panel>\n                                <button type=\"button\" class=\"uc-who-clear\" data-uc-who-clear>Clear all<\/button>\n                                <div class=\"uc-who-cols\">\n                                            <section class=\"uc-who-col uc-who-col-org\">\n                            <p class=\"uc-who-heading\" id=\"uc-who-3192-org\">Organizers<\/p>\n                            <div class=\"uc-who-list\" role=\"group\" aria-labelledby=\"uc-who-3192-org\">\n                                                                    <label class=\"uc-who-opt\">\n                                        <input type=\"checkbox\" name=\"uc_org[]\"\n                                               value=\"sfaf\"\n                                               data-uc-who-organizer\n                                                \/>\n                                        <span>SFAF <span class=\"uc-who-count\" aria-hidden=\"true\">(1)<\/span><\/span>\n                                                                                    <span class=\"uc-visually-hidden\">1 upcoming event<\/span>\n                                                                            <\/label>\n                                                                    <label class=\"uc-who-opt\">\n                                        <input type=\"checkbox\" name=\"uc_org[]\"\n                                               value=\"strut\"\n                                               data-uc-who-organizer\n                                                \/>\n                                        <span>Strut <span class=\"uc-who-count\" aria-hidden=\"true\">(1)<\/span><\/span>\n                                                                                    <span class=\"uc-visually-hidden\">1 upcoming event<\/span>\n                                                                            <\/label>\n                                                            <\/div>\n                        <\/section>\n                    \n                                    <\/div>\n\n                                <noscript>\n                <div class=\"uc-who-foot\">\n                                                            <button type=\"submit\" name=\"uc_cat\" value=\"\"\n                            class=\"uc-who-apply\" data-uc-who-apply>Apply<\/button>\n                <\/div>\n                <\/noscript>\n            <\/div>\n        <\/details>\n                                    <\/div>\n            <\/form>\n\n                        \n            <div class=\"uc-view-bar\">\n                                                                    <div class=\"uc-event-count\">\n                        <span class=\"uc-count-number\">0<\/span>\n                        events coming up                    <\/div>\n                                            <\/div>\n\n            \n            \n                        <div class=\"uc-view-panels\"\n                 >\n                            <div class=\"uc-view-panel uc-panel-list\">\n                                    <div class=\"uc-event-list\">\n                                                    <div class=\"uc-no-events\">\n                                <p>No upcoming events found.<\/p>\n                            <\/div>\n                                            <\/div>\n                                                <\/div>\n                                    <div class=\"uc-view-panel uc-panel-calendar\" hidden>\n                            <\/div>\n                        <\/div>\n\n                    <\/div>\n        ","css_url":"","js_version":"","total":0,"max_pages":1,"has_more":false,"card_style":""};
   var Real = window.XMLHttpRequest;
   function Fake() {
     this.readyState = 0; this.status = 0; this.responseText = '';
@@ -53,12 +53,7 @@
 /**
  * SFAF Calendar — embed script.
  *
- * Loaded by public/js/embed.js, the loader every snippet names, from
- * embed-app.js?ver=<the site's version> (3.112.1). Until then this file was
- * embed.js itself. The release logic lives here and nowhere in the loader, so a
- * cached loader cannot hold a host page on an old calendar.
- *
- * The snippet a host page pastes:
+ * Served from the calendar site and loaded by a block on any other site:
  *
  *   <div class="sfaf-calendar-embed" data-sfaf-calendar
  *        data-category="support-groups"
@@ -143,8 +138,8 @@
      * plugin. The server also sends the authoritative URL in every payload, so
      * even this derivation is only a first guess. See adoptStylesheet().
      */
-    var CSS_URL = /\/js\/embed(-app)?\.js(\?.*)?$/.test(SRC)
-        ? SRC.replace(/\/js\/embed(-app)?\.js(\?.*)?$/, '/css/calendar.css')
+    var CSS_URL = /\/js\/embed\.js(\?.*)?$/.test(SRC)
+        ? SRC.replace(/\/js\/embed\.js(\?.*)?$/, '/css/calendar.css')
         : '';
 
     /**
@@ -189,10 +184,6 @@
             filters: container.getAttribute('data-filters') || '',
             // Event ids shown first (3.111.0); the endpoint drops any it cannot show.
             pin: container.getAttribute('data-pin') || '',
-            // What's included and Location (3.112.0): the snippet's tag scope and the visitor's choices.
-            tag: container.getAttribute('data-tag') || '',
-            active_tags: container.getAttribute('data-active-tags') || '',
-            active_locations: container.getAttribute('data-active-locations') || '',
             organizer: container.getAttribute('data-organizer') || '',
             series: container.getAttribute('data-series') || '',
             venue: container.getAttribute('data-venue') || '',
@@ -589,14 +580,8 @@
      * It is kept honest by .claude/embed-filters-test.php, which fails the
      * build if this string is not SFAF_VERSION. It cannot drift by being
      * forgotten at release time.
-     *
-     * SINCE 3.112.1 THE LOADER FETCHES THIS FILE AT ?ver=<the site's version>,
-     * so a browser holding an old copy of it asks for a new address on the
-     * next release. A mismatch now means the loader could not ask the site and
-     * loaded this file unversioned, or two caches in front of the site are on
-     * two releases; it is still named, and still never acted on.
      */
-    var EMBED_JS_VERSION = '3.112.2';
+    var EMBED_JS_VERSION = '3.111.0';
     var staleReported = false;
 
     /**
@@ -614,7 +599,7 @@
         staleReported = true;
         if (window.console && window.console.warn) {
             window.console.warn(
-                'SFAF Calendar: this page is running embed-app.js ' + EMBED_JS_VERSION
+                'SFAF Calendar: this page is running embed.js ' + EMBED_JS_VERSION
                 + ' while the calendar site is on ' + serverVersion
                 + '. The browser is holding a cached copy of the script, so anything '
                 + 'fixed since ' + EMBED_JS_VERSION + ' will not be on this page until it is '
@@ -643,14 +628,8 @@
              * place that does the swapping.
              */
             var whoOpen = !!container.querySelector('[data-uc-who][open]');
-            var pickOpen = (container.querySelector('[data-uc-pick][open]') || { getAttribute: function () { return ''; } }).getAttribute('data-uc-pick');
 
             container.innerHTML = data.html;
-
-            if (pickOpen) {
-                var pick = container.querySelector('[data-uc-pick="' + pickOpen + '"]');
-                if (pick) { pick.open = true; }
-            }
 
             if (whoOpen) {
                 var who = container.querySelector('[data-uc-who]');
@@ -1635,74 +1614,6 @@
         narrow();
     }
 
-    /*
-     * WHAT'S INCLUDED AND LOCATION (3.112.0), as calendar.js does them: a tick
-     * names the block's choice and redraws after 350ms, Clear all empties the
-     * one list, and a press outside closes it.
-     */
-    function bindPickers(container) {
-        var timer = null;
-        var attrFor = { tag: 'data-active-tags', location: 'data-active-locations' };
-
-        function relabel(root) {
-            var names = Array.prototype.slice.call(root.querySelectorAll('[data-uc-pick-opt]'))
-                .filter(function (b) { return b.checked; })
-                .map(function (b) {
-                    var s = b.nextElementSibling ? b.nextElementSibling.cloneNode(true) : null;
-                    if (!s) { return ''; }
-                    var c = s.querySelector('.uc-who-count');
-                    if (c) { c.parentNode.removeChild(c); }
-                    return (s.textContent || '').replace(/^\s+|\s+$/g, '');
-                })
-                .filter(Boolean);
-            var label = root.querySelector('[data-uc-pick-label]');
-            if (label) {
-                label.textContent = !names.length ? (root.getAttribute('data-uc-pick-empty') || '')
-                    : (names.length <= 2 ? names.join(', ') : names.length + ' selected');
-            }
-            var trigger = root.querySelector('[data-uc-pick-trigger]');
-            if (trigger) { trigger.classList.toggle('active', names.length > 0); }
-        }
-
-        function apply(root) {
-            var kind = root.getAttribute('data-uc-pick');
-            if (!attrFor[kind]) { return; }
-            container.setAttribute(attrFor[kind], Array.prototype.slice.call(root.querySelectorAll('[data-uc-pick-opt]'))
-                .filter(function (b) { return b.checked; })
-                .map(function (b) { return b.value; }).join(','));
-            if (timer) { clearTimeout(timer); }
-            timer = setTimeout(function () {
-                timer = null;
-                loadBlock(container, 1, false);
-            }, 350);
-        }
-
-        container.addEventListener('change', function (e) {
-            var box = e.target;
-            if (!box || !box.matches || !box.matches('[data-uc-pick-opt]')) { return; }
-            var root = box.closest('[data-uc-pick]');
-            if (!root) { return; }
-            relabel(root);
-            apply(root);
-        });
-
-        container.addEventListener('click', function (e) {
-            var t = e.target;
-            if (!t || !t.closest) { return; }
-            var clear = t.closest('[data-uc-pick-clear]');
-            if (clear && container.contains(clear)) {
-                e.preventDefault();
-                var root = clear.closest('[data-uc-pick]');
-                Array.prototype.forEach.call(root.querySelectorAll('[data-uc-pick-opt]'), function (b) { b.checked = false; });
-                relabel(root);
-                apply(root);
-                return;
-            }
-            Array.prototype.forEach.call(container.querySelectorAll('[data-uc-pick][open]'), function (d) {
-                if (!d.contains(t)) { d.open = false; }
-            });
-        });
-    }
     function bindGroups(container) {
         container.addEventListener('click', function (e) {
             var t = e.target;
@@ -1983,9 +1894,6 @@
         if (pageParam('uc_org')) {
             container.setAttribute('data-active-organizer', pageParam('uc_org'));
         }
-        // And What's included and Location, which See all events carries (3.112.0).
-        container.setAttribute('data-active-tags', pageParam('uc_tag'));
-        container.setAttribute('data-active-locations', pageParam('uc_loc'));
         container.setAttribute('data-active-search', '');
 
         // Bound to the container itself, once, so they survive every re-render
@@ -2000,7 +1908,6 @@
            the renderer for a block that asks for the old shape. This is the one
            that reaches what the filter bar actually draws now. */
         bindWho(container);
-        bindPickers(container);
 
         ensureStylesheet(container);
         setLoading(container);
@@ -2509,7 +2416,7 @@
     }
     /* SFAF-PREVIEW-END */
 
-    window.sfafCalendarEmbed = { scan: scan, version: EMBED_JS_VERSION };
+    window.sfafCalendarEmbed = { scan: scan };
 
     /* THE PREVIEW IS BUILT ONCE FOR THE PAGE, NOT ONCE PER BLOCK, and not
      * inside scan(). Its listeners are delegated on the document and its panel

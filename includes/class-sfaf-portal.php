@@ -17621,7 +17621,9 @@ class SFAF_Portal {
 
         $author        = $post ? get_userdata( $post->post_author ) : $user;
         $author_on     = ! SFAF_Reminders::author_opted_out( $event_id );
-        $chosen_users  = array_map( 'intval', (array) get_post_meta( $event_id, SFAF_Reminders::NOTIFY_USERS_META, true ) );
+        // Without array_filter an unset list is array( 0 ), which the status
+        // line counted as one individual (found in 3.113.0).
+        $chosen_users  = array_values( array_filter( array_map( 'intval', (array) get_post_meta( $event_id, SFAF_Reminders::NOTIFY_USERS_META, true ) ) ) );
         $extra_emails  = (array) get_post_meta( $event_id, SFAF_Reminders::NOTIFY_EMAILS_META, true );
         $reminders_on  = SFAF_Reminders::enabled();
         $portal_users  = $this->calendar_people();
@@ -17737,22 +17739,21 @@ class SFAF_Portal {
              * without the closed line saying so.
              */
             $off_count = SFAF_Notifications::off_count( $event_id );
+            $kinds_n   = count( SFAF_Notifications::kinds() );
             ?>
-            <div class="uc-notify-section">
-                <?php // The same disclosure the team picker uses: a real <summary>,
-                      // so click, tap, Enter and Space all work with no script. ?>
-                <?php // The same full-width row as "Choose who else gets it" (3.108.1). ?>
-                <details class="uc-picker uc-notify-kinds" data-uc-disclosure <?php echo $off_count ? 'open' : ''; ?>>
-                    <summary class="uc-picker-toggle" aria-expanded="<?php echo $off_count ? 'true' : 'false'; ?>">
-                        <span class="uc-picker-label">
-                            <?php $kinds_n = count( SFAF_Notifications::kinds() ); ?>
-                            <?php if ( ! $off_count ) : ?>
-                                Emails for this event: all <?php echo (int) $kinds_n; ?> are on
-                            <?php else : ?>
-                                Emails for this event: <?php echo (int) $off_count; ?> of <?php echo (int) $kinds_n; ?> switched off
-                            <?php endif; ?>
-                        </span>
-                        <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
+            <div class="uc-notify-section" data-uc-notify-kinds>
+                <?php /* A subhead, a status line and a button (3.113.0), as Who
+                   hears about this event has. The status is recounted by
+                   portal.js on every tick; the button is a <summary>, so it
+                   opens with no script. */ ?>
+                <h4 class="uc-notify-subhead">Emails for this event</h4>
+                <p class="uc-notify-status" data-uc-notify-kinds-status data-uc-kinds-total="<?php echo (int) $kinds_n; ?>"><?php
+                    echo esc_html( $this->notify_kinds_status( $off_count, $kinds_n ) );
+                ?></p>
+                <details class="uc-notify-choose uc-notify-kinds" data-uc-disclosure <?php echo $off_count ? 'open' : ''; ?>>
+                    <summary class="uc-btn uc-btn-sm uc-notify-choose-btn" aria-expanded="<?php echo $off_count ? 'true' : 'false'; ?>">
+                        <span>Choose emails</span>
+                        <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '14px' ) ); ?></span>
                     </summary>
                     <div class="uc-picker-panel">
                         <p class="uc-hint">Untick one to stop it for this event only.</p>
@@ -17929,16 +17930,24 @@ class SFAF_Portal {
 
         $uid_attr = 'uc-notify-' . (int) $event_id;
         ?>
+        <?php
+        /*
+         * A STATUS LINE AND A BUTTON (3.113.0). The row this replaced was a
+         * full-width disclosure whose label was a sentence, so it read as a
+         * line of status rather than as something to press. The status is
+         * its own line, recounted by portal.js on every tick, and the control
+         * is a secondary button that opens the same panel. Still a <summary>,
+         * so it opens with no script.
+         */
+        ?>
         <div class="uc-notify-picker" data-uc-notify-picker>
-            <details class="uc-picker" data-uc-picker>
-                <summary class="uc-picker-toggle" data-uc-picker-toggle>
-                    <span class="uc-picker-label">Choose who else gets it</span>
-                    <span class="uc-picker-count" data-uc-picker-count><?php
-                        echo esc_html( $this->notify_summary_text( $event_id, $chosen_users, $chosen_teams, $teams ) );
-                    ?></span>
-                    <?php // The same mark every disclosure in caladmin carries.
-                          // It drew its own text triangle in CSS until 3.64.0. ?>
-                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
+            <p class="uc-notify-status" data-uc-picker-count><?php
+                echo esc_html( $this->notify_summary_text( $event_id, $chosen_users, $chosen_teams, $teams ) );
+            ?></p>
+            <details class="uc-notify-choose" data-uc-picker>
+                <summary class="uc-btn uc-btn-sm uc-notify-choose-btn" data-uc-picker-toggle>
+                    <span>Choose people</span>
+                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '14px' ) ); ?></span>
                 </summary>
 
                 <div class="uc-picker-panel">
@@ -18087,17 +18096,15 @@ class SFAF_Portal {
             ?>
             <?php
             /*
-             * ONE EMPTY STATE FOR THE WHOLE CARD (3.107.0). "Nobody else yet."
-             * shows when nobody beyond the creator is chosen, picker or typed
-             * address, and the "On the list" label shows only with chips under
-             * it. The typed-address box keeps no empty line of its own and the
-             * picker's summary says nothing until somebody is chosen.
+             * ONE EMPTY STATE FOR THE WHOLE CARD (3.107.0). Since 3.113.0 it
+             * is the status line above the button, which says "Nobody else
+             * yet." when nobody is chosen; the "On the list" label shows only
+             * with chips under it.
              */
             ?>
             <div class="uc-rchips" data-uc-notify-chips hidden>
                 <span class="uc-rchips-label" data-uc-notify-chips-label>On the list</span>
                 <div class="uc-rchips-list" data-uc-notify-chips-list></div>
-                <p class="uc-muted uc-rchips-empty" data-uc-notify-chips-empty hidden>Nobody else yet.</p>
             </div>
 
             <?php // The marker that tells the save "this form carried the teams
@@ -18113,7 +18120,23 @@ class SFAF_Portal {
     }
 
     /**
-     * The one-line summary of what is currently selected.
+     * The status line under "Emails for this event" (3.113.0). portal.js
+     * writes the same words as boxes are ticked.
+     *
+     * @param int $off_count
+     * @param int $kinds_n
+     * @return string
+     */
+    private function notify_kinds_status( $off_count, $kinds_n ) {
+        if ( ! $off_count ) {
+            return 'All ' . (int) $kinds_n . ' are on.';
+        }
+        return (int) $off_count . ' of ' . (int) $kinds_n . ' switched off.';
+    }
+
+    /**
+     * The status line under "Who hears about this event": what is currently
+     * selected (the picker's summary until 3.113.0).
      *
      * Rendered by PHP for the page load and recomputed by portal.js on every
      * tick, from the same rule: count the distinct addresses. Both say
@@ -18140,16 +18163,20 @@ class SFAF_Portal {
             $parts[] = $teams[ $tid ]['name'] . ' team (' . $size . ' ' . ( 1 === $size ? 'person' : 'people' ) . ')';
         }
 
-        if ( empty( $parts ) ) {
-            // Said once, under the picker, by "Nobody else yet." (3.107.0).
-            return '';
-        }
-
         // The total is the resolved list, which already deduplicates and
         // already includes the creator and any typed addresses. It is the
         // honest answer to "how many emails is that".
-        $total = count( SFAF_Reminders::notify_list( $event_id ) );
-        return implode( ', ', $parts ) . '. ' . $total . ' ' . ( 1 === $total ? 'person' : 'people' ) . ' in total.';
+        $total    = $event_id ? count( SFAF_Reminders::notify_list( $event_id ) ) : 0;
+        $in_total = $total . ' ' . ( 1 === $total ? 'person' : 'people' ) . ' in total.';
+
+        if ( empty( $parts ) ) {
+            /* The status line is the card's one empty state (3.113.0): nobody
+               beyond the creator, picked or typed. */
+            $typed = array_filter( array_map( 'strval', (array) get_post_meta( $event_id, SFAF_Reminders::NOTIFY_EMAILS_META, true ) ) );
+            return $typed ? $in_total : 'Nobody else yet.';
+        }
+
+        return implode( ', ', $parts ) . '. ' . $in_total;
     }
 
     /* =====================================================================

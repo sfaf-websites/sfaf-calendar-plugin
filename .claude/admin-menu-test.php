@@ -71,7 +71,6 @@ function add_meta_box( $id, $title, $cb, $screen = null, $context = 'advanced', 
  */
 require $root . '/includes/class-sfaf-series.php';
 require $root . '/admin/class-sfaf-admin.php';
-require $root . '/includes/class-sfaf-tags.php'; // What's included (3.112.0)
 require $root . '/includes/class-sfaf-post-types.php';
 
 $PARENT = 'edit.php?post_type=uc_event';

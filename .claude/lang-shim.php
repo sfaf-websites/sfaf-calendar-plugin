@@ -42,4 +42,3 @@ if ( ! function_exists( 'sfaf_ap_zoned' ) ) {
 if ( ! function_exists( 'get_option' ) ) {
     function get_option( $n, $d = false ) { return $d; }
 }
-require_once __DIR__ . '/multiday-shim.php'; // the multi-day date helpers, real (3.112.0)

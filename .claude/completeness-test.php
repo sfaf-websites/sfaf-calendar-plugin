@@ -283,7 +283,6 @@ require_once $root . '/includes/class-sfaf-submit.php';
 require_once $root . '/includes/class-sfaf-rich-text.php';
 require_once $root . '/includes/class-sfaf-sources.php';
 require_once $root . '/includes/class-sfaf-source-gfmp.php';
-require_once $root . '/includes/class-sfaf-tags.php'; // What's included (3.112.0)
 require_once $root . '/includes/class-sfaf-portal.php';
 
 /* ---------------------------------------------------------------------------
