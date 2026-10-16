@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Events - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.111.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.111.0" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.111.0" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.113.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.113.0" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.113.0" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.111.0" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.113.0" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -209,7 +209,7 @@
                     <h2 class="uc-bento-title">Schedule</h2>
                                         <label class="uc-field">
                         <span class="uc-field-label">Date<span class="uc-req" aria-hidden="true">*</span> </span>
-                        <input type="date" name="date" value="2026-11-13" />
+                        <input type="date" name="date" value="2026-11-15" />
                                                                     </label>
                     <div class="uc-field-row">
                         <label class="uc-field">
@@ -317,7 +317,7 @@
                     </div>
 
                                         
-                                                                                <div class="uc-repeat" data-uc-repeat data-uc-repeat-date="2026-11-13">
+                                                                                <div class="uc-repeat" data-uc-repeat data-uc-repeat-date="2026-11-15">
 
             <span class="uc-field-label">Repeats
                 <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-repeat-503" aria-label="More about repeating">?</button><span class="uc-help-body" id="uc-help-repeat-503" data-uc-help-body>Saving creates one event per date; edit the schedule on the series after that.</span>            </span>
@@ -360,7 +360,7 @@
                 <div class="uc-days" role="group" aria-label="Which days of the week">
                                             <label class="uc-day">
                             <input type="checkbox" name="repeat_days[]" value="0"
-                                    data-uc-repeat-day />
+                                    checked="checked" data-uc-repeat-day />
                             <span aria-hidden="true">S</span>
                             <span class="uc-visually-hidden">Sunday</span>
                         </label>
@@ -390,7 +390,7 @@
                         </label>
                                             <label class="uc-day">
                             <input type="checkbox" name="repeat_days[]" value="5"
-                                    checked="checked" data-uc-repeat-day />
+                                    data-uc-repeat-day />
                             <span aria-hidden="true">F</span>
                             <span class="uc-visually-hidden">Friday</span>
                         </label>
@@ -407,7 +407,7 @@
                         <div class="uc-repeat-panel" data-uc-repeat-panel="monthly">
                 <label class="uc-radio-row">
                     <input type="radio" name="repeat_monthly_mode" value="date"  checked="checked" data-uc-repeat-monthly />
-                    <span>On <strong>day 13</strong> of each month</span>
+                    <span>On <strong>day 15</strong> of each month</span>
                 </label>
                 <label class="uc-radio-row">
                     <input type="radio" name="repeat_monthly_mode" value="nth"  data-uc-repeat-monthly />
@@ -416,18 +416,18 @@
                 <div class="uc-repeat-nth">
                     <select name="repeat_nth" aria-label="Which occurrence in the month">
                                                     <option value="1" >first</option>
-                                                    <option value="2"  selected="selected">second</option>
-                                                    <option value="3" >third</option>
+                                                    <option value="2" >second</option>
+                                                    <option value="3"  selected="selected">third</option>
                                                     <option value="4" >fourth</option>
                                                     <option value="-1" >last</option>
                                             </select>
                     <select name="repeat_nth_dow" aria-label="Which weekday">
-                                                    <option value="0" >Sunday</option>
+                                                    <option value="0"  selected="selected">Sunday</option>
                                                     <option value="1" >Monday</option>
                                                     <option value="2" >Tuesday</option>
                                                     <option value="3" >Wednesday</option>
                                                     <option value="4" >Thursday</option>
-                                                    <option value="5"  selected="selected">Friday</option>
+                                                    <option value="5" >Friday</option>
                                                     <option value="6" >Saturday</option>
                                             </select>
                     <span>of each month</span>
@@ -933,8 +933,13 @@
                                                         <input type="hidden" name="uc_details_extra_present" value="1" />
         <label class="uc-field">
             <span class="uc-field-label">Age range</span>
-            <input type="text" name="listing_age" maxlength="120" value="18 and over" />
-        </label>
+                    <select name="listing_age">
+            <option value="">No age range</option>
+                            <option value="All ages">All ages</option>
+                            <option value="18+" selected="selected">18+</option>
+                            <option value="21+">21+</option>
+                    </select>
+                </label>
         <fieldset class="uc-field uc-contact-group">
             <legend class="uc-field-label">Contact</legend>
             <span class="uc-hint">Shown on the event page. Leave all three empty for no contact line.</span>
@@ -1080,12 +1085,12 @@
                         Send to <strong>User 1</strong> (created this event, user1@sfaf.org)
                     </label>
                 
-                        <div class="uc-notify-picker" data-uc-notify-picker>
-            <details class="uc-picker" data-uc-picker>
-                <summary class="uc-picker-toggle" data-uc-picker-toggle>
-                    <span class="uc-picker-label">Choose who else gets it</span>
-                    <span class="uc-picker-count" data-uc-picker-count>1 individual. 2 people in total.</span>
-                                        <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                                <div class="uc-notify-picker" data-uc-notify-picker>
+            <p class="uc-notify-status" data-uc-picker-count>Nobody else yet.</p>
+            <details class="uc-notify-choose" data-uc-picker>
+                <summary class="uc-btn uc-btn-sm uc-notify-choose-btn" data-uc-picker-toggle>
+                    <span>Choose people</span>
+                    <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="14px" height="14px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
                 </summary>
 
                 <div class="uc-picker-panel">
@@ -1143,7 +1148,6 @@
                                     <div class="uc-rchips" data-uc-notify-chips hidden>
                 <span class="uc-rchips-label" data-uc-notify-chips-label>On the list</span>
                 <div class="uc-rchips-list" data-uc-notify-chips-list></div>
-                <p class="uc-muted uc-rchips-empty" data-uc-notify-chips-empty hidden>Nobody else yet.</p>
             </div>
 
                         <input type="hidden" name="notify_teams_present" value="1" />
@@ -1168,13 +1172,13 @@
                 </div>
             </div>
 
-                        <div class="uc-notify-section">
-                                                <details class="uc-picker uc-notify-kinds" data-uc-disclosure >
-                    <summary class="uc-picker-toggle" aria-expanded="false">
-                        <span class="uc-picker-label">
-                                                                                        Emails for this event: all 6 are on
-                                                    </span>
-                        <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                        <div class="uc-notify-section" data-uc-notify-kinds>
+                                <h4 class="uc-notify-subhead">Emails for this event</h4>
+                <p class="uc-notify-status" data-uc-notify-kinds-status data-uc-kinds-total="6">All 6 are on.</p>
+                <details class="uc-notify-choose uc-notify-kinds" data-uc-disclosure >
+                    <summary class="uc-btn uc-btn-sm uc-notify-choose-btn" aria-expanded="false">
+                        <span>Choose emails</span>
+                        <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="14px" height="14px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
                     </summary>
                     <div class="uc-picker-panel">
                         <p class="uc-hint">Untick one to stop it for this event only.</p>
@@ -1345,17 +1349,24 @@
                                 <div class="uc-form-actions uc-form-actions-primary uc-editor-actions uc-editor-bar" data-uc-card="actions" data-uc-editor-bar>
                 <p class="uc-form-actions-note">Saving keeps this event exactly as public as it is now.</p>
                                                                 <button type="submit" form="uc-event-form-503" name="save_mode" value="keep" class="uc-btn uc-btn-go uc-editor-save-main uc-editor-save">Save changes</button>
-                                                                                                        <details class="uc-cancel-inline" id="uc-cancel-this" data-uc-saved-action="cancel" data-uc-disclosure>
-                                <summary class="uc-btn uc-btn-stop uc-cancel-inline-toggle" aria-expanded="false">
-                    <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="14px" height="14px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
-                    <span>Cancel event</span>
-                </summary>
-                <div class="uc-cancel-inline-body">
+                                                                                                                            <button type="button" class="uc-btn uc-btn-stop uc-cancel-open" data-uc-dialog-open="uc-cancel-this"
+                    aria-haspopup="dialog" data-uc-saved-action="cancel">Cancel event</button>
+                                <button type="button" data-uc-dialog-open="uc-delete-this" data-uc-saved-action="delete"
+                class="uc-btn uc-btn-stop uc-editor-delete" aria-haspopup="dialog">Delete</button>
+                    </div>
+                        
+        
+                                                        <div class="uc-dialog-panel" id="uc-cancel-this" data-uc-dialog-panel data-uc-saved-action="cancel"
+             role="group" aria-labelledby="uc-cancel-this-title">
+                <h2 class="uc-dialog-title" id="uc-cancel-this-title">Cancel this event?</h2>
+                <p class="uc-dialog-lead">It keeps its registrations, takes no new ones, and you can choose to tell everybody who signed up.</p>
+                <div class="uc-dialog-body">
 
-                <form method="post" action="https://resources.sfaf.org/caladmin/events/edit/503" class="uc-cancel-form" data-uc-confirm-cancel>
+                <form method="post" action="https://resources.sfaf.org/caladmin/events/edit/503" class="uc-cancel-form" id="uc-cancel-form-503" data-uc-confirm-cancel>
                     <input type="hidden" name="uc_action" value="cancel_event" />
                     <input type="hidden" name="event_id" value="503" />
                     <input type="hidden" name="uc_nonce" value="nonce" />
+                                        
                     <fieldset class="uc-cancel-visibility">
                         <legend>What should happen to it on the public calendar?</legend>
                         <label class="uc-radio-opt">
@@ -1384,36 +1395,40 @@
                                         <input type="hidden" name="cancel_message" value="" data-uc-cancel-message />
 
                                         <input type="hidden" name="notify_choice" value="" data-uc-notify-choice />
-                                                                <p class="uc-hint" data-uc-cancel-count="0" data-uc-cancel-waiting="0">Nobody is registered or on the waitlist, so there is nobody to tell.</p>
+                                                                <p class="uc-hint" data-uc-cancel-count="0" data-uc-cancel-waiting="0"
+                           data-uc-cancel-count-all="0" data-uc-cancel-waiting-all="0">Nobody is registered or on the waitlist, so there is nobody to tell.</p>
                     
-                    <button type="submit" class="uc-btn uc-btn-caution">Cancel this event</button>
+
+                    <div class="uc-dialog-actions">
+                        <button type="button" class="uc-btn" data-uc-dialog-close form="uc-cancel-form-503" hidden>Keep the event</button>
+                        <button type="submit" class="uc-btn uc-btn-caution" form="uc-cancel-form-503">Cancel this event</button>
+                    </div>
                 </form>
 
                 </div>
-        </details>
-                <button type="submit" form="uc-delete-event-503" data-uc-saved-action="delete"
-                class="uc-btn uc-btn-stop uc-editor-delete"
-                data-uc-confirm="Delete this event? Nothing puts it back.">Delete</button>
-                    </div>
-                                                    <p class="uc-editor-actions-note">
-                    <strong>Cancel</strong> keeps the registrations, closes new ones and offers to tell everybody who signed up.
-                    <strong>Delete</strong> takes the event, its questions and its settings. Nothing puts them back.
-                </p>
-            
-        
+        </div>
                         <div class="uc-delete-block">
-                                            <form method="post" id="uc-delete-event-503" action="https://resources.sfaf.org/caladmin/events" data-uc-saved-action="delete">
-                    <input type="hidden" name="uc_action" value="trash_event" />
-                    <input type="hidden" name="event_id" value="503" />
-                    <input type="hidden" name="uc_nonce" value="nonce" />                </form>
+                                            <div class="uc-dialog-panel" id="uc-delete-this" data-uc-dialog-panel data-uc-saved-action="delete"
+                     role="group" aria-labelledby="uc-delete-this-title">
+                    <h2 class="uc-dialog-title" id="uc-delete-this-title">Delete this event?</h2>
+                    <p class="uc-dialog-lead">It takes the event, its questions and its settings. This cannot be undone.</p>
+                    <form method="post" id="uc-delete-event-503" action="https://resources.sfaf.org/caladmin/events" data-uc-saved-action="delete">
+                        <input type="hidden" name="uc_action" value="trash_event" />
+                        <input type="hidden" name="event_id" value="503" />
+                        <input type="hidden" name="uc_nonce" value="nonce" />                        <div class="uc-dialog-actions">
+                            <button type="button" class="uc-btn" data-uc-dialog-close form="uc-delete-event-503" hidden>Keep the event</button>
+                            <button type="submit" class="uc-btn uc-btn-danger" form="uc-delete-event-503">Delete</button>
+                        </div>
+                    </form>
+                </div>
                     </div>
                         </main>
             </div>
         </div>
         <script type="application/json" id="uc-session-config">{"ajax":"https:\/\/resources.sfaf.org\/wp-admin\/admin-ajax.php","action":"sfaf_caladmin_session","signin":"https:\/\/resources.sfaf.org\/caladmin","screen":"dashboard","signedIn":true}</script>
-<script src="../public/js/caladmin-session.js?ver=3.111.0"></script>
-<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.111.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.111.0"></script>
-<script src="../public/js/portal.js?ver=3.111.0"></script>
+<script src="../public/js/caladmin-session.js?ver=3.113.0"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.113.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.113.0"></script>
+<script src="../public/js/portal.js?ver=3.113.0"></script>
 <script>window.RV_PAGE="edit-desktop";(function () {
 var P = window.RV_PAGE, out = { page: P, errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });

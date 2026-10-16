@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Events - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.111.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.111.0" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.111.0" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.113.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.113.0" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.113.0" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.111.0" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.113.0" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -393,7 +393,7 @@
                         </label>
                                             <label class="uc-day">
                             <input type="checkbox" name="repeat_days[]" value="3"
-                                    checked="checked" data-uc-repeat-day />
+                                    data-uc-repeat-day />
                             <span aria-hidden="true">W</span>
                             <span class="uc-visually-hidden">Wednesday</span>
                         </label>
@@ -405,7 +405,7 @@
                         </label>
                                             <label class="uc-day">
                             <input type="checkbox" name="repeat_days[]" value="5"
-                                    data-uc-repeat-day />
+                                    checked="checked" data-uc-repeat-day />
                             <span aria-hidden="true">F</span>
                             <span class="uc-visually-hidden">Friday</span>
                         </label>
@@ -440,9 +440,9 @@
                                                     <option value="0" >Sunday</option>
                                                     <option value="1" >Monday</option>
                                                     <option value="2" >Tuesday</option>
-                                                    <option value="3"  selected="selected">Wednesday</option>
+                                                    <option value="3" >Wednesday</option>
                                                     <option value="4" >Thursday</option>
-                                                    <option value="5" >Friday</option>
+                                                    <option value="5"  selected="selected">Friday</option>
                                                     <option value="6" >Saturday</option>
                                             </select>
                     <span>of each month</span>
@@ -1024,8 +1024,13 @@
                                                         <input type="hidden" name="uc_details_extra_present" value="1" />
         <label class="uc-field">
             <span class="uc-field-label">Age range</span>
-            <input type="text" name="listing_age" maxlength="120" value="" />
-        </label>
+                    <select name="listing_age">
+            <option value="" selected="selected">No age range</option>
+                            <option value="All ages">All ages</option>
+                            <option value="18+">18+</option>
+                            <option value="21+">21+</option>
+                    </select>
+                </label>
         <fieldset class="uc-field uc-contact-group">
             <legend class="uc-field-label">Contact</legend>
             <span class="uc-hint">Shown on the event page. Leave all three empty for no contact line.</span>
@@ -1164,12 +1169,12 @@
                         Send to <strong>Admin</strong> (created this event, admin@sfaf.org)
                     </label>
                 
-                        <div class="uc-notify-picker" data-uc-notify-picker>
-            <details class="uc-picker" data-uc-picker>
-                <summary class="uc-picker-toggle" data-uc-picker-toggle>
-                    <span class="uc-picker-label">Choose who else gets it</span>
-                    <span class="uc-picker-count" data-uc-picker-count>1 individual. 1 person in total.</span>
-                                        <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                                <div class="uc-notify-picker" data-uc-notify-picker>
+            <p class="uc-notify-status" data-uc-picker-count>Nobody else yet.</p>
+            <details class="uc-notify-choose" data-uc-picker>
+                <summary class="uc-btn uc-btn-sm uc-notify-choose-btn" data-uc-picker-toggle>
+                    <span>Choose people</span>
+                    <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="14px" height="14px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
                 </summary>
 
                 <div class="uc-picker-panel">
@@ -1206,7 +1211,6 @@
                                     <div class="uc-rchips" data-uc-notify-chips hidden>
                 <span class="uc-rchips-label" data-uc-notify-chips-label>On the list</span>
                 <div class="uc-rchips-list" data-uc-notify-chips-list></div>
-                <p class="uc-muted uc-rchips-empty" data-uc-notify-chips-empty hidden>Nobody else yet.</p>
             </div>
 
                         <input type="hidden" name="notify_teams_present" value="1" />
@@ -1231,13 +1235,13 @@
                 </div>
             </div>
 
-                        <div class="uc-notify-section">
-                                                <details class="uc-picker uc-notify-kinds" data-uc-disclosure >
-                    <summary class="uc-picker-toggle" aria-expanded="false">
-                        <span class="uc-picker-label">
-                                                                                        Emails for this event: all 6 are on
-                                                    </span>
-                        <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                        <div class="uc-notify-section" data-uc-notify-kinds>
+                                <h4 class="uc-notify-subhead">Emails for this event</h4>
+                <p class="uc-notify-status" data-uc-notify-kinds-status data-uc-kinds-total="6">All 6 are on.</p>
+                <details class="uc-notify-choose uc-notify-kinds" data-uc-disclosure >
+                    <summary class="uc-btn uc-btn-sm uc-notify-choose-btn" aria-expanded="false">
+                        <span>Choose emails</span>
+                        <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="14px" height="14px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
                     </summary>
                     <div class="uc-picker-panel">
                         <p class="uc-hint">Untick one to stop it for this event only.</p>
@@ -1450,15 +1454,15 @@
                         <button type="submit" form="uc-event-form-0" name="save_mode" value="publish" class="uc-btn uc-btn-go uc-editor-publish" data-uc-publish-btn
                                                                 >Publish</button>
                                                                                 </div>
-                                    
+                        
         
                         </main>
             </div>
         </div>
         <script type="application/json" id="uc-session-config">{"ajax":"https:\/\/resources.sfaf.org\/wp-admin\/admin-ajax.php","action":"sfaf_caladmin_session","signin":"https:\/\/resources.sfaf.org\/caladmin","screen":"dashboard","signedIn":true}</script>
-<script src="../public/js/caladmin-session.js?ver=3.111.0"></script>
-<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.111.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.111.0"></script>
-<script src="../public/js/portal.js?ver=3.111.0"></script>
+<script src="../public/js/caladmin-session.js?ver=3.113.0"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.113.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.113.0"></script>
+<script src="../public/js/portal.js?ver=3.113.0"></script>
 <script>window.RV_PAGE="add-phone";(function () {
 var P = window.RV_PAGE, out = { page: P, errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });

@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, nofollow" />
 <title>Submit an event: Cycle to Zero</title>
-<link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.111.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.111.0" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.111.0" />
-<link rel="stylesheet" href="../public/css/portal.css?ver=3.111.0" />
+<link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.113.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.113.0" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.113.0" />
+<link rel="stylesheet" href="../public/css/portal.css?ver=3.113.0" />
 </head>
 <body class="uc-portal uc-request-page uc-submit-page">
 <div class="uc-request-wrap">
@@ -24,7 +24,7 @@
                         <div class="uc-hp" aria-hidden="true">
             <label>Website<input type="text" name="uc_website" value="" tabindex="-1" autocomplete="off" /></label>
         </div>
-                        <p class="uc-hint uc-required-note">Fields marked * are required.</p>                <script type="application/json" data-uc-required>[{"key":"street","inputs":["street"],"when":{"venue":""},"carry":"required"},{"key":"cost_other","inputs":["cost_other"],"when":{"cost":"other"},"carry":"required"},{"key":"age_other","inputs":["age_other"],"when":{"age_restriction":"other"},"carry":"required"},{"key":"contact_name","inputs":["contact_name"],"when":{"contact_same":""},"carry":"required"},{"key":"contact_email","inputs":["contact_email","contact_phone"],"when":{"contact_same":""},"carry":"aria"}]</script>
+                        <p class="uc-hint uc-required-note">Fields marked * are required.</p>                <script type="application/json" data-uc-required>[{"key":"street","inputs":["street"],"when":{"venue":""},"carry":"required"},{"key":"cost_other","inputs":["cost_other"],"when":{"cost":"other"},"carry":"required"},{"key":"contact_name","inputs":["contact_name"],"when":{"contact_same":""},"carry":"required"},{"key":"contact_email","inputs":["contact_email","contact_phone"],"when":{"contact_same":""},"carry":"aria"}]</script>
                 <fieldset class="uc-form-section-group">
                     <legend class="uc-field-group-title">About you</legend>
                     <p class="uc-hint">Give your own details here; they are not shown on the calendar.</p>
@@ -255,24 +255,13 @@
 
                 <div class="uc-field">
                     <span class="uc-field-label">Age restriction</span>
-                    <select name="age_restriction" data-uc-reveal="uc-age-other">
-                                                    <option value=""  selected="selected">
-                                Not saying                            </option>
-                                                    <option value="all" >
-                                All ages                            </option>
-                                                    <option value="18" >
-                                18+                            </option>
-                                                    <option value="21" >
-                                21+                            </option>
-                                                    <option value="other" >
-                                Something else                            </option>
-                                            </select>
-                    <label class="uc-field uc-reveal-target" id="uc-age-other">
-                        <span class="uc-field-label">Who can come<span class="uc-req" data-uc-req-mark="age_other" aria-hidden="true" hidden>*</span></span>
-                        <input type="text" name="age_other" maxlength="120" value=""
-                               placeholder="21+ after 9pm" />
-                                            </label>
-                </div>
+                            <select name="age_restriction">
+            <option value="" selected="selected">No age range</option>
+                            <option value="All ages">All ages</option>
+                            <option value="18+">18+</option>
+                            <option value="21+">21+</option>
+                    </select>
+                        </div>
                 </fieldset>
 
                                 <fieldset class="uc-form-section-group">
@@ -379,7 +368,7 @@
             </form>
         </div>
         </div>
-<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.111.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/portal.js?ver=3.111.0"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.113.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/portal.js?ver=3.113.0"></script>
 <script>window.PT_CASE={"set":{"start_time_h":"18","start_time_m":"00","end_time_h":"19","end_time_m":"30"},"press":""};(function () {
 var C = window.PT_CASE, out = { errors: [], posted: null, pressed: false };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
