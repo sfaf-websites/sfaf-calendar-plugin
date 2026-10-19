@@ -531,6 +531,21 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.113.2 =
+
+**Six changes to caladmin, the WordPress event editor and the staff Request an event form. The embed is 3.113.1's.**
+
+**THE EMBED IS UNCHANGED.** Its route, answers and headers, its script and stylesheet, the [sfaf_calendar] block, the event and series pages, the scheduled tasks, the taxonomies and the rewrite rules are 3.113.1's; only the version number embed.js and its answers carry has moved. The one public page that changes is the staff Request an event form.
+
+* **"Events with no organizer" reports upcoming events only.** An event whose last day has gone is not listed, and the all-clear follows the same list: "Every upcoming event has an organizer. None of the N events reported earlier needs a new organizer now." Trash, Dismissed and deleted events were already left out.
+* **Leaving Add event or Edit event with unsaved changes warns.** In caladmin and in the WordPress event editor, the back button, closing the tab or following a link raises the browser's "Leave site? Changes you made may not be saved." It does not appear when nothing was changed, when a change was put back, or after Save changes, Save draft, Publish or Delete. Approve, Reject and Cancel event post their own forms, so with unsaved changes they warn too. In the WordPress editor it covers this plugin's boxes; WordPress already warns about the title and text.
+* **Deleting every FAQ on an event now saves.** Until now the rows came back after a save. **"No FAQs for this event"** sits above the FAQs on Add event and Edit event, in caladmin and in the WordPress editor: ticked, the event keeps no questions of its own and a series' default FAQ set is never added to it. Applying a set by hand unticks it.
+* **A submission waiting for review shows three buttons:** Reject, Save changes (plain) and Approve (green, the main action). Cancel event and Delete appear once it is approved.
+* **Pending: "Rejected and dismissed" is a tab** beside the others, in place of the Dismissed list under the queue. Every row has **Delete permanently**, which asks first; a dismissed import keeps Publish and Restore. A rejected event is still deleted by WordPress 30 days after it was rejected.
+* **An import deleted for good is never fetched again.** The calendar keeps the EveryAction, Eventbrite or GoFundMe Pro id of every imported event deleted permanently, by Delete permanently or by WordPress emptying the trash, and a fetch skips it. Dismissed and rejected events were already never re-imported.
+* **Request an event: no "Who should be able to edit it".** Every request goes on the MarCom team, the first team whose name starts with "MarCom". The requester is not added to it.
+* **Request an event: "Do you want RSVPs for this event?"**, Yes or No, in place of the "People need to RSVP" tick. Yes makes the event take RSVPs and puts the requester on its notification list for "Count of who is coming, the day before" and "Who is coming, two hours before"; the registration and cancellation alerts start off. The confirmation email and the form say so, and Approve no longer offers to add somebody already on the list.
+
 = 3.113.1 =
 
 **Six small changes to caladmin, and the contact email on the event page is a link. The embed is 3.113.0's.**

@@ -288,29 +288,35 @@ list control later is more work than including it now.
 > `.claude/request-picture-picker-test.php` renders the control and parses what
 > came back.
 
-**The requester names the team that should be able to edit it** (3.66.0). Teams
-only, never individuals: membership resolves at read time, so adding somebody to
-a team hands them every event that team owns and removing them takes it back,
-while a typed name or address is a string that is correct on the day it is typed
-and nobody's job afterwards. The requester sees team **names** and never who is
-on them.
+**Every request goes on the MarCom team (3.113.2), and the form does not ask.**
+From 3.66.0 to 3.113.1 the requester ticked the teams that should be able to
+edit it; Mark replaced that with one rule. `SFAF_Request::marcom_team()` finds
+the team by NAME: the first, in name order, whose name with spaces and
+punctuation removed starts with `marcom`. A site with no such team sets no team
+and the request is still in the Pending queue for the admins.
 
-- **No limit on how many (3.113.1).** It was two, `SFAF_Teams::MAX_PER_EVENT`,
-  enforced here as an error and in caladmin as a silent trim of the third tick.
-  Mark removed it; the constant is gone, so neither form can bring it back by
-  asking.
+- **The requester is not added to the team.** Nothing in `class-sfaf-request.php`
+  writes a team's membership.
 - **It is written through `SFAF_Teams::set_access_for_event()`**, the call the
   portal makes. `_uc_event_teams` is never touched from this file, and
   `request-form-test.php` asserts that absence.
 - **It is written on a PENDING row, which is the point.** Access resolves at
-  read time, so the named team can open the request in caladmin before anybody
-  approves it.
+  read time, so MarCom can open the request in caladmin before anybody approves
+  it.
+- **Found by name, so renaming the team breaks it.** There is no setting to
+  point at a team; a team named "Marketing" would not match.
 
-> **Showing team names on an unauthenticated page is safe because of the gate
-> that is already there.** The form is only ever rendered after a token sent to
-> a verified sfaf.org mailbox has resolved, so anybody who can see the list has
-> already proved an sfaf.org address. Mark confirmed team names may be shown
-> once that is true.
+**"Do you want RSVPs for this event?" (3.113.2)**, Yes or No, No chosen, where
+3.43.0 to 3.113.1 had a "People need to RSVP" tick. Yes stores
+`_uc_rsvp_enabled`, puts the requester's address on the event's notification
+list through `SFAF_Submissions::add_to_notify_list()` (a typed address, as
+Approve's tick does) and switches off every choosable kind except
+`SFAF_Request::RSVP_EMAILS`, `day_before` and `summary`. Because the switches
+are per event, the registration alert and the cancellation alert are off for
+everybody on the list until a manager turns them on. Nothing is sent while the
+event is pending: both senders query `publish` only. The approval prompt hides
+its registrations tick when the first address is already on the list, since
+unticking it could not take them off.
 
 **Hierarchy on both forms comes from the Subhead step** (3.66.0). Both forms
 used the type scale and the scale is not flat; they reached for the **wrong
@@ -1828,6 +1834,28 @@ on the document is what the two scopes already share.
 **`.claude/rich-text-start-test.js` presses both buttons now** and plants the
 3.73.0 arrangement, in which a set row is appended and never started.
 
+### Deleting every FAQ, and No FAQs for this event (3.113.2)
+
+**DELETING EVERY FAQ AND SAVING BROUGHT THEM BACK, in both editors.** A repeater
+with no rows posts nothing, which looks exactly like a form without the block,
+so the save leaves the meta alone. The marker that tells the two apart,
+`uc_faq_has_manual`, was shipped only on a LOCKED block (an import's), so on an
+ordinary event the old rows survived. It ships with every event's FAQ block now.
+Preselection was not the cause: `initFaqSetPicker()` chooses a set in the
+dropdown and adds nothing until Add these questions is pressed.
+
+**On caladmin the series default came first, too.** `save_event_from_post()`
+applied a series' default set when the event moved into it, BEFORE the FAQ rows
+were saved; it runs after them now, so it sees what the form says the event has.
+
+**No FAQs for this event**, `uc_faq_none`, above the set picker and the rows on
+Add event and Edit event in caladmin and on the WordPress box; not offered where
+a platform owns the FAQs. Ticked, the save stores no rows of the event's own and
+`SFAF_FAQ_Sets::NONE_META` (`_uc_faq_none`), and `apply_series_default()`
+refuses the event, on a move into a series and from the bulk bar.
+`SFAF_FAQ_Sets::apply()` adding a row clears it, because applying a set by hand is
+choosing FAQs. portal.js hides the picker and rows while it is ticked.
+
 ### Rich text is a rule, and one control
 
 **Any field where somebody writes more than a sentence and it is DISPLAYED AS
@@ -2588,7 +2616,8 @@ pair is what a draft genuinely needs.
 
 ```
 published, scheduled   Save changes
-pending submission     Save changes, Approve, Reject      (calendar admins)
+pending submission     Reject, Save changes, Approve      (calendar admins; no
+                       Cancel event or Delete until approved, 3.113.2)
 pending, not a sub     Save changes, Publish
 draft or new           Save draft, Publish
 ```
@@ -2606,6 +2635,14 @@ prompt, same two ticks. The buttons carry `form=` because a form may not nest
 inside the event form, which is the same reason the ticks in the prompt already
 do. **There is no second way to approve**, which is the point rather than a
 detail.
+
+**ON A SUBMISSION WAITING FOR REVIEW, APPROVE IS THE MAIN ACTION (3.113.2).**
+It is green and the size Publish has (`uc-editor-approve`), Save changes is the
+plain `uc-btn`, and the row reads Reject, Save changes, Approve by CSS `order`
+while Save stays first in the markup for Enter. Cancel event and Delete are not
+drawn, buttons or dialogs, for anybody, until the event is approved. Above
+600px the caption beside them shrinks (`:has(.uc-editor-approve)`) so Approve
+stays on the row.
 
 **WHO DECIDES A SUBMISSION IS WHO DECIDES ONE ON THE QUEUE**, and that is a
 calendar admin. Both routes `wp_die()` on anybody else, so offering the decision
@@ -3057,16 +3094,11 @@ Draft"**, and `save_mode=draft` sets the status to `draft`.
 takes the event **out of the queue it was being reviewed in**, and it is then
 findable only through the Events list under a status filter.
 
-**NOTHING IN CALADMIN WARNS ABOUT UNSAVED WORK, ANYWHERE.** There is no
-`beforeunload` handler in `portal.js` at all, so closing a tab, following a link
-or pressing Back mid-edit discards everything typed, silently, on every screen
-rather than only on this one. It is worth stating as a property of the portal
-and not of imports: the imported event is simply where it costs the most,
-because there is no way to save that work in place either.
-
-**And nothing protects the alternative.** There is no `beforeunload` handler
-anywhere in `portal.js`, so a manager who fills in half an imported campaign and
-closes the tab, or follows a link, loses everything typed with no prompt.
+**Leaving the editor with unsaved changes warns (3.113.2)**, on Add event and Edit
+event only; every other caladmin screen still lets work go silently, with the
+browser draft (§5) as the net. So a manager who fills in half an imported
+campaign and leaves is told, though there is still no way to save that work in
+place.
 
 > **The one-line version of the fix is adding `uc_imported` to `$keep_status`,
 > and it is deliberately NOT in 3.49.1.** It changes which events stay in the
@@ -3119,10 +3151,21 @@ it answers a different question. Event date is offered as a second sort, and
 **anything dateless sorts last in both directions**, because imports arrive
 without one by design and reversing a sort must not park all of them on top.
 
-**Dismissed is still its own card, below, and that is not an exception.**
-Dismissed is a STATUS, not a kind. Those rows have had their decision taken and
-are kept only so a fetch never offers them again, so folding them into a work
-list would put things nobody must act on among things somebody must.
+**Rejected and dismissed is its own tab (3.113.2), and that is not an
+exception.** Dismissed and rejected are outcomes, not kinds: those rows have had
+their decision taken, so folding them into the work list would put things nobody
+must act on among things somebody must. The tab is `?view=closed`, last in the
+row with its count, and draws only `render_closed_queue()`: dismissed imports
+(`uc_dismissed`, with Publish and Restore) and rejected submissions (trash with
+`SFAF_Uploads::META_REJECTED`; anything trashed another way is not listed).
+Until 3.113.2 Dismissed was a card under the queue, folded shut in 3.113.1.
+
+- **Delete permanently** on every row, behind `data-uc-confirm`, posts
+  `pending_purge`: an admin's, and only for those two states, so a published
+  event or one trashed from the Events list is refused. `wp_delete_post( $id,
+  true )`, which fires `before_delete_post` and so the deleted-id record (§3).
+- **WordPress still empties the trash after 30 days**, so a rejected row leaves
+  the tab on its own; a dismissed one stays until deleted.
 
 **The badge identifies and the filter narrows; they are not alternatives.** The
 kind badges from 3.46.0 stay on the rows.
@@ -4601,6 +4644,16 @@ future, private, trash, uc_imported, uc_dismissed`. Do not "simplify" that to
 `exclude_from_search`, which both queue statuses are, so it would miss the
 entire queue and re-import everything on every run. Trash is in the list
 deliberately, so a trashed import does not come back either.
+
+**Deleted for good is recorded, because there is nothing left to match
+(3.113.2).** `find_existing()` matches a POST, so once one is deleted
+permanently (Delete permanently on Pending, or WordPress emptying the trash 30
+days after a rejection) the next fetch would have made it again.
+`SFAF_Sources::record_deleted()`, on `before_delete_post` and registered at boot,
+keeps `source|external id` in the `sfaf_source_deleted` option (the newest
+5,000), and `run_adapter()` counts a recorded id as untouched instead of new.
+It is every source, not only EveryAction. **Nothing takes an id off the list**:
+an event deleted by mistake can only come back by hand.
 
 **What is allowed to become an event, since 3.58.0.** Two rules, applied at the
 one moment a row would be created, in `SFAF_Sources::import_refusal()`.
@@ -6659,6 +6712,35 @@ means yes) and stored as `uc_remember`.
 a tick wait for a click or keystroke in the last thirty minutes; that is set
 aside with the rest of 3.112.x (§8).
 
+### Leaving the editor with unsaved changes (3.113.2)
+
+**Before 3.113.2 nothing warned.** caladmin had no `beforeunload` at all; the
+WordPress editor warned about the title and the text, as WordPress does, and
+not about this plugin's meta boxes. The browser draft above was the only net.
+
+- **caladmin, in `caladmin-session.js`**, for forms carrying
+  `data-uc-leave-warn`: the event form on Add event and Edit event. It warns
+  when an input, change or click has happened in the form AND its fields differ
+  from what the page settled on after `load` (or, for an edit before `load`,
+  from what the server drew). Changed and put back is not unsaved. A rich text
+  editor counts through `syncEditors()`; a restored draft is unsaved from the
+  start. `window.ucSession.unsaved()` is the same answer, for the checks.
+- **What ends it**: a submit of the event form that nothing cancelled (a
+  window listener, last to hear it), the Delete form (`trash_event`), and this
+  file's own redirects. **Approve, Reject, Cancel event and a FAQ set's form do
+  not**: they post their own forms and the event form's changes are lost, so
+  they warn.
+- **WordPress, in `admin.js`**, on `post.php` and `post-new.php` for
+  `uc_event`: a trusted input, change or button click inside one of this
+  plugin's meta boxes, until the classic form is posted (not to Preview's tab)
+  or the block editor finishes saving its meta boxes. No snapshot there, so a
+  change put back still warns.
+- **The words are the browser's.** `returnValue` is set to "Your changes will
+  not be saved.", but every current browser shows its own sentence instead.
+- `release-31132-live.php` drives the caladmin half in Chrome with dispatched
+  events, which is why that half does not ask `isTrusted`; the WordPress half
+  is `TESTING.md`'s.
+
 **What a restore cannot do.** It fills the fields the page drew. A repeater row
 added in the browser and never saved (a FAQ, a question, an extra date) is not
 drawn again, so its fields have nowhere to go. With scripting off there is no
@@ -6857,6 +6939,13 @@ appearing is a second naming all four; everything being fixed is a third saying
 so. A daily check rather than a `user_deleted` hook because a hook fires once, at
 a moment nobody is watching, and cannot see the second cause at all: a calendar
 record withdrawn while the WordPress account stays.
+
+**Upcoming events only (3.113.2).** `orphaned_events()` skips an event whose last
+day (the end date when later, else the date) is before today; an undated one is
+kept. Trash, Dismissed and deleted events were never in its query. The all-clear
+is the same set going empty, so it says none of the events "needs a new organizer
+now" rather than that they were given one: an event can leave the list by taking
+place.
 
 So an administrator who has not added themselves has full access and does **not**
 appear in pickers, and that is correct: **a picker is a list of the people who
@@ -7130,11 +7219,11 @@ current situation and all four will still be true in six months.
   the event, but it means the name on that prompt decides who sees a list of
   people who signed up for an HIV testing or trans health event. Read it before
   pressing Approve. §1 carries the reasoning.
-- **Nothing in caladmin warns about unsaved work.** There is no `beforeunload`
-  handler anywhere in the portal: close a tab or follow a link mid-edit and
-  nothing says so. Since 3.110.5 what was typed is kept as a browser draft and
-  offered back on the next visit to that screen (§5), but a repeater row added
-  and never saved is still lost. This is also why a
+- **Only Add event and Edit event warn about unsaved work (3.113.2).** On every
+  other caladmin screen, close a tab or follow a link mid-edit and nothing says
+  so. Since 3.110.5 what was typed is kept as a browser draft and offered back
+  on the next visit to that screen (§5), but a repeater row added and never
+  saved is still lost. This is also why a
   control that creates something is a field on the form and never a button that
   posts; see "Create-from-the-editor is a field, never a button".
 - **A cancelled event is still `publish` with a date**, and teams are an access

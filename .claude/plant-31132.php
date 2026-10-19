@@ -45,7 +45,7 @@ $plants = array(
     'L: nothing is ever unsaved' => array( 'release-31132-live.php --run', 'L: a changed title is not unsaved', array(
         array( 'public/js/caladmin-session.js', "                if (form && leaveForms.indexOf(form) !== -1) { byHand = true; }\n", "" ),
     ) ),
-    '3: the marker only on a locked block' => array( 'release-31132-test.php', '3: caladmin: every FAQ deleted and saved stays deleted', array(
+    '3: the marker only on a locked block' => array( 'release-31132-test.php', '3: and the marker ships on an ordinary event', array(
         array( 'includes/class-sfaf-portal.php', "            if ( 'uc_faqs' === \$name ) : ?>\n                <input type=\"hidden\" name=\"uc_faq_has_manual\" value=\"1\" />", "            if ( \$locked ) : ?>\n                <input type=\"hidden\" name=\"uc_faq_has_manual\" value=\"1\" />" ),
     ) ),
     '3: No FAQs keeps the posted rows' => array( 'release-31132-test.php', '3: No FAQs stores no rows', array(
@@ -57,7 +57,7 @@ $plants = array(
     '3: the default before the rows again' => array( 'release-31132-test.php', '3: moving into a series with no FAQs of its own takes the default', array(
         array( 'includes/class-sfaf-portal.php', "        if ( \$faq_default_from ) {\n            SFAF_FAQ_Sets::apply_series_default( \$event_id, \$faq_default_from );\n        }\n", "" ),
     ) ),
-    '3: WP admin marker only when locked' => array( 'release-31132-test.php', '3: WP admin: every FAQ deleted and saved stays deleted', array(
+    '3: WP admin marker only when locked' => array( 'release-31132-test.php', '3: WP admin: the marker ships on an ordinary event', array(
         array( 'includes/class-sfaf-post-types.php', "        echo '<input type=\"hidden\" name=\"uc_faq_has_manual\" value=\"1\" />';\n        ?>", "        ?>" ),
     ) ),
     'F: the tick hides nothing' => array( 'release-31132-live.php --run', 'ticked, the rows still show', array(

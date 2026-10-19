@@ -4,7 +4,7 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-16, at 3.113.1, **built from 3.113.0, which was built from 3.111.0.** **The live site is on 3.111.0.**
+**Last updated:** 2026-10-19, at 3.113.2, **built from 3.113.1 (released 2026-10-19), from 3.113.0, from 3.111.0.** **The live site was last known on 3.111.0.**
 
 ---
 
@@ -17,11 +17,10 @@ layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 > `TESTING.md` **1.0**, which says what to capture before any rollback.
 > **resources.sfaf.org is LiteSpeed on AWS with LiteSpeed Cache; only www.sfaf.org
 > is WP Engine.** The Events Calendar is still on (1.283).
-**3.113.0**: Age range as three choices, Cancel event and Delete as dialogs, the
-Asana copy, and the Notifications card's two rows as a status line and a button.
-**Its public calendar is 3.111.0's**, proved by `embed-identity-test.php`.
-**3.113.1**: Mark's six fixes (`readme.txt`); the event page's contact email is
-a link. **Its embed is 3.113.0's**, same check.
+**3.113.0** to **3.113.2** are caladmin work (`readme.txt`); each one's public calendar is
+the one before's, proved by `embed-identity-test.php`, so all are 3.111.0's but for
+3.113.1's contact email link. **3.113.2** puts every staff request on the MarCom team,
+found **by name** (`TESTING.md` 1.296 first), and deletes imports for good.
 > **3.110.1: EDITORS NO LONGER HAVE EVERY EVENT.** A team decides which events a
 > person has; their level decides what they can do on them (CLAUDE.md 7,
 > `PROJECT.md` 5). An editor has what they created and what **Team and
@@ -85,11 +84,11 @@ and from 3.111.0 `calendar-files/` for PDFs, beside them.
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 352 items**, 19 of them marked set
+**`TESTING.md` holds the manual testing backlog: 361 items**, 19 of them marked set
 aside until their 3.112.x feature returns. **1.0** (installing 3.113.1 and its
 first hour), then **1.287** (how many events now send the two emails), **1.281**
 (the hidden age values), **1.279** (the dialogs), **1.284** (the Notifications
-card) and **1.285** to **1.290** (3.113.1) first, then **1.249** (signed out
+card), **1.285** to **1.290** (3.113.1) and **1.291** to **1.296** (3.113.2) first, then **1.249** (signed out
 with a form open), then **1.260** (that schema 14 ran), **1.255** (no count
 anywhere public) and **1.256** (a review team), then **1.235**, **1.245**
 and **1.236** (Strut's slug, See all events, retired names), then **1.225**,

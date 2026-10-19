@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 352 items.** Quick 288, needs real conditions 60, blocked on other
+**Outstanding: 361 items.** Quick 294, needs real conditions 63, blocked on other
 people 4.
 
 ---
@@ -18,14 +18,15 @@ people 4.
 
 Opening a screen and looking, loading a URL, pressing a control. Fastest first.
 
-### 1.0 FIRST: installing 3.113.1 on the live site, and the first hour (3.113.0, 3.113.1)
+### 1.0 FIRST: installing 3.113.2 on the live site, and the first hour (3.113.0 to 3.113.2)
 
 3.112.0 and 3.112.2 failed from the office network (no connection to
 resources.sfaf.org at all) and 3.111.0 cured it each time. **3.113.0 is built
 from 3.111.0 and its public calendar is 3.111.0's**, and **3.113.1's embed is
 3.113.0's**, both proved by `.claude/embed-identity-test.php`; only the version
-number moves. 3.113.1 also changes the event page's contact line (1.289). If
-3.113.0 was never installed, install 3.113.1 directly; the steps are the same. So this
+number moves. 3.113.1 also changes the event page's contact line (1.289), and
+**3.113.2's embed is 3.113.1's**, by the same check. If 3.113.0 or 3.113.1 was
+never installed, install 3.113.2 directly; the steps are the same. So this
 install says whether a version change and caladmin work alone bring the fault
 back. The calendar is served from resources.sfaf.org, **LiteSpeed on AWS with
 the LiteSpeed Cache plugin**; only www.sfaf.org is on WP Engine.
@@ -38,7 +39,7 @@ the LiteSpeed Cache plugin**; only www.sfaf.org is on WP Engine.
   condition that failed.
 
 **Install**: Plugins > SFAF Calendar > Check for updates, then Update (or upload
-`sfaf-calendar-3.113.1.zip` and choose Replace current with uploaded). Then
+`sfaf-calendar-3.113.2.zip` and choose Replace current with uploaded). Then
 **LiteSpeed Cache > Toolbox > Purge All**.
 
 **The first hour, four times** (at install, +15, +30, +60 minutes):
@@ -3865,6 +3866,10 @@ off. On a phone, both buttons fit in the card. From 3.113.1 the line reads
 
 ### 1.285 Pending's Dismissed list starts shut (3.113.1)
 
+**Only while 3.113.1 is installed.** 3.113.2 replaces the list with the
+Rejected and dismissed tab (1.291); once 3.113.2 is on, this item has nothing
+to test and can be deleted.
+
 On a site with dismissed imports, open Pending. Under the work list there is
 one grey button, **Show dismissed (N)** with a chevron pointing down, and no
 list. Press it: the list opens, the button says **Hide dismissed (N)**, looks
@@ -3938,11 +3943,90 @@ On an event's Team and access, there is no "Pick up to 2." Tick three teams,
 Save changes, reopen: all three are ticked, and somebody on the third team has
 the event under My events. On the staff Request an event form, the hint no
 longer says "up to 2"; choose three teams and send: the request is accepted and
-all three can open it in caladmin.
+all three can open it in caladmin. **The request form half is 3.113.1's only**:
+3.113.2 takes the team question off the form (1.296).
 
 **Why it needs a person:** the live editor and request form, with real teams
 and a real member of each.
 
+### 1.291 Pending's Rejected and dismissed tab, and Delete permanently (3.113.2)
+
+Open Pending. The last tab is **Rejected and dismissed** with a count, and
+nothing dismissed is under the work list any more. Open it: the dismissed
+imports (Publish, Restore, Delete permanently) and any submission rejected in
+the last 30 days (Delete permanently only), each marked Dismissed or Rejected.
+Press **Delete permanently** on one: a confirmation names it and says nothing
+puts it back; Cancel keeps it. Confirm on a test row only: "Deleted
+permanently.", the tab one smaller, and the event gone from the Events list and
+from WordPress's trash. Something trashed from the Events list must not be in
+this tab.
+
+**Why it needs a person:** the live queue, and a deletion that cannot be undone.
+
+### 1.292 A submission waiting for review has three buttons (3.113.2)
+
+Open a pending community submission or staff request in the editor as a
+calendar admin. The bar at the foot reads **Reject** (red), **Save changes**
+(plain grey) and **Approve** (green, the largest), left to right on one line;
+no Cancel event and no Delete anywhere on the page. Press Enter in the title
+field: it saves, and nothing is approved. Approve it, reopen: Save changes is
+green again and Cancel event and Delete are back. Check the bar on a phone too.
+
+**Why it needs a person:** the live editor with a real submission.
+
+### 1.293 Deleting every FAQ, and No FAQs for this event (3.113.2)
+
+In caladmin, open an event with FAQs, remove every row, Save changes, reopen:
+no FAQs, and none on the event page. Then tick **No FAQs for this event**: the
+set picker and the rows disappear and "A series' default FAQ set is not added
+to it." shows; save, reopen, still ticked. Move that event into a series that
+has a default FAQ set: still no FAQs. Untick, apply a set, save: the questions
+are there and the tick is off. Repeat the first and second steps in the
+WordPress event editor's FAQ box (Events, edit an event).
+
+**Why it needs a person:** the live editors and the event page.
+
+### 1.294 The leave warning in caladmin (3.113.2)
+
+On Edit event: open it and press the browser's Back: no warning. Type a letter
+in the title, then Back: the browser asks whether to leave ("Changes you made
+may not be saved" or similar; the words are the browser's). Stay, delete the
+letter, Back: no warning. Change the title again and try closing the tab and
+clicking Events in the sidebar: both warn. Press Save changes: no warning, and
+none afterwards. The same on Add event, with Save draft and Publish. Change
+something, then press Cancel event and go through the dialog: it warns, since
+the change is not saved; Delete does not.
+
+**Why it needs a person:** the leave warning is the browser's own dialog, which
+a headless check cannot press.
+
+### 1.295 The leave warning in the WordPress event editor (3.113.2)
+
+Open an event at Events > (edit) in wp-admin and note **which editor** it is:
+the block editor or the classic one. Change a date, a time or a FAQ in one of
+the calendar's boxes, then Back: the browser asks whether to leave. Stay,
+Update or Save: no warning afterwards. Change only the title: WordPress's own
+warning, as before. In the classic editor, press Preview after a change: no
+warning in the editor tab.
+
+**Why it needs a person:** wp-admin cannot be rendered here, and which editor
+the site uses is not known.
+
+### 1.296 The staff Request an event form (3.113.2)
+
+First, in caladmin Users and Permissions > Teams, confirm the MarCom team's
+**name starts with "MarCom"** (any capitals, spaces or punctuation after it are
+fine); nothing else finds it. Open the form from a fresh link: no "Who should be
+able to edit it", and an RSVP section asking **Do you want RSVPs for this
+event?** with Yes and No, No chosen. Send one request with Yes: the confirmation
+email says you get two emails once it is published. In caladmin the pending
+event takes RSVPs, Team and access shows the MarCom team only, the requester is
+not added to the team, the notification list has the requester's address, and
+Emails for this event has only "Count of who is coming" and "Who is coming"
+ticked of the four. Approve it: no "Send ... registrations" tick. Send one with
+No: no RSVPs, nobody listed.
+
+**Why it needs a person:** the live form, real teams and a real mailbox.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -4780,6 +4864,35 @@ day between, `multi_day` true. A one-day event: `multi_day` false and
 `last_date` the same as `date`.
 
 **Why it needs real conditions:** the feed is dormant and needs its key.
+### 2.63 Events with no organizer: upcoming only (3.113.2)
+
+After the daily check has run on 3.113.2 (Automation shows when), the email to
+calendar admins, if one is sent, lists only events today or later; nothing that
+has already happened. If the earlier list had only past events in it, the next
+run sends the all-clear, "Every upcoming event has an organizer", once.
+
+**Why it needs real conditions:** the daily job, on real events whose
+organizers have left.
+
+### 2.64 An import deleted for good is not fetched again (3.113.2)
+
+With Auto-Import still off, dismiss one EveryAction event in Pending, then open
+Rejected and dismissed and Delete permanently. Press Fetch updates: the event
+does not come back, and the report counts it as untouched rather than new. Then
+check a rejected submission that was itself an import, after WordPress empties
+the trash (30 days): the next fetch does not bring it back either.
+
+**Why it needs real conditions:** a real fetch from the tracker, and the trash
+emptying on its own.
+
+### 2.65 The requester's two emails for a request that wanted RSVPs (3.113.2)
+
+For a request sent with Yes (1.296), approved, with at least one registration:
+the requester gets the count at 6 am the day before and the list two hours
+before, and no email per registration or cancellation.
+
+**Why it needs real conditions:** a real event, real registrations and the
+scheduled runner.
 ## 3. Blocked on other people
 
 Nothing here can move until somebody outside the build answers.

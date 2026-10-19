@@ -118,7 +118,7 @@ the sidebar (the pending queue), and nowhere decorative.
 that is Mark's decision.** It is written down here because it inverts the rule
 above, and a later pass reading only the rule would "correct" it back.
 
-**THERE ARE TWO ROWS, AND ONE RULE COVERS BOTH.**
+**THERE ARE THREE ROWS, AND ONE RULE COVERS THEM.**
 
 ```
 a draft         Delete          Save draft       Publish
@@ -130,7 +130,17 @@ an existing     Delete          Cancel event     Save changes
 event           red             RED              GREEN, largest
                 #c0392b         #c0392b          #15803D
                 white 5.44:1    white 5.44:1     white 5.02:1
+
+a submission    Reject          Save changes     Approve           (3.113.2)
+waiting for     red             plain secondary  GREEN, largest
+review          #c0392b         face, no colour  #15803D
+                white 5.44:1                     white 5.02:1
 ```
+
+On a submission waiting for review Approve is what puts the event in front of
+people, so it takes the green and the size and Save changes goes plain; there is
+no Cancel event or Delete until it is approved. Above 600px the caption beside
+the row shrinks so Approve stays on the line.
 
 **GREEN AND LARGEST MARK WHATEVER PUTS THE EVENT IN FRONT OF PEOPLE.** On a
 draft that is Publish. On an existing event there IS no Publish, so it is Save
@@ -1163,7 +1173,7 @@ at 1280px and 390px.
 | Always sent (3.113.1) | the confirmation and the morning-of reminder: no box, the label indented 26px to where the ticked labels' text starts, then `.uc-pill` "Always sent" 6px after it, not capitalized |
 
 **A button that shows or hides a list shows which (3.113.1).** + Add category,
-+ Add organizer and Pending's Show dismissed carry the 14px chevron, which points
++ Add organizer (and Pending's Show dismissed, until 3.113.2 made it a tab) carry the 14px chevron, which points
 down while the list is shut and up while it is open (the glyph is drawn pointing
 right, so 90deg and -90deg). Open, the button keeps the secondary shape and wears
 the hover face `--p-btn-face-hover`, the `--uc-accent-text` edge and an inset
