@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html >
+<head>
+    <meta charset="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Pending - SFAF Calendar</title>
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.113.2" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.113.2" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.113.2" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.113.2" />
+    <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
+        <script>
+    (function (d) {
+        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        d.setAttribute('data-uc-motion', reduced ? 'reduced' : 'on');
+        if (reduced) { return; }
+        d.className += ' uc-anim';
+        // The nav stagger is once per session, not once per navigation: every
+        // screen here is a full page load. A storage failure means it simply
+        // runs again, which is the harmless outcome.
+        try {
+            if (window.sessionStorage.getItem('ucNavIntro') !== '1') {
+                window.sessionStorage.setItem('ucNavIntro', '1');
+                d.className += ' uc-anim-nav';
+            }
+        } catch (e) {
+            d.className += ' uc-anim-nav';
+        }
+    })(document.documentElement);
+    </script>
+    </head>
+<body class="uc-portal">        <div class="uc-portal-layout">
+            <aside class="uc-portal-sidebar" id="uc-sidebar">
+                                <div class="uc-portal-brand">
+                    <span class="uc-portal-logo-wrap" data-uc-sidebar-logo>
+                        <img src="https://resources.sfaf.org/wp-content/uploads/SFAF-heritage-logo_stacked-Yellow-15Gray-preview.webp" alt="San Francisco AIDS Foundation"
+                             class="uc-portal-logo" width="1470" height="901" />
+                    </span>
+                    <span class="uc-portal-brandtext">Calendar Admin</span>
+                </div>
+                <nav class="uc-portal-nav" aria-label="Calendar admin">
+                                                                    <a href="https://resources.sfaf.org/caladmin"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 1"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-home" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 11 12 4l8 7"/><path d="M6.5 9.5V20h11V9.5"/></svg></span>
+                            <span class="uc-nav-label">Dashboard</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/events"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 2"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-calendar" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span>
+                            <span class="uc-nav-label">Events</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/series"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 3"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-repeat" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17 2.5 21 6.5l-4 4"/><path d="M3 12.5v-2a4 4 0 0 1 4-4h14"/><path d="M7 21.5 3 17.5l4-4"/><path d="M21 11.5v2a4 4 0 0 1-4 4H3"/></svg></span>
+                            <span class="uc-nav-label">Series &amp; Categories</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/faq-sets"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 4"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-help" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.6"/><path d="M12 17h.01"/></svg></span>
+                            <span class="uc-nav-label">FAQ Sets</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/media"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 5"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-image" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.5"/><path d="m3.5 16.5 4.5-4 3.5 3 3-2.5 6 5"/></svg></span>
+                            <span class="uc-nav-label">Images</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/venues"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 6"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-venue" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 21h18"/><path d="M12 3.5 4 8.5h16z"/><path d="M6.5 21v-9M10.2 21v-9M13.8 21v-9M17.5 21v-9"/></svg></span>
+                            <span class="uc-nav-label">Venues</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/organizers"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 7"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-users" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5"/><path d="M17 13.2a5.5 5.5 0 0 1 3.5 5.8"/></svg></span>
+                            <span class="uc-nav-label">Organizers</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/optins"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 8"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-mail" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/></svg></span>
+                            <span class="uc-nav-label">Email Opt-ins</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/pending"
+                           class="uc-nav-item active"
+                           style="--uc-nav-i: 9"
+                            aria-current="page">
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-clock" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>
+                            <span class="uc-nav-label">Pending</span>
+                                                            <span class="uc-nav-badge">1<span class="uc-visually-hidden"> waiting for review</span></span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/users"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 10"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-users" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5"/><path d="M17 13.2a5.5 5.5 0 0 1 3.5 5.8"/></svg></span>
+                            <span class="uc-nav-label">Users &amp; Teams</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/email-templates"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 11"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-mail" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/></svg></span>
+                            <span class="uc-nav-label">Email Templates</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/preferences"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 12"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-bell" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 10.5a6 6 0 0 0-12 0c0 4.5-2 6-2 6h16s-2-1.5-2-6z"/><path d="M13.7 19.5a2 2 0 0 1-3.4 0"/></svg></span>
+                            <span class="uc-nav-label">Preferences</span>
+                                                    </a>
+                                    </nav>
+
+                                <div class="uc-portal-foot">
+                    <div class="uc-portal-me">
+                        <span class="uc-portal-me-name">Admin</span>
+                        <span class="uc-portal-me-role">Admin</span>
+                        <a class="uc-portal-signout" href="">Sign out</a>
+                    </div>
+                </div>
+            </aside>
+
+            <div class="uc-portal-main">
+                <header class="uc-portal-topbar">
+                                        <button type="button" class="uc-portal-menu-btn" id="uc-menu-btn" aria-label="Menu"><svg class="sfaf-icon sfaf-icon-menu" width="22px" height="22px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+                                    </header>
+                <main class="uc-portal-content">
+                <div class="uc-page-head">
+            <h1>Pending Events</h1>
+            <div class="uc-head-actions">
+                                <form method="post" action="https://resources.sfaf.org/caladmin/pending" class="uc-inline-form"
+                      data-uc-async="fetch"
+                      data-uc-ajax="https://resources.sfaf.org/wp-admin/admin-ajax.php"
+                      data-uc-action="sfaf_portal_fetch"
+                      data-uc-ajax-nonce="nonce"
+                      data-uc-busy="Fetching&hellip;">
+                    <input type="hidden" name="uc_action" value="fetch_sources" />
+                    <input type="hidden" name="uc_nonce" value="nonce" />                                        <button type="submit" class="uc-btn uc-btn-utility" disabled>
+                        <svg class="sfaf-icon sfaf-icon-refresh" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 11.5a8 8 0 1 0-.9 5.2"/><path d="M20 4.5v7h-7"/></svg>                        <span>Fetch updates</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+                                <div class="uc-card uc-card-muted">
+                    <div class="uc-card-head"><h2>Sources</h2></div>
+                    <p class="uc-empty">No third-party sources are connected yet. Connect one under
+                    <strong>Settings &rsaquo; Integrations</strong> in the WordPress admin, then
+                    &ldquo;Fetch updates&rdquo; will pull its events into the Pending queue.</p>
+                                    </div>
+                        
+                <div class="uc-view-tabs" role="navigation" aria-label="Which pending events to show">
+                            <a class="uc-view-tab"
+                   href="https://resources.sfaf.org/caladmin/pending?orderby=received&amp;order=desc">
+                    Everything                    <span class="uc-tab-count">1</span>
+                </a>
+                            <a class="uc-view-tab"
+                   href="https://resources.sfaf.org/caladmin/pending?kind=import&amp;orderby=received&amp;order=desc">
+                    Imported                    <span class="uc-tab-count">0</span>
+                </a>
+                            <a class="uc-view-tab"
+                   href="https://resources.sfaf.org/caladmin/pending?kind=staff&amp;orderby=received&amp;order=desc">
+                    Staff requests                    <span class="uc-tab-count">0</span>
+                </a>
+                            <a class="uc-view-tab"
+                   href="https://resources.sfaf.org/caladmin/pending?kind=community&amp;orderby=received&amp;order=desc">
+                    Community submissions                    <span class="uc-tab-count">1</span>
+                </a>
+                                    <a class="uc-view-tab uc-view-tab-active" data-uc-closed-tab
+               href="https://resources.sfaf.org/caladmin/pending?view=closed" aria-current="page">
+                Rejected and dismissed
+                <span class="uc-tab-count">3</span>
+            </a>
+        </div>
+        
+                            <div class="uc-card" data-uc-closed-queue>
+            <div class="uc-card-head">
+                <h2>Rejected and dismissed</h2>
+                <span class="uc-count-badge">3</span>            </div>
+                        <p class="uc-help">A dismissed import is never fetched again. A rejected event is deleted for good 30 days after it was rejected.</p>
+            <ul class="uc-queue-list">
+                                    <li class="uc-queue-item" data-uc-id="505" data-uc-kind="rejected">
+                        <div class="uc-queue-row">
+                            <div class="uc-queue-id">
+                                <h3 class="uc-queue-title">
+                                                                            A rejected request                                                                        <span class="uc-source-badge uc-badge-staff">Staff request</span>
+                                </h3>
+                                <p class="uc-queue-meta">
+                                    <span>Rejected</span>
+                                    <span>No date. Set it when publishing</span>
+                                </p>
+                            </div>
+                            <div class="uc-queue-actions">
+                                <div class="uc-actions">
+                                                                        <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                        <input type="hidden" name="uc_action" value="pending_purge" />
+                                        <input type="hidden" name="event_id" value="505" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <button class="uc-link-danger" type="submit" data-uc-purge
+                                                data-uc-confirm="Delete &quot;A rejected request&quot; permanently? Nothing puts it back.">Delete permanently</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                                    <li class="uc-queue-item" data-uc-id="504" data-uc-kind="dismissed">
+                        <div class="uc-queue-row">
+                            <div class="uc-queue-id">
+                                <h3 class="uc-queue-title">
+                                                                            <a href="https://resources.sfaf.org/caladmin/events/edit/504">Another one</a>
+                                                                        <span class="uc-source-badge uc-badge-import">everyaction</span>
+                                </h3>
+                                <p class="uc-queue-meta">
+                                    <span>Dismissed</span>
+                                    <span>No date. Set it when publishing</span>
+                                </p>
+                            </div>
+                            <div class="uc-queue-actions">
+                                <div class="uc-actions">
+                                                                        <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                        <input type="hidden" name="uc_action" value="import_publish" />
+                                        <input type="hidden" name="event_id" value="504" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <button class="uc-link-ok" type="submit">Publish</button>
+                                    </form>
+                                    <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                        <input type="hidden" name="uc_action" value="import_restore" />
+                                        <input type="hidden" name="event_id" value="504" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <button class="uc-action-link" type="submit">Restore</button>
+                                    </form>
+                                                                        <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                        <input type="hidden" name="uc_action" value="pending_purge" />
+                                        <input type="hidden" name="event_id" value="504" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <button class="uc-link-danger" type="submit" data-uc-purge
+                                                data-uc-confirm="Delete &quot;Another one&quot; permanently? Nothing puts it back. It is not fetched again.">Delete permanently</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                                    <li class="uc-queue-item" data-uc-id="503" data-uc-kind="dismissed">
+                        <div class="uc-queue-row">
+                            <div class="uc-queue-id">
+                                <h3 class="uc-queue-title">
+                                                                            <a href="https://resources.sfaf.org/caladmin/events/edit/503">A dismissed campaign with a long name that has to wrap on a phone</a>
+                                                                        <span class="uc-source-badge uc-badge-import">everyaction</span>
+                                </h3>
+                                <p class="uc-queue-meta">
+                                    <span>Dismissed</span>
+                                    <span>No date. Set it when publishing</span>
+                                </p>
+                            </div>
+                            <div class="uc-queue-actions">
+                                <div class="uc-actions">
+                                                                        <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                        <input type="hidden" name="uc_action" value="import_publish" />
+                                        <input type="hidden" name="event_id" value="503" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <button class="uc-link-ok" type="submit">Publish</button>
+                                    </form>
+                                    <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                        <input type="hidden" name="uc_action" value="import_restore" />
+                                        <input type="hidden" name="event_id" value="503" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <button class="uc-action-link" type="submit">Restore</button>
+                                    </form>
+                                                                        <form method="post" action="https://resources.sfaf.org/caladmin/pending">
+                                        <input type="hidden" name="uc_action" value="pending_purge" />
+                                        <input type="hidden" name="event_id" value="503" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <button class="uc-link-danger" type="submit" data-uc-purge
+                                                data-uc-confirm="Delete &quot;A dismissed campaign with a long name that has to wrap on a phone&quot; permanently? Nothing puts it back. It is not fetched again.">Delete permanently</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                            </ul>
+                    </div>
+                                        </main>
+            </div>
+        </div>
+        <script type="application/json" id="uc-session-config">{"ajax":"https:\/\/resources.sfaf.org\/wp-admin\/admin-ajax.php","action":"sfaf_caladmin_session","signin":"https:\/\/resources.sfaf.org\/caladmin","screen":"dashboard","signedIn":true}</script>
+<script src="../public/js/caladmin-session.js?ver=3.113.2"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.113.2"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.113.2"></script>
+<script src="../public/js/portal.js?ver=3.113.2"></script>
+<script>(function () {
+var out = { errors: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+window.addEventListener('load', function () { setTimeout(function () {
+  var bar = document.querySelector('[data-uc-editor-bar]');
+  out.buttons = [];
+  if (bar) {
+    Array.prototype.forEach.call(bar.querySelectorAll('button'), function (b) {
+      var r = b.getBoundingClientRect(), s = getComputedStyle(b);
+      if (!r.width) { return; }
+      out.buttons.push({ text: b.textContent.replace(/\s+/g, ' ').trim(), x: Math.round(r.left), y: Math.round(r.top), h: Math.round(r.height), bg: s.backgroundColor });
+    });
+  }
+  out.cancel = !!document.querySelector('[data-uc-dialog-open="uc-cancel-this"]');
+  out.del = !!document.querySelector('[data-uc-dialog-open="uc-delete-this"]');
+  var purge = document.querySelectorAll('[data-uc-purge]');
+  out.purge = purge.length;
+  out.purgeBound = Array.prototype.filter.call(purge, function (b) { return b.getAttribute('data-uc-confirm-bound') === '1'; }).length;
+  out.pageWidth = document.documentElement.scrollWidth;
+  window.parent.postMessage(JSON.stringify(out), '*');
+}, 150); });
+})();</script></body></html>

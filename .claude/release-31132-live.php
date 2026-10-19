@@ -84,6 +84,10 @@ $probe = <<<'JS'
 (function () {
 var S = __SCENARIO__;
 var out = { scenario: S, errors: [] };
+/* The leave warning (3.113.2) can stall headless Chrome when it closes a page
+   the probe changed, and no person is there to answer it. Off for the probe:
+   a capture listener on the target fires before the page's own. */
+window.addEventListener('beforeunload', function (e) { e.stopImmediatePropagation(); }, true);
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
 function q(s, r) { return (r || document).querySelector(s); }
 function shown(el) { return !!el && !el.hidden && el.getClientRects().length > 0; }

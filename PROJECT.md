@@ -6740,6 +6740,12 @@ not about this plugin's meta boxes. The browser draft above was the only net.
 - `release-31132-live.php` drives the caladmin half in Chrome with dispatched
   events, which is why that half does not ask `isTrusted`; the WordPress half
   is `TESTING.md`'s.
+- **A browser check that changes a field on an editor page must switch the
+  warning off** before Chrome closes the page: headless Chrome can stall on a
+  leave prompt nobody answers, and the check then hangs until the guard ends it
+  at 900 s (`release-3113-live.php`, found in the 3.113.2 suite). Both probes
+  that do it open with a capture `beforeunload` listener that calls
+  `stopImmediatePropagation()`; copy it.
 
 **What a restore cannot do.** It fills the fields the page drew. A repeater row
 added in the browser and never saved (a FAQ, a question, an extra date) is not
