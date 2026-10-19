@@ -552,6 +552,7 @@ $ALLOWED = array(
     'POST:import_dismiss'         => array( 'caladmin' ),
     'POST:pending_bulk'           => array( 'caladmin' ),   // 3.103.0; the event gate again per row, inside
     'POST:import_restore'         => array( 'caladmin' ),
+    'POST:pending_purge'          => array( 'caladmin' ),   // 3.113.2; only a dismissed or rejected event, checked inside
     'POST:add_user'               => array( 'caladmin' ),
     'POST:remove_user'            => array( 'caladmin', 'access' ),   // get_role() of the person being removed, after the admin gate
     'POST:set_user_role'          => array( 'caladmin' ),

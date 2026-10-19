@@ -361,7 +361,8 @@ check( (bool) preg_match( '/\.uc-btn-primary,\s*\n\.uc-form-links-open \{ backgr
 /* THE MAIN ACTION CARRIES "MAIN" BY SIZE now that it is not the only coloured
  * button in the row, and BOTH rows have one: Publish on a draft, Save changes on
  * an existing event. One rule, one selector list. */
-check( (bool) preg_match( '/\.uc-editor-actions \.uc-editor-publish,\s*\n\.uc-editor-actions \.uc-editor-save-main \{\s*\n\s*padding: 13px 30px;/', $css ),
+/* Approve joined the list in 3.113.2, the main action on a submission waiting for review. */
+check( (bool) preg_match( '/\.uc-editor-actions \.uc-editor-publish,\s*\n\.uc-editor-actions \.uc-editor-approve,\s*\n\.uc-editor-actions \.uc-editor-save-main \{\s*\n\s*padding: 13px 30px;/', $css ),
     'the main action is no longer the largest control in its row, so nothing marks it' );
 
 /* AND CANCEL EVENT IS RED, NOT AMBER (3.98.0). It takes the event off the
