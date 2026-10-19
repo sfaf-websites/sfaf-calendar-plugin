@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Events - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.113.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.113.0" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.113.0" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.113.1" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.113.1" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.113.1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.113.0" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.113.1" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -1138,7 +1138,8 @@
 
                     <div class="uc-chips-add" data-uc-chips-add hidden>
                         <button type="button" class="uc-btn uc-btn-sm" data-uc-chips-toggle
-                                aria-expanded="false">+ Add category</button>
+                                aria-expanded="false"><span>+ Add category</span>
+                            <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="14px" height="14px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span></button>
                     </div>
 
                     <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
@@ -1165,7 +1166,8 @@
 
                     <div class="uc-chips-add" data-uc-chips-add hidden>
                         <button type="button" class="uc-btn uc-btn-sm" data-uc-chips-toggle
-                                aria-expanded="false">+ Add organizer</button>
+                                aria-expanded="false"><span>+ Add organizer</span>
+                            <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="14px" height="14px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span></button>
                     </div>
 
                     <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
@@ -1279,32 +1281,30 @@
                     <div class="uc-picker-panel">
                         <p class="uc-hint">Untick one to stop it for this event only.</p>
                         <input type="hidden" name="uc_notify_kinds_present" value="1" />
-                                                    <label class="uc-check">
-                                <input type="checkbox" name="notify_kinds[]" value="confirmation"
-                                        checked="checked" />
-                                Confirmation to the person who registers                            </label>
+                                                                                <p class="uc-notify-always" data-uc-notify-always="confirmation">
+                                Confirmation to the person who registers                                <span class="uc-pill uc-notify-always-tag">Always sent</span>
+                            </p>
                             <p class="uc-hint uc-notify-kind-note">Sent the moment somebody registers. Carries the date, the time, the place, add-to-calendar links, and a link to cancel.</p>
-                                                    <label class="uc-check">
+                                                                                    <label class="uc-check">
                                 <input type="checkbox" name="notify_kinds[]" value="alert"
                                         checked="checked" />
                                 Alert to your notification list when somebody registers                            </label>
                             <p class="uc-hint uc-notify-kind-note">One email per registration, as it happens.</p>
-                                                    <label class="uc-check">
+                                                                                <label class="uc-check">
                                 <input type="checkbox" name="notify_kinds[]" value="day_before"
                                         checked="checked" />
                                 Count of who is coming, to your notification list, the day before                            </label>
                             <p class="uc-hint uc-notify-kind-note">Sent at 6 am the day before. Gives the number registered, not the names. Nothing is sent when nobody has registered.</p>
-                                                    <label class="uc-check">
-                                <input type="checkbox" name="notify_kinds[]" value="reminder"
-                                        checked="checked" />
-                                Morning-of reminder to everybody registered                            </label>
+                                                                                <p class="uc-notify-always" data-uc-notify-always="reminder">
+                                Morning-of reminder to everybody registered                                <span class="uc-pill uc-notify-always-tag">Always sent</span>
+                            </p>
                             <p class="uc-hint uc-notify-kind-note">Sent at 6 am on the day, or at midnight when the event starts earlier. Your notification list is copied in.</p>
-                                                    <label class="uc-check">
+                                                                                    <label class="uc-check">
                                 <input type="checkbox" name="notify_kinds[]" value="summary"
                                         checked="checked" />
                                 Who is coming, to your notification list, two hours before                            </label>
                             <p class="uc-hint uc-notify-kind-note">Lists everybody registered. Nothing is sent when nobody has registered.</p>
-                                                    <label class="uc-check">
+                                                                                <label class="uc-check">
                                 <input type="checkbox" name="notify_kinds[]" value="cancel_alert"
                                         checked="checked" />
                                 Alert to your notification list when somebody cancels                            </label>
@@ -1506,9 +1506,9 @@
             </div>
         </div>
         <script type="application/json" id="uc-session-config">{"ajax":"https:\/\/resources.sfaf.org\/wp-admin\/admin-ajax.php","action":"sfaf_caladmin_session","signin":"https:\/\/resources.sfaf.org\/caladmin","screen":"dashboard","signedIn":true}</script>
-<script src="../public/js/caladmin-session.js?ver=3.113.0"></script>
-<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.113.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.113.0"></script>
-<script src="../public/js/portal.js?ver=3.113.0"></script>
+<script src="../public/js/caladmin-session.js?ver=3.113.1"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.113.1"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.113.1"></script>
+<script src="../public/js/portal.js?ver=3.113.1"></script>
 <script>window.RV_PAGE="series-desktop";(function () {
 var P = window.RV_PAGE, out = { page: P, errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
