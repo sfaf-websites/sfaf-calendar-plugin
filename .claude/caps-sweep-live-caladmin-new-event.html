@@ -157,7 +157,7 @@
         
         
         
-                        <form method="post" id="uc-event-form-0" action="https://resources.sfaf.org/caladmin/events/new" class="uc-form" enctype="multipart/form-data">
+                        <form method="post" id="uc-event-form-0" action="https://resources.sfaf.org/caladmin/events/new" class="uc-form" enctype="multipart/form-data" data-uc-leave-warn>
             <input type="hidden" name="uc_action" value="save_event" />
             <input type="hidden" name="event_id" value="0" />
             <input type="hidden" name="uc_nonce" value="nonce" />
@@ -990,6 +990,12 @@
                     <div class="uc-bento-head">
                         <h2 class="uc-bento-title">FAQs</h2>
                     </div>
+                            <label class="uc-check uc-faq-none">
+            <input type="checkbox" name="uc_faq_none" value="1" data-uc-faq-none  />
+            No FAQs for this event
+        </label>
+        <p class="uc-hint" data-uc-faq-none-hint hidden>A series' default FAQ set is not added to it.</p>
+                            <div class="uc-faq-body" data-uc-faq-body>
                                                             
         <div class="uc-repeater" data-repeater>
             <div class="uc-repeater-rows">
@@ -1009,8 +1015,10 @@
             <textarea name="uc_faqs[__I__][answer]" rows="8" placeholder="Answer" data-uc-rich></textarea>        </div>
     </div>
                 </template>
+                            <input type="hidden" name="uc_faq_has_manual" value="1" />
                     </div>
-                        </section>
+                            </div>
+                </section>
 
                                 <section class="uc-bento-card" data-uc-card="classification">
                     <h2 class="uc-bento-title">Classification</h2>

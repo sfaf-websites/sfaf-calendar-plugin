@@ -470,12 +470,20 @@
                 <fieldset class="uc-form-section-group">
                 <legend class="uc-field-group-title">RSVP</legend>
 
-                <label class="uc-check">
-                    <input type="checkbox" name="rsvp" value="1"  />
-                    People need to RSVP
-                </label>
+                                <div class="uc-field" role="radiogroup" aria-labelledby="uc-request-rsvp-q">
+                    <span class="uc-field-label" id="uc-request-rsvp-q">Do you want RSVPs for this event?</span>
+                    <label class="uc-check">
+                        <input type="radio" name="rsvp" value="1"  />
+                        Yes
+                    </label>
+                    <label class="uc-check">
+                        <input type="radio" name="rsvp" value="0"  checked="checked" />
+                        No
+                    </label>
+                    <span class="uc-hint">With yes, you get two emails once it is published: the count of who is coming, the day before, and who is coming, two hours before.</span>
+                </div>
                 <label class="uc-field">
-                    <span class="uc-field-label">How many places, if there is a limit</span>
+                    <span class="uc-field-label">With yes, how many places, if there is a limit</span>
                     <input type="number" name="capacity" min="0" max="100000" placeholder="No limit" value="" />
                     <span class="uc-hint">Leave it empty for no limit, or enter 0 to send everybody to the waitlist.</span>
                                     </label>
@@ -509,7 +517,6 @@
                     </div>
                 </fieldset>
 
-                
                 <fieldset class="uc-form-section-group">
                     <legend class="uc-field-group-title">Anything else we should know</legend>
                     <label class="uc-field">

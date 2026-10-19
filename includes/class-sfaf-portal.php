@@ -8675,8 +8675,8 @@ class SFAF_Portal {
                  *
                  * A LINK, NOT A BUTTON, because it navigates. Leaving the
                  * editor from here loses unsaved work like any other link on
-                 * this page, and nothing in caladmin warns about that: see
-                 * PROJECT.md 7. It is not made more prominent for that reason.
+                 * this page; since 3.113.2 the leave warning says so. It is
+                 * not made more prominent for that reason.
                  */
                 ?>
                 <a class="uc-action-link uc-faq-manage" href="<?php echo esc_url( $this->url( 'faq-sets' ) ); ?>">Manage sets</a>
