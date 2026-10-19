@@ -458,6 +458,62 @@ class SFAF_Sources {
         );
     }
 
+    /* ---------------------------------------------------------------------
+     * Deleted for good, and never fetched again (3.113.2)
+     * ------------------------------------------------------------------- */
+
+    /**
+     * Option: "source|external id" => when it was deleted, for every imported
+     * event deleted permanently. find_existing() matches on the post, so once
+     * the post is gone, by Delete permanently or by WordPress emptying the
+     * trash after 30 days, the next fetch would have made it again.
+     */
+    const DELETED_OPTION = 'sfaf_source_deleted';
+
+    /** How many deleted ids are kept, newest first. */
+    const DELETED_KEEP = 5000;
+
+    /** Hooked from sfaf-calendar.php. */
+    public static function register_deleted_record() {
+        add_action( 'before_delete_post', array( __CLASS__, 'record_deleted' ) );
+    }
+
+    /**
+     * Before an imported event is deleted for good, keep its identity.
+     *
+     * @param int $post_id
+     */
+    public static function record_deleted( $post_id ) {
+        if ( 'uc_event' !== get_post_type( $post_id ) ) {
+            return;
+        }
+        $source = (string) get_post_meta( $post_id, self::META_SOURCE, true );
+        $ext    = (string) get_post_meta( $post_id, self::META_EXTERNAL_ID, true );
+        if ( '' === $source || '' === $ext ) {
+            return;
+        }
+        $list = get_option( self::DELETED_OPTION, array() );
+        $list = is_array( $list ) ? $list : array();
+        unset( $list[ $source . '|' . $ext ] );
+        $list[ $source . '|' . $ext ] = time();
+        if ( count( $list ) > self::DELETED_KEEP ) {
+            $list = array_slice( $list, -self::DELETED_KEEP, null, true );
+        }
+        update_option( self::DELETED_OPTION, $list, false );
+    }
+
+    /**
+     * Was this item deleted for good here?
+     *
+     * @param string $source
+     * @param string $external_id
+     * @return bool
+     */
+    public static function was_deleted( $source, $external_id ) {
+        $list = get_option( self::DELETED_OPTION, array() );
+        return is_array( $list ) && isset( $list[ (string) $source . '|' . (string) $external_id ] );
+    }
+
     /**
      * Find an already-known event by its identity at the source.
      *
@@ -1689,6 +1745,12 @@ class SFAF_Sources {
             $seen_ids[]             = (string) $event['external_id'];
 
             $existing = self::find_existing( $event['external_source'], $event['external_id'] );
+
+            // Deleted for good here: not made again (3.113.2).
+            if ( ! $existing && self::was_deleted( $event['external_source'], $event['external_id'] ) ) {
+                $result['untouched']++;
+                continue;
+            }
 
             if ( $existing ) {
                 $status = get_post_status( $existing );

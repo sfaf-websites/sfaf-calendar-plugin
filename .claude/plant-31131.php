@@ -22,17 +22,8 @@ $plants = array(
     'E: the event page stylesheet changes' => array( 'embed-identity-test.php', 'B: public/css/calendar.css differs from 3.113.0', array(
         array( 'public/css/calendar.css', "/* SFAF Calendar Frontend Styles */\n", "/* SFAF Calendar Frontend Styles. */\n" ),
     ) ),
-    '1: Dismissed opens on load' => array( 'release-31131-test.php', '1: it is a <details> with no open attribute', array(
-        array( 'includes/class-sfaf-portal.php', '<details class="uc-dismissed-fold" data-uc-dismissed-fold>', '<details class="uc-dismissed-fold" data-uc-dismissed-fold open>' ),
-    ) ),
-    '1: the count left off the button' => array( 'release-31131-test.php', '1: the button carries the count', array(
-        array( 'includes/class-sfaf-portal.php', '<span class="uc-dismissed-show">Show dismissed (<?php echo (int) $n; ?>)</span>', '<span class="uc-dismissed-show">Show dismissed</span>' ),
-    ) ),
-    '1L: the open button still says Show' => array( 'release-31131-live.php --run', 'the open button reads', array(
-        array( 'public/css/portal.css', ".uc-dismissed-fold[open] > .uc-dismissed-toggle .uc-dismissed-hide { display: inline; }\n", '' ),
-    ) ),
     '2: the registrations tick with RSVP off' => array( 'release-31131-test.php', '2: RSVP off: no registrations tick', array(
-        array( 'includes/class-sfaf-portal.php', "                if ( sfaf_event_takes_rsvps( \$event_id ) ) :\n                ?>", "                if ( true ) :\n                ?>" ),
+        array( 'includes/class-sfaf-portal.php', "                if ( sfaf_event_takes_rsvps( \$event_id ) && ! \$listed_now ) :", "                if ( ! \$listed_now ) :" ),
     ) ),
     '2: the route lists the submitter with RSVP off' => array( 'release-31131-test.php', 'the posted tick lists nobody', array(
         array( 'includes/class-sfaf-portal.php', "if ( ! empty( \$_POST['notify_submitter'] ) && sfaf_event_takes_rsvps( \$event_id ) ) {", "if ( ! empty( \$_POST['notify_submitter'] ) ) {" ),
@@ -59,7 +50,7 @@ $plants = array(
         array( 'public/css/portal.css', "    box-shadow: inset 0 2px 3px rgba(55, 52, 51, 0.22); }", "    }" ),
     ) ),
     '4L: the chevron does not turn' => array( 'release-31131-live.php --run', 'open is not chevron up and pressed', array(
-        array( 'public/css/portal.css', ".uc-chips-add .uc-btn[aria-expanded=\"true\"] .uc-disclosure-chevron,\n", '' ),
+        array( 'public/css/portal.css', ".uc-chips-add .uc-btn[aria-expanded=\"true\"] .uc-disclosure-chevron { transform: rotate(-90deg); }\n", '' ),
     ) ),
     '5: the contact name unescaped' => array( 'release-31131-test.php', '5: the three fields, the email linked, the rest escaped', array(
         array( 'includes/sfaf-template-functions.php', "    return esc_html( substr( \$line, 0, \$at ) )", "    return substr( \$line, 0, \$at )" ),

@@ -501,6 +501,38 @@ delete_option( SFAF_Credentials::OPTION );
 same( 'no hub login: not active at all', SFAF_Sources::adapter( 'everyaction' )->is_active(), false );
 
 /* ===========================================================================
+ * 10. DISMISSED, REJECTED OR DELETED FOR GOOD: NEVER IMPORTED AGAIN (3.113.2).
+ *
+ * The event is found by its UUID on the post, in every status including
+ * trash. Once the post is deleted for good there is nothing to find, so
+ * SFAF_Sources::record_deleted() keeps the UUID on before_delete_post and the
+ * fetch skips it. The control is a post removed WITHOUT that record, which
+ * comes back: that is the hole, and it proves this section can fail.
+ * ======================================================================== */
+if ( ! function_exists( 'get_post_type' ) ) {
+    function get_post_type( $id = null ) { return isset( $GLOBALS['posts'][ $id ] ) ? $GLOBALS['posts'][ $id ]['post_type'] : false; }
+}
+creds();
+hub_with( array( 'bare' => $again ) );
+run_ea( 'manual' );
+$uuids = array_keys( ea_posts() );
+check( count( $uuids ) >= 4, 'section 10 needs four imported events, has ' . count( $uuids ) );
+list( $u_dis, $u_rej, $u_del, $u_ctl ) = array_slice( $uuids, 0, 4 );
+$GLOBALS['posts'][ by_uuid( $u_dis ) ]['post_status'] = 'uc_dismissed';
+$GLOBALS['posts'][ by_uuid( $u_rej ) ]['post_status'] = 'trash';
+$gone = by_uuid( $u_del );
+SFAF_Sources::record_deleted( $gone );                              // what before_delete_post runs
+unset( $GLOBALS['posts'][ $gone ], $GLOBALS['meta'][ $gone ] );
+$ctl = by_uuid( $u_ctl );
+unset( $GLOBALS['posts'][ $ctl ], $GLOBALS['meta'][ $ctl ] );         // deleted with no record
+$r10 = run_ea( 'manual' );
+same( 'a dismissed import stays dismissed', get_post_status( by_uuid( $u_dis ) ), 'uc_dismissed' );
+same( 'a rejected one stays in the trash', get_post_status( by_uuid( $u_rej ) ), 'trash' );
+same( 'one deleted for good is not made again', by_uuid( $u_del ), 0 );
+same( 'the record names it', SFAF_Sources::was_deleted( 'everyaction', $u_del ), true );
+check( by_uuid( $u_ctl ) > 0, 'the control, deleted with no record, did not come back, so this section proves nothing' );
+same( 'and only the control is new', $r10['new'], 1 );
+/* ===========================================================================
  * 9. NO CREDENTIAL IN ANYTHING STORED.
  * ======================================================================== */
 $stored = json_encode( array( $GLOBALS['opt'][ SFAF_EveryAction::FETCH_OPTION ], $GLOBALS['opt'][ SFAF_EveryAction::LINKS_RUN_OPTION ], $GLOBALS['meta'] ) );
@@ -517,5 +549,6 @@ echo "EveryAction import: UTC times land at 10 am Pacific either side of the clo
 echo "a first manual fetch fills the queue with signup links from the real list, place names, series by Series_ID\n";
 echo "and a seeded description; a second fetch updates by UUID and never by title, duplicates nothing and leaves a\n";
 echo "manager's description, series and venue alone; an empty tracker unpublishes nothing; undocumented pages are\n";
-echo "checked, not trusted; the list stops when it goes round; Auto-Import gates only the runner; no credential is stored.\n";
+echo "checked, not trusted; the list stops when it goes round; Auto-Import gates only the runner; no credential is stored;\n";
+echo "and nothing dismissed, rejected or deleted for good is imported again.\n";
 exit( 0 );

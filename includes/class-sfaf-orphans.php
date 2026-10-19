@@ -102,7 +102,7 @@ class SFAF_Orphans {
                 'summary' => $ids
                     ? sprintf( '%d event%s still has no organizer. Already reported, so nothing was sent.',
                         count( $ids ), 1 === count( $ids ) ? '' : 's' )
-                    : 'Every event has an organizer.',
+                    : 'Every upcoming event has an organizer.',
                 'counts'  => array( 'orphans' => count( $ids ) ),
             );
         }
@@ -129,13 +129,13 @@ class SFAF_Orphans {
                 self::send_all_clear( count( $known ) );
                 return array(
                     'status'  => 'ok',
-                    'summary' => 'Every event has an organizer again. The calendar admins were told.',
+                    'summary' => 'Every upcoming event has an organizer again. The calendar admins were told.',
                     'counts'  => array( 'orphans' => 0 ),
                 );
             }
             return array(
                 'status'  => 'ok',
-                'summary' => 'Every event has an organizer.',
+                'summary' => 'Every upcoming event has an organizer.',
                 'counts'  => array( 'orphans' => 0 ),
             );
         }
@@ -145,7 +145,7 @@ class SFAF_Orphans {
         return array(
             'status'  => 'ok',
             'summary' => sprintf(
-                '%d event%s with no organizer. %s',
+                '%d upcoming event%s with no organizer. %s',
                 count( $ids ),
                 1 === count( $ids ) ? '' : 's',
                 $sent ? sprintf( 'Told %d calendar admin%s.', $sent, 1 === $sent ? '' : 's' ) : 'No calendar admin has a usable address.'
@@ -247,18 +247,20 @@ class SFAF_Orphans {
         }
         $site = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
 
-        $html  = SFAF_Email::heading( 'Every event has an organizer again' );
+        /* UPCOMING ONLY (3.113.2): an event reported earlier may have left the
+         * list by taking place, so this does not say it was given anybody. */
+        $html  = SFAF_Email::heading( 'Every upcoming event has an organizer' );
         $html .= SFAF_Email::para( sprintf(
-            'The %d event%s reported earlier %s now been given somebody responsible for %s.',
-            $was, 1 === $was ? '' : 's', 1 === $was ? 'has' : 'have', 1 === $was ? 'it' : 'them'
+            'None of the %d event%s reported earlier needs a new organizer now.',
+            $was, 1 === $was ? '' : 's'
         ) );
 
         $body = sprintf(
-            "Every event has an organizer again. The %d event%s reported earlier %s now been given\nsomebody responsible for %s.\n\n%s\n",
-            $was, 1 === $was ? '' : 's', 1 === $was ? 'has' : 'have', 1 === $was ? 'it' : 'them', SFAF_Email::POSTAL
+            "Every upcoming event has an organizer. None of the %d event%s reported earlier\nneeds a new organizer now.\n\n%s\n",
+            $was, 1 === $was ? '' : 's', SFAF_Email::POSTAL
         );
 
-        $subject = sprintf( '[%s] Every calendar event has an organizer again', $site );
+        $subject = sprintf( '[%s] Every upcoming calendar event has an organizer', $site );
         $shell   = SFAF_Email::shell( 'Nothing is unassigned any more', $html );
         $sent    = 0;
         foreach ( $to as $address => $name ) {

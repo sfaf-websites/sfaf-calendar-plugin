@@ -524,8 +524,21 @@ class SFAF_Portal {
             'update_post_term_cache' => false,
         ) );
 
-        $out = array();
+        /*
+         * UPCOMING ONLY (3.113.2). An event whose last day has gone needs
+         * nobody, so it is not reported, and the all-clear follows from this
+         * same set. Trash, Dismissed and a deleted post were never in the
+         * query above. An event with no date is kept: it is not past.
+         */
+        $today = class_exists( 'SFAF_Sources' ) ? SFAF_Sources::today() : gmdate( 'Y-m-d' );
+        $out   = array();
         foreach ( $q->posts as $id ) {
+            $date = (string) get_post_meta( $id, '_uc_event_date', true );
+            $end  = (string) get_post_meta( $id, '_uc_end_date', true );
+            $last = ( '' !== $end && $end >= $date ) ? $end : $date;
+            if ( '' !== $last && $last < $today ) {
+                continue;
+            }
             if ( ! self::event_is_orphaned( $id ) ) {
                 continue;
             }
@@ -1978,6 +1991,25 @@ class SFAF_Portal {
                 if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
                 SFAF_Sources::move( intval( $_POST['event_id'] ), SFAF_Sources::STATUS_DISMISSED );
                 $this->redirect( 'pending', array( 'msg' => 'import_dismissed' ) );
+                break;
+
+            /* Delete permanently, from Pending's Rejected and dismissed tab
+             * (3.113.2). Only a dismissed import or a rejected submission;
+             * an imported one is recorded first so a fetch never makes it
+             * again (SFAF_Sources::record_deleted(), on before_delete_post). */
+            case 'pending_purge':
+                if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
+                $event_id = intval( $_POST['event_id'] );
+                $status   = get_post_status( $event_id );
+                $closed   = 'uc_event' === get_post_type( $event_id ) && (
+                    SFAF_Sources::STATUS_DISMISSED === $status
+                    || ( 'trash' === $status && '' !== (string) get_post_meta( $event_id, SFAF_Uploads::META_REJECTED, true ) )
+                );
+                if ( ! $closed ) {
+                    $this->redirect( 'pending', array( 'view' => 'closed', 'msg' => 'purge_refused' ) );
+                }
+                wp_delete_post( $event_id, true );
+                $this->redirect( 'pending', array( 'view' => 'closed', 'msg' => 'purged' ) );
                 break;
 
             case 'import_restore':
@@ -3541,6 +3573,7 @@ class SFAF_Portal {
          * moment inheritance-like behaviour helps, and the rows it puts there
          * are copies the manager can edit or clear — nothing stays linked.
          */
+        $faq_default_from = 0;
         if ( isset( $_POST['series'] ) ) {
             $series_was = SFAF_Series::id_for_event( $event_id );
             $series_now = intval( $_POST['series'] );
@@ -3549,8 +3582,10 @@ class SFAF_Portal {
              * save_manager_fields_from_post() above, so it sees what this
              * save wrote and never replaces a value the event has. */
             SFAF_Series::join( $event_id, $series_now );
+            /* The default set goes on AFTER the FAQ rows below are saved
+             * (3.113.2), so it sees what this form says the event has. */
             if ( $series_now && $series_now !== $series_was ) {
-                SFAF_FAQ_Sets::apply_series_default( $event_id, $series_now );
+                $faq_default_from = $series_now;
             }
         }
 
@@ -3626,9 +3661,23 @@ class SFAF_Portal {
             return isset( $_POST['uc_faq_has_manual'] ) ? array() : null;
         };
 
+        /*
+         * DELETING EVERY FAQ NOW SAVES (3.113.2). The marker used to ship only
+         * on a locked block, so an ordinary event with all its rows deleted
+         * posted nothing, the meta was left alone and the rows came back.
+         * faq_repeater() ships it whenever the block is on the form.
+         *
+         * "No FAQs for this event" stores no rows of the event's own and
+         * keeps a series' default set off it.
+         */
         $rows = $posted_faq( 'uc_faqs' );
         if ( null !== $rows ) {
-            update_post_meta( $event_id, sfaf_faq_meta_key(), $merge_faq( sfaf_faq_meta_key(), $rows ) );
+            $faq_none = ! $faq_locked && ! empty( $_POST['uc_faq_none'] );
+            SFAF_FAQ_Sets::set_none( $event_id, $faq_none );
+            update_post_meta( $event_id, sfaf_faq_meta_key(), $merge_faq( sfaf_faq_meta_key(), $faq_none ? array() : $rows ) );
+        }
+        if ( $faq_default_from ) {
+            SFAF_FAQ_Sets::apply_series_default( $event_id, $faq_default_from );
         }
 
         /*
@@ -5060,7 +5109,9 @@ class SFAF_Portal {
             // 'series_removed' is built from real counts further down, because
             // what it did depends on which option was chosen.
             'fetched'        => 'Fetch complete. See the results below.',
-            'import_dismissed' => 'Event dismissed. It stays in the Dismissed list and will not be fetched again.',
+            'import_dismissed' => 'Event dismissed. It is under Rejected and dismissed and will not be fetched again.',
+            'purged'           => 'Deleted permanently.',
+            'purge_refused'    => 'Only a rejected or dismissed event can be deleted permanently here.',
             'import_restored'  => 'Event restored to Pending.',
             'import_review'    => 'Assign a category, organizer, and series, then press Publish to put this event on the calendar.',
             'refreshed'        => 'Refreshed from the source. See below for what changed.',
@@ -8763,10 +8814,35 @@ class SFAF_Portal {
             <template class="uc-repeater-tpl">
                 <?php sfaf_faq_row( array( 'name' => $name, 'fold' => $fold ) ); ?>
             </template>
-            <?php if ( $locked ) : ?>
+            <?php
+            /* On every event's block, not only a locked one (3.113.2): with
+             * it, no rows posted means every row was deleted. */
+            if ( 'uc_faqs' === $name ) : ?>
                 <input type="hidden" name="uc_faq_has_manual" value="1" />
             <?php endif; ?>
         </div>
+        <?php
+    }
+
+    /**
+     * "No FAQs for this event" (3.113.2), above the set picker and the rows,
+     * which portal.js hides while it is ticked. Not offered where a platform
+     * owns the FAQs, since its rows stay whatever is ticked.
+     *
+     * @param int  $event_id 0 on Add event.
+     * @param bool $locked
+     */
+    private function faq_none_tick( $event_id, $locked ) {
+        if ( $locked ) {
+            return;
+        }
+        $on = $event_id && SFAF_FAQ_Sets::is_none( $event_id );
+        ?>
+        <label class="uc-check uc-faq-none">
+            <input type="checkbox" name="uc_faq_none" value="1" data-uc-faq-none <?php checked( $on ); ?> />
+            No FAQs for this event
+        </label>
+        <p class="uc-hint" data-uc-faq-none-hint<?php echo $on ? '' : ' hidden'; ?>>A series' default FAQ set is not added to it.</p>
         <?php
     }
 
@@ -14275,7 +14351,7 @@ class SFAF_Portal {
         $form_id = 'uc-event-form-' . (int) $event_id;
         ?>
         <?php // multipart for "+ Upload a picture for this event" (3.110.3). ?>
-        <form method="post" id="<?php echo esc_attr( $form_id ); ?>" action="<?php echo esc_url( $this->url( $event_id ? 'events/edit/' . $event_id : 'events/new' ) ); ?>" class="uc-form" enctype="multipart/form-data">
+        <form method="post" id="<?php echo esc_attr( $form_id ); ?>" action="<?php echo esc_url( $this->url( $event_id ? 'events/edit/' . $event_id : 'events/new' ) ); ?>" class="uc-form" enctype="multipart/form-data" data-uc-leave-warn>
             <input type="hidden" name="uc_action" value="save_event" />
             <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
             <?php wp_nonce_field( 'uc_portal_save_event', 'uc_nonce' ); ?>
@@ -14790,9 +14866,12 @@ class SFAF_Portal {
                     <div class="uc-bento-head">
                         <h2 class="uc-bento-title">FAQs</h2>
                     </div>
+                    <?php $this->faq_none_tick( $event_id, $faq_source['locked'] ); ?>
+                    <div class="uc-faq-body" data-uc-faq-body<?php echo ( $event_id && ! $faq_source['locked'] && SFAF_FAQ_Sets::is_none( $event_id ) ) ? ' hidden' : ''; ?>>
                     <?php $this->faq_set_picker(); ?>
                     <?php // Folded, one open at a time (3.108.1). ?>
                     <?php $this->faq_repeater( 'uc_faqs', $event_id ? sfaf_get_faqs( $event_id ) : array(), $faq_source, true ); ?>
+                    </div>
                 </section>
 
                 <?php // ---- Classification: how it is found. --------------- ?>
@@ -15072,6 +15151,11 @@ class SFAF_Portal {
                  * press while still working. DESIGN.md records both.
                  */
                 $save_main = $keep_status ? ' uc-btn-go uc-editor-save-main' : ' uc-btn-primary';
+                /* A SUBMISSION WAITING FOR REVIEW (3.113.2): Approve is the main
+                 * action, so Save changes is the plain button beside it. */
+                if ( $can_decide ) {
+                    $save_main = '';
+                }
                 ?>
                 <button type="submit" form="<?php echo esc_attr( $form_id ); ?>" name="save_mode" value="<?php echo $keep_status ? 'keep' : 'draft'; ?>" class="uc-btn<?php echo esc_attr( $save_main ); ?> uc-editor-save"><?php echo $keep_status ? 'Save changes' : 'Save draft'; ?></button>
                 <?php
@@ -15122,9 +15206,9 @@ class SFAF_Portal {
                  */
                 ?>
                 <?php if ( $can_decide ) : ?>
-                    <button type="submit" form="<?php echo esc_attr( $ask_id ); ?>" class="uc-btn uc-btn-primary"
+                    <button type="submit" form="<?php echo esc_attr( $ask_id ); ?>" class="uc-btn uc-btn-go uc-editor-approve"
                             <?php echo $who_sent['is_submission'] ? ' data-uc-approve-ask="uc-approve-ask-' . (int) $event_id . '"' : ''; ?>>Approve</button>
-                    <button type="submit" form="<?php echo esc_attr( $reject_id ); ?>" class="uc-btn uc-btn-danger"
+                    <button type="submit" form="<?php echo esc_attr( $reject_id ); ?>" class="uc-btn uc-btn-danger uc-editor-reject"
                             data-uc-approve-ask="uc-reject-ask-<?php echo (int) $event_id; ?>"
                             data-uc-ask-title="Reject this event?"
                             data-uc-ask-confirm="Reject" data-uc-ask-danger>Reject</button>
@@ -15201,8 +15285,13 @@ class SFAF_Portal {
                  * cancel or delete until the event exists, which is what both
                  * renderers already check for themselves.
                  */
-                $this->render_cancel_card( $user, $event_id, 'opener' );
-                $this->render_delete_button( $user, $event_id );
+                /* NOT ON A SUBMISSION WAITING FOR REVIEW (3.113.2): Approve or
+                 * Reject decides it, and Cancel event and Delete come with the
+                 * approved event. */
+                if ( ! ( $is_pending && $is_sub ) ) {
+                    $this->render_cancel_card( $user, $event_id, 'opener' );
+                    $this->render_delete_button( $user, $event_id );
+                }
                 ?>
             </div>
             <?php
@@ -15253,8 +15342,10 @@ class SFAF_Portal {
          * Below rather than above because it is the destructive thing on this
          * screen and should not be the first control somebody meets.
          */
-        $this->render_cancel_card( $user, $event_id, 'panel' );
-        $this->render_delete_card( $user, $event_id );
+        if ( ! ( $is_pending && $is_sub ) ) {
+            $this->render_cancel_card( $user, $event_id, 'panel' );
+            $this->render_delete_card( $user, $event_id );
+        }
 
         $this->chrome_close();
     }
@@ -19349,8 +19440,16 @@ class SFAF_Portal {
                 $addresses = SFAF_Submissions::notify_addresses( $event_id );
                 $others    = array_slice( $addresses, 1 );
                 /* ONLY WHEN THE EVENT TAKES RSVPS (3.113.1). With RSVP off
-                 * there are no registrations to send, and Approve approves. */
-                if ( sfaf_event_takes_rsvps( $event_id ) ) :
+                 * there are no registrations to send, and Approve approves.
+                 * Not when they are on the list already (3.113.2): a staff
+                 * request that wanted RSVPs put them there, and unticking
+                 * would not take them off. */
+                $listed_now = in_array(
+                    strtolower( (string) $who['email'] ),
+                    array_map( 'strtolower', array_map( 'strval', (array) get_post_meta( $event_id, SFAF_Reminders::NOTIFY_EMAILS_META, true ) ) ),
+                    true
+                );
+                if ( sfaf_event_takes_rsvps( $event_id ) && ! $listed_now ) :
                 ?>
                 <label class="uc-check">
                     <input type="checkbox" name="notify_submitter" value="1" checked form="<?php echo esc_attr( $form ); ?>" />
@@ -19700,6 +19799,12 @@ class SFAF_Portal {
                     <span class="uc-tab-count"><?php echo (int) $counts[ $key ]; ?></span>
                 </a>
             <?php endforeach; ?>
+            <?php $closed_on = ( 'closed' === $current ); ?>
+            <a class="uc-view-tab<?php echo $closed_on ? ' uc-view-tab-active' : ''; ?>" data-uc-closed-tab
+               href="<?php echo esc_url( add_query_arg( 'view', 'closed', $this->url( 'pending' ) ) ); ?>"<?php echo $closed_on ? ' aria-current="page"' : ''; ?>>
+                Rejected and dismissed
+                <span class="uc-tab-count"><?php echo (int) count( $this->closed_ids() ); ?></span>
+            </a>
         </div>
         <?php
     }
@@ -19809,6 +19914,9 @@ class SFAF_Portal {
         $entries = $this->pending_entries( $user );
         $ids     = $this->pending_list( $entries, $kind, $orderby, $order );
 
+        /* Rejected and dismissed, their own tab (3.113.2). */
+        $closed_view = ( isset( $_GET['view'] ) && 'closed' === sanitize_key( wp_unslash( $_GET['view'] ) ) );
+
         // "Fetch updates" and its report moved here from the Dashboard in
         // 2.12.0. It is an import action, its result is an import queue, and
         // the queue is on this screen: the button now sits beside the thing it
@@ -19870,8 +19978,11 @@ class SFAF_Portal {
         <?php $this->render_fetch_report( $user, $active_sources ); ?>
         <?php $this->render_fetch_last_run(); ?>
 
-        <?php $this->pending_tabs( $entries, $kind, $orderby, $order ); ?>
+        <?php $this->pending_tabs( $entries, $closed_view ? 'closed' : $kind, $orderby, $order ); ?>
 
+        <?php if ( $closed_view ) : ?>
+            <?php $this->render_closed_queue(); ?>
+        <?php else : ?>
         <div class="uc-card">
             <div class="uc-card-head">
                 <h2>Waiting for a decision</h2>
@@ -19897,8 +20008,7 @@ class SFAF_Portal {
                 </ul>
             <?php endif; ?>
         </div>
-
-        <?php $this->render_dismissed_queue(); ?>
+        <?php endif; ?>
         <?php
         $this->chrome_close();
     }
@@ -20760,40 +20870,92 @@ class SFAF_Portal {
      * SHUT ON EVERY VISIT (3.113.1): a <details> with no open attribute, and
      * nothing remembers it. The button carries the count.
      */
-    private function render_dismissed_queue() {
-        $dismissed = SFAF_Sources::queue_ids( SFAF_Sources::STATUS_DISMISSED );
-        if ( empty( $dismissed ) ) {
-            return;
+    /**
+     * Rejected submissions and dismissed imports, newest first (3.113.2).
+     *
+     * A rejected submission is in the trash with SFAF_Uploads::META_REJECTED,
+     * and WordPress empties the trash after 30 days; a dismissed import is
+     * uc_dismissed and stays until somebody deletes it.
+     *
+     * @return array<int,string> id => 'rejected' | 'dismissed'
+     */
+    private function closed_ids() {
+        $out = array();
+        foreach ( SFAF_Sources::queue_ids( SFAF_Sources::STATUS_DISMISSED ) as $id ) {
+            $out[ (int) $id ] = 'dismissed';
         }
-        $n = count( $dismissed );
+        $rejected = new WP_Query( array(
+            'post_type'              => 'uc_event',
+            'post_status'            => 'trash',
+            'posts_per_page'         => 200,
+            'fields'                 => 'ids',
+            'no_found_rows'          => true,
+            'update_post_term_cache' => false,
+            'meta_query'             => array( array( 'key' => SFAF_Uploads::META_REJECTED, 'compare' => 'EXISTS' ) ),
+        ) );
+        foreach ( (array) $rejected->posts as $id ) {
+            $id = (int) ( is_object( $id ) ? $id->ID : $id );
+            if ( 'trash' === get_post_status( $id ) && '' !== (string) get_post_meta( $id, SFAF_Uploads::META_REJECTED, true ) ) {
+                $out[ $id ] = 'rejected';
+            }
+        }
+        uksort( $out, function ( $a, $b ) {
+            $ma = (string) get_post_field( 'post_modified', $a );
+            $mb = (string) get_post_field( 'post_modified', $b );
+            return ( $ma === $mb ) ? $b - $a : strcmp( $mb, $ma );
+        } );
+        return $out;
+    }
+
+    /**
+     * The "Rejected and dismissed" tab on Pending (3.113.2), in place of the
+     * Dismissed fold under the queue. Every row offers Delete permanently; a
+     * dismissed one also keeps Publish and Restore.
+     */
+    private function render_closed_queue() {
+        $closed = $this->closed_ids();
         ?>
-        <div class="uc-card">
-            <details class="uc-dismissed-fold" data-uc-dismissed-fold>
-            <summary class="uc-btn uc-btn-sm uc-dismissed-toggle">
-                <span class="uc-dismissed-show">Show dismissed (<?php echo (int) $n; ?>)</span>
-                <span class="uc-dismissed-hide">Hide dismissed (<?php echo (int) $n; ?>)</span>
-                <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '14px' ) ); ?></span>
-            </summary>
-            <p class="uc-help">Dismissed events are kept so they are never fetched again. Restore one to put it back in the list above.</p>
+        <div class="uc-card" data-uc-closed-queue>
+            <div class="uc-card-head">
+                <h2>Rejected and dismissed</h2>
+                <?php if ( ! empty( $closed ) ) : ?><span class="uc-count-badge"><?php echo count( $closed ); ?></span><?php endif; ?>
+            </div>
+            <?php if ( empty( $closed ) ) : ?>
+                <p class="uc-empty">Nothing has been rejected or dismissed.</p>
+            <?php else : ?>
+            <p class="uc-help">A dismissed import is never fetched again. A rejected event is deleted for good 30 days after it was rejected.</p>
             <ul class="uc-queue-list">
-                <?php foreach ( $dismissed as $id ) :
-                    $id   = (int) $id;
-                    $prov = SFAF_Sources::provenance( $id );
-                    $date = (string) get_post_meta( $id, '_uc_event_date', true );
+                <?php foreach ( $closed as $id => $state ) :
+                    $id    = (int) $id;
+                    $prov  = SFAF_Sources::provenance( $id );
+                    $date  = (string) get_post_meta( $id, '_uc_event_date', true );
+                    $title = get_the_title( $id ) ?: '(untitled)';
+                    if ( 'dismissed' === $state ) {
+                        $badge = array( 'import', $prov['label'] ? $prov['label'] : 'Imported' );
+                    } else {
+                        $k     = SFAF_Submissions::kind( $id );
+                        $badge = array( $k, SFAF_Submissions::kind_label( $k ) );
+                    }
                     ?>
-                    <li class="uc-queue-item" data-uc-id="<?php echo $id; ?>" data-uc-kind="dismissed">
+                    <li class="uc-queue-item" data-uc-id="<?php echo $id; ?>" data-uc-kind="<?php echo esc_attr( $state ); ?>">
                         <div class="uc-queue-row">
                             <div class="uc-queue-id">
                                 <h3 class="uc-queue-title">
-                                    <a href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ?: '(untitled)' ); ?></a>
-                                    <span class="uc-source-badge uc-badge-import"><?php echo esc_html( $prov['label'] ? $prov['label'] : 'Imported' ); ?></span>
+                                    <?php if ( 'dismissed' === $state ) : ?>
+                                        <a href="<?php echo esc_url( $this->url( 'events/edit/' . $id ) ); ?>"><?php echo esc_html( $title ); ?></a>
+                                    <?php else : ?>
+                                        <?php echo esc_html( $title ); ?>
+                                    <?php endif; ?>
+                                    <span class="uc-source-badge uc-badge-<?php echo esc_attr( $badge[0] ); ?>"><?php echo esc_html( $badge[1] ); ?></span>
                                 </h3>
                                 <p class="uc-queue-meta">
+                                    <span><?php echo 'dismissed' === $state ? 'Dismissed' : 'Rejected'; ?></span>
                                     <span><?php echo esc_html( $this->pending_when( $id, $date, $prov ) ); ?></span>
                                 </p>
                             </div>
                             <div class="uc-queue-actions">
                                 <div class="uc-actions">
+                                    <?php if ( 'dismissed' === $state ) : ?>
                                     <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
                                         <input type="hidden" name="uc_action" value="import_publish" />
                                         <input type="hidden" name="event_id" value="<?php echo $id; ?>" />
@@ -20806,13 +20968,21 @@ class SFAF_Portal {
                                         <?php wp_nonce_field( 'uc_portal_import_restore', 'uc_nonce' ); ?>
                                         <button class="uc-action-link" type="submit">Restore</button>
                                     </form>
+                                    <?php endif; ?>
+                                    <form method="post" action="<?php echo esc_url( $this->url( 'pending' ) ); ?>">
+                                        <input type="hidden" name="uc_action" value="pending_purge" />
+                                        <input type="hidden" name="event_id" value="<?php echo $id; ?>" />
+                                        <?php wp_nonce_field( 'uc_portal_pending_purge', 'uc_nonce' ); ?>
+                                        <button class="uc-link-danger" type="submit" data-uc-purge
+                                                data-uc-confirm="<?php echo esc_attr( 'Delete "' . $title . '" permanently? Nothing puts it back.' . ( 'dismissed' === $state ? ' It is not fetched again.' : '' ) ); ?>">Delete permanently</button>
+                                    </form>
                                 </div>
                             </div>
                         </div>
                     </li>
                 <?php endforeach; ?>
             </ul>
-            </details>
+            <?php endif; ?>
         </div>
         <?php
     }

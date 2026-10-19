@@ -339,6 +339,10 @@ class SFAF_FAQ_Sets {
         }
 
         update_post_meta( $post_id, $key, array_merge( $imported, $keep ) );
+        // A set applied by hand is somebody choosing FAQs (3.113.2).
+        if ( $added > 0 ) {
+            self::set_none( $post_id, false );
+        }
 
         return array(
             'added'    => $added,
@@ -380,6 +384,30 @@ class SFAF_FAQ_Sets {
         return SFAF_Series::default_faq_set( $term_id );
     }
 
+    /* ---------------------------------------------------------------------
+     * "No FAQs for this event" (3.113.2)
+     * ------------------------------------------------------------------- */
+
+    /** Post meta: '1' when the event deliberately has no FAQs of its own. */
+    const NONE_META = '_uc_faq_none';
+
+    /** Whether this event was set to have no FAQs. */
+    public static function is_none( $post_id ) {
+        return '1' === (string) get_post_meta( (int) $post_id, self::NONE_META, true );
+    }
+
+    /**
+     * Store the choice. On, a series' default set is never added; the rows
+     * themselves are cleared by the editor's save, which owns them.
+     */
+    public static function set_none( $post_id, $on ) {
+        if ( $on ) {
+            update_post_meta( (int) $post_id, self::NONE_META, '1' );
+        } else {
+            delete_post_meta( (int) $post_id, self::NONE_META );
+        }
+    }
+
     /* set_series_default() removed in 3.28.0: never called. series_default()
        above is the read side and IS used, so the pair was only ever half a
        pair.
@@ -412,7 +440,7 @@ class SFAF_FAQ_Sets {
      */
     public static function apply_series_default( $post_id, $term_id ) {
         $set_id = self::series_default( $term_id );
-        if ( '' === $set_id ) {
+        if ( '' === $set_id || self::is_none( $post_id ) ) {
             return false;
         }
         if ( ! empty( sfaf_get_faqs( $post_id ) ) ) {

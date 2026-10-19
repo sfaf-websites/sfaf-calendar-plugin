@@ -6,8 +6,8 @@
  *
  * Through wp-kit.php and the real routes.
  *
- *   1  Pending's Dismissed list is a <details> with no open attribute, its
- *      button "Show dismissed (N)"
+ *   1  Pending's Dismissed fold: SUPERSEDED in 3.113.2 by the Rejected and
+ *      dismissed tab, so only its absence is checked here
  *   2  the Approve dialog offers "Send ... registrations" only when the event
  *      takes RSVPs, and the route ignores the tick on one that does not
  *   3  the confirmation and the morning-of reminder are always sent: no tick,
@@ -66,15 +66,9 @@ function rt_post( $action, $fields ) {
 }
 
 /* ======================================================================== 1 */
-$d1 = rt_event( SFAF_Sources::STATUS_DISMISSED );
-$d2 = rt_event( SFAF_Sources::STATUS_DISMISSED );
-$h  = rt_cap( function () use ( $portal ) { kit_call( 'SFAF_Portal', 'render_dismissed_queue', $portal, array() ); } );
-rt( '1: the Dismissed list rendered', 0 === strpos( $h, 'THREW' ) ? $h : 'ok', 'ok' );
-rt( '1: it is a <details> with no open attribute', (bool) preg_match( '#<details class="uc-dismissed-fold" data-uc-dismissed-fold>#', $h ), true );
-rt( '1: nothing opens it', false === strpos( $h, ' open' ) && false === strpos( $h, 'data-uc-disclosure' ), true );
-rt( '1: the button carries the count', (bool) preg_match( '#<summary class="uc-btn uc-btn-sm uc-dismissed-toggle">\s*<span class="uc-dismissed-show">Show dismissed \(2\)</span>#', $h ), true );
-rt( '1: the rows are inside it', strpos( $h, '<details' ) < strpos( $h, 'data-uc-kind="dismissed"' ) && strrpos( $h, 'data-uc-kind="dismissed"' ) < strpos( $h, '</details>' ), true );
-rt( '1: two rows', substr_count( $h, 'data-uc-kind="dismissed"' ), 2 );
+/* SUPERSEDED BY 3.113.2: Dismissed is a tab on Pending, "Rejected and
+   dismissed", and the fold is gone. release-31132-test.php checks the tab. */
+rt( '1: the fold is gone (3.113.2)', false === strpos( (string) file_get_contents( $GLOBALS['kit_root'] . '/includes/class-sfaf-portal.php' ), 'uc-dismissed-fold' ), true );
 
 /* ======================================================================== 2 */
 $sub = rt_event( 'pending' );
@@ -146,8 +140,8 @@ foreach ( array( 'category', 'organizer' ) as $w ) {
     rt( "4: + Add $w carries a chevron", (bool) preg_match( '#data-uc-chips-toggle\s+aria-expanded="false"><span>\+ Add ' . $w . '</span>\s*<span class="uc-disclosure-chevron" aria-hidden="true">#', $form ), true );
 }
 $css = (string) file_get_contents( $GLOBALS['kit_root'] . '/public/css/portal.css' );
-rt( '4: the chevron turns on aria-expanded', false !== strpos( $css, '.uc-chips-add .uc-btn[aria-expanded="true"] .uc-disclosure-chevron,' ), true );
-rt( '4: and the button is pressed', false !== strpos( $css, ".uc-chips-add .uc-btn[aria-expanded=\"true\"],\n.uc-dismissed-fold[open] > .uc-dismissed-toggle {" ), true );
+rt( '4: the chevron turns on aria-expanded', false !== strpos( $css, '.uc-chips-add .uc-btn[aria-expanded="true"] .uc-disclosure-chevron { transform: rotate(-90deg); }' ), true );
+rt( '4: and the button is pressed', false !== strpos( $css, ".uc-chips-add .uc-btn[aria-expanded=\"true\"] {\n    background: var(--p-btn-face-hover); border-color: var(--uc-accent-text);\n    box-shadow: inset 0 2px 3px rgba(55, 52, 51, 0.22); }" ), true );
 rt( '4: portal.js still sets aria-expanded', false !== strpos( $js, "toggle.setAttribute('aria-expanded', open ? 'true' : 'false');" ), true );
 
 /* ======================================================================== 5 */
@@ -184,5 +178,5 @@ rt( '6: three teams are kept, a repeat once', SFAF_Teams::access_for_event( $t )
 echo "\nRelease 3.113.1\n" . str_repeat( '=', 72 ) . "\n";
 echo "ran $ran assertions.\n";
 if ( $fails ) { echo count( $fails ) . " failed:\n  - " . implode( "\n  - ", $fails ) . "\n"; exit( 1 ); }
-echo "Dismissed folds shut, Approve asks about registrations only with RSVPs, two emails always go, the add buttons show their state, the contact email links and teams have no limit.\n";
+echo "Dismissed is a tab now (3.113.2), Approve asks about registrations only with RSVPs, two emails always go, the add buttons show their state, the contact email links and teams have no limit.\n";
 exit( 0 );

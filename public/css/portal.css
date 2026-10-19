@@ -1988,23 +1988,13 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 /* + ADD CATEGORY AND + ADD ORGANIZER SHOW THEIR STATE (3.113.1). The chevron
    (drawn pointing right) turns down when shut and up when open, and the open
    button wears the hover face with an inset shadow, so it reads as pressed.
-   portal.js sets aria-expanded; the rule keys on it. The dismissed toggle on
-   Pending is the same control as a <summary>, keyed on [open]. */
-.uc-chips-add .uc-btn .uc-disclosure-chevron,
-.uc-dismissed-fold > .uc-dismissed-toggle .uc-disclosure-chevron { transform: rotate(90deg); }
-.uc-chips-add .uc-btn[aria-expanded="true"] .uc-disclosure-chevron,
-.uc-dismissed-fold[open] > .uc-dismissed-toggle .uc-disclosure-chevron { transform: rotate(-90deg); }
-.uc-chips-add .uc-btn[aria-expanded="true"],
-.uc-dismissed-fold[open] > .uc-dismissed-toggle {
+   portal.js sets aria-expanded; the rule keys on it. (Pending's Dismissed
+   toggle shared this until 3.113.2, when Dismissed became a tab.) */
+.uc-chips-add .uc-btn .uc-disclosure-chevron { transform: rotate(90deg); }
+.uc-chips-add .uc-btn[aria-expanded="true"] .uc-disclosure-chevron { transform: rotate(-90deg); }
+.uc-chips-add .uc-btn[aria-expanded="true"] {
     background: var(--p-btn-face-hover); border-color: var(--uc-accent-text);
     box-shadow: inset 0 2px 3px rgba(55, 52, 51, 0.22); }
-.uc-dismissed-fold > .uc-dismissed-toggle { width: fit-content; list-style: none; }
-.uc-dismissed-fold > .uc-dismissed-toggle::-webkit-details-marker { display: none; }
-.uc-dismissed-fold > .uc-dismissed-toggle::marker { content: ""; }
-.uc-dismissed-fold > .uc-dismissed-toggle .uc-dismissed-hide,
-.uc-dismissed-fold[open] > .uc-dismissed-toggle .uc-dismissed-show { display: none; }
-.uc-dismissed-fold[open] > .uc-dismissed-toggle .uc-dismissed-hide { display: inline; }
-.uc-dismissed-fold[open] > .uc-help { margin-top: 12px; }
 /* The checkbox list, once folded away behind the Add button. Without script it
    is simply the visible control it has always been. */
 .uc-chips-source { grid-template-columns: 1fr; max-height: 220px; overflow-y: auto;
@@ -3697,6 +3687,9 @@ body.uc-modal-open { overflow: hidden; }
 .uc-editor-actions .uc-cancel-open    { order: 2; }
 .uc-editor-actions .uc-editor-save    { order: 3; }
 .uc-editor-actions .uc-editor-publish { order: 4; }
+/* A submission waiting for review (3.113.2): Reject, Save changes, Approve. */
+.uc-editor-actions .uc-editor-reject  { order: 2; }
+.uc-editor-actions .uc-editor-approve { order: 4; }
 /* Open, the cancel panel still takes the whole width and drops to the end. The
    rule below sets order: 20, which is past every one of these. */
 
@@ -3712,6 +3705,7 @@ body.uc-modal-open { overflow: hidden; }
    red Cancel event and a yellow Save changes, so the only safe button in it was
    also the quietest. */
 .uc-editor-actions .uc-editor-publish,
+.uc-editor-actions .uc-editor-approve,
 .uc-editor-actions .uc-editor-save-main {
     padding: 13px 30px;
     font-size: 15px;
@@ -3771,6 +3765,12 @@ body.uc-modal-open { overflow: hidden; }
     background: var(--p-panel); box-shadow: none;
 }
 .uc-portal .uc-editor-bar .uc-form-actions-note { font-size: 12px; }
+/* A SUBMISSION WAITING FOR REVIEW (3.113.2): Approve is the main action and
+   its size, so above 600px the caption shrinks and wraps rather than pushing
+   Approve onto a line of its own. Below, the caption has its own line anyway. */
+@media (min-width: 601px) {
+    .uc-portal .uc-editor-bar:has(.uc-editor-approve) .uc-form-actions-note { flex: 1 1 0; min-width: 0; }
+}
 @media (max-width: 600px) {
     .uc-portal .uc-form-actions-primary.uc-editor-bar { padding: 10px 0; gap: 8px; }
     .uc-portal .uc-editor-bar .uc-btn { padding: 10px 12px; font-size: 14px; }

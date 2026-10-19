@@ -47,13 +47,9 @@ $portal = ( new ReflectionClass( 'SFAF_Portal' ) )->newInstanceWithoutConstructo
 
 $add = rl_cap( function () use ( $portal ) { $_GET = array(); kit_call( 'SFAF_Portal', 'render_event_form', $portal, array( new WP_User(), 0 ) ); } );
 rl( 0 !== strpos( $add, 'THREW' ), "Add event did not render: $add" );
-foreach ( array( 'Old fair', 'Old walk' ) as $t ) {
-    kit_write_post( array( 'post_type' => 'uc_event', 'post_status' => SFAF_Sources::STATUS_DISMISSED, 'post_title' => $t, 'post_author' => 1, 'post_content' => '' ) );
-}
-$dismissed = rl_cap( function () use ( $portal ) { kit_call( 'SFAF_Portal', 'render_dismissed_queue', $portal, array() ); } );
-rl( 0 !== strpos( $dismissed, 'THREW' ) && false !== strpos( $dismissed, 'uc-dismissed-fold' ), "the Dismissed card did not render: $dismissed" );
-rl( 1 === preg_match( '#<body class="uc-portal">#', $add ), 'the Add event page has no <body class="uc-portal">' );
-$page = preg_replace( '#<body class="uc-portal">#', '<body class="uc-portal"><div id="rl-dismissed" style="padding:16px">' . str_replace( '$', '\\$', $dismissed ) . '</div>', $add, 1 );
+/* Pending's Dismissed fold was checked here until 3.113.2 made Dismissed a
+   tab; release-31132-live.php has that. */
+$page = $add;
 
 $probe = <<<'JS'
 (function () {
@@ -151,21 +147,6 @@ $pressed = function ( $f ) { return 'rgb(191, 194, 196)' === $f['bg'] && 'none' 
 foreach ( $g as $name => $r ) {
     list( $mode ) = explode( '-', $name );
 
-    /* ---- Dismissed, with and without the script ---- */
-    $f = (array) $r['fold'];
-    rl( ! empty( $f['found'] ), "$name: no Dismissed toggle" );
-    if ( ! empty( $f['found'] ) ) {
-        rl( ! $f['shut']['open'] && ! $f['shut']['list'], "1L $name: Dismissed is open on load" );
-        rl( 'Show dismissed (2)' === $f['shut']['text'], "1L $name: the shut button reads " . json_encode( $f['shut']['text'] ) );
-        rl( 90 === $f['shut']['chevron'] && $f['shut']['chevronShown'], "1L $name: the shut chevron is at " . json_encode( $f['shut']['chevron'] ) . ', not down' );
-        rl( ! $pressed( $f['shut']['face'] ), "1L $name: the shut button looks pressed: " . json_encode( $f['shut']['face'] ) );
-        rl( $f['opened']['open'] && $f['opened']['list'], "1L $name: pressing it did not show the list" );
-        rl( 'Hide dismissed (2)' === $f['opened']['text'], "1L $name: the open button reads " . json_encode( $f['opened']['text'] ) );
-        rl( -90 === $f['opened']['chevron'], "1L $name: the open chevron is at " . json_encode( $f['opened']['chevron'] ) . ', not up' );
-        rl( $pressed( $f['opened']['face'] ), "1L $name: the open button does not look pressed: " . json_encode( $f['opened']['face'] ) );
-        rl( ! $f['closed']['open'] && ! $f['closed']['list'] && 90 === $f['closed']['chevron'] && ! $pressed( $f['closed']['face'] ), "1L $name: a second press did not shut it and put the button back" );
-    }
-
     /* ---- + Add category and + Add organizer ---- */
     if ( 'nojs' === $mode ) {
         foreach ( (array) $r['buttons'] as $n => $b ) { rl( ! $b['shown'], "$name: with no script, $n shows, though the list is already open" ); }
@@ -187,5 +168,5 @@ foreach ( $g as $name => $r ) {
 echo "\nRelease 3.113.1 in a browser\n" . str_repeat( '=', 72 ) . "\n";
 echo count( $g ) . " pages driven.\n";
 if ( $fails ) { echo count( $fails ) . " failure(s):\n  - " . implode( "\n  - ", $fails ) . "\n"; exit( 1 ); }
-echo "The add buttons and the Dismissed toggle point down shut and up open, look pressed while open, and a second press shuts them.\n";
+echo "The add buttons point down shut and up open, look pressed while open, and a second press shuts them.\n";
 exit( 0 );

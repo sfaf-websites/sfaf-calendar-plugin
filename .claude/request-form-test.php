@@ -394,102 +394,30 @@ $out = SFAF_Request::validate( good_post( array( 'image_id' => 99999 ) ) );
 expect( 'an id that is nothing at all is refused',         $out['clean']['image'], 0 );
 
 /* ---------------------------------------------------------------------------
- * THE TEAM PICKER (3.66.0).
+ * EVERY REQUEST GOES TO THE MARCOM TEAM (3.113.2).
  *
- * A requester names the team that should be able to work on the event. It is
- * still the public surface this whole file is about, so the questions are the
- * same ones: what can somebody who edits the form get out of it that they were
- * not offered?
+ * The form stopped asking "Who should be able to edit it". create_event() puts
+ * the MarCom team on Team and access, found by name, and never the requester.
+ * What a hand-edited form sends in request_teams reaches nothing.
  * ------------------------------------------------------------------------ */
 
-$out = SFAF_Request::validate( good_post( array( 'request_teams' => array( 'clinic' ) ) ) );
-expect( 'a real team is kept',       $out['clean']['teams'], array( 'clinic' ) );
-expect_no_error( 'and raises nothing', $out['errors'], 'request_teams' );
-
-$out = SFAF_Request::validate( good_post( array( 'request_teams' => array( 'clinic', 'marcom' ) ) ) );
-expect( 'two teams are kept', $out['clean']['teams'], array( 'clinic', 'marcom' ) );
-
-/* No limit (3.113.1): three are kept, and nothing is said about it. */
-$out = SFAF_Request::validate( good_post( array( 'request_teams' => array( 'clinic', 'marcom', 'harmred' ) ) ) );
-expect( 'three teams are kept', $out['clean']['teams'], array( 'clinic', 'marcom', 'harmred' ) );
-expect_no_error( 'and raise nothing', $out['errors'], 'request_teams' );
-
-$out = SFAF_Request::validate( good_post( array( 'request_teams' => array( 'clinic', 'clinic' ) ) ) );
-expect( 'the same team twice is one team', $out['clean']['teams'], array( 'clinic' ) );
-
-/*
- * WHAT THE GUARANTEE ACTUALLY IS, and writing it the other way round found the
- * mistake. The first draft of this asserted that malformed ids are REFUSED, and
- * three of them were not: sanitize_key() lowercases and strips, so 'MARCOM' and
- * '../marcom' both arrive as 'marcom'. That is not a hole and refusing them
- * would not close one, because a normalized id still has to name a team that
- * EXISTS before it is kept. Whatever a hand-edited form sends, the result can
- * only ever be real team ids.
- *
- * So the assertion is that property, over hostile input, rather than a guess
- * about which strings survive normalization.
- */
-$known_team_ids = array_keys( SFAF_Teams::all() );
-$hostile = array(
-    array( 'no-such-team' ),
-    array( '' ),
-    array( '0' ),
-    array( 'MARCOM' ),
-    array( '../marcom' ),
-    array( 'clinic;drop' ),
-    array( 'nope', 'harmred' ),
-    array( 'clinic', 'clinic', 'clinic', 'marcom', 'harmred' ),
-    'clinic',                       // not an array at all
-    array( array( 'clinic' ) ),     // nested, which sanitize_key sees as ''
-    123,
-    null,
-);
-foreach ( $hostile as $i => $sent ) {
+foreach ( array( array( 'clinic' ), array( 'clinic', 'harmred' ), 'clinic', array( array( 'clinic' ) ), null ) as $i => $sent ) {
     $res = SFAF_Request::validate( good_post( array( 'request_teams' => $sent ) ) );
-    $got = $res['clean']['teams'];
-
-    expect( "case $i names only teams that exist",
-        array_values( array_diff( $got, $known_team_ids ) ), array() );
-    expect( "case $i has no duplicates", count( $got ), count( array_unique( $got ) ) );
-
-    expect( "case $i raises no team error", isset( $res['errors']['request_teams'] ), false );
+    expect( "case $i: a posted team is not read", array_key_exists( 'teams', $res['clean'] ), false );
+    expect( "case $i: and raises nothing", isset( $res['errors']['request_teams'] ), false );
 }
+expect( 'MarCom is found by its name', SFAF_Request::marcom_team(), 'marcom' );
 
-/* An invented id alongside a real one takes the real one and nothing else,
-   rather than failing the whole field. */
-$out = SFAF_Request::validate( good_post( array( 'request_teams' => array( 'nope', 'harmred' ) ) ) );
-expect( 'a real team survives an invented one beside it', $out['clean']['teams'], array( 'harmred' ) );
-
-/* An id naming no team is dropped rather than kept as a string. */
-$out = SFAF_Request::validate( good_post( array( 'request_teams' => array( 'no-such-team' ) ) ) );
-expect( 'an id naming no team is dropped', $out['clean']['teams'], array() );
-
-/*
- * ONE WRITER, AND THIS IS AN ASSERTION ABOUT ABSENCE.
- *
- * store() is not called here for the reason given in section 10 below, and the
- * claim being made is not about a value anyway: it is that this file writes the
- * access list through SFAF_Teams and NOWHERE ELSE. A second path writing
- * _uc_event_teams directly would be a second definition of what a valid access
- * list is, free to drift from the cap and the existence check the portal
- * enforces. Only a search for what is not there can answer that.
- */
-$request_src = file_get_contents( $root . '/includes/class-sfaf-request.php' );
-/* COMMENTS STRIPPED FIRST. The note beside the call names the meta key in order
-   to say it is not written here, and a search over the raw file finds that
-   sentence and reports the opposite of the truth. */
+$request_src  = file_get_contents( $root . '/includes/class-sfaf-request.php' );
 $request_code = preg_replace( '#/\*.*?\*/#s', '', $request_src );
-expect( 'the access list is written through SFAF_Teams',
-    (bool) strpos( $request_code, 'SFAF_Teams::set_access_for_event( $event_id, $c[\'teams\'] )' ), true );
+expect( 'the access list is MarCom, written through SFAF_Teams',
+    (bool) strpos( $request_code, 'SFAF_Teams::set_access_for_event( $event_id, array( $marcom ) )' ), true );
 expect( 'and the meta key is never touched directly',
     false !== strpos( $request_code, '_uc_event_teams' ), false );
-expect( 'and no team limit is applied (3.113.1)',
-    false !== strpos( $request_code, 'MAX_PER_EVENT' ) || false !== strpos( $request_src, 'Choose up to' ), false );
-
-$out = SFAF_Request::validate( good_post() );
-expect( 'naming no team is allowed and is the default', $out['clean']['teams'], array() );
-expect_no_error( 'and is not an error', $out['errors'], 'request_teams' );
-
+expect( 'the form has no team question',
+    false === strpos( $request_code, 'request_teams' ) && false === strpos( $request_code, 'Who should be able to edit' ), true );
+expect( 'the requester is not added to a team',
+    false === strpos( $request_code, 'SFAF_Teams::save(' ) && false === strpos( $request_code, 'set_for_user(' ), true );
 /* Dates. */
 foreach ( array( '', 'tomorrow', '2026-13-01', '2026-02-30', '26-01-01', '2026-1-1', '2026-01-01T10:00' ) as $bad ) {
     $out = SFAF_Request::validate( good_post( array( 'date' => $bad ) ) );

@@ -63,6 +63,27 @@ class SFAF_Request {
     const META_NOTES  = '_uc_request_notes';
     const META_VENUE  = '_uc_request_venue_other';
 
+    /** The two emails a requester who wants RSVPs gets by default (3.113.2). */
+    const RSVP_EMAILS = array( 'day_before', 'summary' );
+
+    /**
+     * The MarCom team's id, or '' when the site has none (3.113.2).
+     *
+     * Found by its name: the first team, by name order, whose name with
+     * spaces and punctuation taken out starts with "marcom", so "MarCom",
+     * "Marcom team" and "MarCom - web" all match.
+     *
+     * @return string
+     */
+    public static function marcom_team() {
+        foreach ( SFAF_Teams::all() as $id => $team ) {
+            if ( 0 === strpos( preg_replace( '/[^a-z0-9]/', '', strtolower( (string) $team['name'] ) ), 'marcom' ) ) {
+                return (string) $id;
+            }
+        }
+        return '';
+    }
+
     /**
      * What the requester asked for about repeating, as the engine spells it.
      *
@@ -771,31 +792,11 @@ class SFAF_Request {
          * what a form may attach to a public page. */
         $clean['image'] = SFAF_Submissions::clean_image_choice( $post );
 
-        /* ---- Who should be able to edit it. ----
+        /* ---- Who can edit it: the MarCom team, always (3.113.2). ----
          *
-         * TEAMS, NEVER INDIVIDUALS. A team is a name and a set of user ids that
-         * resolves AT READ TIME, so adding somebody to a team hands them every
-         * event that team owns and removing them takes it back. A typed address
-         * is a string nobody maintains. The requester knows the team's name and
-         * has no business seeing who is in it, so this offers names and nothing
-         * else. See SFAF_Teams.
-         *
-         * NO LIMIT ON HOW MANY (3.113.1), as in caladmin's Team and access.
+         * The form no longer asks. create() puts every request on the MarCom
+         * team through marcom_team(), and the requester is not added to it.
          */
-        $clean['teams'] = array();
-        $known_teams    = SFAF_Teams::all();
-        foreach ( (array) ( isset( $post['request_teams'] ) ? $post['request_teams'] : array() ) as $team_id ) {
-            // A hand-built post body can nest an array here, and casting one to
-            // a string is a PHP warning and an empty key. Anything that is not
-            // a scalar names no team.
-            if ( ! is_scalar( $team_id ) ) {
-                continue;
-            }
-            $team_id = sanitize_key( (string) $team_id );
-            if ( '' !== $team_id && isset( $known_teams[ $team_id ] ) && ! in_array( $team_id, $clean['teams'], true ) ) {
-                $clean['teams'][] = $team_id;
-            }
-        }
 
         /* ---- The video. ----
          *
@@ -1177,8 +1178,22 @@ class SFAF_Request {
          * before anybody approves it, which is the whole reason the requester
          * was asked.
          */
-        if ( ! empty( $c['teams'] ) ) {
-            SFAF_Teams::set_access_for_event( $event_id, $c['teams'] );
+        $marcom = self::marcom_team();
+        if ( '' !== $marcom ) {
+            SFAF_Teams::set_access_for_event( $event_id, array( $marcom ) );
+        }
+
+        /*
+         * RSVPS, AND THE REQUESTER'S TWO EMAILS (3.113.2). A yes puts their
+         * address on the event's notification list, as a typed address, the
+         * way Approve's tick does, and leaves on only the count the day
+         * before and the list two hours before. The registration alert and
+         * the cancellation alert start off; a manager can turn them on.
+         * Nothing is sent while the event waits for review.
+         */
+        if ( $c['rsvp'] ) {
+            SFAF_Submissions::add_to_notify_list( $event_id, $email );
+            SFAF_Notifications::set_off( $event_id, array_diff( SFAF_Notifications::choosable(), self::RSVP_EMAILS ) );
         }
 
         // Validated in clean(), so a value here has already parsed.
@@ -1436,16 +1451,21 @@ class SFAF_Request {
             'RSVP'     => $c['rsvp'] ? ( '' === (string) $c['capacity'] ? 'Yes, no limit on places' : ( 0 === (int) $c['capacity'] ? 'Yes, waitlist only' : 'Yes, ' . $c['capacity'] . ' places' ) ) : 'No',
         );
 
+        /* With RSVPs, what they will get once it is published (3.113.2). */
+        $rsvp_line = 'Once it is on the calendar, you get two emails about who registered: the count, the day before, and the list, two hours before.';
+
         $html = SFAF_Email::heading( 'Thanks, that is with the team' )
             . SFAF_Email::para( 'Here is what you sent. The MarCom team will look at it and put it on the calendar, or email you if we have questions.' )
             . SFAF_Email::details( $rows )
+            . ( $c['rsvp'] ? SFAF_Email::para( $rsvp_line ) : '' )
             . SFAF_Email::rule()
-            . SFAF_Email::small_para( 'Nothing else happens automatically. If it is urgent, tell somebody on the team directly.' );
+            . SFAF_Email::small_para( 'If it is urgent, tell somebody on the team directly.' );
 
         $text = "Thanks, that is with the team.\n\n"
             . $c['title'] . "\n" . sfaf_ap_date( $c['date'], 'full' ) . "\n"
             . sfaf_ap_time_range( $c['start'], $c['end'], 'zone' ) . "\n\n"
-            . "The MarCom team will look at it. Nothing else happens automatically.";
+            . "The MarCom team will look at it."
+            . ( $c['rsvp'] ? "\n\n" . $rsvp_line : '' );
 
         SFAF_Email::send( $email, 'We have your event request', SFAF_Email::shell( 'Your event request', $html ), $text );
     }
@@ -1554,7 +1574,7 @@ class SFAF_Request {
             <?php endif; ?>
             <p class="uc-hint">
                 Somebody will check it and put it on the calendar, or come back to you if something needs
-                sorting out. Nothing else happens automatically, so if it is urgent tell somebody directly.
+                sorting out. If it is urgent, tell somebody directly.
             </p>
         </div>
         <?php
@@ -2017,12 +2037,23 @@ class SFAF_Request {
                 <fieldset class="uc-form-section-group">
                 <legend class="uc-field-group-title">RSVP</legend>
 
-                <label class="uc-check">
-                    <input type="checkbox" name="rsvp" value="1" <?php checked( (bool) $v( 'rsvp', false ) ); ?> />
-                    People need to RSVP
-                </label>
+                <?php /* A QUESTION WITH TWO ANSWERS (3.113.2), where it was one
+                       tick, "People need to RSVP". No is chosen until somebody
+                       says yes. */ ?>
+                <div class="uc-field" role="radiogroup" aria-labelledby="uc-request-rsvp-q">
+                    <span class="uc-field-label" id="uc-request-rsvp-q">Do you want RSVPs for this event?</span>
+                    <label class="uc-check">
+                        <input type="radio" name="rsvp" value="1" <?php checked( (bool) $v( 'rsvp', false ) ); ?> />
+                        Yes
+                    </label>
+                    <label class="uc-check">
+                        <input type="radio" name="rsvp" value="0" <?php checked( ! (bool) $v( 'rsvp', false ) ); ?> />
+                        No
+                    </label>
+                    <span class="uc-hint">With yes, you get two emails once it is published: the count of who is coming, the day before, and who is coming, two hours before.</span>
+                </div>
                 <label class="uc-field">
-                    <span class="uc-field-label">How many places, if there is a limit</span>
+                    <span class="uc-field-label">With yes, how many places, if there is a limit</span>
                     <input type="number" name="capacity" min="0" max="100000" placeholder="No limit" value="<?php echo esc_attr( (string) $v( 'capacity' ) ); ?>" />
                     <span class="uc-hint">Leave it empty for no limit, or enter 0 to send everybody to the waitlist.</span>
                     <?php self::field_error( $err( 'capacity' ) ); ?>
@@ -2134,8 +2165,6 @@ class SFAF_Request {
                     </div>
                 </fieldset>
 
-                <?php self::render_team_choice( (array) $v( 'teams', array() ), $err( 'request_teams' ) ); ?>
-
                 <fieldset class="uc-form-section-group">
                     <legend class="uc-field-group-title">Anything else we should know</legend>
                     <label class="uc-field">
@@ -2159,70 +2188,6 @@ class SFAF_Request {
             return;
         }
         echo '<span class="uc-field-error">' . esc_html( $message ) . '</span>';
-    }
-
-    /**
-     * Which team should be able to work on this event.
-     *
-     * WHY A TEAM AND NOT A PERSON. Membership resolves at read time, so adding
-     * somebody to a team hands them every event that team owns and removing
-     * them takes it back on the same read. A typed name or address is a string
-     * that is correct on the day it is typed and nobody's job afterwards. The
-     * caladmin editor has offered exactly this since teams existed; the staff
-     * form has not, so a requester could say what the event is and not who
-     * should be able to touch it.
-     *
-     * NAMES ONLY, NEVER MEMBERSHIP. The requester knows the team's name, which
-     * is the whole of what they are being asked. Who is on it is caladmin's
-     * business and appears nowhere here.
-     *
-     * WHAT MAKES SHOWING THE LIST SAFE, AND IT IS WORTH BEING EXPLICIT. This
-     * page is unauthenticated and reached by a link, and links get forwarded.
-     * The gate is that the form is only ever rendered after a token sent to a
-     * verified sfaf.org mailbox has resolved, which by the time this method
-     * runs has already happened. So this costs nothing extra: anybody who can
-     * see this list has already proved an sfaf.org address. Mark has confirmed
-     * team names may be shown once that is true.
-     *
-     * CHECKBOXES, SO IT WORKS WITH NO SCRIPT. Nothing here is built by
-     * JavaScript and nothing here is inert without it. The cap is enforced by
-     * validate() rather than by disabling boxes in the browser, because a
-     * browser-side cap is not a cap on a page a form can be posted to.
-     *
-     * @param string[] $chosen
-     * @param string   $error
-     */
-    private static function render_team_choice( $chosen, $error = '' ) {
-        $teams = SFAF_Teams::all();
-        if ( empty( $teams ) ) {
-            // No teams, no question. A fieldset saying there is nothing to
-            // choose is a thing to read and not a thing to answer.
-            return;
-        }
-
-        $chosen = array_map( 'strval', (array) $chosen );
-        ?>
-        <?php // NO .uc-field ON A SECTION. That class is (0,2,1) inside
-              // .uc-request-card and strips the border and padding this one is
-              // drawn with. See the note beside that rule in portal.css. ?>
-        <fieldset class="uc-form-section-group uc-request-teams">
-            <legend class="uc-field-group-title">Who should be able to edit it</legend>
-            <p class="uc-hint">
-                Choose the teams whose members may open this event in the calendar tool, or none to leave it with the MarCom team.
-            </p>
-            <?php self::field_error( $error ); ?>
-            <div class="uc-picker-options">
-                <?php foreach ( $teams as $team ) : ?>
-                    <label class="uc-check uc-picker-option">
-                        <input type="checkbox" name="request_teams[]"
-                               value="<?php echo esc_attr( $team['id'] ); ?>"
-                               <?php checked( in_array( (string) $team['id'], $chosen, true ) ); ?> />
-                        <span><?php echo esc_html( $team['name'] ); ?></span>
-                    </label>
-                <?php endforeach; ?>
-            </div>
-        </fieldset>
-        <?php
     }
 
     /**

@@ -1053,3 +1053,61 @@
     }
 
 })(jQuery);
+
+/**
+ * THE WARNING ON LEAVING THE EVENT EDITOR WITH UNSAVED CHANGES (3.113.2).
+ *
+ * WordPress warns about the title and the text itself, in either editor, but
+ * not about a meta box: a date, a time or a FAQ changed in one of this
+ * plugin's boxes could be lost with no warning. This warns about those, once
+ * one has been changed by hand, until the post is saved. The browser writes
+ * the warning's words itself.
+ */
+(function () {
+    'use strict';
+    var body = document.body;
+    if (!body || !/\bpost-type-uc_event\b/.test(body.className) || !/\b(post-php|post-new-php)\b/.test(body.className)) {
+        return;
+    }
+    var BOXES = '#uc_event_details, #uc_event_confirmation_email, #uc_event_faq, #uc_event_image, '
+        + '#uc_event_rsvp_settings, #uc_event_display, #uc_event_integrations, #uc_event_organizer';
+    var changed = false;
+    var leaving = false;
+
+    function inBox(t) { return !!(t && t.closest && t.closest(BOXES)); }
+    document.addEventListener('input', function (e) { if (e.isTrusted && inBox(e.target)) { changed = true; } }, true);
+    document.addEventListener('change', function (e) { if (e.isTrusted && inBox(e.target)) { changed = true; } }, true);
+    /* A FAQ row added or removed is a change too. */
+    document.addEventListener('click', function (e) {
+        if (e.isTrusted && inBox(e.target) && e.target.closest('button, .button')) { changed = true; }
+    }, true);
+
+    /* The classic editor saves by posting the form. Preview posts it to
+     * another tab, which is not leaving. */
+    var post = document.getElementById('post');
+    if (post) {
+        post.addEventListener('submit', function () {
+            var t = post.getAttribute('target');
+            if (!t || '_self' === t) { leaving = true; }
+        });
+    }
+    /* The block editor saves the meta boxes after the post. */
+    if (window.wp && window.wp.data && window.wp.data.subscribe) {
+        var saving = false;
+        window.wp.data.subscribe(function () {
+            var ed = window.wp.data.select('core/edit-post');
+            if (!ed || !ed.isSavingMetaBoxes) { return; }
+            var now = ed.isSavingMetaBoxes();
+            if (saving && !now) { changed = false; }
+            saving = now;
+        });
+    }
+
+    window.addEventListener('beforeunload', function (e) {
+        if (leaving || !changed) { return; }
+        e.preventDefault();
+        e.returnValue = 'Your changes will not be saved.';
+        return e.returnValue;
+    });
+    window.sfafLeaveWarn = { unsaved: function () { return !leaving && changed; } };
+})();

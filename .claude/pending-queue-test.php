@@ -849,13 +849,21 @@ foreach ( $by_date as $id ) {
     $prev = $on;
 }
 
-/* --- A dismissed import is on the screen, and is NOT in the work list. - */
+/* --- A dismissed import is NOT in the work list, and is under the Rejected
+ *     and dismissed tab (3.113.2), where Restore reaches it. --------------- */
 $page = screen_html( array() );
-if ( in_array( 202, rows_in( $page ), true ) ) {
-    fail( 'a dismissed import is in the list of things waiting for a decision' );
+if ( in_array( 202, rows_in( $page ), true ) || false !== strpos( $page, 'data-uc-id="202"' ) ) {
+    fail( 'a dismissed import is on the work list screen' );
 }
-if ( false === strpos( $page, 'data-uc-id="202" data-uc-kind="dismissed"' ) ) {
-    fail( 'a dismissed import is nowhere on the screen, so Restore cannot be reached' );
+if ( false === strpos( $page, 'data-uc-closed-tab' ) ) {
+    fail( 'the Rejected and dismissed tab is not drawn' );
+}
+$closed_page = screen_html( array( 'view' => 'closed' ) );
+if ( false === strpos( $closed_page, 'data-uc-id="202" data-uc-kind="dismissed"' ) ) {
+    fail( 'a dismissed import is not under Rejected and dismissed, so Restore cannot be reached' );
+}
+if ( false !== strpos( $closed_page, 'Waiting for a decision' ) ) {
+    fail( 'the Rejected and dismissed tab also draws the work list' );
 }
 
 /* --- The things the brief said must keep working, on the rows they belong
@@ -873,7 +881,7 @@ foreach ( array(
     'fetch_sources'   => 'Fetch updates',
     'import_restore'  => 'Restore, on the dismissed event',
 ) as $action => $what ) {
-    if ( false === strpos( $page, 'value="' . $action . '"' ) ) {
+    if ( false === strpos( 'import_restore' === $action ? $closed_page : $page, 'value="' . $action . '"' ) ) {
         fail( "$what is gone from the queue" );
     }
 }

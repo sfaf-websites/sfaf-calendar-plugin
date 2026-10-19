@@ -19,6 +19,12 @@
  *   return address. If the question cannot be asked, the post goes as it
  *   would have, and the server's session-ended page is the net under it.
  *
+ *   THE WARNING ON LEAVING (3.113.2). Add event and Edit event carry
+ *   data-uc-leave-warn. Once somebody has changed a field there by hand and
+ *   the fields differ from what the page settled on, leaving by any route
+ *   other than a save (or Delete) raises the browser's leave-page warning.
+ *   The browser writes that warning's words itself.
+ *
  *   THE KEEPALIVE. Every ten minutes while a caladmin page is open the same
  *   endpoint is asked with keepalive=1, and the server renews a sign-in that
  *   is close to ending, over the same session so no open form's token breaks.
@@ -49,7 +55,11 @@
     var TYPED = /^(text|email|url|tel|number|search|date|time|datetime-local|month|week)$/;
 
     /* The one way this file leaves the page, so a check can stand in for it. */
-    var api = window.ucSession = { go: function (url) { window.location.assign(url); } };
+    var api = window.ucSession = { go: function (url) { leaving = true; window.location.assign(url); } };
+    /* Set when the page is leaving by a save or by this file's own redirect. */
+    var leaving = false;
+    /* Called with a form when one of its rich text editors was changed. */
+    var editorChanged = function () {};
 
     /* ---- storage, every call guarded: private windows refuse it --------- */
     function box() { try { return window.localStorage; } catch (e) { return null; } }
@@ -162,7 +172,7 @@
                 if (ed && ed.isDirty && ed.isDirty()) {
                     ed.save();
                     var ta = ed.getElement && ed.getElement();
-                    if (ta && ta.form) { dirty(ta.form); }
+                    if (ta && ta.form) { dirty(ta.form); editorChanged(ta.form); }
                 }
             });
         } catch (e) { /* an editor mid-teardown */ }
@@ -302,6 +312,53 @@
     setInterval(saveTouched, 5000);
     window.addEventListener('pagehide', saveTouched);
 
+    /* ---- the warning on leaving with unsaved changes (3.113.2) ----------- */
+    var leaveForms = Array.prototype.slice.call(document.querySelectorAll('form[data-uc-leave-warn]'));
+    var byHand = false, leaveBase = null;
+    function leaveSnap() { return leaveForms.map(fieldsOf); }
+    function unsaved() {
+        if (!byHand) { return false; }
+        syncEditors();
+        return !leaveBase || !same(leaveSnap(), leaveBase);
+    }
+    if (leaveForms.length) {
+        /* A draft put back is unsaved by definition. */
+        if (restoring && waiting.some(function (w) { return leaveForms.indexOf(w.form) !== -1; })) { byHand = true; }
+        editorChanged = function (form) { if (leaveForms.indexOf(form) !== -1) { byHand = true; } };
+        /* What the page settled on once every script had drawn its controls.
+           An edit counts only after it, and only when the fields differ. */
+        var settle = function () {
+            setTimeout(function () {
+                if (leaveBase) { return; }
+                /* Edited before the page finished loading: compare with what
+                   the server drew, which the drafts kept at the start. */
+                leaveBase = byHand
+                    ? leaveForms.map(function (f) { return baseline[keyOf(f)] || fieldsOf(f); })
+                    : leaveSnap();
+            }, 0);
+        };
+        if (document.readyState === 'complete') { settle(); } else { window.addEventListener('load', settle); }
+        ['input', 'change', 'click'].forEach(function (type) {
+            document.addEventListener(type, function (e) {
+                var t = e.target, form = t && (t.form || (t.closest && t.closest('form')));
+                if (form && leaveForms.indexOf(form) !== -1) { byHand = true; }
+            }, true);
+        });
+        /* Last to hear a submit, so it knows whether anything stopped it. */
+        window.addEventListener('submit', function (e) {
+            var form = e.target;
+            if (e.defaultPrevented || !form || form.tagName !== 'FORM') { return; }
+            if (leaveForms.indexOf(form) !== -1 || actionOf(form) === 'trash_event') { leaving = true; }
+        });
+        window.addEventListener('beforeunload', function (e) {
+            if (leaving || !unsaved()) { return; }
+            e.preventDefault();
+            e.returnValue = 'Your changes will not be saved.';
+            return e.returnValue;
+        });
+    }
+    api.unsaved = function () { return !leaving && unsaved(); };
+
     /* ---- the check before a post ---------------------------------------- */
     var passUntil = 0;
     function resubmit(form, submitter) {
@@ -314,6 +371,7 @@
             h.type = 'hidden'; h.name = submitter.name; h.value = submitter.value;
             form.appendChild(h);
         }
+        if (leaveForms.indexOf(form) !== -1) { leaving = true; }
         form.submit();
     }
     function tag(form) {

@@ -75,6 +75,7 @@ function ucDismissOnBackdrop(dialog) {
         run('sidebar', initSidebar);
         run('repeaters', initRepeaters);
         run('faqSetPicker', initFaqSetPicker);
+        run('faqNone', initFaqNone);
         // After repeaters, whose add button has to append its row first.
         run('faqFold', initFaqFold);
         run('seriesPrefill', initSeriesPrefill);
@@ -3645,6 +3646,22 @@ function ucDismissOnBackdrop(dialog) {
      * because a set that repeats a question the campaign already answers
      * should not add it again.
      * ------------------------------------------------------------------- */
+    /* ---------------------------------------------------------------------
+     * "No FAQs for this event" (3.113.2). Ticked, the set picker and the rows
+     * are hidden and the hint shows; the save stores no rows either way.
+     * ------------------------------------------------------------------- */
+    function initFaqNone() {
+        var tick = document.querySelector('[data-uc-faq-none]');
+        var body = document.querySelector('[data-uc-faq-body]');
+        if (!tick || !body) { return; }
+        var hint = document.querySelector('[data-uc-faq-none-hint]');
+        function show() {
+            body.hidden = tick.checked;
+            if (hint) { hint.hidden = !tick.checked; }
+        }
+        tick.addEventListener('change', show);
+        show();
+    }
     function initFaqSetPicker() {
         var pickers = document.querySelectorAll('[data-uc-faq-picker]');
         if (!pickers.length) {

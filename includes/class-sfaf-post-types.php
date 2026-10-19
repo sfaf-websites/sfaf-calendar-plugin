@@ -615,8 +615,10 @@ class SFAF_Post_Types {
                 echo '</ul>';
             }
             echo '<p class="description" style="margin-top:12px;"><strong>Your own questions.</strong> Kept forever, never reordered or removed by a fetch.</p>';
-            echo '<input type="hidden" name="uc_faq_has_manual" value="1" />';
         }
+        /* On every event's box, not only a locked one (3.113.2): with it, no
+         * rows posted means every row was deleted, and the save stores that. */
+        echo '<input type="hidden" name="uc_faq_has_manual" value="1" />';
         ?>
         <div class="uc-repeater" data-repeater="<?php echo esc_attr( $name ); ?>">
             <div class="uc-repeater-rows">
@@ -659,6 +661,11 @@ class SFAF_Post_Types {
     public function render_faq_meta_box( $post ) {
         echo '<div class="uc-meta-box">';
         echo '<p class="description" style="margin-top:0;">Frequently asked questions for this event.</p>';
+        // "No FAQs for this event" (3.113.2), as on caladmin's editor.
+        if ( '' === $this->faq_source_label( $post->ID ) ) {
+            echo '<p><label><input type="checkbox" name="uc_faq_none" value="1" ' . checked( SFAF_FAQ_Sets::is_none( $post->ID ), true, false ) . ' /> No FAQs for this event</label></p>';
+            echo '<p class="description">A series\' default FAQ set is not added to it, and any questions below are not saved.</p>';
+        }
         $this->faq_set_picker_html();
         $this->faq_repeater_html( 'uc_faqs', sfaf_get_faqs( $post->ID ), $this->faq_source_label( $post->ID ) );
         echo '</div>';
@@ -881,7 +888,10 @@ class SFAF_Post_Types {
 
         $rows = $posted_faq( 'uc_faqs' );
         if ( null !== $rows ) {
-            update_post_meta( $post_id, sfaf_faq_meta_key(), $merge_faq( sfaf_faq_meta_key(), $rows ) );
+            // "No FAQs for this event" (3.113.2): no rows of its own.
+            $faq_none = ! $faq_locked && ! empty( $_POST['uc_faq_none'] );
+            SFAF_FAQ_Sets::set_none( $post_id, $faq_none );
+            update_post_meta( $post_id, sfaf_faq_meta_key(), $merge_faq( sfaf_faq_meta_key(), $faq_none ? array() : $rows ) );
         }
 
         // Image override: reset to series image, or flag a per-event image.

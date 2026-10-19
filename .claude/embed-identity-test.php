@@ -19,27 +19,26 @@
  *      except embed.js's EMBED_JS_VERSION line, and the caladmin files in
  *      CALADMIN_ONLY, which no public calendar page loads.
  *
- * BASE is the release compared against: 3.113.0's commit from 3.113.1. Its
- * public calendar is 3.111.0's (this check passed against f7450c7 for it).
+ * BASE is the release compared against: 3.113.1's commit from 3.113.2 (3.113.0's,
+ * 84fd1ab, for 3.113.1). Its public calendar is 3.111.0's apart from the event
+ * page's contact email (this check passed against f7450c7 for 3.113.0).
  * When a release is meant to change the public calendar, it says so here, by
  * name, in ALLOWED or ALLOWED_FILES.
  */
 
-const BASE      = '84fd1ab';
-const BASE_NAME = '3.113.0';
+const BASE      = 'c242c72';
+const BASE_NAME = '3.113.1';
 
 /* Files under public/ and templates/ a release means to change, as path =>
    why. Probe A still compares every embed answer, so none of these can reach
    the embed unseen. */
-const ALLOWED_FILES = array(
-    'templates/single-uc_event.php' => '3.113.1: the event page contact email is a mailto link',
-);
+const ALLOWED_FILES = array();   // none in 3.113.2
 
 /* Loaded by caladmin and the two public forms, never by the calendar, an event
    page or an embed. sfaf_enqueue_frontend_assets() enqueues neither. */
 const CALADMIN_ONLY = array( 'public/css/portal.css', 'public/js/portal.js', 'public/js/caladmin-session.js' );
 
-/* Differences a release means to make, as 'key path' => why. None in 3.113.0 or 3.113.1. */
+/* Differences a release means to make, as 'key path' => why. None in 3.113.0 to 3.113.2. */
 const ALLOWED = array();
 
 $root    = str_replace( '\\', '/', dirname( __DIR__ ) );
