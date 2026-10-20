@@ -1495,6 +1495,11 @@ a.uc-stat:hover, a.uc-stat:focus-visible { border-color: var(--uc-accent-text); 
 }
 .uc-request-panel .uc-request-who { margin: 0 0 10px; font-size: 14px; line-height: 1.5; }
 .uc-request-panel .uc-request-who .uc-muted { margin-left: 6px; }
+/* A staff request's one line (3.113.3): no card, 13px --p-muted, the name a
+   link. Two classes, to outrank the 14px rule above. */
+.uc-request-line { margin: 0 0 16px; }
+.uc-request-line .uc-request-who { margin: 0 0 6px; font-size: 13px; color: var(--p-muted); }
+.uc-request-line .uc-hint { margin: 0 0 6px; }
 .uc-request-notes { margin-top: 12px; padding: 12px 14px; border-radius: 10px;
     background: var(--p-surface-2, #f6f7f8); }
 .uc-request-notes p { margin: 4px 0 0; font-size: 14px; line-height: 1.55; white-space: pre-wrap; }
@@ -3650,8 +3655,12 @@ body.uc-modal-open { overflow: hidden; }
        a draft        Delete   Save draft     Publish
                       red      YELLOW         GREEN, largest
 
-       an existing    Delete   Cancel event   Save changes
-       event          red      RED            GREEN, largest
+       an existing    Delete     Cancel event   Save changes     (3.113.3)
+       event          red link   outlined       GREEN, largest
+
+   FROM 3.113.3 DELETE IS A RED TEXT LINK ON BOTH ROWS and Cancel event is
+   outlined, so an existing event's bar has one solid button. What follows
+   about two reds is the 3.98.0 reasoning, kept for the record.
 
    CANCEL EVENT IS RED, NOT AMBER (3.98.0), because it takes the event off the
    public calendar and mails everybody who registered. Amber said "careful" for
@@ -3683,8 +3692,17 @@ body.uc-modal-open { overflow: hidden; }
    PUBLISH IS THE LARGEST, which is the part that carries "this is the main
    action" now that it is not the only coloured button. Size, not hue.
    ------------------------------------------------------------------------ */
-.uc-editor-actions .uc-editor-delete  { order: 1; }
+.uc-editor-actions .uc-editor-delete  { order: -1; }
 .uc-editor-actions .uc-cancel-open    { order: 2; }
+/* ONE SOLID BUTTON ON AN EXISTING EVENT'S BAR (3.113.3). Delete is a red text
+   link at the far left, ahead of the note, whose auto margin sets it apart from
+   the buttons on the right. Cancel event is the plain button outlined: its
+   control edge and no face. Two classes beat .uc-btn and its :hover, so both
+   states are named. */
+.uc-editor-actions .uc-editor-delete  { margin-right: 20px; font-size: 14px; }
+.uc-editor-actions .uc-cancel-open,
+.uc-editor-actions .uc-cancel-open:hover { background: transparent; }
+.uc-editor-actions .uc-cancel-open:hover { border-color: var(--uc-accent-text); }
 .uc-editor-actions .uc-editor-save    { order: 3; }
 .uc-editor-actions .uc-editor-publish { order: 4; }
 /* A submission waiting for review (3.113.2): Reject, Save changes, Approve. */
@@ -3774,6 +3792,8 @@ body.uc-modal-open { overflow: hidden; }
 @media (max-width: 600px) {
     .uc-portal .uc-form-actions-primary.uc-editor-bar { padding: 10px 0; gap: 8px; }
     .uc-portal .uc-editor-bar .uc-btn { padding: 10px 12px; font-size: 14px; }
+    /* The note takes the first line here, so Delete takes the last, on its own. */
+    .uc-editor-actions .uc-editor-delete { order: 30; flex: 1 1 100%; margin: 0; text-align: left; }
 }
 
 /* ---------------------------------------------------------------------------

@@ -3467,6 +3467,8 @@ class SFAF_Portal {
         // and where replies go. Shared with the registrations page, written
         // once. See save_rsvp_settings_from_post().
         // Where people register, first, so the settings below know (3.110.1).
+        // The RSVP card's one choice becomes the two answers read here (3.113.3).
+        SFAF_Register_Elsewhere::apply_choice_to_post( $event_id, $_POST );
         SFAF_Register_Elsewhere::save_from_post( $event_id, $_POST );
         $this->save_rsvp_settings_from_post( $user, $event_id, $is_locked );
         // The registration agreement (3.110.0): only where the section was drawn.
@@ -8285,7 +8287,7 @@ class SFAF_Portal {
             array( 'title', 'Title', 'Give the event the name people will see on the calendar. Keep it short; the description carries the detail.' ),
             array( 'schedule', 'Schedule', 'Pick the date and the start and end times. For an event that repeats, choose how often and the plugin creates every date for you.' ),
             array( 'location', 'Location', 'Pick a venue from the list, or choose A different location and type an address. Tick online for a video event, or hybrid when people can come in person or join online.' ),
-            array( 'registration', 'Registration', 'Tick Accept RSVPs to let people register here, or choose Register on another site and paste the link. Set a capacity if places are limited, leave it empty for no limit, or type 0 to send everyone to the waitlist. Add questions if you need to ask registrants something before the event.' ),
+            array( 'registration', 'RSVP', 'Choose RSVP Here to take RSVPs on this calendar, or External RSVP and paste the link to the other site. Set a capacity if places are limited, leave it empty for no limit, or type 0 to send everyone to the waitlist. Add questions if you need to ask registrants something before the event.' ),
             array( 'details', 'Event details', 'Write the description. Use Insert image to put a picture inside it. For the featured picture, choose one from the calendar folder; upload new pictures on the Images screen first.' ),
             array( 'faqs', 'FAQs', 'Add questions and answers for this event, or apply a saved set and edit it. To make a set you can reuse, create it on the FAQ Sets screen.' ),
             array( 'classification', 'Classification', 'Add at least one category and one organizer. A category is the kind of event, such as a support group or a fundraiser, and drives the calendar filters. An organizer is the SFAF program or team hosting the event, and its events are listed together on the calendar.' ),
@@ -14629,7 +14631,7 @@ class SFAF_Portal {
                              */
                             ?>
                             <p class="uc-hint uc-rsvp-show-note" data-uc-rsvp-show-note<?php echo ( $lock && ! $hybrid_show ) ? '' : ' hidden'; ?>>
-                                Greyed because <strong>Accept RSVPs</strong> is off in Registration.
+                                Greyed because this event does not take RSVPs here.
                             </p>
                             <p class="uc-hint uc-rsvp-show-note" data-uc-rsvp-hybrid-show-note<?php echo $hybrid_show ? '' : ' hidden'; ?>>
                                 Always on for a hybrid event.
@@ -14773,19 +14775,26 @@ class SFAF_Portal {
                  */
                 ?>
                 <section class="uc-bento-card uc-registration-card" data-uc-card="registration" data-uc-registration>
-                    <h2 class="uc-bento-title">Registration</h2>
-                    <?php // Cost (3.111.0), whatever the event does about registration. ?>
-                    <?php $this->render_listing_fields( $event_id, 'cost' ); ?>
+                    <h2 class="uc-bento-title">RSVP</h2>
                     <?php
                     /*
-                     * WHERE PEOPLE REGISTER (3.110.1), above Accept RSVPs, on
-                     * Add and Edit. Not on an imported event, which registers
-                     * at its source. On another site, everything below is
-                     * hidden and the save ignores it, so it waits unchanged.
+                     * ONE CHOICE, FIRST IN THE CARD (3.113.3): No RSVP, RSVP
+                     * Here, External RSVP, in place of "Where people register"
+                     * and the Accept RSVPs tick. It is read from the two stored
+                     * answers and posts them again (apply_choice_to_post()), so
+                     * nothing stored changes meaning. Not on an imported event,
+                     * which registers at its source: that keeps its one line.
+                     * On another site, everything below is hidden and the save
+                     * ignores it, so it waits unchanged.
                      */
                     $reg_imported = $event_id && SFAF_Sources::takes_rsvps_at_source( (int) $event_id );
                     $reg_away     = false;
-                    if ( ! $reg_imported ) {
+                    if ( $reg_imported ) {
+                        $rsvp_placed = array_merge(
+                            $rsvp_placed,
+                            (array) $this->render_rsvp_settings( $rsvp_ctx, array( 'rsvp_enabled' ), $rsvp_placed )
+                        );
+                    } else {
                         $reg_series = array();
                         foreach ( SFAF_Series::all() as $term ) {
                             $reg_series[ (string) $term->term_id ] = array(
@@ -14796,20 +14805,24 @@ class SFAF_Portal {
                         $reg_mode = $event_id ? SFAF_Register_Elsewhere::mode( (int) $event_id ) : SFAF_Register_Elsewhere::series_mode( (int) $cur_series );
                         $reg_own  = $event_id ? SFAF_Register_Elsewhere::clean_url( get_post_meta( (int) $event_id, SFAF_Register_Elsewhere::META_URL, true ) ) : '';
                         $reg_inh  = $event_id ? SFAF_Register_Elsewhere::series_url( SFAF_Series::id_for_event( (int) $event_id ) ) : SFAF_Register_Elsewhere::series_url( (int) $cur_series );
-                        $reg_away = ( 'elsewhere' === $reg_mode );
+                        $reg_away   = ( 'elsewhere' === $reg_mode );
+                        $reg_choice = SFAF_Register_Elsewhere::choice( (int) $event_id, (int) $cur_series );
+                        $reg_hybrid = $event_id && SFAF_Online::is_hybrid( (int) $event_id );
                         echo '<div class="uc-reg-choice" data-uc-reg-choice data-uc-reg-series="' . esc_attr( wp_json_encode( (object) $reg_series ) ) . '" data-uc-reg-own="'
                             . ( ( $event_id && '' !== (string) get_post_meta( (int) $event_id, SFAF_Register_Elsewhere::META_MODE, true ) ) ? '1' : '0' ) . '">';
-                        SFAF_Register_Elsewhere::render_choice( '', $reg_mode, $reg_own, $reg_inh );
+                        SFAF_Register_Elsewhere::render_rsvp_choice(
+                            $reg_choice, $reg_own, $reg_inh, $reg_hybrid,
+                            $event_id && '1' === (string) get_post_meta( (int) $event_id, '_uc_rsvp_enabled', true )
+                        );
                         echo '</div>';
+                        // The choice IS the rsvp_enabled setting on this card,
+                        // so the catch-all below must not draw the tick again.
+                        $rsvp_placed[] = 'rsvp_enabled';
                     }
                     ?>
+                    <?php // Cost (3.111.0), under the choice and shown whatever it is. ?>
+                    <?php $this->render_listing_fields( $event_id, 'cost' ); ?>
                     <div class="uc-reg-here" data-uc-reg-here<?php echo $reg_away ? ' hidden' : ''; ?>>
-                    <?php
-                    $rsvp_placed = array_merge(
-                        $rsvp_placed,
-                        (array) $this->render_rsvp_settings( $rsvp_ctx, array( 'rsvp_enabled' ), $rsvp_placed )
-                    );
-                    ?>
                     <div class="uc-registration-body" data-uc-registration-body>
                         <?php
                         $rsvp_placed = array_merge(
@@ -15408,8 +15421,10 @@ class SFAF_Portal {
         ?>
         <?php /* Opens the dialog render_delete_card() draws (3.112.1); the
            submit that deletes is in there, after the event form's own. */ ?>
+        <?php /* A red text link at the far left of the bar (3.113.3), not a
+           button: Save changes is the one solid button there. */ ?>
         <button type="button" data-uc-dialog-open="uc-delete-this" data-uc-saved-action="delete"
-                class="uc-btn uc-btn-stop uc-editor-delete" aria-haspopup="dialog">Delete</button>
+                class="uc-link-danger uc-editor-delete" aria-haspopup="dialog">Delete</button>
         <?php
     }
 
@@ -17088,7 +17103,8 @@ class SFAF_Portal {
         $form_id     = 'uc-cancel-form-' . $event_id;
         ?>
         <?php if ( 'panel' !== $part ) : ?>
-            <button type="button" class="uc-btn uc-btn-stop uc-cancel-open" data-uc-dialog-open="uc-cancel-this"
+            <?php // Outlined, not red (3.113.3): its dialog carries the weight. ?>
+            <button type="button" class="uc-btn uc-cancel-open" data-uc-dialog-open="uc-cancel-this"
                     aria-haspopup="dialog" data-uc-saved-action="cancel">Cancel event</button>
         <?php endif; ?>
         <?php if ( 'opener' === $part ) { return; } ?>
@@ -17734,7 +17750,7 @@ class SFAF_Portal {
             <?php // ---- 1. THE ONE LIST. --------------------------------- ?>
             <div class="uc-notify-section">
                 <h4 class="uc-notify-subhead">Who hears about this event</h4>
-                <p class="uc-hint">Everybody here is emailed about this event's registrations and reminders.</p>
+                <p class="uc-hint">Everybody on this list gets the emails switched on below.</p>
 
                 <?php if ( ! $reminders_on ) : ?>
                     <p class="uc-field-note uc-field-note-attention"><?php echo $this->icon_needs(); ?><span>Reminder emails are currently switched off in Settings, so nothing on this list will be sent until they are switched back on.</span></p>
@@ -17747,7 +17763,10 @@ class SFAF_Portal {
                         <input type="checkbox" name="notify_author" value="1" <?php checked( $author_on ); ?> />
                         Send to <strong><?php echo esc_html( $author->display_name ); ?></strong> (created this event, <?php echo esc_html( $author->user_email ); ?>)
                     </label>
-                <?php else : ?>
+                <?php elseif ( ! $post || (int) $post->post_author > 0 ) : ?>
+                    <?php // Not for a system account (3.113.3): an import, the
+                          // staff request form and the community form create
+                          // with no author, and there is nobody to email. ?>
                     <p class="uc-muted">This event's creator has no usable email address on file.</p>
                 <?php endif; ?>
 
@@ -21144,11 +21163,10 @@ class SFAF_Portal {
          * first is the submitter, already named above, so only the rest. */
         $also_tell = array_slice( SFAF_Submissions::notify_addresses( $event_id ), 1 );
         ?>
+        <?php if ( $community ) : ?>
         <div class="uc-card uc-request-panel">
-            <div class="uc-card-head"><h2><?php echo $community ? 'Submitted by a member of the public' : 'Requested by a colleague'; ?></h2></div>
-            <?php if ( $community ) : ?>
-                <p class="uc-hint">Their name and address are for reaching them about this event. Neither is shown on the listing.</p>
-            <?php endif; ?>
+            <div class="uc-card-head"><h2>Submitted by a member of the public</h2></div>
+            <p class="uc-hint">Their name and address are for reaching them about this event. Neither is shown on the listing.</p>
             <p class="uc-request-who">
                 <strong><?php echo esc_html( '' !== $name ? $name : $email ); ?></strong>
                 <a href="mailto:<?php echo esc_attr( $email ); ?>"><?php echo esc_html( $email ); ?></a>
@@ -21156,6 +21174,17 @@ class SFAF_Portal {
                     <span class="uc-muted">asked on <?php echo esc_html( sfaf_ap_date( $at, 'short_year' ) ); ?></span>
                 <?php endif; ?>
             </p>
+        <?php else : ?>
+        <?php /* A STAFF REQUEST IS ONE SMALL LINE (3.113.3), in place of the
+           "Requested by a colleague" card: the name mails the requester. What
+           else they asked for follows only when they asked it. */ ?>
+        <div class="uc-request-panel uc-request-line" data-uc-request-line>
+            <p class="uc-request-who">Requested by <a href="mailto:<?php echo esc_attr( $email ); ?>"><?php echo esc_html( '' !== $name ? $name : $email ); ?></a><?php
+                if ( '' !== $at ) {
+                    echo ' on ' . esc_html( sfaf_ap_date( $at, 'short_year' ) );
+                }
+            ?></p>
+        <?php endif; ?>
             <?php if ( '' !== $repeat ) : ?>
                 <p class="uc-hint"><strong>Repeating:</strong> <?php echo esc_html( $repeat ); ?>.
                     Said in words rather than set as a schedule, because generating the dates is a decision

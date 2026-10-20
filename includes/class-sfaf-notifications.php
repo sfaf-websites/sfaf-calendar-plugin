@@ -88,8 +88,8 @@ class SFAF_Notifications {
                 'note'  => 'Sent the moment somebody registers. Carries the date, the time, the place, add-to-calendar links, and a link to cancel.',
             ),
             'alert' => array(
-                'label' => 'Alert to your notification list when somebody registers',
-                'note'  => 'One email per registration, as it happens.',
+                'label' => 'Email when someone RSVPs',
+                'note'  => 'Sent each time someone RSVPs.',
             ),
             /*
              * THE SIXTH, ADDED 3.102.0: how many are coming, the day before.
@@ -98,16 +98,16 @@ class SFAF_Notifications {
              * for everybody on the list; the RSVP link is per recipient.
              */
             'day_before' => array(
-                'label' => 'Count of who is coming, to your notification list, the day before',
-                'note'  => 'Sent at 6 am the day before. Gives the number registered, not the names. Nothing is sent when nobody has registered.',
+                'label' => 'RSVP count, the day before',
+                'note'  => 'Sent at 6 am the day before. Gives the number, not the names. Not sent if nobody has RSVPed.',
             ),
             'reminder' => array(
                 'label' => 'Morning-of reminder to everybody registered',
                 'note'  => 'Sent at 6 am on the day, or at midnight when the event starts earlier. Your notification list is copied in.',
             ),
             'summary' => array(
-                'label' => 'Who is coming, to your notification list, two hours before',
-                'note'  => 'Lists everybody registered. Nothing is sent when nobody has registered.',
+                'label' => "Who's coming, two hours before",
+                'note'  => 'The full list of everyone who RSVPed. Not sent if nobody has.',
             ),
             /*
              * THE FIFTH, ADDED 3.56.0. The alert's opposite number.
@@ -125,8 +125,8 @@ class SFAF_Notifications {
              * records only what is switched OFF, so absent means on.
              */
             'cancel_alert' => array(
-                'label' => 'Alert to your notification list when somebody cancels',
-                'note'  => 'One email per cancellation, as it happens. Names who cancelled and what the count is now.',
+                'label' => 'Email when someone cancels',
+                'note'  => 'Sent each time someone cancels, with their name and the new count.',
             ),
         );
     }

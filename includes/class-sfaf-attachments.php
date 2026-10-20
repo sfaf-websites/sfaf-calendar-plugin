@@ -112,6 +112,88 @@ class SFAF_Attachments {
             . '</div>';
     }
 
+    /**
+     * The first page's preview WordPress made on upload, or null. Made only
+     * where Imagick reads PDFs (Ghostscript); resources.sfaf.org does, measured
+     * for 3.113.3. A file uploaded where it could not has none, and keeps the card.
+     *
+     * @param int $event_id
+     * @return array{url:string,width:int,height:int,large:string,large_w:int}|null
+     */
+    public static function thumb( $event_id ) {
+        $att = self::id( $event_id );
+        if ( ! $att || ! function_exists( 'image_get_intermediate_size' ) ) {
+            return null;
+        }
+        $med = image_get_intermediate_size( $att, 'medium' );
+        if ( empty( $med['url'] ) ) {
+            return null;
+        }
+        $big = image_get_intermediate_size( $att, 'large' );
+        return array(
+            'url'     => (string) $med['url'],
+            'width'   => (int) $med['width'],
+            'height'  => (int) $med['height'],
+            'large'   => ! empty( $big['url'] ) ? (string) $big['url'] : '',
+            'large_w' => ! empty( $big['width'] ) ? (int) $big['width'] : 0,
+        );
+    }
+
+    /**
+     * THE EVENT PAGE'S FLYER (3.113.3), or '' with no attachment.
+     *
+     * The first page as a picture with a solid "View flyer (PDF)" under it,
+     * or, where no preview was made, a dark card with a PDF mark and the same
+     * button. A label typed on the event replaces the button's words.
+     *
+     * ITS STYLES TRAVEL WITH IT, NOT IN calendar.css, because the embed loads
+     * calendar.css and 3.113.3 changes nothing the embed receives. The list
+     * row keeps button_html().
+     *
+     * @param int $event_id
+     * @return string
+     */
+    public static function flyer_html( $event_id ) {
+        $url = self::url( $event_id );
+        if ( '' === $url ) {
+            return '';
+        }
+        $typed = self::typed_label( $event_id );
+        $thumb = self::thumb( $event_id );
+        $out   = '<style>'
+            . '.uc-single .uc-flyer{margin:24px 0 0;display:flex;flex-direction:column;align-items:flex-start;gap:14px}'
+            . '.uc-single .uc-flyer-thumb{display:block;line-height:0;border:1px solid #D1D3D4;border-radius:8px;overflow:hidden;background:#fff;box-shadow:var(--uc-lift)}'
+            . '.uc-single .uc-flyer-thumb img{display:block;width:232px;max-width:100%;height:auto;margin:0}'
+            . '.uc-single .uc-flyer-card{display:flex;align-items:center;gap:14px;width:232px;max-width:100%;box-sizing:border-box;padding:20px;border-radius:8px;background:#373433;color:#fff;font-family:var(--uc-font-heading);font-size:18px;font-weight:800;line-height:1.2}'
+            . '.uc-single .uc-flyer-card svg{flex:0 0 auto;width:44px;height:44px}'
+            . '.uc-single .uc-flyer .uc-actionbtn{white-space:normal;max-width:100%}'
+            . '</style>';
+        $out .= '<div class="uc-flyer uc-attachment-single" data-uc-attachment data-uc-flyer>';
+        if ( $thumb ) {
+            $srcset = esc_url( $thumb['url'] ) . ' ' . (int) $thumb['width'] . 'w'
+                . ( '' !== $thumb['large'] ? ', ' . esc_url( $thumb['large'] ) . ' ' . (int) $thumb['large_w'] . 'w' : '' );
+            // The button below is the link's name; the picture is the same link, so it is skipped by keyboard and reader.
+            $out .= '<a class="uc-flyer-thumb" href="' . esc_url( $url ) . '" target="_blank" rel="noopener noreferrer" tabindex="-1" aria-hidden="true">'
+                . '<img src="' . esc_url( $thumb['url'] ) . '" srcset="' . $srcset . '" sizes="232px"'
+                . ' width="' . (int) $thumb['width'] . '" height="' . (int) $thumb['height'] . '" alt="" loading="lazy" decoding="async" />'
+                . '</a>';
+        } else {
+            $out .= '<div class="uc-flyer-card" aria-hidden="true">'
+                . '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" focusable="false">'
+                . '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>'
+                . '<text x="12" y="17.5" text-anchor="middle" font-size="5.2" font-weight="700" fill="currentColor" stroke="none" font-family="Montserrat, Arial, sans-serif">PDF</text>'
+                . '</svg><span>Event flyer</span></div>';
+        }
+        $out .= sfaf_action_button( array(
+            'label'    => '' !== $typed ? $typed : 'View flyer (PDF)',
+            'href'     => $url,
+            'variant'  => 'primary',
+            'external' => true,
+        ) );
+        $out .= '</div>';
+        return $out;
+    }
+
     /** The absolute folder, made if needed, with the same guard files as submissions. */
     public static function dir() {
         $uploads = wp_upload_dir();

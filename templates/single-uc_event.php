@@ -193,12 +193,13 @@ while ( have_posts() ) :
 
                     <?php
                     /*
-                     * THE PDF ATTACHMENT (3.111.0), under the description: the
-                     * typed label, Register's outlined shape, a new tab. On a
-                     * phone the columns stack, so it sits above the share
-                     * buttons in the sidebar below.
+                     * THE PDF ATTACHMENT (3.111.0), under the description. From
+                     * 3.113.3 the flyer: its first page and a solid "View flyer
+                     * (PDF)", or a card with the same button where no preview
+                     * was made. On a phone the columns stack, so it sits above
+                     * the share buttons in the sidebar below.
                      */
-                    echo SFAF_Attachments::button_html( $post_id, 'uc-attachment-single' );
+                    echo SFAF_Attachments::flyer_html( $post_id );
                     ?>
 
                     <?php

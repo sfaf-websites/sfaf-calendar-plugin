@@ -2,8 +2,8 @@
 /**
  * REGISTER ON ANOTHER SITE (3.110.1).
  *
- * The Registration card asks first where people register: "Take registrations
- * here" (the default) or "Register on another site" with a link. On another
+ * The RSVP card opens on one choice (3.113.3): No RSVP, RSVP Here, or External
+ * RSVP with a link, which is "Register on another site". On another
  * site, the event page's Register button opens that link in a new tab, and
  * everything this calendar does with registrations is off for the event:
  * Accept RSVPs, Email required, Capacity, Questions, the agreement, the
@@ -107,6 +107,96 @@ class SFAF_Register_Elsewhere {
         } else {
             update_post_meta( $event_id, self::META_URL, $url );
         }
+    }
+
+    /**
+     * THE RSVP CARD'S ONE CHOICE (3.113.3): 'none', 'here' or 'elsewhere'.
+     *
+     * Read from what is stored, never stored itself: another site wins, then
+     * _uc_rsvp_enabled, and a hybrid event always takes RSVPs. So an event
+     * from before 3.113.3 opens on the choice that matches it, unchanged.
+     *
+     * @param int $event_id 0 on Add event.
+     * @param int $series_id The series an Add event form starts from.
+     */
+    public static function choice( $event_id, $series_id = 0 ) {
+        $event_id = (int) $event_id;
+        if ( ! $event_id ) {
+            return 'elsewhere' === self::series_mode( (int) $series_id ) ? 'elsewhere' : 'none';
+        }
+        if ( 'elsewhere' === self::mode( $event_id ) ) {
+            return 'elsewhere';
+        }
+        if ( '1' === (string) get_post_meta( $event_id, '_uc_rsvp_enabled', true )
+            || ( class_exists( 'SFAF_Online' ) && SFAF_Online::is_hybrid( $event_id ) ) ) {
+            return 'here';
+        }
+        return 'none';
+    }
+
+    /**
+     * Turn the posted choice into the two answers the save already reads,
+     * reg_mode and rsvp_enabled, so one save path stays the only one.
+     * Another site keeps the stored rsvp_enabled, which waits for a switch
+     * back. Only when the choice was on the form.
+     *
+     * @param int   $event_id
+     * @param array $post $_POST, changed in place.
+     */
+    public static function apply_choice_to_post( $event_id, &$post ) {
+        if ( empty( $post['reg_choice_present'] ) ) {
+            return;
+        }
+        $choice = isset( $post['reg_choice'] ) ? sanitize_key( wp_unslash( $post['reg_choice'] ) ) : 'none';
+        $post['reg_mode_present']       = '1';
+        $post['uc_rsvp_toggle_present'] = '1';
+        $post['reg_mode']               = ( 'elsewhere' === $choice ) ? 'elsewhere' : 'here';
+        $rsvp_on = ( 'here' === $choice )
+            || ( 'elsewhere' === $choice && (int) $event_id && '1' === (string) get_post_meta( (int) $event_id, '_uc_rsvp_enabled', true ) );
+        if ( $rsvp_on ) {
+            $post['rsvp_enabled'] = '1';
+        } else {
+            unset( $post['rsvp_enabled'] );
+        }
+    }
+
+    /**
+     * The RSVP card's segmented control and the link box (3.113.3).
+     *
+     * @param string $choice    'none', 'here' or 'elsewhere'.
+     * @param string $url       The event's own link.
+     * @param string $inherited The series link, shown as the placeholder.
+     * @param bool   $hybrid    A hybrid event cannot be No RSVP.
+     * @param bool   $stored_on _uc_rsvp_enabled as stored, for the script.
+     */
+    public static function render_rsvp_choice( $choice, $url, $inherited = '', $hybrid = false, $stored_on = false ) {
+        $opts = array(
+            'none'      => 'No RSVP',
+            'here'      => 'RSVP Here',
+            'elsewhere' => 'External RSVP',
+        );
+        ?>
+        <fieldset class="uc-reg-where" data-uc-reg-where data-uc-rsvp-stored="<?php echo $stored_on ? '1' : '0'; ?>">
+            <legend class="uc-visually-hidden">RSVP</legend>
+            <input type="hidden" name="reg_choice_present" value="1" />
+            <div class="uc-seg" role="radiogroup" aria-label="RSVP">
+                <?php foreach ( $opts as $value => $label ) : ?>
+                    <label class="uc-seg-opt">
+                        <input type="radio" name="reg_choice" value="<?php echo esc_attr( $value ); ?>" data-uc-reg-mode
+                               <?php checked( $choice, $value ); ?><?php echo ( 'none' === $value && $hybrid ) ? ' disabled' : ''; ?> />
+                        <span><?php echo esc_html( $label ); ?></span>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+            <span class="uc-hint uc-hint-spec" data-uc-rsvp-hybrid-note<?php echo $hybrid ? '' : ' hidden'; ?>>No RSVP is not available for a hybrid event.</span>
+            <label class="uc-field uc-reg-url" for="uc-reg-url" data-uc-reg-url<?php echo 'elsewhere' === $choice ? '' : ' hidden'; ?>>
+                <span class="uc-field-label">Registration link</span>
+                <input type="url" id="uc-reg-url" name="reg_url" value="<?php echo esc_attr( $url ); ?>"
+                       placeholder="<?php echo esc_attr( '' !== $inherited ? $inherited : 'https://' ); ?>" inputmode="url" />
+                <span class="uc-hint">The Register button opens this page in a new tab.</span>
+            </label>
+        </fieldset>
+        <?php
     }
 
     /** Save the series default from the series form. */
