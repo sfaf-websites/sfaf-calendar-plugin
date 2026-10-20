@@ -56,6 +56,8 @@ window.addEventListener('load', function () { setTimeout(function () {
     var reg = q('[data-uc-registration]');
     var away = q('[data-uc-reg-mode][value="elsewhere"]', reg);
     if (away) {
+      /* 3.113.3: three choices; start from RSVP Here, which this compares against. */
+      var start = q('[data-uc-reg-mode][value="here"]', reg); start.checked = true; start.dispatchEvent(new Event('change', { bubbles: true }));
       out.regBefore = { here: seen(q('[data-uc-reg-here]', reg)), url: seen(q('[data-uc-reg-url]', reg)), rsvpTick: seen(q('input[name="rsvp_enabled"]', reg)) };
       away.checked = true; away.dispatchEvent(new Event('change', { bubbles: true }));
       out.regAway = { here: seen(q('[data-uc-reg-here]', reg)), url: seen(q('[data-uc-reg-url]', reg)), rsvpTick: seen(q('input[name="rsvp_enabled"]', reg)), capacity: seen(q('input[name="capacity"]', reg)) };

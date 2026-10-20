@@ -303,7 +303,8 @@ window.addEventListener('load', function () { setTimeout(function () {
   }
   /* 3.107.0: the questions are in the Registration card, which shows only
    * the Accept RSVPs tick until it is ticked. Tick it, as a person would. */
-  var acc = document.querySelector('[data-uc-rsvp-accept-check] input');
+  /* 3.113.3: the RSVP card's choice; RSVP Here shows the questions. */
+  var acc = document.querySelector('[data-uc-reg-choice] input[name="reg_choice"][value="here"]');
   if (acc && !acc.checked && !acc.disabled) { acc.click(); }
   /* The card is Registration from 3.107.0; the questions are its section. */
   var card = document.querySelector('[data-uc-card="registration"]');

@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Events - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.113.2" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.113.2" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.113.2" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.113.3" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.113.3" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.113.3" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.113.2" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.113.3" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -216,7 +216,7 @@
 
                         <div class="uc-notify-section">
                 <h4 class="uc-notify-subhead">Who hears about this event</h4>
-                <p class="uc-hint">Everybody here is emailed about this event's registrations and reminders.</p>
+                <p class="uc-hint">Everybody on this list gets the emails switched on below.</p>
 
                 
                 <input type="hidden" name="notify_list_present" value="1" />
@@ -310,13 +310,13 @@
                                                                                     <label class="uc-check">
                                 <input type="checkbox" name="notify_kinds[]" value="alert"
                                         checked="checked" />
-                                Alert to your notification list when somebody registers                            </label>
-                            <p class="uc-hint uc-notify-kind-note">One email per registration, as it happens.</p>
+                                Email when someone RSVPs                            </label>
+                            <p class="uc-hint uc-notify-kind-note">Sent each time someone RSVPs.</p>
                                                                                 <label class="uc-check">
                                 <input type="checkbox" name="notify_kinds[]" value="day_before"
                                         checked="checked" />
-                                Count of who is coming, to your notification list, the day before                            </label>
-                            <p class="uc-hint uc-notify-kind-note">Sent at 6 am the day before. Gives the number registered, not the names. Nothing is sent when nobody has registered.</p>
+                                RSVP count, the day before                            </label>
+                            <p class="uc-hint uc-notify-kind-note">Sent at 6 am the day before. Gives the number, not the names. Not sent if nobody has RSVPed.</p>
                                                                                 <p class="uc-notify-always" data-uc-notify-always="reminder">
                                 Morning-of reminder to everybody registered                                <span class="uc-pill uc-notify-always-tag">Always sent</span>
                             </p>
@@ -324,13 +324,13 @@
                                                                                     <label class="uc-check">
                                 <input type="checkbox" name="notify_kinds[]" value="summary"
                                         checked="checked" />
-                                Who is coming, to your notification list, two hours before                            </label>
-                            <p class="uc-hint uc-notify-kind-note">Lists everybody registered. Nothing is sent when nobody has registered.</p>
+                                Who&#039;s coming, two hours before                            </label>
+                            <p class="uc-hint uc-notify-kind-note">The full list of everyone who RSVPed. Not sent if nobody has.</p>
                                                                                 <label class="uc-check">
                                 <input type="checkbox" name="notify_kinds[]" value="cancel_alert"
                                         checked="checked" />
-                                Alert to your notification list when somebody cancels                            </label>
-                            <p class="uc-hint uc-notify-kind-note">One email per cancellation, as it happens. Names who cancelled and what the count is now.</p>
+                                Email when someone cancels                            </label>
+                            <p class="uc-hint uc-notify-kind-note">Sent each time someone cancels, with their name and the new count.</p>
                                             </div>
                 </details>
             </div>
@@ -485,9 +485,9 @@
             </div>
         </div>
         <script type="application/json" id="uc-session-config">{"ajax":"https:\/\/resources.sfaf.org\/wp-admin\/admin-ajax.php","action":"sfaf_caladmin_session","signin":"https:\/\/resources.sfaf.org\/caladmin","screen":"dashboard","signedIn":true}</script>
-<script src="../public/js/caladmin-session.js?ver=3.113.2"></script>
-<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.113.2"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.113.2"></script>
-<script src="../public/js/portal.js?ver=3.113.2"></script>
+<script src="../public/js/caladmin-session.js?ver=3.113.3"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.113.3"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.113.3"></script>
+<script src="../public/js/portal.js?ver=3.113.3"></script>
 <script>window.RV_PAGE="rsvpcount-desktop";(function () {
 var P = window.RV_PAGE, out = { page: P, errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });

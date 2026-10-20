@@ -1572,13 +1572,15 @@ window.addEventListener('load', function () { setTimeout(function () {
   out.barScrolled = box(bar);
   out.innerH = window.innerHeight;
   out.innerW = window.innerWidth;
-  out.buttons = qa('[data-uc-editor-bar] .uc-btn, [data-uc-editor-bar] summary').filter(seen).map(function (b) { var r = b.getBoundingClientRect(); return { t: text(b), left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom) }; });
+  out.buttons = qa('[data-uc-editor-bar] .uc-btn, [data-uc-editor-bar] .uc-editor-delete, [data-uc-editor-bar] summary').filter(seen).map(function (b) { var r = b.getBoundingClientRect(); return { t: text(b), left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom) }; });
   out.actionsNote = seen(q('.uc-editor-actions-note'));
   window.scrollTo(0, 0);
 
   /* B: Registration, closed and opened. */
   var reg = q('[data-uc-registration]');
-  var tick = reg ? q('[data-uc-rsvp-accept-check] input', reg) : null;
+  /* 3.113.3: RSVP Here is what opens the card; No RSVP closes it. */
+  var tick = reg ? q('input[name="reg_choice"][value="here"]', reg) : null;
+  var none = reg ? q('input[name="reg_choice"][value="none"]', reg) : null;
   var body = reg ? q('[data-uc-registration-body]', reg) : null;
   out.reg = { title: reg ? text(q('h2', reg)) : '', ticked: tick ? tick.checked : null, bodySeen: seen(body),
     visibleControls: reg ? qa('input:not([type=hidden]), select, textarea, button', reg).filter(seen).map(function (i) { return i.name || i.getAttribute('data-uc-q-add') !== null ? (i.name || 'add-question') : i.tagName; }) : [] };
@@ -1587,7 +1589,7 @@ window.addEventListener('load', function () { setTimeout(function () {
     out.regToggled = { ticked: tick.checked, bodySeen: seen(body), capacity: seen(q('input[name="capacity"]', reg)), capPlaceholder: (q('input[name="capacity"]', reg) || {}).placeholder || '',
       email: seen(q('input[name="email_required"]', reg)), questions: seen(q('[data-uc-questions-card]', reg)), questionsTitle: text(q('[data-uc-questions-card] > h3', reg)),
       zeroHint: /0 means unlimited/.test(reg.textContent) };
-    tick.click();
+    if (none) { none.click(); }
     out.regBack = { ticked: tick.checked, bodySeen: seen(body) };
   }
 
