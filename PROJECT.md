@@ -2594,8 +2594,26 @@ new tab)".
   makes on upload where Imagick reads PDFs (Ghostscript): the `medium` and
   `large` sizes in the attachment's metadata, read by `thumb()`.
   resources.sfaf.org makes them (checked 2026-10-20 through its media API: the
-  three calendar PDFs all had them). A file with none gets a dark "Event flyer"
+  four calendar PDFs all had them). A file with none gets a dark "Event flyer"
   card with a PDF mark and the same button.
+- **`thumb()` asks `wp_get_attachment_image_src()`, never
+  `image_get_intermediate_size()` (3.113.4).** Core's
+  `image_get_intermediate_size()` fills in a size's `url` only when the
+  metadata has a top-level `file`, and a PDF's never does: every picture made
+  from it is under `sizes`, `full` included. So 3.113.3 found no preview for
+  any PDF and drew the card on every event, the live one included, whose PDF
+  had four. `image_downsize()`, behind `wp_get_attachment_image_src()`, is the
+  core path written for a file that is not an image. **3.113.3's check stubbed
+  the core function and handed back a `url`, which is the defect's whole
+  mechanism**; `.claude/core-media.php` is core 7.0.1's logic for these
+  lookups, and the checks load that instead.
+- **A missing preview is made once, the first time the event page asks
+  (3.113.4), `ensure_preview()`.** Only from `thumb()`, so only for a PDF in
+  `calendar-files/` that an event points at, never the rest of the library.
+  The attempt is stamped on the attachment (`_uc_preview_tried`) before it
+  runs, so a file Ghostscript cannot read, or a request that dies part way, is
+  never tried again; metadata is written only when a `full` picture came out.
+  Delete `_uc_preview_tried` to have one file tried again.
 - **Its styles are a `<style>` it carries, not `calendar.css`,** because the
   embed loads `calendar.css` and the flyer is the event page's alone. A rule
   added there would be a change to the embed.

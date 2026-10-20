@@ -531,6 +531,16 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.113.4 =
+
+**The event page flyer shows the PDF's first page, and Edit event's button bar stands out from the page. The embed is 3.113.3's.**
+
+**THE EMBED IS UNCHANGED.** Its route, answers and headers, its script and stylesheet, the [sfaf_calendar] block, the scheduled tasks, the taxonomies and the rewrite rules are 3.113.3's; only the version number embed.js and its answers carry has moved. The one public change is the event page's flyer (below).
+
+* **Event page: the flyer shows the first page of the PDF.** In 3.113.3 every event with a PDF showed the dark "Event flyer" card, even though WordPress had made a picture of the first page: the page asked WordPress for the picture in a way that only works for images, never for a PDF. It now finds the picture WordPress made, and shows it with the solid "View flyer (PDF)" button under it. A PDF attached to an event that has no picture gets one made the first time its event page is opened; this is tried once per file. The card stays only for a PDF that cannot be turned into a picture. No other PDF in the media library is touched.
+* **Edit event's button bar is light gray with a thin line along its top**, in place of white, so it stands apart from the form. Add event's bar is the same bar and changes with it. **Cancel event has a darker outline** so it reads as a button. Save changes stays green; Delete stays a red link at the far left.
+* The changelog heading for 3.113.2, lost in 3.113.3, is back.
+
 = 3.113.3 =
 
 **The RSVP card, the Edit event button bar, the event page flyer, the Notifications card copy and the staff request line. The embed is 3.113.2's.**
@@ -543,6 +553,7 @@ restriction is what makes a key that is visible by design safe to have visible.
 * **Notifications: "Everybody on this list gets the emails switched on below."** under Who hears about this event, and the four list emails are now "Email when someone RSVPs", "RSVP count, the day before", "Who's coming, two hours before" and "Email when someone cancels", each with its new description. "This event's creator has no usable email address on file." is not shown when the event was made by an import, the staff Request an event form or the community form.
 * **A staff request on Edit event is one line**: "Requested by [name] on [date]", the name opening an email to them, in place of the "Requested by a colleague" card. What else they asked for (the repeat, the place, who else to tell, their notes, a picture) follows under it when there is any. A community submission keeps its panel.
 
+= 3.113.2 =
 
 **Six changes to caladmin, the WordPress event editor and the staff Request an event form. The embed is 3.113.1's.**
 

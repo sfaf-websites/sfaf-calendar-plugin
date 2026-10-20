@@ -102,6 +102,11 @@ for f in .claude/*.php; do
     plant-31131.php) continue ;;       # a fault planter for the 3.113.1 checks, not a check
     release-31132-live.php) continue ;;  # run below with --run
     plant-31132.php) continue ;;       # a fault planter for the 3.113.2 checks, not a check
+    # Missing from this list in 3.113.3, so that suite ran it as a check, planting
+    # faults in source while the other checks read it. Added in 3.113.4.
+    plant-31133.php) continue ;;       # a fault planter for the 3.113.3 checks, not a check
+    plant-31134.php) continue ;;       # a fault planter for the 3.113.4 checks, not a check
+    core-media.php) continue ;;        # core's media lookups the checks load (3.113.4), not a check
     embed-identity-probe.php) continue ;; # run by embed-identity-test.php in two trees, not a check
     embed-isolation-live.php) continue ;; # run below with --run
     # SET ASIDE WITH 3.112.x (3.113.0). 3.113.0 is built from 3.111.0, and these

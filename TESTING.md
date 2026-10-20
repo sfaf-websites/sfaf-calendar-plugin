@@ -18,16 +18,17 @@ people 4.
 
 Opening a screen and looking, loading a URL, pressing a control. Fastest first.
 
-### 1.0 FIRST: installing 3.113.3 on the live site, and the first hour (3.113.0 to 3.113.3)
+### 1.0 FIRST: installing 3.113.4 on the live site, and the first hour (3.113.0 to 3.113.4)
 
 3.112.0 and 3.112.2 failed from the office network (no connection to
 resources.sfaf.org at all) and 3.111.0 cured it each time. **3.113.0 is built
 from 3.111.0 and its public calendar is 3.111.0's**, and **3.113.1's embed is
 3.113.0's**, both proved by `.claude/embed-identity-test.php`; only the version
 number moves. 3.113.1 also changes the event page's contact line (1.289), and
-**3.113.2's embed is 3.113.1's**, and **3.113.3's is 3.113.2's**, by the same
-check; 3.113.3 changes the event page's flyer (1.299). If any of 3.113.0 to
-3.113.2 was never installed, install 3.113.3 directly; the steps are the same. So this
+**3.113.2's embed is 3.113.1's**, **3.113.3's is 3.113.2's** and **3.113.4's is
+3.113.3's**, by the same check; 3.113.3 and 3.113.4 change the event page's flyer
+(1.299). If any of 3.113.0 to 3.113.3 was never installed, install 3.113.4
+directly; the steps are the same. So this
 install says whether a version change and caladmin work alone bring the fault
 back. The calendar is served from resources.sfaf.org, **LiteSpeed on AWS with
 the LiteSpeed Cache plugin**; only www.sfaf.org is on WP Engine.
@@ -40,7 +41,7 @@ the LiteSpeed Cache plugin**; only www.sfaf.org is on WP Engine.
   condition that failed.
 
 **Install**: Plugins > SFAF Calendar > Check for updates, then Update (or upload
-`sfaf-calendar-3.113.3.zip` and choose Replace current with uploaded). Then
+`sfaf-calendar-3.113.4.zip` and choose Replace current with uploaded). Then
 **LiteSpeed Cache > Toolbox > Purge All**.
 
 **The first hour, four times** (at install, +15, +30, +60 minutes):
@@ -4049,11 +4050,14 @@ naming where people register.
 **Why it needs a person:** real events with real registrations, and the live
 editor's script.
 
-### 1.298 The Edit event button bar (3.113.3)
+### 1.298 The Edit event button bar (3.113.3, 3.113.4)
 
-Open a published event in caladmin Edit event. The bar at the foot reads, left
+Open a published event in caladmin Edit event. The bar at the foot is light
+gray with a thin gray line along its top, so it stands apart from the white
+cards scrolling under it (3.113.4); Add event's bar is the same. It reads, left
 to right: **Delete** as red text with no box, the note, then **Cancel event**
-outlined (no fill) and **Save changes** green and largest. Save changes is the
+outlined (no fill) with a dark gray edge that reads as a button (3.113.4), and
+**Save changes** green and largest. Save changes is the
 only filled button. Hover Cancel event: its edge turns teal and it stays
 unfilled. Delete and Cancel event still open their dialogs. Press Enter in the
 title: it saves. On a phone: the note, then the two buttons, then Delete on the
@@ -4061,19 +4065,22 @@ last line. On a draft: Delete red text, Save draft yellow, Publish green.
 
 **Why it needs a person:** the live editor, at desktop and phone widths.
 
-### 1.299 The event page flyer (3.113.3)
+### 1.299 The event page flyer (3.113.3, 3.113.4)
 
-Open the public page of an event with a PDF attached (three PDFs were uploaded
-to calendar-files/ on Oct. 16; attach one to a test event if none is on one): under the description, the
-PDF's first page as a picture, about 232px wide, and under it a solid teal
+Open the public page of an event with a PDF attached, first **Immigrant
+services, rights & access to care**, which on 3.113.3 showed the dark "Event
+flyer" card although its PDF had a picture (fixed in 3.113.4; purge LiteSpeed
+Cache first): under the description, the PDF's first page as a picture, about 232px wide, and under it a solid teal
 **View flyer (PDF)**, the Register button's style, (or the label typed for it). Click each: the PDF opens in a
 new tab. Tab through the page: the picture is skipped and the button is
 reached once. Check it on a phone. Then open the calendar list or an embed with
 the same event: its row still has the old outlined button, unchanged.
 
 **Why it needs a person:** a real event page in the site's theme. The card
-without a picture shows only for a PDF uploaded where previews were not made,
-which resources.sfaf.org does make, so that case is the test's alone.
+without a picture shows only for a PDF that cannot be turned into a picture.
+A PDF on an event with no picture yet gets one the first time its page opens
+(3.113.4); every calendar PDF on the site had one on Oct. 20, so that case is
+the test's alone unless one turns up.
 
 ### 1.300 The Notifications card's copy (3.113.3)
 
