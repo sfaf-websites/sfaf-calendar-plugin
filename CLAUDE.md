@@ -74,6 +74,25 @@ A release is not finished until publish.sh --release has run and the report
 carries the GitHub release link. A report without the link is a report of an
 unreleased build.
 
+**Claude Code runs the release itself** (from 3.113.4). Once a build has passed
+every check, run it without asking Mark to:
+
+```
+bash .claude/publish.sh --release
+```
+
+"Every check" is: the lint and the callable audit on the working tree AND the
+extracted zip, the full suite, the release's planter, and any browser checks.
+
+- **Never release with a failing or skipped check without asking Mark first.**
+  A check that timed out, was not re-run, or was left out counts as skipped.
+- **If publish.sh refuses, fix the cause only when it is routine**, then run it
+  again: commit the generated `.claude/*.html` outputs, or push unpushed
+  commits. Any other refusal: stop and tell Mark.
+- **When it succeeds, report the GitHub release link and remind Mark to install
+  it on the site with Check for updates.** Installing on the site stays Mark's
+  decision; never install, or ask anyone else to.
+
 ---
 
 ## 3. Verify against rendered output

@@ -9,7 +9,7 @@ Read this first in a new chat. It records where the planning conversation with M
 - When asked to update a code block, output the whole block again.
 - Don't answer what you don't know; ask.
 - No em dashes anywhere (chat, code, copy, emails). Helper text says what to do, never why.
-- A release is not finished until Mark runs `! bash .claude/publish.sh --release` in the CC prompt (about ten minutes) and CC reports the GitHub release link. CC runs the test suite itself, in parts.
+- A release is not finished until `bash .claude/publish.sh --release` has run and CC reports the GitHub release link. From 3.113.4, CC runs it itself once every check passes (CLAUDE.md 2), and asks first if any check failed or was skipped. Mark installs on the site with Check for updates; that stays Mark's decision. CC runs the test suite itself, in parts.
 - After each release the assistant gives Mark a plain test list of the new items.
 
 ## Current state

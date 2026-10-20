@@ -8,7 +8,8 @@
 # RELEASING IS NOT PART OF BUILDING, AND THAT IS THE POINT. Several versions get
 # built in a session. If every build cut a release, every one would put an update
 # prompt in front of Mark for work in progress. So the sync is cheap and safe to
-# run whenever, and --release is a separate word that has to be typed.
+# run whenever, and --release is a separate word that has to be typed. From
+# 3.113.4 Claude Code types it, once a build has passed every check (CLAUDE.md 2).
 #
 # WHAT MAKES THE PUBLIC REPOSITORY DIFFERENT, and it is only ever these two:
 #

@@ -140,9 +140,9 @@ live. Assume everything else unverified.
 ## Queued work, and before touching anything
 
 **Three standing jobs in `PROJECT.md` 8**: the caladmin design audit, the event
-editor, the Tailwind greys in `portal.css`.
-
-**Read `PROJECT.md` 7 first**: four standing hazards, then the lessons.
+editor, the Tailwind greys in `portal.css`. **Read `PROJECT.md` 7 first.**
+**Claude Code runs `publish.sh --release` itself** once every check passes
+(`CLAUDE.md` 2, from 3.113.4); Mark installs it with Check for updates.
 
 ---
 
