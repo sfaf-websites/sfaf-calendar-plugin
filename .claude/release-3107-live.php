@@ -144,7 +144,7 @@ window.addEventListener('load', function () { setTimeout(function () {
   out.barScrolled = box(bar);
   out.innerH = window.innerHeight;
   out.innerW = window.innerWidth;
-  out.buttons = qa('[data-uc-editor-bar] .uc-btn, [data-uc-editor-bar] summary').filter(seen).map(function (b) { var r = b.getBoundingClientRect(); return { t: text(b), left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom) }; });
+  out.buttons = qa('[data-uc-editor-bar] .uc-btn, [data-uc-editor-bar] .uc-editor-delete, [data-uc-editor-bar] summary').filter(seen).map(function (b) { var r = b.getBoundingClientRect(); return { t: text(b), left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom) }; });
   out.actionsNote = seen(q('.uc-editor-actions-note'));
   window.scrollTo(0, 0);
 
@@ -320,9 +320,11 @@ foreach ( array_keys( $pages ) as $t ) {
     rv_check( isset( $note['size'] ) && '12px' === $note['size'] && $P_MUTED === $note['color'] && $note['seen'], "$t: the bar's note is not 12px --p-muted: " . json_encode( $note ) );
     $btns   = (array) $v( $t, 'buttons' );
     $labels = array_column( $btns, 't' );
-    $want   = $add ? array( 'Save draft', 'Publish' ) : array( 'Delete', 'Cancel event', 'Save changes' );
-    usort( $btns, function ( $a, $b ) { return ( abs( $a['top'] - $b['top'] ) > 8 ) ? $a['top'] - $b['top'] : $a['left'] - $b['left']; } );
-    rv_check( $want === array_column( $btns, 't' ), "$t: the bar's buttons read " . json_encode( array_column( $btns, 't' ) ) . ' left to right, wanted ' . json_encode( $want ) );
+    /* Delete is a red text link from 3.113.3, far left, and on its own last line at 600px and under. */
+    $want   = $add ? array( 'Save draft', 'Publish' ) : ( false !== strpos( $t, 'phone' ) ? array( 'Cancel event', 'Save changes', 'Delete' ) : array( 'Delete', 'Cancel event', 'Save changes' ) );
+    /* One row by its middle, not its top: the Delete link is shorter than the buttons beside it (3.113.3). */
+    usort( $btns, function ( $a, $b ) { $d = ( $a['top'] + $a['bottom'] - $b['top'] - $b['bottom'] ) / 2; return ( abs( $d ) > 8 ) ? ( $d > 0 ? 1 : -1 ) : $a['left'] - $b['left']; } );
+    rv_check( $want === array_column( $btns, 't' ), "$t: the bar's buttons read " . json_encode( array_column( $btns, 't' ) ) . ' left to right, wanted ' . json_encode( $want ) . '; at ' . json_encode( $btns ) );
     foreach ( $btns as $b ) {
         rv_check( $b['left'] >= 0 && $b['right'] <= $v( $t, 'innerW' ) && $b['bottom'] <= $v( $t, 'innerH' ), "PLANT E: $t: " . $b['t'] . ' is outside the window: ' . json_encode( $b ) );
     }
