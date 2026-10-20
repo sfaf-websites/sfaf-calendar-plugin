@@ -4065,8 +4065,8 @@ last line. On a draft: Delete red text, Save draft yellow, Publish green.
 
 Open the public page of an event with a PDF attached (three PDFs were uploaded
 to calendar-files/ on Oct. 16; attach one to a test event if none is on one): under the description, the
-PDF's first page as a picture, about 232px wide, and under it a solid yellow
-**View flyer (PDF)** (or the label typed for it). Click each: the PDF opens in a
+PDF's first page as a picture, about 232px wide, and under it a solid teal
+**View flyer (PDF)**, the Register button's style, (or the label typed for it). Click each: the PDF opens in a
 new tab. Tab through the page: the picture is skipped and the button is
 reached once. Check it on a phone. Then open the calendar list or an embed with
 the same event: its row still has the old outlined button, unchanged.

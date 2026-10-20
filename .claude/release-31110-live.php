@@ -256,8 +256,9 @@ foreach ( array( 'desktop', 'wide', 'phone' ) as $wn ) {
     /* The event page. */
     $a = (array) $v( "page-$wn", 'att' );
     $r = (array) $v( "page-$wn", 'reg' );
-    lv( $a && 'Download the route map' === $a['text'] && 0 === strpos( $a['border'], '1px solid' ) && 'rgb(255, 255, 255)' === $a['bg'] && '_blank' === $a['target'],
-        "E.2: page-$wn: the attachment is not the outlined button in a new tab: " . json_encode( $a ) );
+    /* 3.113.3: the event page's is the flyer's solid button, Register's teal; the list row keeps the outline. */
+    lv( $a && 'Download the route map' === $a['text'] && 0 === strpos( $a['border'], '1px solid' ) && 'rgb(14, 118, 128)' === $a['bg'] && '_blank' === $a['target'],
+        "E.2: page-$wn: the flyer's button is not the solid one in a new tab: " . json_encode( $a ) );
     lv( $a && $r && abs( $a['box']['h'] - $r['h'] ) <= 1 && 'Register' === $r['text'], "E.2: page-$wn: the attachment is not Register's height, or Register is not the label: " . json_encode( array( $a ? $a['box'] : null, $r ) ) );
     lv( $a && $a['box']['top'] >= (int) $v( "page-$wn", 'bodyBottom' ), "E.2: page-$wn: the attachment is not under the description" );
     /* UNDER THE DESCRIPTION, AND THAT IS THE ONE PLACE ASSERTED. The share

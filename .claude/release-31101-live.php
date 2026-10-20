@@ -171,6 +171,8 @@ window.addEventListener('load', function () { setTimeout(function () {
     var reg = q('[data-uc-registration]');
     var away = q('[data-uc-reg-mode][value="elsewhere"]', reg);
     if (away) {
+      /* 3.113.3: three choices; start from RSVP Here, which this compares against. */
+      var start = q('[data-uc-reg-mode][value="here"]', reg); start.checked = true; start.dispatchEvent(new Event('change', { bubbles: true }));
       out.regBefore = { here: seen(q('[data-uc-reg-here]', reg)), url: seen(q('[data-uc-reg-url]', reg)), rsvpTick: seen(q('input[name="rsvp_enabled"]', reg)) };
       away.checked = true; away.dispatchEvent(new Event('change', { bubbles: true }));
       out.regAway = { here: seen(q('[data-uc-reg-here]', reg)), url: seen(q('[data-uc-reg-url]', reg)), rsvpTick: seen(q('input[name="rsvp_enabled"]', reg)), capacity: seen(q('input[name="capacity"]', reg)) };
@@ -266,8 +268,8 @@ rz( $ae && in_array( 'Coffee social', array_map( function ( $s ) { return trim( 
 /* ---- C ------------------------------------------------------------------- */
 foreach ( array( 'add-desktop', 'edit-desktop', 'add-phone' ) as $t ) {
     $b = (array) $v( $t, 'regBefore' ); $a = (array) $v( $t, 'regAway' ); $k = (array) $v( $t, 'regBack' );
-    rz( $b && true === $b['here'] && false === $b['url'] && true === $b['rsvpTick'], "C.1: $t: Take registrations here is not the opening state: " . json_encode( $b ) );
-    rz( $a && false === $a['here'] && true === $a['url'] && false === $a['rsvpTick'] && false === $a['capacity'], "C.2: $t: Register on another site does not hide the settings and show the link box: " . json_encode( $a ) );
+    rz( $b && true === $b['here'] && false === $b['url'] && false === $b['rsvpTick'], "C.1: $t: RSVP Here does not show the settings with no link box and no Accept RSVPs tick (3.113.3): " . json_encode( $b ) );
+    rz( $a && false === $a['here'] && true === $a['url'] && false === $a['rsvpTick'] && false === $a['capacity'], "C.2: $t: External RSVP does not hide the settings and show the link box: " . json_encode( $a ) );
     rz( $k && true === $k['here'] && false === $k['url'], "C.3: $t: switching back does not bring the settings back: " . json_encode( $k ) );
 }
 $el = (array) $v( 'away-desktop', 'elsewhere' );

@@ -150,7 +150,9 @@ window.addEventListener('load', function () { setTimeout(function () {
 
   /* B: Registration, closed and opened. */
   var reg = q('[data-uc-registration]');
-  var tick = reg ? q('[data-uc-rsvp-accept-check] input', reg) : null;
+  /* 3.113.3: RSVP Here is what opens the card; No RSVP closes it. */
+  var tick = reg ? q('input[name="reg_choice"][value="here"]', reg) : null;
+  var none = reg ? q('input[name="reg_choice"][value="none"]', reg) : null;
   var body = reg ? q('[data-uc-registration-body]', reg) : null;
   out.reg = { title: reg ? text(q('h2', reg)) : '', ticked: tick ? tick.checked : null, bodySeen: seen(body),
     visibleControls: reg ? qa('input:not([type=hidden]), select, textarea, button', reg).filter(seen).map(function (i) { return i.name || i.getAttribute('data-uc-q-add') !== null ? (i.name || 'add-question') : i.tagName; }) : [] };
@@ -159,7 +161,7 @@ window.addEventListener('load', function () { setTimeout(function () {
     out.regToggled = { ticked: tick.checked, bodySeen: seen(body), capacity: seen(q('input[name="capacity"]', reg)), capPlaceholder: (q('input[name="capacity"]', reg) || {}).placeholder || '',
       email: seen(q('input[name="email_required"]', reg)), questions: seen(q('[data-uc-questions-card]', reg)), questionsTitle: text(q('[data-uc-questions-card] > h3', reg)),
       zeroHint: /0 means unlimited/.test(reg.textContent) };
-    tick.click();
+    if (none) { none.click(); }
     out.regBack = { ticked: tick.checked, bodySeen: seen(body) };
   }
 
@@ -296,7 +298,7 @@ foreach ( array_keys( $pages ) as $t ) {
         rv_check( false !== strpos( $cs, "$P_BORDER 1px 18px 12px" ), "$t: a card is not the standard card: $cs" );
     }
     $titles = (array) $v( $t, 'titles' );
-    rv_check( in_array( 'Series and language', $titles, true ) && in_array( 'Links', $titles, true ) && in_array( 'Registration', $titles, true ) && ! in_array( 'Donate', $titles, true ),
+    rv_check( in_array( 'Series and language', $titles, true ) && in_array( 'Links', $titles, true ) && in_array( 'RSVP', $titles, true ) && ! in_array( 'Donate', $titles, true ),
         "$t: the card titles read " . json_encode( $titles ) );
 
     /* D.6 */
@@ -330,13 +332,13 @@ foreach ( array_keys( $pages ) as $t ) {
     /* B.2 and B.3 */
     $reg = (array) $v( $t, 'reg' );
     if ( $add ) {
-        rv_check( isset( $reg['ticked'] ) && false === $reg['ticked'] && false === $reg['bodySeen'] && array( 'listing_cost', 'reg_mode', 'reg_mode', 'rsvp_enabled' ) === $reg['visibleControls'],   // Where people register sits above the tick since 3.110.1, and Cost above both since 3.111.0
+        rv_check( isset( $reg['ticked'] ) && false === $reg['ticked'] && false === $reg['bodySeen'] && array( 'reg_choice', 'reg_choice', 'reg_choice', 'listing_cost' ) === $reg['visibleControls'],   // the one choice, then Cost (3.113.3)
             "PLANT B.2: $t: with RSVPs off Registration shows more than the tick: " . json_encode( $reg ) );
         $tg = (array) $v( $t, 'regToggled' );
-        rv_check( isset( $tg['bodySeen'] ) && $tg['ticked'] && $tg['bodySeen'] && $tg['capacity'] && $tg['email'] && $tg['questions'], "PLANT B.2: $t: ticking Accept RSVPs did not reveal the rest: " . json_encode( $tg ) );
+        rv_check( isset( $tg['bodySeen'] ) && $tg['ticked'] && $tg['bodySeen'] && $tg['capacity'] && $tg['email'] && $tg['questions'], "PLANT B.2: $t: choosing RSVP Here did not reveal the rest: " . json_encode( $tg ) );
         rv_check( isset( $tg['capPlaceholder'] ) && 'No limit' === $tg['capPlaceholder'] && ! $tg['zeroHint'] && 'Questions for registrants' === $tg['questionsTitle'], "$t: capacity is not an empty box saying No limit, with no 0 hint: " . json_encode( $tg ) );
         $bk = (array) $v( $t, 'regBack' );
-        rv_check( isset( $bk['bodySeen'] ) && ! $bk['ticked'] && ! $bk['bodySeen'], "PLANT B.2: $t: unticking did not close it again: " . json_encode( $bk ) );
+        rv_check( isset( $bk['bodySeen'] ) && ! $bk['ticked'] && ! $bk['bodySeen'], "PLANT B.2: $t: choosing No RSVP did not close it again: " . json_encode( $bk ) );
     } else {
         rv_check( isset( $reg['bodySeen'] ) && $reg['ticked'] && $reg['bodySeen'], "PLANT B.2: $t: an event taking RSVPs does not show its Registration controls: " . json_encode( $reg ) );
     }
