@@ -102,7 +102,7 @@ $plants = array(
 
     'the row is reordered in the markup instead of in CSS, putting Delete first' => array(
         'file' => 'public/css/portal.css',
-        'from' => ".uc-editor-actions .uc-editor-delete  { order: 1; }",
+        'from' => ".uc-editor-actions .uc-editor-delete  { order: -1; }",
         'to'   => "",
     ),
 
@@ -121,10 +121,11 @@ $plants = array(
 
     /* AND CANCEL EVENT GOING BACK TO AMBER, which reads as "careful" for the
      * control that mails every registrant. */
-    'Cancel event goes back to amber' => array(
+    /* 3.113.3: outlined, so going back to a solid red is the fault now. */
+    'Cancel event goes back to a solid red' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => "<button type=\"button\" class=\"uc-btn uc-btn-stop uc-cancel-open\"",
-        'to'   => "<button type=\"button\" class=\"uc-btn uc-btn-caution uc-cancel-open\"",
+        'from' => "<button type=\"button\" class=\"uc-btn uc-cancel-open\"",
+        'to'   => "<button type=\"button\" class=\"uc-btn uc-btn-stop uc-cancel-open\"",
     ),
 
     'Publish stops being the largest control in the row' => array(

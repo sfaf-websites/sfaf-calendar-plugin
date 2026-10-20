@@ -477,11 +477,27 @@ function ucDismissOnBackdrop(dialog) {
         });
     }
     /* ---------------------------------------------------------------------
-     * WHERE PEOPLE REGISTER (3.110.1). "Register on another site" shows the
-     * link box and hides everything that only applies here; "Take
-     * registrations here" brings it back as it was. On Add event, until the
-     * choice is touched, it follows the series dropdown's default.
+     * THE RSVP CARD'S ONE CHOICE (3.113.3, from 3.110.1's "Where people
+     * register"). No RSVP hides the rest of the card, RSVP Here shows the RSVP
+     * settings, External RSVP shows the link box. With no script the link box
+     * follows the server and the settings show. On Add event, until the choice
+     * is touched, it follows the series dropdown's default.
      * ------------------------------------------------------------------ */
+    function regChoice() {
+        var r = document.querySelector('[data-uc-reg-choice] input[name="reg_choice"]:checked');
+        return r ? r.value : '';
+    }
+    /* Whether the event takes RSVPs, as the save will store it: RSVP Here, or
+     * External RSVP keeping a stored yes. Without the choice, the old tick. */
+    function rsvpChosenOn() {
+        var where = document.querySelector('[data-uc-reg-where][data-uc-rsvp-stored]');
+        var choice = regChoice();
+        if (where && choice) {
+            return choice === 'here' || (choice === 'elsewhere' && where.getAttribute('data-uc-rsvp-stored') === '1');
+        }
+        var tick = document.querySelector('input[name="rsvp_enabled"]');
+        return !!(tick && tick.checked);
+    }
     function initRegisterWhere() {
         document.querySelectorAll('[data-uc-reg-choice]').forEach(function (box) {
             var urlBox = box.querySelector('[data-uc-reg-url]');
@@ -491,10 +507,14 @@ function ucDismissOnBackdrop(dialog) {
             var series = {};
             try { series = JSON.parse(box.getAttribute('data-uc-reg-series') || '{}') || {}; } catch (e) { series = {}; }
             var own = '1' === box.getAttribute('data-uc-reg-own');
+            /* What a series default of "here" goes back to on Add event. */
+            var local = regChoice() === 'here' ? 'here' : 'none';
             function apply() {
-                var away = !!box.querySelector('[data-uc-reg-mode][value="elsewhere"]:checked');
+                var choice = regChoice();
+                var away = choice === 'elsewhere';
+                if (choice && choice !== 'elsewhere') { local = choice; }
                 if (urlBox) { urlBox.hidden = !away; }
-                if (here) { here.hidden = away; }
+                if (here) { here.hidden = choice !== 'here'; }
                 /* The Notifications card follows (3.111.0): one line while
                    registrations are elsewhere, its fields back otherwise. */
                 var awayLine = document.querySelector('[data-uc-notify-away]');
@@ -502,12 +522,14 @@ function ucDismissOnBackdrop(dialog) {
                 if (awayLine && notifyFields) { awayLine.hidden = !away; notifyFields.hidden = away; }
             }
             radios.forEach(function (r) { r.addEventListener('change', function () { own = true; apply(); }); });
+            box.addEventListener('uc-reg-apply', apply);
             var select = box.hasAttribute('data-uc-reg-series') ? document.querySelector('[data-uc-series-select]') : null;
             if (select) {
                 select.addEventListener('change', function () {
                     if (own) { return; }
                     var d = series[String(select.value)] || { mode: 'here', url: '' };
-                    radios.forEach(function (r) { r.checked = (r.value === d.mode); });
+                    var want = d.mode === 'elsewhere' ? 'elsewhere' : local;
+                    radios.forEach(function (r) { r.checked = (r.value === want); });
                     var input = urlBox ? urlBox.querySelector('input') : null;
                     if (input) { input.placeholder = d.url || 'https://'; }
                     apply();
@@ -1298,9 +1320,10 @@ function ucDismissOnBackdrop(dialog) {
     function initCalendarTick() {
         var label = document.querySelector('[data-uc-calendar-check]');
         var note = document.querySelector('[data-uc-calendar-note]');
-        var rsvp = document.querySelector('input[name="rsvp_enabled"]');
+        /* The RSVP card's choice (3.113.3), or the old tick where a screen still has it. */
+        var rsvpInputs = document.querySelectorAll('[data-uc-reg-choice] input[name="reg_choice"], input[name="rsvp_enabled"]');
         var show = document.querySelector('input[name="show_rsvp"]');
-        if (!label || !note || !rsvp) { return; }
+        if (!label || !note || !rsvpInputs.length) { return; }
 
         var box = label.querySelector('input');
         if (!box) { return; }
@@ -1309,13 +1332,13 @@ function ucDismissOnBackdrop(dialog) {
             // Both halves, exactly as sfaf_event_takes_rsvps() asks them:
             // registration is on AND the RSVP control is being shown. The
             // second is a tick in this very card, so it can change too.
-            var on = rsvp.checked && (!show || show.checked);
+            var on = rsvpChosenOn() && (!show || show.checked);
             box.disabled = on;
             label.classList.toggle('uc-check-locked', on);
             note.hidden = !on;
         }
 
-        rsvp.addEventListener('change', sync);
+        rsvpInputs.forEach(function (i) { i.addEventListener('change', sync); });
         if (show) { show.addEventListener('change', sync); }
         sync();
 
@@ -1333,12 +1356,12 @@ function ucDismissOnBackdrop(dialog) {
         var showNote = document.querySelector('[data-uc-rsvp-show-note]');
         if (showLabel && show) {
             var syncShow = function () {
-                var off = !rsvp.checked;
+                var off = !rsvpChosenOn();
                 show.disabled = off;
                 showLabel.classList.toggle('uc-check-locked', off);
                 if (showNote) { showNote.hidden = !off; }
             };
-            rsvp.addEventListener('change', syncShow);
+            rsvpInputs.forEach(function (i) { i.addEventListener('change', syncShow); });
             syncShow();
         }
     }
@@ -2597,6 +2620,28 @@ function ucDismissOnBackdrop(dialog) {
             box.disabled = isHybrid;
             label.classList.toggle('uc-check-locked', isHybrid);
             if (hint) { hint.hidden = !isHybrid; }
+        }
+
+        /* THE RSVP CARD'S CHOICE (3.113.3) LOCKS THE SAME WAY: hybrid takes
+         * No RSVP away and moves it to RSVP Here, and unticking hybrid gives
+         * back the choice it arrived with. */
+        var none = document.querySelector('[data-uc-reg-choice] input[name="reg_choice"][value="none"]');
+        var hereOpt = document.querySelector('[data-uc-reg-choice] input[name="reg_choice"][value="here"]');
+        var choiceNote = document.querySelector('[data-uc-reg-choice] [data-uc-rsvp-hybrid-note]');
+        if (none && hereOpt) {
+            if (isHybrid) {
+                if (null === none.getAttribute('data-uc-was-checked')) {
+                    none.setAttribute('data-uc-was-checked', none.checked ? '1' : '0');
+                }
+                if (none.checked) { hereOpt.checked = true; }
+            } else if (null !== none.getAttribute('data-uc-was-checked')) {
+                if ('1' === none.getAttribute('data-uc-was-checked') && hereOpt.checked) { none.checked = true; }
+                none.removeAttribute('data-uc-was-checked');
+            }
+            none.disabled = isHybrid;
+            if (choiceNote) { choiceNote.hidden = !isHybrid; }
+            var choiceBox = none.closest('[data-uc-reg-choice]');
+            if (choiceBox) { choiceBox.dispatchEvent(new Event('uc-reg-apply')); }
         }
 
         /* Two causes, two sentences, and only one of them may be on screen. */

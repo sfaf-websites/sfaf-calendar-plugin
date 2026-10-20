@@ -248,7 +248,7 @@ $js = file_get_contents( dirname( __DIR__ ) . '/public/js/portal.js' );
 check( 'portal.js keeps the two in step without a save',
     (bool) strpos( $js, "run('calendarTick', initCalendarTick);" ), true );
 check( 'and it asks BOTH halves, not just the RSVP switch',
-    (bool) strpos( $js, 'rsvp.checked && (!show || show.checked)' ), true );
+    (bool) strpos( $js, 'rsvpChosenOn() && (!show || show.checked)' ), true );
 
 echo "\n$tests checks, $failed failed\n";
 exit( $failed ? 1 : 0 );

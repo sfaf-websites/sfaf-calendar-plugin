@@ -286,7 +286,8 @@ $on = array();
 foreach ( SFAF_Notifications::choosable() as $k ) { if ( SFAF_Notifications::stored_on( $yes, $k ) ) { $on[] = $k; } }
 rt( '5: the two emails on, the alerts off', $on, array( 'day_before', 'summary' ) );
 rt( '5: and they are the two named', array( SFAF_Notifications::kinds()['day_before']['label'], SFAF_Notifications::kinds()['summary']['label'] ),
-    array( 'Count of who is coming, to your notification list, the day before', 'Who is coming, to your notification list, two hours before' ) );
+    /* Renamed in 3.113.3. */
+    array( 'RSVP count, the day before', "Who's coming, two hours before" ) );
 update_option( SFAF_Teams::OPTION, array( 'aaa' => array( 'name' => 'Clinic', 'users' => array( 2 ) ) ) );
 $none = kit_call( 'SFAF_Request', 'create_event', null, array( $c, 'tess@sfaf.org', 0 ) );
 rt( '5: with no MarCom team, no team is set', SFAF_Teams::access_for_event( $none ), array() );

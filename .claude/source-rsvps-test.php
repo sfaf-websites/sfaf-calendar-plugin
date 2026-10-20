@@ -318,7 +318,7 @@ check( false !== $save_at && false !== $del_at && $save_at < $del_at,
 /* AND THE ORDER ON SCREEN IS CSS, WHICH MOVES NEITHER. */
 $css = file_get_contents( $root . '/public/css/portal.css' );
 foreach ( array(
-    'uc-editor-delete'  => 1,
+    'uc-editor-delete'  => -1,   // 3.113.3: ahead of the note, at the far left
     'uc-cancel-open'    => 2,
     'uc-editor-save'    => 3,
     'uc-editor-publish' => 4,
@@ -345,8 +345,9 @@ check( (bool) preg_match( '/class="uc-btn<\?php echo esc_attr\( \$save_main \); 
     'the save button stopped taking the class the state chose' );
 check( (bool) preg_match( '/class="uc-btn uc-btn-go uc-editor-publish"/', $portal ),
     'Publish is no longer green' );
-check( (bool) preg_match( '/class="uc-btn uc-btn-stop uc-editor-delete"/', $portal ),
-    'Delete is no longer red' );
+/* 3.113.3: a red text link, not a solid button. */
+check( (bool) preg_match( '/class="uc-link-danger uc-editor-delete"/', $portal ),
+    'Delete is no longer the red text link' );
 
 /* THE MEASURED PAIRS ARE UNCHANGED. Both are 700 weights already on this screen
  * and both clear 4.5:1 on white text. */
@@ -369,8 +370,12 @@ check( (bool) preg_match( '/\.uc-editor-actions \.uc-editor-publish,\s*\n\.uc-ed
  * public calendar and mails everybody who registered, which is Delete's
  * neighbourhood of consequence rather than "careful". The two reds are told
  * apart by their labels and by the chevron, which only this one carries. */
-check( (bool) preg_match( '/<button type="button" class="uc-btn uc-btn-stop uc-cancel-open" data-uc-dialog-open="uc-cancel-this"/', $portal ),
-    'Cancel event is amber again, which reads as "careful" for something that mails every registrant' );
+/* FROM 3.113.3 CANCEL EVENT IS OUTLINED, so an existing event's bar has one
+ * solid button. Its dialog says what it does. */
+check( (bool) preg_match( '/<button type="button" class="uc-btn uc-cancel-open" data-uc-dialog-open="uc-cancel-this"/', $portal )
+    && (bool) preg_match( '/.uc-editor-actions .uc-cancel-open,s*
+.uc-editor-actions .uc-cancel-open:hover { background: transparent; }/', $css ),
+    'Cancel event is a solid button again, so the bar has more than one' );
 check( (bool) preg_match( '/data-uc-saved-action="cancel">Cancel event<\/button>/', $portal ),
     'the cancel control is labelled just "Cancel", which beside Delete does not say what it cancels' );
 

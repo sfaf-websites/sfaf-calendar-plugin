@@ -57,8 +57,9 @@ $plants = array(
     ),
     'what the Registration card placed is thrown away, so the catch-all draws it twice' => array(
         'file' => 'includes/class-sfaf-portal.php',
-        'from' => "                    \$rsvp_placed = array_merge(\n                        \$rsvp_placed,\n                        (array) \$this->render_rsvp_settings( \$rsvp_ctx, array( 'rsvp_enabled' ), \$rsvp_placed )\n                    );",
-        'to'   => "                    \$this->render_rsvp_settings( \$rsvp_ctx, array( 'rsvp_enabled' ), \$rsvp_placed );",
+        /* 3.113.3: an imported event's branch, the one place the card still draws the tick. */
+        'from' => "                        \$rsvp_placed = array_merge(\n                            \$rsvp_placed,\n                            (array) \$this->render_rsvp_settings( \$rsvp_ctx, array( 'rsvp_enabled' ), \$rsvp_placed )\n                        );",
+        'to'   => "                        \$this->render_rsvp_settings( \$rsvp_ctx, array( 'rsvp_enabled' ), \$rsvp_placed );",
     ),
     'the page button no longer stands down when registrations are on' => array(
         'file' => 'includes/sfaf-template-functions.php',
@@ -67,8 +68,8 @@ $plants = array(
     ),
     'the live dependency is scoped to a card again' => array(
         'file' => 'public/js/portal.js',
-        'from' => "var rsvp = document.querySelector('input[name=\"rsvp_enabled\"]');",
-        'to'   => "var rsvp = label.querySelector('input[name=\"rsvp_enabled\"]');",
+        'from' => "var rsvpInputs = document.querySelectorAll('[data-uc-reg-choice] input[name=\"reg_choice\"], input[name=\"rsvp_enabled\"]');",
+        'to'   => "var rsvpInputs = label.querySelectorAll('[data-uc-reg-choice] input[name=\"reg_choice\"], input[name=\"rsvp_enabled\"]');",
     ),
 );
 

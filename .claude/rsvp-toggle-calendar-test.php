@@ -215,7 +215,8 @@ check( false === strpos( $portal, '<h2 class="uc-bento-title">Capacity</h2>' ),
 $js = file_get_contents( $root . '/public/js/portal.js' );
 /* DOCUMENT WIDE, NOT SCOPED TO A CARD. That is what makes the move invisible to
  * it: the control changed card and the selector did not have to change. */
-check( false !== strpos( $js, "document.querySelector('input[name=\"rsvp_enabled\"]')" ),
+/* 3.113.3: the RSVP card's choice, or the old tick where a screen has it. */
+check( false !== strpos( $js, "var rsvpInputs = document.querySelectorAll('[data-uc-reg-choice] input[name=\"reg_choice\"], input[name=\"rsvp_enabled\"]');" ),
     'the live dependency looks for Accept RSVPs somewhere other than the whole document, so moving the control broke it' );
 
 /* =========================================================================

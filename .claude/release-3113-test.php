@@ -100,7 +100,7 @@ $solo = rt_event( $day( 9 ) );
 /* The editor: openers in the row, panels after it. */
 $edit = rt_cap( function () use ( $portal, $g ) { $_GET = array(); kit_call( 'SFAF_Portal', 'render_event_form', $portal, array( new WP_User(), $g[0] ) ); } );
 rt( '4: the editor rendered', 0 === strpos( $edit, 'THREW' ), false );
-rt( '4: one Cancel event opener, a button that only opens', preg_match_all( '#<button type="button" class="uc-btn uc-btn-stop uc-cancel-open" data-uc-dialog-open="uc-cancel-this"#', $edit ), 1 );
+rt( '4: one Cancel event opener, a button that only opens', preg_match_all( '#<button type="button" class="uc-btn uc-cancel-open" data-uc-dialog-open="uc-cancel-this"#', $edit ), 1 );
 rt( '4: one Delete opener, a button that only opens', preg_match_all( '#<button type="button" data-uc-dialog-open="uc-delete-this"#', $edit ), 1 );
 rt( '4: the cancel panel is drawn', 1 === preg_match_all( '#<div class="uc-dialog-panel" id="uc-cancel-this" data-uc-dialog-panel#', $edit ), true );
 rt( '4: the delete panel is drawn', 1 === preg_match_all( '#<div class="uc-dialog-panel" id="uc-delete-this" data-uc-dialog-panel#', $edit ), true );

@@ -288,8 +288,9 @@ rt( array( 900 ) === (array) $GLOBALS['rt_deleted'], 'E.3: the file did not go w
 $rec_src = file_get_contents( $GLOBALS['kit_root'] . '/includes/class-sfaf-recurrence.php' );
 rt( false !== strpos( $rec_src, "'_uc_attachment_id', '_uc_attachment_label'," ) && 2 === substr_count( $portal_src, 'SFAF_Attachments::META_ID, SFAF_Attachments::META_LABEL,' ), 'E.1: the attachment does not travel with a repeating event and a copy' );
 $single = file_get_contents( $GLOBALS['kit_root'] . '/templates/single-uc_event.php' );
-rt( strpos( $single, 'SFAF_Attachments::button_html( $post_id' ) > strpos( $single, 'sfaf_event_description_html( $post_id )' )
-    && strpos( $single, 'SFAF_Attachments::button_html( $post_id' ) < strpos( $single, 'sfaf_social_share_buttons( $post_id )' ), 'E.2: the page button is not under the description and above the share buttons' );
+/* 3.113.3: the event page draws the flyer, in the same place. */
+rt( strpos( $single, 'SFAF_Attachments::flyer_html( $post_id' ) > strpos( $single, 'sfaf_event_description_html( $post_id )' )
+    && strpos( $single, 'SFAF_Attachments::flyer_html( $post_id' ) < strpos( $single, 'sfaf_social_share_buttons( $post_id )' ), 'E.2: the page button is not under the description and above the share buttons' );
 
 /* =========================================================================
  * F. COST, AGES, CONTACT
