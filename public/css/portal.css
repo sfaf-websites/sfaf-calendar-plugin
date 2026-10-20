@@ -3702,6 +3702,10 @@ body.uc-modal-open { overflow: hidden; }
 .uc-editor-actions .uc-editor-delete  { margin-right: 20px; font-size: 14px; }
 .uc-editor-actions .uc-cancel-open,
 .uc-editor-actions .uc-cancel-open:hover { background: transparent; }
+/* ITS EDGE IS --p-muted, NOT --p-border-strong (3.113.4): on the grey bar the
+   control edge measured 3.07:1 and read as no button at all. #6B6764 on the
+   bar's #F5F6F7 is 5.18:1. Hover still turns it teal. */
+.uc-editor-actions .uc-cancel-open { border-color: var(--p-muted); }
 .uc-editor-actions .uc-cancel-open:hover { border-color: var(--uc-accent-text); }
 .uc-editor-actions .uc-editor-save    { order: 3; }
 .uc-editor-actions .uc-editor-publish { order: 4; }
@@ -3761,9 +3765,11 @@ body.uc-modal-open { overflow: hidden; }
 /* ---------------------------------------------------------------------------
    THE EDITOR'S ACTION BAR IS STICKY TO THE FOOT OF THE WINDOW (3.107.0).
 
-   Full editor width, on the surface token --p-panel with one --p-border rule
-   along the top, and nothing else: no box, no radius, no shadow, so it reads as
-   the edge of the screen rather than another card. It stays visible while the
+   Full editor width, on the canvas grey --p-bg with one Light Gray #D1D3D4
+   rule along the top, and nothing else: no box, no radius, no shadow, so it
+   reads as the edge of the screen rather than another card. UNTIL 3.113.4 IT
+   WAS WHITE --p-panel under a --p-border hairline, and over the white cards
+   scrolling beneath it nothing told the bar from the page. It stays visible while the
    form scrolls under it and sits in the flow at the very end.
 
    (0,3,0) on purpose: .uc-form-actions-primary draws the band it used to be at
@@ -3779,8 +3785,8 @@ body.uc-modal-open { overflow: hidden; }
 .uc-portal .uc-form-actions-primary.uc-editor-bar {
     position: sticky; bottom: 0; z-index: 15;
     margin: 24px 0 0; padding: 12px 20px;
-    border: 0; border-top: 1px solid var(--p-border); border-radius: 0;
-    background: var(--p-panel); box-shadow: none;
+    border: 0; border-top: 1px solid #D1D3D4; border-radius: 0;
+    background: var(--p-bg); box-shadow: none;
 }
 .uc-portal .uc-editor-bar .uc-form-actions-note { font-size: 12px; }
 /* A SUBMISSION WAITING FOR REVIEW (3.113.2): Approve is the main action and

@@ -26,12 +26,8 @@
 require __DIR__ . '/wp-kit.php';
 if ( ! function_exists( 'wpautop' ) ) { function wpautop( $s ) { return $s; } }
 if ( ! function_exists( 'wp_mail' ) ) { function wp_mail( $to, $s, $b, $h = '', $a = array() ) { return true; } }
-/* WordPress's own: the sizes it made from a PDF's first page, from the metadata. */
-if ( ! function_exists( 'image_get_intermediate_size' ) ) {
-    function image_get_intermediate_size( $id, $size ) {
-        return isset( $GLOBALS['rt_sizes'][ (int) $id ][ $size ] ) ? $GLOBALS['rt_sizes'][ (int) $id ][ $size ] : false;
-    }
-}
+/* WordPress's own media lookups, core's logic and not a stub (3.113.4). */
+require __DIR__ . '/core-media.php';
 
 $fails = array();
 $ran   = 0;
@@ -184,21 +180,23 @@ rt( '2: set apart', false !== strpos( $css, '.uc-editor-actions .uc-editor-delet
 rt( '2: Cancel event outlined at rest and on hover', false !== strpos( $css, ".uc-editor-actions .uc-cancel-open,\n.uc-editor-actions .uc-cancel-open:hover { background: transparent; }" ), true );
 
 /* ======================================================================== 3 */
-kit_write_post( array( 'ID' => 900, 'post_type' => 'attachment', 'post_status' => 'inherit', 'post_title' => '' ) );
+kit_write_post( array( 'ID' => 900, 'post_type' => 'attachment', 'post_status' => 'inherit', 'post_title' => '', 'post_mime_type' => 'application/pdf' ) );
 update_post_meta( 900, '_wp_attached_file', 'calendar-files/autumn-flyer.pdf' );
 $GLOBALS['kit_files'][900] = 'https://resources.sfaf.org/wp-content/uploads/calendar-files/autumn-flyer.pdf';
 $dir = 'https://resources.sfaf.org/wp-content/uploads/calendar-files/';
-$GLOBALS['rt_sizes'][900] = array(
-    'medium' => array( 'url' => $dir . 'autumn-flyer-pdf-232x300.jpg', 'width' => 232, 'height' => 300 ),
-    'large'  => array( 'url' => $dir . 'autumn-flyer-pdf-791x1024.jpg', 'width' => 791, 'height' => 1024 ),
-);
+/* The metadata WordPress writes for a PDF: every picture under sizes, no top-level file. */
+update_post_meta( 900, '_wp_attachment_metadata', array( 'sizes' => array(
+    'full'   => array( 'file' => 'autumn-flyer-pdf.jpg', 'width' => 1088, 'height' => 1408, 'mime_type' => 'image/jpeg' ),
+    'medium' => array( 'file' => 'autumn-flyer-pdf-232x300.jpg', 'width' => 232, 'height' => 300, 'mime_type' => 'image/jpeg' ),
+    'large'  => array( 'file' => 'autumn-flyer-pdf-791x1024.jpg', 'width' => 791, 'height' => 1024, 'mime_type' => 'image/jpeg' ),
+), 'filesize' => 1 ) );
 $fl = rt_event( 'publish', array( SFAF_Attachments::META_ID => 900 ) );
 $f  = SFAF_Attachments::flyer_html( $fl );
 rt( '3: the first page as a picture', (bool) preg_match( '#<img src="' . preg_quote( $dir, '#' ) . 'autumn-flyer-pdf-232x300\.jpg" srcset="[^"]*232w, [^"]*791x1024\.jpg 791w" sizes="232px" width="232" height="300" alt=""#', $f ), true );
 rt( '3: a solid View flyer (PDF) under it', (bool) preg_match( '#</a><a class="uc-actionbtn uc-actionbtn-primary" href="' . preg_quote( $GLOBALS['kit_files'][900], '#' ) . '" target="_blank" rel="noopener noreferrer"><span class="uc-actionbtn-label">View flyer \(PDF\)</span>#', $f ), true );
 rt( '3: no outlined or white button', false === strpos( $f, 'uc-actionbtn-secondary' ), true );
 rt( '3: one link for the keyboard', substr_count( $f, 'tabindex="-1" aria-hidden="true"' ), 1 );
-unset( $GLOBALS['rt_sizes'][900] );
+update_post_meta( 900, '_wp_attachment_metadata', array( 'filesize' => 1 ) );   // none, and none can be made
 $f2 = SFAF_Attachments::flyer_html( $fl );
 rt( '3: no preview: the card, its PDF mark and the same button', false !== strpos( $f2, '<div class="uc-flyer-card" aria-hidden="true"><svg' ) && false !== strpos( $f2, '>PDF</text>' ) && false !== strpos( $f2, 'uc-actionbtn-primary' ) && false === strpos( $f2, '<img' ), true );
 update_post_meta( $fl, SFAF_Attachments::META_LABEL, 'Route map' );

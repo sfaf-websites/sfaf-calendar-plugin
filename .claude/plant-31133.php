@@ -57,7 +57,7 @@ $plants = array(
         array( 'includes/class-sfaf-attachments.php', "            'variant'  => 'primary',\n            'external' => true,\n        ) );\n        \$out .= '</div>';", "            'variant'  => 'secondary',\n            'external' => true,\n        ) );\n        \$out .= '</div>';" ),
     ) ),
     '3: the preview is never used' => array( 'release-31133-test.php', '3: the first page as a picture', array(
-        array( 'includes/class-sfaf-attachments.php', "        \$med = image_get_intermediate_size( \$att, 'medium' );", "        \$med = false;" ),
+        array( 'includes/class-sfaf-attachments.php', "        \$med = wp_get_attachment_image_src( \$att, 'medium' );", "        \$med = false;" ),
     ) ),
     '4: an email keeps its old name' => array( 'release-31133-test.php', '4: the four list emails, word for word', array(
         array( 'includes/class-sfaf-notifications.php', "'label' => 'Email when someone cancels',", "'label' => 'Alert to your notification list when somebody cancels'," ),

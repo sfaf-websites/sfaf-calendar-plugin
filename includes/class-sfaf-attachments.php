@@ -40,6 +40,8 @@ class SFAF_Attachments {
     const DEFAULT_LABEL = 'Download event flyer';
     const LABEL_MAX     = 60;
     const FIELD         = 'uc_attachment_file';
+    /** On the attachment: when its missing preview was attempted (3.113.4). */
+    const META_PREVIEW_TRIED = '_uc_preview_tried';
 
     public static function register() {
         add_action( 'before_delete_post', array( __CLASS__, 'delete_with_event' ) );
@@ -113,30 +115,72 @@ class SFAF_Attachments {
     }
 
     /**
-     * The first page's preview WordPress made on upload, or null. Made only
-     * where Imagick reads PDFs (Ghostscript); resources.sfaf.org does, measured
-     * for 3.113.3. A file uploaded where it could not has none, and keeps the card.
+     * The first page's preview, or null. WordPress makes it on upload where
+     * Imagick reads PDFs (Ghostscript); resources.sfaf.org does, measured for
+     * 3.113.3. One the upload did not get is made here, once (ensure_preview()).
+     *
+     * ASKED OF wp_get_attachment_image_src(), NEVER image_get_intermediate_size()
+     * (3.113.4). The second fills in a size's url only when the metadata has a
+     * top-level 'file', and a PDF's never does: its pictures are all under
+     * 'sizes'. So 3.113.3 found no preview for a PDF that had four, and drew the
+     * card. image_downsize() is the core path that handles a file that is not
+     * an image.
      *
      * @param int $event_id
      * @return array{url:string,width:int,height:int,large:string,large_w:int}|null
      */
     public static function thumb( $event_id ) {
         $att = self::id( $event_id );
-        if ( ! $att || ! function_exists( 'image_get_intermediate_size' ) ) {
+        if ( ! $att || ! function_exists( 'wp_get_attachment_image_src' ) ) {
             return null;
         }
-        $med = image_get_intermediate_size( $att, 'medium' );
-        if ( empty( $med['url'] ) ) {
+        self::ensure_preview( $att );
+        $med = wp_get_attachment_image_src( $att, 'medium' );
+        if ( empty( $med[0] ) ) {
             return null;
         }
-        $big = image_get_intermediate_size( $att, 'large' );
+        $big = wp_get_attachment_image_src( $att, 'large' );
+        $big = ( ! empty( $big[0] ) && $big[0] !== $med[0] && (int) $big[1] > (int) $med[1] ) ? $big : array( '', 0 );
         return array(
-            'url'     => (string) $med['url'],
-            'width'   => (int) $med['width'],
-            'height'  => (int) $med['height'],
-            'large'   => ! empty( $big['url'] ) ? (string) $big['url'] : '',
-            'large_w' => ! empty( $big['width'] ) ? (int) $big['width'] : 0,
+            'url'     => (string) $med[0],
+            'width'   => (int) $med[1],
+            'height'  => (int) $med[2],
+            'large'   => (string) $big[0],
+            'large_w' => (int) $big[1],
         );
+    }
+
+    /**
+     * MAKE THE PREVIEW A CALENDAR PDF IS MISSING (3.113.4), the first time its
+     * event page asks, and only once per file: the attempt is recorded before
+     * it runs, so a file Ghostscript cannot read, or a request that dies part
+     * way, is not tried again on every view. Reached only through thumb(), so
+     * only for a PDF in calendar-files/ that an event points at; nothing else
+     * in the media library is touched.
+     *
+     * @param int $att
+     */
+    public static function ensure_preview( $att ) {
+        $att  = (int) $att;
+        $meta = wp_get_attachment_metadata( $att );
+        if ( ! empty( $meta['sizes']['full'] ) || 'application/pdf' !== get_post_mime_type( $att ) ) {
+            return;
+        }
+        if ( get_post_meta( $att, self::META_PREVIEW_TRIED, true ) ) {
+            return;
+        }
+        update_post_meta( $att, self::META_PREVIEW_TRIED, time() );
+        $file = get_attached_file( $att );
+        if ( ! $file || ! file_exists( $file ) ) {
+            return;
+        }
+        if ( ! function_exists( 'wp_generate_attachment_metadata' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+        }
+        $made = wp_generate_attachment_metadata( $att, $file );
+        if ( is_array( $made ) && ! empty( $made['sizes']['full'] ) ) {
+            wp_update_attachment_metadata( $att, $made );
+        }
     }
 
     /**

@@ -21,8 +21,9 @@
  *       --p-muted; Insert image is outlined with no chevron; one sign-out; one
  *       empty line in Notifications; the FAQ set starts empty and follows the
  *       series
- *   E   the bar: sticky at the window's foot while the page scrolls, --p-panel
- *       with a --p-border top rule, the note at 12px, every button inside the
+ *   E   the bar: sticky at the window's foot while the page scrolls, the grey
+ *       --p-bg with a Light Gray top rule (3.113.4), Cancel event's --p-muted
+ *       edge, the note at 12px, every button inside the
  *       window at 390px, Delete / Save / main action left to right
  *   F   changing the series re-filters the picture list with no save, and a
  *       chosen picture outside the series stays chosen with its line
@@ -137,6 +138,8 @@ window.addEventListener('load', function () { setTimeout(function () {
   out.barStyle = bar ? { bg: getComputedStyle(bar).backgroundColor, top: getComputedStyle(bar).borderTopColor + ' ' + getComputedStyle(bar).borderTopWidth,
     left: getComputedStyle(bar).borderLeftWidth, radius: getComputedStyle(bar).borderTopLeftRadius, bottom: getComputedStyle(bar).bottom } : null;
   out.barNote = box(q('.uc-form-actions-note', bar));
+  var cancelOpen = q('[data-uc-editor-bar] .uc-cancel-open');
+  out.cancelEdge = cancelOpen ? getComputedStyle(cancelOpen).borderTopColor + ' ' + getComputedStyle(cancelOpen).backgroundColor : null;
   var content = q('.uc-portal-content');
   if (content) { var cs = getComputedStyle(content), cr = content.getBoundingClientRect(); out.contentBox = { left: Math.round(cr.left + parseFloat(cs.paddingLeft)), right: Math.round(cr.right - parseFloat(cs.paddingRight)) }; }
   window.scrollTo(0, Math.round((document.documentElement.scrollHeight - window.innerHeight) / 2));
@@ -312,8 +315,12 @@ foreach ( array_keys( $pages ) as $t ) {
     rv_check( isset( $bar['position'] ) && 'sticky' === $bar['position'] && '0px' === $bs['bottom'], "PLANT E: $t: the bar is not sticky to the foot: " . json_encode( array( $bar['position'] ?? null, $bs['bottom'] ?? null ) ) );
     rv_check( $v( $t, 'scrolled' ) > 0 && isset( $sc['bottom'] ) && abs( $sc['bottom'] - $v( $t, 'innerH' ) ) <= 1 && $sc['top'] < $v( $t, 'innerH' ),
         "PLANT E: $t: scrolled " . $v( $t, 'scrolled' ) . "px, the bar is not at the window's foot: " . json_encode( array( $sc, $v( $t, 'innerH' ) ) ) );
-    rv_check( isset( $bs['bg'] ) && $P_PANEL === $bs['bg'] && "$P_BORDER 1px" === $bs['top'] && '0px' === $bs['left'] && '0px' === $bs['radius'],
-        "$t: the bar is not --p-panel with one --p-border top rule: " . json_encode( $bs ) );
+    /* Grey, not white, from 3.113.4: --p-bg under a Light Gray rule. */
+    rv_check( isset( $bs['bg'] ) && 'rgb(245, 246, 247)' === $bs['bg'] && 'rgb(209, 211, 212) 1px' === $bs['top'] && '0px' === $bs['left'] && '0px' === $bs['radius'],
+        "$t: the bar is not --p-bg with one Light Gray top rule: " . json_encode( $bs ) );
+    if ( ! $add ) {
+        rv_check( 'rgb(107, 103, 100) rgba(0, 0, 0, 0)' === $v( $t, 'cancelEdge' ), "$t: Cancel event is not outlined in --p-muted with no face: " . json_encode( $v( $t, 'cancelEdge' ) ) );
+    }
     $cb = (array) $v( $t, 'contentBox' );
     rv_check( isset( $cb['left'], $bar['left'] ) && abs( $cb['left'] - $bar['left'] ) <= 1 && abs( $cb['right'] - $bar['right'] ) <= 1, "$t: the bar is not the editor's full width: " . json_encode( array( $cb, $bar['left'] ?? null, $bar['right'] ?? null ) ) );
     $note = (array) $v( $t, 'barNote' );
