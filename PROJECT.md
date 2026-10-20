@@ -776,7 +776,7 @@ is shown, or it comes off the form.** Audited field by field in 3.111.0.
 | Registration link | no | yes | Registration, Register on another site, from 3.111.0 | Register button |
 | Cost, age range, contact | no | yes | Registration and Event details, from 3.111.0 | Cost, Ages, Contact |
 | FAQs | set and rows | rows | FAQs | event page |
-| Repeat | yes | no | the series screen's schedule; read-only on the request panel | event page, once generated |
+| Repeat | yes | no | the series screen's schedule; read-only on the request panel (the staff request line) | event page, once generated |
 | Notes | yes | yes | read-only on the request panel | caladmin only |
 | Who sent it | name, email | name, up to five emails | read-only on the request panel; the approval dialog | caladmin only |
 
@@ -2583,10 +2583,22 @@ tag controls stay on series pictures.
 ### One PDF attachment per event (3.111.0)
 
 **Event details, on Add event and Edit event, has an Attachment: a PDF upload,
-a label (placeholder "Download event flyer") and Remove.** The event page shows
-a button with the label under the description, and the event's row in a list,
-on this site and in an embed, shows it under the byline: Register's outlined
-variant, in a new tab, with the hidden "(opens in a new tab)".
+a label (placeholder "Download event flyer") and Remove.** The event's row in a
+list, on this site and in an embed, shows a button with the label under the
+byline: Register's outlined variant, in a new tab, with the hidden "(opens in a
+new tab)".
+
+- **The event page shows the flyer (3.113.3), `SFAF_Attachments::flyer_html()`.**
+  The first page as a picture with a solid (primary) "View flyer (PDF)" under
+  it, the typed label replacing those words. The picture is the one WordPress
+  makes on upload where Imagick reads PDFs (Ghostscript): the `medium` and
+  `large` sizes in the attachment's metadata, read by `thumb()`.
+  resources.sfaf.org makes them (checked 2026-10-20 through its media API: the
+  three calendar PDFs all had them). A file with none gets a dark "Event flyer"
+  card with a PDF mark and the same button.
+- **Its styles are a `<style>` it carries, not `calendar.css`,** because the
+  embed loads `calendar.css` and the flyer is the event page's alone. A rule
+  added there would be a change to the embed.
 
 - **`calendar-files/`, a fifth folder beside the four picture folders**, inside
   none of them, so no picker, the Images screen or Insert image offers a PDF.
@@ -2723,18 +2735,34 @@ is printed directly at the top of the main column; the side column is still
 buffered first so the catch-all stays the last field render. Every card carries `data-uc-card`, a
 stable name for a later guided tour; `DESIGN.md` 4 lists them.
 
-- **Registration** holds Accept RSVPs, Email required, Capacity and the
-  questions, drawn from the shared RSVP list by name, so the registrations
-  screen draws the same controls and the save is unchanged. Location holds the
-  place only. With Accept RSVPs off the card is the tick alone; the rest is in
-  the markup and `initRegistration()` hides it, so a hidden control still
-  posts and unticking clears nothing.
+- **RSVP** (Registration until 3.113.3) opens on one choice, No RSVP, RSVP
+  Here or External RSVP (`SFAF_Register_Elsewhere::render_rsvp_choice()`),
+  then Cost, then Email required, Capacity and the questions, drawn from the
+  shared RSVP list by name, so the registrations screen draws the same
+  controls. **The choice is not stored.** `choice()` reads it from
+  `_uc_reg_mode` and `_uc_rsvp_enabled` (another site first, then the tick,
+  and hybrid is always RSVP Here), and `apply_choice_to_post()` turns the
+  posted choice back into `reg_mode` and `rsvp_enabled` before the two saves
+  that already read them, so every event opens on the choice that matches it
+  and nothing stored changed meaning. The card places `rsvp_enabled` without
+  drawing the tick, so the catch-all cannot draw it either. An imported event
+  has no choice and keeps the locked tick and its line. RSVP Here shows the
+  settings and the script hides them for the other two, so with no script they
+  show and still post; nothing hidden is cleared. Cost shows under every choice.
+  Location holds the place only.
 - **The action bar is sticky to the window's foot** and outside the form as
   before (`form=` on every button). It carries `uc-editor-actions`, which is
   what the `order` rules and the main action's size in `portal.css` select on:
   **no markup carried that class before 3.107.0**, so the documented order
   Delete, Save draft, Publish (and Delete, Cancel event, Save changes) had never
   rendered. The Cancel and Delete line under it is on Edit event only.
+  **From 3.113.3 an existing event's bar has one solid button**: Delete is a
+  red text link at the far left (`order: -1`, ahead of the note), Cancel event
+  is the plain button outlined, Save changes is green. `DESIGN.md` has the table.
+- **A staff request's panel is one line (3.113.3)**: "Requested by [name] on
+  [date]", the name a mailto, with the repeat, the place, who else to tell, the
+  notes and any picture under it when they exist; no card. A community
+  submission keeps its "Submitted by a member of the public" card.
 - **The picture list follows the series dropdown** on Add and Edit, with no
   save: `SFAF_Media::picker()` takes `series_follow` and emits the series
   attribute even for 0, and `initFixedSeriesImageFilter()` reads the dropdown
@@ -5930,8 +5958,9 @@ allows; they never widen it.
 
 ### Register on another site (3.110.1)
 
-**The Registration card asks first where people register**: "Take
-registrations here" (the default) or "Register on another site" with a link.
+**The RSVP card asks first** (3.113.3, one control with No RSVP and RSVP Here;
+"Take registrations here" or "Register on another site" until then): External
+RSVP is another site, with a link.
 The series screen has the same choice and link as a default its events follow
 until they set their own (`_uc_reg_mode`, `_uc_reg_url`;
 `_sfaf_series_reg_mode`, `_sfaf_series_reg_url`), `SFAF_Register_Elsewhere`.

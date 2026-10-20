@@ -122,14 +122,14 @@ above, and a later pass reading only the rule would "correct" it back.
 
 ```
 a draft         Delete          Save draft       Publish
-                red             YELLOW           GREEN, largest
+                red text link   YELLOW           GREEN, largest
                 #c0392b         #FFD900          #15803D
                 white 5.44:1    dark gray 8.92:1 white 5.02:1
 
-an existing     Delete          Cancel event     Save changes
-event           red             RED              GREEN, largest
-                #c0392b         #c0392b          #15803D
-                white 5.44:1    white 5.44:1     white 5.02:1
+an existing     Delete          Cancel event     Save changes      (3.113.3)
+event           red text link   outlined         GREEN, largest
+                #c0392b on      #8C8D8E edge,    #15803D
+                white 5.44:1    dark ink         white 5.02:1
 
 a submission    Reject          Save changes     Approve           (3.113.2)
 waiting for     red             plain secondary  GREEN, largest
@@ -153,7 +153,14 @@ that is not it. Green for the thing that goes out and yellow for the thing you
 press on the way there reads as a traffic sequence rather than as two competing
 primaries.
 
-**CANCEL EVENT IS RED, NOT AMBER (3.98.0).** It takes the event off the public
+**ONE SOLID BUTTON ON AN EXISTING EVENT'S BAR (3.113.3), Mark's brief.** Delete
+is a red text link (`.uc-link-danger`) at the far left, ahead of the note,
+whose auto margin sets it apart; below 600px it takes the last line. Cancel
+event is `.uc-btn` with no face: the control edge and dark ink, transparent at
+rest and on hover. Both open their dialogs, which carry the red. What follows
+is the 3.98.0 reasoning for two reds, kept so the reversal is visible.
+
+**CANCEL EVENT WAS RED, NOT AMBER (3.98.0), until 3.113.3.** It takes the event off the public
 calendar and mails everybody who registered, which is Delete's neighbourhood of
 consequence rather than "careful". The two reds are told apart by their labels;
 since 3.112.1 both open a dialog, so neither carries a chevron.
@@ -973,7 +980,7 @@ by `.claude/release-31062-live.php` and, for the editor from 3.106.3,
 
 | Part | What it is | Measured |
 |---|---|---|
-| The section | from 3.107.0 a section of the Registration card under a 16px subhead "Questions for registrants", a hairline above it, the helper inside | the card is `--p-border` 1px, 18px padding, 12px radius |
+| The section | from 3.107.0 a section of the Registration card (the RSVP card from 3.113.3) under a 16px subhead "Questions for registrants", a hairline above it, the helper inside | the card is `--p-border` 1px, 18px padding, 12px radius |
 | A question | a sub-card | `--p-bg` fill, `--p-border` 1px, 8px radius, 12px padding, 12px between sub-cards |
 | Its top row | the question box taking the width the ticks leave, then Required, In person only (hybrid only) and remove | under about 540px of row the box takes its own line, the ticks and remove the next |
 | Answer style | the segmented control, Pick any and Pick one | chosen white on `--uc-accent-text`, 5.35:1 |
@@ -1364,10 +1371,13 @@ fieldsets 12px below it, Teams (a tick each, with its member count in
 `--p-panel` with a 1px `--p-border` and 8px radius), then the notify tick
 under its rule. A contributor sees one muted line naming who else has it.
 
-**Where people register** is the segmented control (`.uc-seg`) above Accept
-RSVPs, "Take registrations here" and "Register on another site", with the
-Registration link box under it only while the second is chosen; everything
-below it in the card is hidden at the same moment. On the RSVP list an event
+**The RSVP card (3.113.3) opens on one segmented control** (`.uc-seg`), No RSVP,
+RSVP Here, External RSVP, the first thing in the card, under its title "RSVP",
+with a visually hidden legend. Cost follows it under every choice; RSVP Here
+shows the RSVP settings under Cost, External RSVP the Registration link box
+above Cost. On a hybrid event No RSVP is disabled and one `.uc-hint-spec` line
+says it is not available. The series screen keeps "Where people register", the
+two-way control, as its default. On the RSVP list an event
 registering elsewhere has one `.uc-notice` line with the link. On the event
 page the Register button is the standard primary `.uc-actionbtn`, with the
 external-link treatment the source button already has.

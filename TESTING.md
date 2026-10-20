@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 361 items.** Quick 294, needs real conditions 63, blocked on other
+**Outstanding: 366 items.** Quick 299, needs real conditions 63, blocked on other
 people 4.
 
 ---
@@ -18,15 +18,16 @@ people 4.
 
 Opening a screen and looking, loading a URL, pressing a control. Fastest first.
 
-### 1.0 FIRST: installing 3.113.2 on the live site, and the first hour (3.113.0 to 3.113.2)
+### 1.0 FIRST: installing 3.113.3 on the live site, and the first hour (3.113.0 to 3.113.3)
 
 3.112.0 and 3.112.2 failed from the office network (no connection to
 resources.sfaf.org at all) and 3.111.0 cured it each time. **3.113.0 is built
 from 3.111.0 and its public calendar is 3.111.0's**, and **3.113.1's embed is
 3.113.0's**, both proved by `.claude/embed-identity-test.php`; only the version
 number moves. 3.113.1 also changes the event page's contact line (1.289), and
-**3.113.2's embed is 3.113.1's**, by the same check. If 3.113.0 or 3.113.1 was
-never installed, install 3.113.2 directly; the steps are the same. So this
+**3.113.2's embed is 3.113.1's**, and **3.113.3's is 3.113.2's**, by the same
+check; 3.113.3 changes the event page's flyer (1.299). If any of 3.113.0 to
+3.113.2 was never installed, install 3.113.3 directly; the steps are the same. So this
 install says whether a version change and caladmin work alone bring the fault
 back. The calendar is served from resources.sfaf.org, **LiteSpeed on AWS with
 the LiteSpeed Cache plugin**; only www.sfaf.org is on WP Engine.
@@ -39,7 +40,7 @@ the LiteSpeed Cache plugin**; only www.sfaf.org is on WP Engine.
   condition that failed.
 
 **Install**: Plugins > SFAF Calendar > Check for updates, then Update (or upload
-`sfaf-calendar-3.113.2.zip` and choose Replace current with uploaded). Then
+`sfaf-calendar-3.113.3.zip` and choose Replace current with uploaded). Then
 **LiteSpeed Cache > Toolbox > Purge All**.
 
 **The first hour, four times** (at install, +15, +30, +60 minutes):
@@ -4022,11 +4023,81 @@ event?** with Yes and No, No chosen. Send one request with Yes: the confirmation
 email says you get two emails once it is published. In caladmin the pending
 event takes RSVPs, Team and access shows the MarCom team only, the requester is
 not added to the team, the notification list has the requester's address, and
-Emails for this event has only "Count of who is coming" and "Who is coming"
-ticked of the four. Approve it: no "Send ... registrations" tick. Send one with
+Emails for this event has only "RSVP count, the day before" and "Who's coming,
+two hours before" ticked of the four (their names from 3.113.3). Approve it: no "Send ... registrations" tick. Send one with
 No: no RSVPs, nobody listed.
 
 **Why it needs a person:** the live form, real teams and a real mailbox.
+
+### 1.297 The RSVP card's one choice (3.113.3)
+
+Before installing, note three events: one that takes RSVPs here, one that does
+not, and one set to Register on another site. After installing, open each in
+caladmin Edit event: the card is titled **RSVP** and its first control reads
+**No RSVP | RSVP Here | External RSVP**, with no Accept RSVPs tick and no
+"Where people register". They open on RSVP Here, No RSVP and External RSVP
+respectively, and each event's page and RSVP list look as they did. Press
+Save changes on each without touching the choice: nothing on its page or RSVP
+list changes, and nobody registered is affected. On a test event: No RSVP hides
+everything under Cost; RSVP Here shows Email required, Capacity and the
+questions; External RSVP shows the Registration link box only. Save each and
+reopen: the choice held. Tick Hybrid in Location: No RSVP greys out and a line
+says why. On Add event, choose a series whose default is another site: the
+choice moves to External RSVP. Open an imported event: no choice, the line
+naming where people register.
+
+**Why it needs a person:** real events with real registrations, and the live
+editor's script.
+
+### 1.298 The Edit event button bar (3.113.3)
+
+Open a published event in caladmin Edit event. The bar at the foot reads, left
+to right: **Delete** as red text with no box, the note, then **Cancel event**
+outlined (no fill) and **Save changes** green and largest. Save changes is the
+only filled button. Hover Cancel event: its edge turns teal and it stays
+unfilled. Delete and Cancel event still open their dialogs. Press Enter in the
+title: it saves. On a phone: the note, then the two buttons, then Delete on the
+last line. On a draft: Delete red text, Save draft yellow, Publish green.
+
+**Why it needs a person:** the live editor, at desktop and phone widths.
+
+### 1.299 The event page flyer (3.113.3)
+
+Open the public page of an event with a PDF attached (three PDFs were uploaded
+to calendar-files/ on Oct. 16; attach one to a test event if none is on one): under the description, the
+PDF's first page as a picture, about 232px wide, and under it a solid yellow
+**View flyer (PDF)** (or the label typed for it). Click each: the PDF opens in a
+new tab. Tab through the page: the picture is skipped and the button is
+reached once. Check it on a phone. Then open the calendar list or an embed with
+the same event: its row still has the old outlined button, unchanged.
+
+**Why it needs a person:** a real event page in the site's theme. The card
+without a picture shows only for a PDF uploaded where previews were not made,
+which resources.sfaf.org does make, so that case is the test's alone.
+
+### 1.300 The Notifications card's copy (3.113.3)
+
+Open an event's Notifications card in caladmin. Under Who hears about this
+event: "Everybody on this list gets the emails switched on below." Press
+Choose emails: "Email when someone RSVPs", "RSVP count, the day before",
+"Who's coming, two hours before" and "Email when someone cancels", each with
+its line as in the 3.113.3 changelog, the apostrophe showing as an apostrophe.
+Open an event made by the Request an event form or an import: no "This event's
+creator has no usable email address on file." line. If an event made by a
+person whose account has no email exists, the line is still there.
+
+**Why it needs a person:** the live editor and real creators.
+
+### 1.301 Requested by, on a staff request (3.113.3)
+
+Open a pending staff request (or send one with notes and a repeat answer) in
+Edit event. Near the top, one small grey line: "Requested by [name] on [date]",
+the name a link that opens an email to them; no "Requested by a colleague"
+card. Under it, the repeat answer, the place, who else to tell and the notes,
+when the request had them. Open a community submission: its "Submitted by a
+member of the public" card is unchanged.
+
+**Why it needs a person:** a real request in the live queue.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event

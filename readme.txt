@@ -531,7 +531,18 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
-= 3.113.2 =
+= 3.113.3 =
+
+**The RSVP card, the Edit event button bar, the event page flyer, the Notifications card copy and the staff request line. The embed is 3.113.2's.**
+
+**THE EMBED IS UNCHANGED.** Its route, answers and headers, its script and stylesheet, the [sfaf_calendar] block, the scheduled tasks, the taxonomies and the rewrite rules are 3.113.2's; only the version number embed.js and its answers carry has moved. The one public change is the event page's flyer (below). An event's row in a list keeps its attachment button.
+
+* **The Registration card is the RSVP card**, and it opens on one choice: **No RSVP**, **RSVP Here** or **External RSVP**, in place of "Where people register" and the Accept RSVPs tick. No RSVP hides the RSVP settings; RSVP Here shows them; External RSVP shows the registration link box. Cost stays under the choice whichever is chosen. Every event opens on the choice that matches what it already had, and saving it unchanged changes nothing stored and touches no registration. A hybrid event cannot be No RSVP. An imported event keeps its line saying where people register. The series screen keeps its "Where people register" default.
+* **Edit event's button bar has one solid button.** Save changes stays green on the right; Cancel event is a plain outlined button; Delete is a red text link at the far left, set apart from the others. On a phone Delete takes the last line. A draft's bar keeps Save draft (yellow) and Publish (green), with Delete as the same link.
+* **Event page: the flyer.** An event with a PDF shows its first page as a picture, with a solid "View flyer (PDF)" button under it, both opening the file in a new tab. Where no first-page picture was made, a dark "Event flyer" card with a PDF mark stands in its place, with the same button. A label typed for the attachment replaces the button's words. resources.sfaf.org makes the picture on upload (Imagick reads PDFs there): the three calendar PDFs on the site on Oct. 20, 2026, all have one.
+* **Notifications: "Everybody on this list gets the emails switched on below."** under Who hears about this event, and the four list emails are now "Email when someone RSVPs", "RSVP count, the day before", "Who's coming, two hours before" and "Email when someone cancels", each with its new description. "This event's creator has no usable email address on file." is not shown when the event was made by an import, the staff Request an event form or the community form.
+* **A staff request on Edit event is one line**: "Requested by [name] on [date]", the name opening an email to them, in place of the "Requested by a colleague" card. What else they asked for (the repeat, the place, who else to tell, their notes, a picture) follows under it when there is any. A community submission keeps its panel.
+
 
 **Six changes to caladmin, the WordPress event editor and the staff Request an event form. The embed is 3.113.1's.**
 

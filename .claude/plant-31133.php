@@ -19,7 +19,7 @@ $plants = array(
         array( 'public/css/calendar.css', "/* SFAF Calendar Frontend Styles */\n", "/* SFAF Calendar Frontend Styles */\n.uc-single .uc-flyer { margin: 0; }\n" ),
     ) ),
     'E: the calendar script changes' => array( 'embed-identity-test.php', 'B: public/js/calendar.js differs from 3.113.2', array(
-        array( 'public/js/calendar.js', "\n", "\n\n" ),
+        array( 'public/js/calendar.js', " * SFAF Calendar Frontend JS\n", " * SFAF Calendar Frontend JS.\n" ),
     ) ),
     'E: an embed answer changes' => array( 'embed-identity-test.php', 'A: ', array(
         array( 'includes/class-sfaf-embed.php', "\$response->header( 'Cache-Control', 'public, max-age=' . \$browser_ttl );", "\$response->header( 'Cache-Control', 'public, max-age=' . ( \$browser_ttl + 1 ) );" ),
@@ -33,8 +33,10 @@ $plants = array(
     '1: an existing event with RSVPs opens on No RSVP' => array( 'release-31133-test.php', '1: RSVPs on opens on RSVP Here', array(
         array( 'includes/class-sfaf-register-elsewhere.php', "        if ( '1' === (string) get_post_meta( \$event_id, '_uc_rsvp_enabled', true )\n            || ", "        if ( false\n            || " ),
     ) ),
-    '1: External RSVP clears the stored RSVP answer' => array( 'release-31133-test.php', '1: saving External RSVP keeps the link, the mode and the stored RSVP answer', array(
-        array( 'includes/class-sfaf-register-elsewhere.php', "            || ( 'elsewhere' === \$choice && (int) \$event_id && '1' === (string) get_post_meta( (int) \$event_id, '_uc_rsvp_enabled', true ) );", ';' ),
+    /* Not "External RSVP clears the stored answer": save_rsvp_settings_from_post()
+       already returns while the event registers elsewhere, so that is no fault. */
+    '1: External RSVP is saved as here' => array( 'release-31133-test.php', '1: External RSVP stores another site', array(
+        array( 'includes/class-sfaf-register-elsewhere.php', "        \$post['reg_mode']               = ( 'elsewhere' === \$choice ) ? 'elsewhere' : 'here';", "        \$post['reg_mode']               = 'here';" ),
     ) ),
     '1: the choice is never read' => array( 'release-31133-test.php', '1: No RSVP switches RSVPs off', array(
         array( 'includes/class-sfaf-portal.php', "        SFAF_Register_Elsewhere::apply_choice_to_post( \$event_id, \$_POST );\n", '' ),
