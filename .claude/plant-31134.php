@@ -45,7 +45,6 @@ $plants = array(
     ) ),
     '1: a preview that is there is made again' => array( 'release-31134-test.php', '1: a preview that is there is never made again', array(
         array( 'includes/class-sfaf-attachments.php', "if ( ! empty( \$meta['sizes']['full'] ) || 'application/pdf'", "if ( 'application/pdf'" ),
-        array( 'includes/class-sfaf-attachments.php', "        if ( get_post_meta( \$att, self::META_PREVIEW_TRIED, true ) ) {\n            return;\n        }\n", '' ),
     ) ),
     '2: the bar is white again' => array( 'release-31134-test.php', '2: the bar is the grey --p-bg', array(
         array( 'public/css/portal.css', "    background: var(--p-bg); box-shadow: none;", "    background: var(--p-panel); box-shadow: none;" ),

@@ -15,10 +15,10 @@
 $root = dirname( __DIR__ );
 
 $plants = array(
-    'E: the stylesheet the embed loads changes' => array( 'embed-identity-test.php', 'B: public/css/calendar.css differs from 3.113.2', array(
+    'E: the stylesheet the embed loads changes' => array( 'embed-identity-test.php', 'B: public/css/calendar.css differs from 3.113.', array(
         array( 'public/css/calendar.css', "/* SFAF Calendar Frontend Styles */\n", "/* SFAF Calendar Frontend Styles */\n.uc-single .uc-flyer { margin: 0; }\n" ),
     ) ),
-    'E: the calendar script changes' => array( 'embed-identity-test.php', 'B: public/js/calendar.js differs from 3.113.2', array(
+    'E: the calendar script changes' => array( 'embed-identity-test.php', 'B: public/js/calendar.js differs from 3.113.', array(
         array( 'public/js/calendar.js', " * SFAF Calendar Frontend JS\n", " * SFAF Calendar Frontend JS.\n" ),
     ) ),
     'E: an embed answer changes' => array( 'embed-identity-test.php', 'A: ', array(

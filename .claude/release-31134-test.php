@@ -55,7 +55,11 @@ $live = array(
     ),
     'filesize' => 3807524,
 );
+/* On disk, so a needless remake would reach the generator and be counted. */
+$disk = tempnam( sys_get_temp_dir(), 'uc-flyer' );
+file_put_contents( $disk, "%PDF-1.4\n" );
 rt_pdf( 62056, 'calendar-files/Access-to-Care-event-flyers-Oct2026-v1-2-3.pdf', $live );
+$GLOBALS['kit_attached'][62056] = $disk;
 $ev = rt_event( 62056 );
 
 $med = image_get_intermediate_size( 62056, 'medium' );
@@ -69,8 +73,6 @@ rt( '1: the solid View flyer (PDF) under it', (bool) preg_match( '#</a><a class=
 rt( '1: a preview that is there is never made again', $GLOBALS['cm_generated'], 0 );
 
 /* A PDF with no preview, that Ghostscript can read: made once, then shown. */
-$disk = tempnam( sys_get_temp_dir(), 'uc-flyer' );
-file_put_contents( $disk, "%PDF-1.4\n" );
 rt_pdf( 701, 'calendar-files/older-flyer.pdf', array( 'filesize' => 9 ) );
 $GLOBALS['kit_attached'][701] = $disk;
 $ev2 = rt_event( 701 );
@@ -93,7 +95,7 @@ rt( '1: and not made again', $GLOBALS['cm_generated'], 1 );
 rt_pdf( 702, 'calendar-files/broken.pdf', array( 'filesize' => 9 ) );
 $GLOBALS['kit_attached'][702] = $disk;
 $ev3 = rt_event( 702 );
-$GLOBALS['cm_generate'] = function ( $id, $file ) { return array( 'filesize' => 9 ); };
+$GLOBALS['cm_generate'] = function ( $id, $file ) { return array(); };   // nothing made
 $GLOBALS['cm_generated'] = 0;
 $f3 = SFAF_Attachments::flyer_html( $ev3 );
 rt( '1: a PDF that cannot be previewed keeps the card', false !== strpos( $f3, '<div class="uc-flyer-card" aria-hidden="true"><svg' ) && false === strpos( $f3, '<img' ) && false !== strpos( $f3, 'uc-actionbtn-primary' ), true );
