@@ -149,7 +149,7 @@ rn_check( false !== strpos( file_get_contents( $root . '/includes/class-sfaf-rsv
     'the server does not read no_email off the POST, so the tick would be ignored' );
 
 if ( in_array( '--run', array_slice( $argv, 1 ), true ) ) {
-    $chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+    $chrome = getenv( 'SFAF_CHROME' ) ?: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
     if ( ! file_exists( $chrome ) ) { echo "Chrome not found at $chrome\n"; exit( 1 ); }
     $url = 'file:///' . str_replace( '\\', '/', $out );
     $dom = shell_exec( '"' . $chrome . '" --headless --disable-gpu --window-size=1200,900 --virtual-time-budget=8000 --dump-dom "' . $url . '" 2>NUL' );

@@ -132,7 +132,7 @@ function pt_request( $pairs ) {
 }
 
 if ( in_array( '--run', array_slice( $argv, 1 ), true ) ) {
-    $chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+    $chrome = getenv( 'SFAF_CHROME' ) ?: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
     if ( ! file_exists( $chrome ) ) { echo "Chrome not found at $chrome\n"; exit( 1 ); }
     $got = array();
     foreach ( $files as $name => $file ) {

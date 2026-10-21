@@ -208,7 +208,7 @@ echo 'wrote ' . count( $files ) . " pages\n";
 $run  = in_array( '--run', $argv, true ) || in_array( '--list', $argv, true );
 $list = in_array( '--list', $argv, true );
 if ( $run ) {
-    $chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+    $chrome = getenv( 'SFAF_CHROME' ) ?: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
     if ( ! file_exists( $chrome ) ) { echo "Chrome not found at $chrome\n"; exit( 1 ); }
     $found = array( 'heading' => 0, 'allowed' => array(), 'fault' => array() );
     foreach ( $files as $name => $file ) {

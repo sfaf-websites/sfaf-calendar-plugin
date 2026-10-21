@@ -97,3 +97,4 @@ SFAF-generic-header-skyline-1200x212.png
 
 # Document exports for the Claude.ai project. Copies, never committed.
 /handover-export/
+.claude/suite-logs/

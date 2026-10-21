@@ -177,7 +177,7 @@ foreach ( $pages as $name => $p ) {
 $args  = array_slice( $argv, 1 );
 $shots = in_array( '--shots', $args, true );
 if ( ! in_array( '--run', $args, true ) && ! $shots ) { echo 'wrote ' . count( $files ) . " pages; --run drives them.\n"; exit( $fails ? 1 : 0 ); }
-$chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+$chrome = getenv( 'SFAF_CHROME' ) ?: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 if ( ! file_exists( $chrome ) ) { echo "Chrome not found at $chrome\n"; exit( 1 ); }
 
 $g = array();

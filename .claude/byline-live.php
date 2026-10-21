@@ -85,7 +85,7 @@ function bl_authors( $label, $source, $text, $links, $people ) {
 }
 
 /* ---- Chrome. ------------------------------------------------------------ */
-$chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+$chrome = getenv( 'SFAF_CHROME' ) ?: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 function bl_chrome( $target ) {
     global $chrome;
     return (string) shell_exec( '"' . $chrome . '" --headless --disable-gpu --run-all-compositor-stages-before-draw --allow-file-access-from-files --window-size=1280,4000 --virtual-time-budget=15000 --dump-dom "' . $target . '" 2>NUL' );

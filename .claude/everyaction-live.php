@@ -178,7 +178,7 @@ if ( ! in_array( '--run', array_slice( $argv, 1 ), true ) ) {
     exit( 0 );
 }
 
-$chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+$chrome = getenv( 'SFAF_CHROME' ) ?: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 if ( ! file_exists( $chrome ) ) { echo "Chrome not found at $chrome\n"; exit( 1 ); }
 $url = 'file:///' . str_replace( '\\', '/', $file );
 $dom = shell_exec( '"' . $chrome . '" --headless --disable-gpu --allow-file-access-from-files --window-size=1200,1600 --virtual-time-budget=8000 --dump-dom "' . $url . '" 2>NUL' );

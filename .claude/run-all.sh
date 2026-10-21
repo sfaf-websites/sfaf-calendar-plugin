@@ -1,8 +1,111 @@
 #!/usr/bin/env bash
 # Run every check in .claude and report one line each. Non-zero exit if any fail.
+#
+#     bash .claude/run-all.sh                    every check: what a release needs
+#     bash .claude/run-all.sh --detach           the same, in a process of its own,
+#                                                written to .claude/suite-logs/
+#     bash .claude/run-all.sh --screens=editor,rsvp-form
+#                                                every check that starts no browser,
+#                                                and only the browser checks that
+#                                                draw one of those screens
+#     bash .claude/run-all.sh --browser-only     the browser checks alone
+#     bash .claude/run-all.sh --no-browser       everything else alone
+#     bash .claude/run-all.sh --list-screens     which browser check draws what
+#
+# --screens, --browser-only and --no-browser are for working on a release. A
+# release still needs one run with none of them (CLAUDE.md 2): a check left out
+# is a check skipped, and the summary line says how many were.
+#
+# --detach IS HOW CLAUDE CODE RUNS THE SUITE (2026-10-21). Claude Code ends a
+# background shell of its own when the machine's free memory runs low while the
+# session is idle, and it did that to the suite with 2.9 GB of 16 GB free, none
+# of it the suite's: Chrome peaked near 370 MB, the guard near 90 MB. The wrapper
+# died and run-all.sh carried on orphaned. Detached, the suite is not Claude
+# Code's to end. The log is the one line per check, then "SUITE-EXIT <code>".
 cd "$(dirname "$0")/.." || exit 1
 fails=0
 pass=0
+skipped=0
+
+MODE=all
+SCREENS=''
+LOG=''
+for arg in "$@"; do
+  case "$arg" in
+    --browser-only) MODE=browser ;;
+    --no-browser)   MODE=nobrowser ;;
+    --screens=*)    SCREENS="${arg#--screens=}" ;;
+    --list-screens) MODE=list ;;
+    --detach)       MODE=detach ;;
+    --log=*)        LOG="${arg#--log=}" ;;
+    *) echo "unknown option: $arg"; exit 2 ;;
+  esac
+done
+
+# WHICH SCREEN A BROWSER CHECK DRAWS, read from its own source: what it renders,
+# loads or drives. Nothing to keep up to date by hand, so a new check is in the
+# right group the day it is written. A check matching none is run only by the
+# full suite, --browser-only, or --screens=all.
+screen_patterns() { # name -> extended regex over the check's source
+  case "$1" in
+    editor)      echo "render_event_form" ;;
+    rsvps)       echo "'render_rsvps'|render_registrant_mail" ;;
+    rsvp-form)   echo "sfaf_rsvp_block|calendar\\.js|uc-rsvp" ;;
+    everyaction) echo "SFAF_EveryAction|everyaction" ;;
+    embed)       echo "embed\\.js|render_calendar_block|render_sidebar|render_month_|calendar\\.css" ;;
+    event-page)  echo "single-uc_event|byline" ;;
+    pending)     echo "render_pending" ;;
+    series)      echo "render_series" ;;
+    forms)       echo "SFAF_Request|SFAF_Submit|'render_form'" ;;
+    sign-in)     echo "render_login|render_forgot|render_reset|render_preferences" ;;
+    templates)   echo "render_email_templates" ;;
+    media)       echo "render_media|media-" ;;
+    caladmin)    echo "render_dashboard|'render_events'|render_users|render_venues|render_organizers|render_faq_sets|render_optins" ;;
+    all)         echo "." ;;
+    *)           echo "" ;;
+  esac
+}
+SCREEN_NAMES="editor rsvps rsvp-form everyaction embed event-page pending series forms sign-in templates media caladmin"
+if [ -n "$SCREENS" ]; then
+  SCREEN_RE=''
+  for s in ${SCREENS//,/ }; do
+    p="$(screen_patterns "$s")"
+    if [ -z "$p" ]; then echo "unknown screen: $s (one of: $SCREEN_NAMES all)"; exit 2; fi
+    SCREEN_RE="${SCREEN_RE:+$SCREEN_RE|}$p"
+  done
+fi
+
+if [ "$MODE" = list ]; then
+  for f in $(grep -l 'chrome\.exe' .claude/*.php); do
+    hit=''
+    for s in $SCREEN_NAMES; do grep -qE "$(screen_patterns "$s")" "$f" && hit="$hit $s"; done
+    printf '%-28s%s\n' "$(basename "$f" .php)" "${hit:- (none: full suite only)}"
+  done
+  exit 0
+fi
+
+if [ "$MODE" = detach ]; then
+  mkdir -p .claude/suite-logs
+  log=".claude/suite-logs/suite-$(date +%Y%m%d-%H%M%S).log"
+  rest=''
+  for arg in "$@"; do [ "$arg" = --detach ] || rest="$rest $arg"; done
+  powershell.exe -NoProfile -Command "Start-Process -WindowStyle Hidden -FilePath '$(cygpath -w "$(command -v bash)")' -WorkingDirectory '$(cygpath -w "$PWD")' -ArgumentList '.claude/run-all.sh --log=$log$rest'" || exit 1
+  echo "$log"
+  exit 0
+fi
+if [ -n "$LOG" ]; then
+  exec > "$LOG" 2>&1
+  trap 'echo "SUITE-EXIT $?"' EXIT
+fi
+
+# EVERY CHROME CALL HAS A TIME LIMIT (2026-10-21). A single headless call
+# sometimes never exits; chrome-run.js ends it after CHROME_RUN_TIMEOUT seconds
+# and tries again, and ends anything it left. CHROME_RUN_LOG collects one line
+# per call it had to end, which the summary counts.
+SFAF_CHROME="$(cygpath -w "$PWD/.claude/chrome-run.cmd")"
+CHROME_RUN_LOG="$(cygpath -w "$PWD/.claude/suite-logs")\\chrome-run-$$.log"
+mkdir -p .claude/suite-logs
+export SFAF_CHROME CHROME_RUN_LOG
 
 # THE SUITE RUNS WITH CLAUDE CODE OPEN. Every check that starts Chrome, which is
 # every php check whose file names chrome.exe, runs through browser-guard.ps1:
@@ -19,8 +122,14 @@ BROWSER_RESERVE_MB=256
 
 run() { # label, command...
   local label="$1"; shift
-  local out rc
-  if [ "$1" = php ] && [ -f "$2" ] && grep -q 'chrome\.exe' "$2"; then
+  local out rc browser=0
+  if [ "$1" = php ] && [ -f "$2" ] && grep -q 'chrome\.exe' "$2"; then browser=1; fi
+  if { [ "$MODE" = browser ] && [ $browser -eq 0 ]; } || { [ "$MODE" = nobrowser ] && [ $browser -eq 1 ]; } \
+     || { [ -n "$SCREENS" ] && [ $browser -eq 1 ] && ! grep -qE "$SCREEN_RE" "$2"; }; then
+    skipped=$((skipped+1))
+    return
+  fi
+  if [ $browser -eq 1 ]; then
     set -- powershell.exe -NoProfile -ExecutionPolicy Bypass -File .claude/browser-guard.ps1 \
       -CeilingMB "$BROWSER_CEILING_MB" -ReserveMB "$BROWSER_RESERVE_MB" -WaitSeconds 600 -Command "$*"
   fi
@@ -294,6 +403,7 @@ for f in .claude/*.js; do
   case "$(basename "$f")" in
     build-email-icons.js) continue ;;  # a generator, not a test
     build-favicon.js) continue ;;      # likewise; its check is --preview
+    chrome-run.js) continue ;;         # how the browser checks start Chrome, not a check
   esac
   run "$(basename "$f")" node "$f"
 done
@@ -401,9 +511,12 @@ echo
 echo "=== shell guards ==="
 run "guard-test" bash .claude/guard-test.sh .claude/guard-destructive.sh
 run "browser-guard-test" bash .claude/browser-guard-test.sh
+run "chrome-run-test" bash .claude/chrome-run-test.sh
 run "private-slug-fault-check" bash .claude/private-slug-fault-check.sh
 
 echo
 echo "-------------------------------------------"
-echo "passed: $pass   failed: $fails"
+ended=0
+[ -f "$(cygpath -u "$CHROME_RUN_LOG")" ] && ended=$(wc -l < "$(cygpath -u "$CHROME_RUN_LOG")")
+echo "passed: $pass   failed: $fails   left out: $skipped   Chrome calls ended at the time limit and retried: $ended"
 [ $fails -eq 0 ] || exit 1

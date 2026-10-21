@@ -152,7 +152,7 @@ function el_boot() {
  * ==================================================================== */
 $args = array_slice( $argv, 1 );
 if ( ! in_array( '--run', $args, true ) ) { echo "--run starts two local servers and drives Chrome.\n"; exit( 0 ); }
-$chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+$chrome = getenv( 'SFAF_CHROME' ) ?: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 if ( ! file_exists( $chrome ) ) { echo "Chrome not found at $chrome\n"; exit( 1 ); }
 
 $fails = array();

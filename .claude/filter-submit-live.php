@@ -713,7 +713,7 @@ fs_check( (bool) preg_match( "/on\('click', '\.uc-filter-btn', function \(e\) \{
 	'calendar.js binds the pills with a handler that does not prevent the default' );
 
 if ( in_array( '--run', array_slice( $argv, 1 ), true ) ) {
-	$chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+	$chrome = getenv( 'SFAF_CHROME' ) ?: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 	if ( ! file_exists( $chrome ) ) {
 		echo "Chrome not found at $chrome\n";
 		exit( 1 );

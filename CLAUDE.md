@@ -61,6 +61,15 @@ bash .claude/lint-php.sh .          # PHP 8.3, every file, fails on first error
   there by naming `chrome.exe`, so a new browser check needs no list entry.
   When a check reaches the ceiling, make the check smaller; raise the ceiling
   only if the machine still has the reserve to spare beside Claude Code.
+- **Claude Code runs the suite with `bash .claude/run-all.sh --detach`** and
+  reads the log it names, which ends `SUITE-EXIT <code>` (2026-10-21). Claude
+  Code ends its own background shells when free memory runs low, and did that
+  to the suite with 2.9 GB free. Every Chrome call goes through
+  `.claude/chrome-run.js`, which ends a call that does not exit in 60 s and
+  tries again: single calls hung at random, and each hang cost the guard's
+  900 s. `--screens=editor,...` runs only the browser checks for those screens
+  (`--list-screens`), for working on a release; the release itself needs the
+  full run.
 
 Release mechanics: bump the minor version in all four places (plugin header,
 `SFAF_VERSION`, readme `Stable tag`, and `EMBED_JS_VERSION` in

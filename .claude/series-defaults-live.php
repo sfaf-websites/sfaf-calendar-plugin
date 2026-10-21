@@ -144,7 +144,7 @@ sl_check( false !== strpos( $pages['pending'], 'name="uc_action" value="pending_
 sl_check( 3 === substr_count( $pages['pending'], 'form="uc-pending-bulk" data-uc-tick-one' ), 'every pending row does not carry a tick for the bar' );
 
 if ( in_array( '--run', array_slice( $argv, 1 ), true ) ) {
-    $chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+    $chrome = getenv( 'SFAF_CHROME' ) ?: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
     if ( ! file_exists( $chrome ) ) { echo "Chrome not found at $chrome\n"; exit( 1 ); }
     $got = array();
     foreach ( $files as $name => $file ) {
