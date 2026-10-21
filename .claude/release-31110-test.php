@@ -338,7 +338,8 @@ rt( 'https://tickets.example.org/walk' === get_post_meta( $m3, SFAF_Register_Els
 rt( 'https://tickets.example.org/talk' === get_post_meta( $m4, SFAF_Register_Elsewhere::META_URL, true ) && ! SFAF_Register_Elsewhere::is_on( $m4 ), 'F.3: an event taking RSVPs here was switched to another site' );
 update_post_meta( $m4, '_uc_public_contact', 'A later one' );
 rt( 0 === sfaf_migrate_other_details() && 'A later one' === get_post_meta( $m4, '_uc_public_contact', true ), 'F.3: the migration ran twice' );
-rt( '14' === SFAF_DB_VERSION, 'F.3: the schema is not 14' );
+// 15 from 3.113.6, which adds the registration's language; 14 is what this release ran.
+rt( (int) SFAF_DB_VERSION >= 14, 'F.3: the schema is not 14 or later' );
 
 /* The page's three lines. */
 rt( false !== strpos( $single, '<span class="uc-fact-label">Cost</span>' ) && false !== strpos( $single, '<span class="uc-fact-label">Ages</span>' ) && false !== strpos( $single, '<span class="uc-fact-label">Contact</span>' ),

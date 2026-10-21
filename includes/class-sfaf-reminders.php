@@ -378,7 +378,7 @@ class SFAF_Reminders {
         $table = $wpdb->prefix . 'uc_rsvps';
 
         $rows = $wpdb->get_results( $wpdb->prepare(
-            "SELECT id, email, format FROM $table WHERE event_id = %d AND status = 'confirmed'",
+            "SELECT id, email, format, lang FROM $table WHERE event_id = %d AND status = 'confirmed'",
             $event_id
         ) );
         foreach ( (array) $rows as $row ) {
@@ -392,12 +392,14 @@ class SFAF_Reminders {
                 'format'  => isset( $row->format ) ? (string) $row->format : '',
                 'email'   => $email,
                 'rsvp_id' => isset( $row->id ) ? (int) $row->id : 0,
+                // The language they registered in, '' to follow the event (3.113.6).
+                'lang'    => isset( $row->lang ) ? (string) $row->lang : '',
             );
         }
 
         foreach ( self::notify_list( $event_id ) as $email => $label ) {
             if ( ! isset( $out[ $email ] ) ) {
-                $out[ $email ] = array( 'type' => 'notify', 'format' => '', 'email' => $email, 'rsvp_id' => 0 );
+                $out[ $email ] = array( 'type' => 'notify', 'format' => '', 'email' => $email, 'rsvp_id' => 0, 'lang' => '' );
             }
         }
 
@@ -611,7 +613,7 @@ class SFAF_Reminders {
                 continue;
             }
 
-            $sent = self::send_one( $event_id, $email, $type, $claim['token'], $format );
+            $sent = self::send_one( $event_id, $email, $type, $claim['token'], $format, isset( $who['lang'] ) ? $who['lang'] : '' );
             self::finish( $claim['id'], $sent );
             if ( $sent ) {
                 $result['sent']++;
@@ -721,7 +723,7 @@ class SFAF_Reminders {
      * wp_mail filter can take delivery over later without a line changing here.
      * No provider is named or depended on anywhere in this file.
      */
-    private static function send_one( $event_id, $email, $type, $token, $format = '' ) {
+    private static function send_one( $event_id, $email, $type, $token, $format = '', $lang = '' ) {
         /*
          * THE CANCEL LINK BELONGS TO PEOPLE WHO HOLD A PLACE. A staff member on
          * the notification list has nothing to cancel, so the token is left out
@@ -744,6 +746,8 @@ class SFAF_Reminders {
              * holds no place and answered no question.
              */
             'format'   => (string) $format,
+            // The language they registered in (3.113.6); a staff copy stays English.
+            'lang'     => (string) $lang,
         );
 
         $built = SFAF_Notifications::build( 'reminder', $event_id, $person );
@@ -807,7 +811,7 @@ class SFAF_Reminders {
         }
 
         $event_id = (int) $row->event_id;
-        $lang     = sfaf_event_language( $event_id );
+        $lang     = self::registrant_lang( $row );
         $values   = self::page_values( $event_id, $lang );
 
         $confirmed = isset( $_SERVER['REQUEST_METHOD'] )
@@ -915,6 +919,35 @@ class SFAF_Reminders {
      * @return object|null with ->event_id and ->email.
      */
     private static function resolve_token( $token ) {
+        return self::resolve_token_row( $token );
+    }
+
+    /**
+     * The language a registrant's page speaks (3.113.6): the one they picked on
+     * the form, else the event's. A reminder's link resolves to the reminder
+     * ledger, which keeps no language, so their registration is asked: the
+     * latest one for that event and address that has a language.
+     *
+     * @param object $row with ->event_id and ->email, and ->lang when it is a registration
+     * @return string 'en' or 'es'
+     */
+    public static function registrant_lang( $row ) {
+        $event_id = (int) $row->event_id;
+        $picked   = isset( $row->lang ) ? (string) $row->lang : '';
+        if ( ! isset( $row->lang ) && '' !== (string) $row->email ) {
+            global $wpdb;
+            $rsvps  = $wpdb->prefix . 'uc_rsvps';
+            $picked = (string) $wpdb->get_var( $wpdb->prepare(
+                "SELECT lang FROM $rsvps WHERE event_id = %d AND email = %s AND lang <> '' ORDER BY id DESC LIMIT 1",
+                $event_id,
+                (string) $row->email
+            ) );
+        }
+        return in_array( $picked, array( 'en', 'es' ), true ) ? $picked : sfaf_event_language( $event_id );
+    }
+
+    /** The registration, or the reminder ledger row, a cancel token belongs to. */
+    private static function resolve_token_row( $token ) {
         global $wpdb;
 
         $token = trim( (string) $token );
@@ -926,7 +959,7 @@ class SFAF_Reminders {
         // leaves the waitlist rather than cancelling a place.
         $rsvps = $wpdb->prefix . 'uc_rsvps';
         $row   = $wpdb->get_row( $wpdb->prepare(
-            "SELECT id, event_id, email, status FROM $rsvps WHERE token = %s AND token <> '' LIMIT 1",
+            "SELECT id, event_id, email, status, lang FROM $rsvps WHERE token = %s AND token <> '' LIMIT 1",
             $token
         ) );
         if ( $row ) {

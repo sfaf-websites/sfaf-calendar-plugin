@@ -206,6 +206,11 @@ class SFAF_Waitlist {
      * @param array $data The cleaned submission.
      * @return array The submit() answer.
      */
+    /** The language a join is answered in: the form's, else the event's (3.113.6). */
+    private static function says( $data ) {
+        return ( isset( $data['lang'] ) && in_array( $data['lang'], array( 'en', 'es' ), true ) ) ? $data['lang'] : sfaf_event_language( (int) $data['event_id'] );
+    }
+
     public static function join( $data ) {
         global $wpdb;
         $table    = self::table();
@@ -218,7 +223,7 @@ class SFAF_Waitlist {
                 (string) $data['email']
             ) );
             if ( $already > 0 ) {
-                return array( 'success' => false, 'message' => 'You are already on the waitlist for this event.' );
+                return array( 'success' => false, 'message' => SFAF_Messages::label( 'e_already_waiting', self::says( $data ) ) );
             }
         }
 
@@ -234,6 +239,8 @@ class SFAF_Waitlist {
             'token'      => $token,
             'created_at' => current_time( 'mysql' ),
             'format'     => $data['format'],
+            // The form's language (3.113.6), as a registration keeps it.
+            'lang'       => isset( $data['lang'] ) ? (string) $data['lang'] : '',
         );
         // The agreement and the text opt-in travel with a waitlist join (3.110.0).
         foreach ( array( 'agreed_at', 'text_opt_in' ) as $k ) {
@@ -243,7 +250,7 @@ class SFAF_Waitlist {
         }
         $ok = $wpdb->insert( $table, $row );
         if ( ! $ok ) {
-            return array( 'success' => false, 'message' => 'Something went wrong. Please try again.' );
+            return array( 'success' => false, 'message' => SFAF_Messages::label( 'f_went_wrong', self::says( $data ) ) );
         }
         $id       = (int) $wpdb->insert_id;
         $position = self::position( $id );
@@ -252,6 +259,7 @@ class SFAF_Waitlist {
             $person = (object) array(
                 'name' => $data['name'], 'first_name' => $data['first_name'], 'last_name' => $data['last_name'],
                 'email' => $data['email'], 'token' => $token, 'format' => $data['format'],
+                'lang' => isset( $data['lang'] ) ? (string) $data['lang'] : '',
             );
             $built = SFAF_Notifications::build( 'waitlist', $event_id, $person, array( 'position' => $position ) );
             if ( $built ) {
@@ -436,6 +444,8 @@ class SFAF_Waitlist {
             // The same row they answered on when they joined (3.106.2).
             'rsvp_id' => (int) $row->id,
             'from_waitlist' => (bool) $opened,
+            // The language they joined in (3.113.6).
+            'lang' => isset( $row->lang ) ? (string) $row->lang : '',
         );
         if ( '' !== $person->email && SFAF_RSVP::confirmations_enabled() && SFAF_Notifications::on( (int) $row->event_id, 'confirmation' ) ) {
             SFAF_Notifications::send_confirmation( (int) $row->event_id, $person );

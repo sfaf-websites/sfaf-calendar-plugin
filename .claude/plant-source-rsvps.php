@@ -76,7 +76,7 @@ $plants = array(
 
     'the schema version is not bumped, so the pass never runs' => array(
         'file' => 'sfaf-calendar.php',
-        'from' => "define( 'SFAF_DB_VERSION', '14' );",
+        'from' => "define( 'SFAF_DB_VERSION', '15' );",
         'to'   => "define( 'SFAF_DB_VERSION', '7' );",
     ),
 

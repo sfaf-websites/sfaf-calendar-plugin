@@ -326,11 +326,17 @@ class SFAF_Notifications {
 
     /**
      * The language a registrant message goes out in (3.106.0): the sample's,
-     * else the event's. Staff messages never ask this and stay English.
+     * else the one the person picked on the form (3.113.6), else the event's.
+     * Staff messages never ask this and stay English. Email registrants does
+     * not pass the person, and stays in the event's language.
      */
-    private static function lang_for( $event_id, $context ) {
+    private static function lang_for( $event_id, $context, $person = null ) {
         if ( ! empty( $context['sample'] ) ) {
             return SFAF_Messages::lang( $context['sample']['lang'] );
+        }
+        $picked = ( is_object( $person ) && isset( $person->lang ) ) ? (string) $person->lang : '';
+        if ( in_array( $picked, array( 'en', 'es' ), true ) ) {
+            return $picked;
         }
         return sfaf_event_language( $event_id );
     }
@@ -450,7 +456,7 @@ class SFAF_Notifications {
      * photograph at all and would render a flat colour block in its place.
      */
     private static function build_confirmation( $event_id, $person, $context = array() ) {
-        $lang = self::lang_for( $event_id, $context );
+        $lang = self::lang_for( $event_id, $context, $person );
         $f    = self::facts( $event_id, self::person_format( $person ), $lang, $context );
         $x    = $f['sample'];
         $join = self::joining( $event_id, 'confirmation', $person, $f, $context );
@@ -510,7 +516,7 @@ class SFAF_Notifications {
          * says it is the copy. Registrants get the event's language.
          */
         $staff = ( $person && ! empty( $person->is_staff ) );
-        $lang  = $staff ? 'en' : self::lang_for( $event_id, $context );
+        $lang  = $staff ? 'en' : self::lang_for( $event_id, $context, $person );
         $f     = self::facts( $event_id, self::person_format( $person ), $lang, $context );
         $x     = $f['sample'];
         $join  = self::joining( $event_id, 'reminder', $person, $f, $context );
@@ -760,7 +766,7 @@ class SFAF_Notifications {
      * want to be reminded when it was going to be.
      */
     private static function build_cancelled( $event_id, $person, $context = array() ) {
-        $lang = self::lang_for( $event_id, $context );
+        $lang = self::lang_for( $event_id, $context, $person );
         $f    = self::facts( $event_id, '', $lang, $context );
         $x    = $f['sample'];
 
@@ -800,7 +806,7 @@ class SFAF_Notifications {
      *                       Keyed by the field label, already formatted.
      */
     private static function build_changed( $event_id, $person, $context = array() ) {
-        $lang    = self::lang_for( $event_id, $context );
+        $lang    = self::lang_for( $event_id, $context, $person );
         $f       = self::facts( $event_id, self::person_format( $person ), $lang, $context );
         $x       = $f['sample'];
         $changes = ( isset( $context['changes'] ) && is_array( $context['changes'] ) ) ? $context['changes'] : array();
@@ -875,7 +881,7 @@ class SFAF_Notifications {
      * }
      */
     private static function build_reinstated( $event_id, $person, $context = array() ) {
-        $lang  = self::lang_for( $event_id, $context );
+        $lang  = self::lang_for( $event_id, $context, $person );
         $f     = self::facts( $event_id, self::person_format( $person ), $lang, $context );
         $x     = $f['sample'];
         $was   = isset( $context['was'] ) ? trim( (string) $context['was'] ) : '';
@@ -933,7 +939,7 @@ class SFAF_Notifications {
     }
 
     private static function build_waitlist( $event_id, $person, $context = array() ) {
-        $lang   = self::lang_for( $event_id, $context );
+        $lang   = self::lang_for( $event_id, $context, $person );
         $f      = self::facts( $event_id, self::person_format( $person ), $lang, $context );
         $values = self::values( $event_id, $f, $person );
         $values['position'] = $f['sample'] ? $f['sample']['position'] : (string) ( isset( $context['position'] ) ? (int) $context['position'] : 0 );
@@ -956,7 +962,7 @@ class SFAF_Notifications {
      *                       the details; several draw a row per date.
      */
     private static function build_waitlist_cancelled( $event_id, $person, $context = array() ) {
-        $lang   = self::lang_for( $event_id, $context );
+        $lang   = self::lang_for( $event_id, $context, $person );
         $f      = self::facts( $event_id, '', $lang, $context );
         $x      = $f['sample'];
         $values = self::values( $event_id, $f, $person );

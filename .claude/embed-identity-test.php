@@ -33,6 +33,10 @@ const BASE_NAME = '3.113.4';
    why. Probe A still compares every embed answer, so none of these can reach
    the embed unseen. */
 const ALLOWED_FILES = array(
+    // The RSVP form and its English | Español toggle (3.113.6). calendar.js is
+    // the event page's and the calendar block's script; the embed loads embed.js
+    // and calendar.css and never this file, and draws no RSVP form.
+    'public/js/calendar.js' => 'the RSVP form toggle between English and Español (3.113.6)',
     // None in 3.113.5 or 3.113.4. 3.113.3 named templates/single-uc_event.php, the event
     // page flyer; 3.113.4 changes the flyer in includes/ and not the template.
 );
@@ -42,7 +46,11 @@ const ALLOWED_FILES = array(
 const CALADMIN_ONLY = array( 'public/css/portal.css', 'public/js/portal.js', 'public/js/caladmin-session.js' );
 
 /* Differences a release means to make, as 'key path' => why. None in 3.113.0 to 3.113.2. */
-const ALLOWED = array();
+const ALLOWED = array(
+    // The form's words in both languages, handed to calendar.js on a public page
+    // (3.113.6). Not in the embed's answers, which probe A compares.
+    'localized > sfaf-calendar-public ucData' => 'the RSVP form words in both languages (3.113.6)',
+);
 
 $root    = str_replace( '\\', '/', dirname( __DIR__ ) );
 $verbose = in_array( '--verbose', $argv, true );

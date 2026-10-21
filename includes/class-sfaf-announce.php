@@ -243,8 +243,10 @@ class SFAF_Announce {
      * reader needs is the list.
      */
     private static function several_events( $type, $event_ids, $person, $changes_by_event ) {
-        // One group, one language: the first date's (3.106.0).
-        $lang = sfaf_event_language( $event_ids[0] );
+        // One group, one language: the one this person picked on the form
+        // (3.113.6), else the first date's (3.106.0).
+        $picked = ( is_object( $person ) && isset( $person->lang ) ) ? (string) $person->lang : '';
+        $lang   = in_array( $picked, array( 'en', 'es' ), true ) ? $picked : sfaf_event_language( $event_ids[0] );
         $rows = array();
         foreach ( $event_ids as $id ) {
             $date  = (string) get_post_meta( $id, '_uc_event_date', true );

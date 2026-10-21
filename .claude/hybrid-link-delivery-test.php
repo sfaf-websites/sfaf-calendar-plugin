@@ -321,7 +321,8 @@ foreach ( $cases as $case ) {
  * ------------------------------------------------------------------------ */
 $rem = file_get_contents( $root . '/includes/class-sfaf-reminders.php' );
 
-check( (bool) preg_match( '/SELECT (?:id, )?email, format FROM/', $rem ),
+// The language rides along from 3.113.6.
+check( (bool) preg_match( '/SELECT (?:id, )?email, format(?:, lang)? FROM/', $rem ),
     'the reminder list does not select the format column, so it has nothing to pass on however the person object is built' );
 
 /*
@@ -352,7 +353,7 @@ if ( false !== $so_at ) {
 /* AND THE LOOP HAS TO PASS IT. A parameter with a default is silently accepted
  * by every caller that forgets it, which is the shape that makes this fail
  * quietly rather than loudly. */
-check( (bool) preg_match( "/self::send_one\( \\\$event_id, \\\$email, \\\$type, \\\$claim\['token'\], \\\$format \)/", $rem ),
+check( (bool) preg_match( "/self::send_one\( \\\$event_id, \\\$email, \\\$type, \\\$claim\['token'\], \\\$format(?: \)|, )/", $rem ),
     'the reminder loop calls send_one() without the format, so the default empty string wins and no link is ever sent' );
 
 /* ---------------------------------------------------------------------------

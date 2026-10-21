@@ -24,7 +24,7 @@ define( 'SFAF_VERSION', '3.113.5' );
  * hook — still gets its new tables, instead of throwing "table doesn't exist"
  * the first time the runner looks for one.
  */
-define( 'SFAF_DB_VERSION', '14' );
+define( 'SFAF_DB_VERSION', '15' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -435,6 +435,8 @@ function sfaf_enqueue_frontend_assets() {
         'ajaxUrl' => admin_url( 'admin-ajax.php' ),
         'nonce'   => wp_create_nonce( 'uc_nonce' ),
         'restUrl' => rest_url( 'sfaf-calendar/v1/' ),
+        // The RSVP form's words in English and Spanish, for its toggle (3.113.6).
+        'rsvpWords' => SFAF_Messages::form_words(),
     ) );
 }
 add_action( 'wp_enqueue_scripts', 'sfaf_enqueue_frontend_assets' );
@@ -985,6 +987,10 @@ function sfaf_install_tables() {
      * registration agreement; text_opt_in, "Text me about this event"; and
      * checked_in_at, when they were checked in at the door. NULL and 0 are
      * "not" for every row before.
+     *
+     * SCHEMA 15 (3.113.6): lang, the language picked on the form's English |
+     * Español toggle, 'en' or 'es'. Every message to that person speaks it.
+     * '' is every row before, which goes on speaking the event's language.
      */
     $sql[] = "CREATE TABLE $rsvps (
         id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -1007,6 +1013,7 @@ function sfaf_install_tables() {
         agreed_at datetime NULL,
         text_opt_in tinyint(1) NOT NULL DEFAULT 0,
         checked_in_at datetime NULL,
+        lang varchar(5) NOT NULL DEFAULT '',
         PRIMARY KEY (id),
         KEY event_id (event_id),
         KEY email (email),

@@ -349,6 +349,35 @@ class SFAF_Messages {
     }
 
     /**
+     * Every word the RSVP form shows, in each language, for its English |
+     * Español toggle (3.113.6): the f_ labels without the prefix, the two
+     * question labels, and the agreement and text lines as Email Templates
+     * has them. Questions and the agreement's own text are not here: they
+     * print as typed.
+     *
+     * @return array<string,array<string,string>> lang => key => words
+     */
+    public static function form_words() {
+        $out = array();
+        foreach ( array_keys( self::languages() ) as $lang ) {
+            $w = array();
+            foreach ( self::labels() as $id => $pair ) {
+                if ( 0 === strpos( $id, 'f_' ) ) {
+                    $w[ substr( $id, 2 ) ] = ( 'es' === $lang ) ? $pair[1] : $pair[0];
+                }
+            }
+            $w['q_heading'] = self::label( 'q_heading', $lang );
+            $w['q_more']    = self::label( 'q_more', $lang );
+            $w['q_required'] = self::label( 'q_required', $lang );
+            foreach ( array( 'agreement_heading', 'agreement_tick', 'agreement_confirm', 'agreement_cancel', 'text_opt_in' ) as $key ) {
+                $w[ $key ] = SFAF_Agreement::line( $key, $lang );
+            }
+            $out[ $lang ] = $w;
+        }
+        return $out;
+    }
+
+    /**
      * Every fixed label: id => array( English, Spanish ). EMAILS.md lists them
      * for the reviewer beside the messages they sit in.
      *
@@ -399,6 +428,58 @@ class SFAF_Messages {
                 'ics_join'         => array( 'Join', 'Participar' ),
                 'ics_join_event'   => array( 'Join the event', 'Participar en el evento' ),
                 'in_person_online' => array( 'In person and online', 'En persona y en línea' ),
+                // The RSVP form's own words (3.113.6), switched by its English | Español toggle.
+                'f_heading'        => array( 'Register for this Event', 'Inscríbase en este evento' ),
+                'f_wait_heading'   => array( 'Join the waitlist', 'Únase a la lista de espera' ),
+                'f_first'          => array( 'First Name *', 'Nombre *' ),
+                'f_first_ph'       => array( 'Your first name', 'Su nombre' ),
+                'f_last'           => array( 'Last Name (optional)', 'Apellido (opcional)' ),
+                'f_last_ph'        => array( 'Your last name', 'Su apellido' ),
+                'f_email'          => array( 'Email *', 'Correo electrónico *' ),
+                'f_email_ph'       => array( 'your@email.com', 'su@correo.com' ),
+                'f_email_use'      => array( 'We use your email only for this event: your confirmation, a reminder, and any changes. It is never shared or added to a list.', 'Usamos su correo electrónico solo para este evento: su confirmación, un recordatorio y cualquier cambio. Nunca se comparte ni se agrega a una lista.' ),
+                'f_noemail'        => array( 'I do not use email, or prefer not to share it.', 'No uso correo electrónico o prefiero no compartirlo.' ),
+                'f_noemail_note'   => array( 'You will not get a confirmation, a reminder, or notice of changes.', 'No recibirá una confirmación, un recordatorio ni avisos de cambios.' ),
+                'f_online_email'   => array( 'Joining online needs an email address for the meeting link.', 'Para participar en línea se necesita un correo electrónico para el enlace de la reunión.' ),
+                'f_phone'          => array( 'Phone (optional)', 'Teléfono (opcional)' ),
+                'f_optin'          => array( 'Receive monthly email updates from SFAF with events, news, and updates.', 'Reciba correos mensuales de SFAF con eventos, noticias y novedades.' ),
+                'f_submit'         => array( 'Register Now', 'Inscribirse' ),
+                'f_submitting'     => array( 'Submitting...', 'Enviando...' ),
+                'f_cancel'         => array( 'Cancel', 'Cancelar' ),
+                'f_close'          => array( 'Close', 'Cerrar' ),
+                'f_attend'         => array( 'How will you attend? *', '¿Cómo participará? *' ),
+                'f_in_person'      => array( 'In person', 'En persona' ),
+                'f_online'         => array( 'Online', 'En línea' ),
+                'f_waitlist_tag'   => array( '(waitlist)', '(lista de espera)' ),
+                'f_both_full'      => array( 'Both options are full. Pick one to join its waitlist.', 'Las dos opciones están llenas. Elija una para unirse a su lista de espera.' ),
+                'f_one_full'       => array( 'One option is full. Picking it puts you on its waitlist.', 'Una opción está llena. Si la elige, quedará en su lista de espera.' ),
+                'f_pick_format'    => array( 'Please choose whether you are attending in person or online.', 'Indique si participará en persona o en línea.' ),
+                'f_need_first'     => array( 'Please fill in your first name.', 'Escriba su nombre.' ),
+                'f_need_email'     => array( 'Please fill in your email.', 'Escriba su correo electrónico.' ),
+                'f_registered'     => array( 'You are registered!', '¡Su inscripción está confirmada!' ),
+                'f_registered_name'=> array( 'You are registered, %s!', '¡Su inscripción está confirmada, %s!' ),
+                'f_see_you'        => array( 'We look forward to seeing you.', 'Esperamos verle pronto.' ),
+                'f_on_waitlist'    => array( 'You are on the waitlist.', 'Está en la lista de espera.' ),
+                'f_position'       => array( 'You are number %s. If a place opens, we will register you and email your confirmation.', 'Es el número %s. Si se abre un lugar, lo inscribiremos y le enviaremos su confirmación por correo electrónico.' ),
+                'f_inbox'          => array( 'Check your inbox for a confirmation, including your spam folder.', 'Busque su confirmación en su bandeja de entrada, incluida la carpeta de spam.' ),
+                'f_gcal'           => array( 'Add to Google Calendar', 'Agregar a Google Calendar' ),
+                'f_ics'            => array( 'Add to Apple or Outlook', 'Agregar a Apple u Outlook' ),
+                'f_went_wrong'     => array( 'Something went wrong. Please try again.', 'Algo salió mal. Inténtelo de nuevo.' ),
+                'f_network'        => array( 'Network error. Please try again.', 'Error de conexión. Inténtelo de nuevo.' ),
+                // What the server says back to the form, in the language it was sent in (3.113.6).
+                'e_required'       => array( 'First name and email are required.', 'Escriba su nombre y su correo electrónico.' ),
+                'e_email'          => array( 'Please enter a valid email address.', 'Escriba un correo electrónico válido.' ),
+                'e_no_event'       => array( 'This event could not be found.', 'No se encontró este evento.' ),
+                'e_cancelled'      => array( 'This event has been cancelled, so registrations are closed.', 'Este evento se canceló, así que las inscripciones están cerradas.' ),
+                'e_closed'         => array( 'RSVP is not available for this event.', 'Este evento no acepta inscripciones.' ),
+                'e_already'        => array( 'You have already registered for this event.', 'Ya se inscribió en este evento.' ),
+                'e_already_waiting'=> array( 'You are already on the waitlist for this event.', 'Ya está en la lista de espera de este evento.' ),
+                'e_needs_email'    => array( 'This event needs an email address to register.', 'Para inscribirse en este evento se necesita un correo electrónico.' ),
+                'e_agree'          => array( 'Agree to the event conditions to register.', 'Acepte las condiciones del evento para inscribirse.' ),
+                'e_option_full'    => array( 'That option is full. There are still places to attend %s.', 'Esa opción está llena. Todavía hay lugares para participar %s.' ),
+                'e_in_person'      => array( 'in person', 'en persona' ),
+                'e_online'         => array( 'online', 'en línea' ),
+                'e_full'           => array( 'This event is at capacity.', 'Este evento está lleno.' ),
             );
         }
         return $t;

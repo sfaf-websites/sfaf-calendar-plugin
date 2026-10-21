@@ -56,6 +56,7 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
     var currentAgreement = null;      // the opened button's data-uc-agreement, parsed (3.110.0)
     var agreedNow = false;            // Confirm RSVP pressed for this submit (3.110.0)
     var currentFull = [];      // the formats with no place left: the waitlist (3.106.0)
+    var currentLang = 'en';    // the form's English | Español toggle (3.113.6)
 
     /**
      * Run one initialiser without letting it take the others down.
@@ -1560,6 +1561,14 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
         var modalHTML = '<dialog class="uc-rsvp-modal-overlay" id="uc-rsvp-modal">' +
             '<div class="uc-rsvp-modal">' +
                 '<div class="uc-rsvp-form-view">' +
+                    // ENGLISH | ESPAÑOL (3.113.6), in the modal's top padding so
+                    // the form is no taller. It opens on the event's language;
+                    // what is picked is sent and kept with the registration.
+                    '<div class="uc-rsvp-lang" role="group" aria-label="Language / Idioma">' +
+                        '<button type="button" lang="en" data-uc-lang-pick="en" aria-pressed="true">English</button>' +
+                        '<span aria-hidden="true">|</span>' +
+                        '<button type="button" lang="es" data-uc-lang-pick="es" aria-pressed="false">Español</button>' +
+                    '</div>' +
                     '<h3 id="uc-rsvp-heading">Register for this Event</h3>' +
                     '<p class="uc-modal-subtitle" id="uc-rsvp-event-title"></p>' +
                     '<div class="uc-rsvp-form">' +
@@ -1595,15 +1604,15 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
                         // it, and the server does not require it either, so
                         // there is no level at which it quietly becomes
                         // mandatory.
-                        '<div><label for="uc-rsvp-first-name">First Name *</label>' +
-                            '<input type="text" id="uc-rsvp-first-name" autocomplete="given-name" placeholder="Your first name" /></div>' +
-                        '<div><label for="uc-rsvp-last-name">Last Name (optional)</label>' +
-                            '<input type="text" id="uc-rsvp-last-name" autocomplete="family-name" placeholder="Your last name" /></div>' +
-                        '<div><label for="uc-rsvp-email">Email *</label>' +
-                            '<input type="email" id="uc-rsvp-email" placeholder="your@email.com" />' +
+                        '<div><label for="uc-rsvp-first-name" data-uc-w="first">First Name *</label>' +
+                            '<input type="text" id="uc-rsvp-first-name" autocomplete="given-name" placeholder="Your first name" data-uc-w-ph="first_ph" /></div>' +
+                        '<div><label for="uc-rsvp-last-name" data-uc-w="last">Last Name (optional)</label>' +
+                            '<input type="text" id="uc-rsvp-last-name" autocomplete="family-name" placeholder="Your last name" data-uc-w-ph="last_ph" /></div>' +
+                        '<div><label for="uc-rsvp-email" data-uc-w="email">Email *</label>' +
+                            '<input type="email" id="uc-rsvp-email" placeholder="your@email.com" data-uc-w-ph="email_ph" />' +
                             // WHAT THE ADDRESS IS USED FOR, on every form and
                             // whether or not the box below is ticked (3.102.0).
-                            '<p class="uc-rsvp-note">We use your email only for this event: your confirmation, a reminder, and any changes. It is never shared or added to a list.</p>' +
+                            '<p class="uc-rsvp-note" data-uc-w="email_use">We use your email only for this event: your confirmation, a reminder, and any changes. It is never shared or added to a list.</p>' +
                             // REGISTERING WITHOUT ONE (3.102.0). The field stays
                             // required; this box is the only way past it. It is
                             // not offered to somebody joining online, and the
@@ -1611,10 +1620,10 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
                             // decides which of the two shows.
                             '<label class="uc-rsvp-optin uc-rsvp-noemail" id="uc-rsvp-noemail-wrap">' +
                                 '<input type="checkbox" id="uc-rsvp-noemail" value="1" />' +
-                                '<span>I do not use email, or prefer not to share it.</span>' +
+                                '<span data-uc-w="noemail">I do not use email, or prefer not to share it.</span>' +
                             '</label>' +
-                            '<p class="uc-rsvp-note" id="uc-rsvp-noemail-note" hidden>You will not get a confirmation, a reminder, or notice of changes.</p>' +
-                            '<p class="uc-rsvp-note" id="uc-rsvp-online-note" hidden>Joining online needs an email address for the meeting link.</p></div>' +
+                            '<p class="uc-rsvp-note" id="uc-rsvp-noemail-note" data-uc-w="noemail_note" hidden>You will not get a confirmation, a reminder, or notice of changes.</p>' +
+                            '<p class="uc-rsvp-note" id="uc-rsvp-online-note" data-uc-w="online_email" hidden>Joining online needs an email address for the meeting link.</p></div>' +
                         // NOT FORMATTED AS THEY TYPE. The number is punctuated
                         // once, on the server, when it is complete and only if
                         // it is a plain US ten-digit number. See
@@ -1622,7 +1631,7 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
                         // under the caret while somebody is still typing it,
                         // and an international number, a country code or an
                         // extension is kept exactly as entered.
-                        '<div><label for="uc-rsvp-phone">Phone (optional)</label>' +
+                        '<div><label for="uc-rsvp-phone" data-uc-w="phone">Phone (optional)</label>' +
                             '<input type="tel" id="uc-rsvp-phone" autocomplete="tel" placeholder="(555) 000-0000" />' +
                             // TEXT ME ABOUT THIS EVENT (3.110.0): off, and only once a
                             // number is typed. Its words are the event's language,
@@ -1636,11 +1645,11 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
                         // list, so this is its own decision and it starts off.
                         '<label class="uc-rsvp-optin">' +
                             '<input type="checkbox" id="uc-rsvp-optin" value="1" />' +
-                            '<span>Receive monthly email updates from SFAF with events, news, and updates.</span>' +
+                            '<span data-uc-w="optin">Receive monthly email updates from SFAF with events, news, and updates.</span>' +
                         '</label>' +
                         '<div class="uc-rsvp-error" id="uc-rsvp-error" style="display:none;"></div>' +
                         '<button class="uc-rsvp-submit" id="uc-rsvp-submit-btn">Register Now</button>' +
-                        '<button class="uc-rsvp-cancel" id="uc-rsvp-cancel-btn">Cancel</button>' +
+                        '<button class="uc-rsvp-cancel" id="uc-rsvp-cancel-btn" data-uc-w="cancel">Cancel</button>' +
                     '</div>' +
                 '</div>' +
                 '<div class="uc-rsvp-success" id="uc-rsvp-success" style="display:none;">' +
@@ -1654,7 +1663,7 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
                     // whether it went at all. This says the confirmation is
                     // coming and names the two places to look, in one
                     // sentence, as an instruction rather than an apology.
-                    '<p class="uc-rsvp-inbox-note">Check your inbox for a confirmation, including your spam folder.</p>' +
+                    '<p class="uc-rsvp-inbox-note" data-uc-w="inbox">Check your inbox for a confirmation, including your spam folder.</p>' +
                     // ADD TO CALENDAR, HERE, BECAUSE THIS IS THE MOMENT.
                     //
                     // Somebody who has just registered is thinking about the
@@ -1666,16 +1675,22 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
                     // helpers the email uses, so the modal cannot offer a
                     // different link from the message.
                     '<div class="uc-rsvp-addcal-row" id="uc-rsvp-addcal" style="display:none;">' +
-                        '<a class="uc-rsvp-addcal uc-rsvp-addcal-primary" id="uc-rsvp-gcal" href="#" target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>' +
-                        '<a class="uc-rsvp-addcal uc-rsvp-addcal-secondary" id="uc-rsvp-ics" href="#">Add to Apple or Outlook</a>' +
+                        '<a class="uc-rsvp-addcal uc-rsvp-addcal-primary" id="uc-rsvp-gcal" href="#" target="_blank" rel="noopener noreferrer" data-uc-w="gcal">Add to Google Calendar</a>' +
+                        '<a class="uc-rsvp-addcal uc-rsvp-addcal-secondary" id="uc-rsvp-ics" href="#" data-uc-w="ics">Add to Apple or Outlook</a>' +
                     '</div>' +
-                    '<button class="uc-rsvp-cancel" id="uc-rsvp-close-btn" style="margin-top: 16px;">Close</button>' +
+                    '<button class="uc-rsvp-cancel" id="uc-rsvp-close-btn" style="margin-top: 16px;" data-uc-w="close">Close</button>' +
                 '</div>' +
             '</div>' +
         '</dialog>';
 
         $('body').append(modalHTML);
         modal = $('#uc-rsvp-modal');
+        addLangStyle();
+
+        // The toggle: the form's words change at once, and the choice is sent.
+        $(document).on('click', '[data-uc-lang-pick]', function () {
+            setLang($(this).attr('data-uc-lang-pick'));
+        });
 
         /* A dialog closes itself on Escape, and that path does not go through
            closeOverlay(). Listening for its own close event is what keeps the
@@ -1714,6 +1729,7 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
             agreedNow = false;
             try { currentAgreement = JSON.parse($(this).attr('data-uc-agreement') || 'null'); } catch (err) { currentAgreement = null; }
             $('#uc-rsvp-text-label').text($(this).attr('data-uc-text-label') || 'Text me about this event');
+            currentLang = ($(this).attr('data-uc-lang') === 'es') ? 'es' : 'en';
             $('#uc-rsvp-text').prop('checked', false);
             $('#uc-rsvp-text-wrap').attr('hidden', 'hidden');
 
@@ -1725,18 +1741,18 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
             $('#uc-rsvp-error').hide();
             // The previous registrant's greeting and their add-to-calendar
             // links belong to their event, not to this one.
-            $('#uc-rsvp-success-msg').text('You are registered!');
-            $('#uc-rsvp-success-sub').text('We look forward to seeing you.');
+            $('#uc-rsvp-success-msg').text(W('registered', 'You are registered!'));
+            $('#uc-rsvp-success-sub').text(W('see_you', 'We look forward to seeing you.'));
             $('#uc-rsvp-addcal').hide();
             // A cleared field is not an invalid field. Reopening the modal must
             // not show last time's complaint about an empty box.
             if (window.sfafEmail) { window.sfafEmail.clear(document.getElementById('uc-rsvp-email')); }
-            $('#uc-rsvp-submit-btn').prop('disabled', false).text('Register Now');
+            $('#uc-rsvp-submit-btn').prop('disabled', false);
             $('.uc-rsvp-form-view').show();
             $('#uc-rsvp-success').hide();
             $('#uc-rsvp-success .uc-rsvp-inbox-note').show();
             syncNoEmail();
-            syncWaitlist();
+            setLang(currentLang);
 
             openOverlay(modal);
         });
@@ -1851,11 +1867,12 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
 
     function openAgreement() {
         var a = currentAgreement || {};
-        $('#uc-agree-heading').text(a.heading || '');
+        $('#uc-agree-heading').text(W('agreement_heading', a.heading || ''));
         $('#uc-agree-text').html(a.text || '');
-        $('#uc-agree-tick-label').text(a.tick || '');
-        $('#uc-agree-confirm').text(a.confirm || '').prop('disabled', true);
-        $('#uc-agree-cancel').text(a.cancel || '');
+        $('#uc-agree-tick-label').text(W('agreement_tick', a.tick || ''));
+        $('#uc-agree-confirm').text(W('agreement_confirm', a.confirm || '')).prop('disabled', true);
+        $('#uc-agree-cancel').text(W('agreement_cancel', a.cancel || ''));
+        $('#uc-agree').attr('lang', currentLang);
         $('#uc-agree-tick').prop('checked', false);
         var d = document.getElementById('uc-agree');
         if (typeof d.showModal === 'function') { if (!d.open) { d.showModal(); } } else { d.setAttribute('open', ''); }
@@ -1951,12 +1968,63 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
         return chosen !== '' && currentFull.indexOf(chosen) !== -1;
     }
     function submitLabel() {
-        return waitlistChosen() ? 'Join the waitlist' : 'Register Now';
+        return waitlistChosen() ? W('wait_heading', 'Join the waitlist') : W('submit', 'Register Now');
     }
     function syncWaitlist() {
         var wait = waitlistChosen();
-        $('#uc-rsvp-heading').text(wait ? 'Join the waitlist' : 'Register for this Event');
+        $('#uc-rsvp-heading').text(wait ? W('wait_heading', 'Join the waitlist') : W('heading', 'Register for this Event'));
         $('#uc-rsvp-submit-btn').text(submitLabel());
+    }
+
+    /* ENGLISH | ESPAÑOL (3.113.6). The words come from the server once per page,
+       both languages, in ucData.rsvpWords (SFAF_Messages::form_words()); the
+       English in the markup is what shows if they did not arrive. What people
+       typed for the event, its questions and its agreement, is printed as typed. */
+    function W(key, fallback) {
+        var all = (window.ucData && window.ucData.rsvpWords) || {};
+        var set = all[currentLang] || {};
+        return (typeof set[key] === 'string' && set[key] !== '') ? set[key] : fallback;
+    }
+    function setLang(lang) {
+        currentLang = (lang === 'es') ? 'es' : 'en';
+        $('#uc-rsvp-modal .uc-rsvp-modal').attr('lang', currentLang);
+        $('[data-uc-lang-pick]').each(function () {
+            $(this).attr('aria-pressed', $(this).attr('data-uc-lang-pick') === currentLang ? 'true' : 'false');
+        });
+        $('#uc-rsvp-modal [data-uc-w]').each(function () {
+            var key = $(this).attr('data-uc-w');
+            if (!$(this).data('ucEn')) { $(this).data('ucEn', $(this).text()); }
+            $(this).text(W(key, $(this).data('ucEn')));
+        });
+        $('#uc-rsvp-modal [data-uc-w-ph]').each(function () {
+            if (!$(this).data('ucEnPh')) { $(this).data('ucEnPh', $(this).attr('placeholder')); }
+            $(this).attr('placeholder', W($(this).attr('data-uc-w-ph'), $(this).data('ucEnPh')));
+        });
+        $('#uc-rsvp-modal [data-uc-fmt]').each(function () {
+            var f = $(this).attr('data-uc-fmt');
+            $(this).text(W(f === 'online' ? 'online' : 'in_person', f === 'online' ? 'Online' : 'In person') +
+                ($(this).attr('data-uc-fmt-full') ? ' ' + W('waitlist_tag', '(waitlist)') : ''));
+        });
+        if (currentQuestions) {
+            $('#uc-rsvp-questions .uc-rsvp-q-heading').text(W('q_heading', currentQuestions.heading));
+            $('#uc-rsvp-questions .uc-rsvp-q-more-label').text(W('q_more', currentQuestions.more));
+        }
+        $('#uc-rsvp-text-label').text(W('text_opt_in', $('#uc-rsvp-text-label').text()));
+        if (!$('#uc-rsvp-submit-btn').prop('disabled')) { syncWaitlist(); } else { $('#uc-rsvp-heading').text(waitlistChosen() ? W('wait_heading', 'Join the waitlist') : W('heading', 'Register for this Event')); }
+        $('#uc-rsvp-error').hide();
+    }
+    function addLangStyle() {
+        if (document.getElementById('uc-rsvp-lang-css')) { return; }
+        /* Here and not in calendar.css, which the embed loads: the embed never
+           draws this form, and 3.113.6 changes nothing the embed receives.
+           #0E7680 on white is 5.35:1, #1A1D21 is 16.9:1. 24px tall, the WCAG
+           target size, inside the modal's 32px top padding. */
+        $('head').append('<style id="uc-rsvp-lang-css">' +
+            '.uc-rsvp-modal-overlay .uc-rsvp-form-view{position:relative}' +
+            '.uc-rsvp-modal-overlay .uc-rsvp-lang{position:absolute;top:-28px;right:-12px;display:flex;align-items:center;gap:0;font-family:var(--uc-font-heading);font-size:13px;line-height:16px;color:#6B7280}' +
+            '.uc-rsvp-modal-overlay .uc-rsvp-lang button{margin:0;padding:4px 6px;border:0;border-radius:4px;background:none;color:#0E7680;font-family:var(--uc-font-heading);font-size:13px;font-weight:600;line-height:16px;text-decoration:underline;text-underline-offset:2px;cursor:pointer}' +
+            '.uc-rsvp-modal-overlay .uc-rsvp-lang button[aria-pressed="true"]{color:#1A1D21;font-weight:700;text-decoration:none;cursor:default}' +
+            '</style>');
     }
 
     /**
@@ -2075,7 +2143,7 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
          * full, rather than wonder whether the form forgot it. */
         var labels = { in_person: 'In person', online: 'Online' };
         var html = '<fieldset class="uc-rsvp-format-set">' +
-            '<legend>How will you attend? *</legend>' +
+            '<legend data-uc-w="attend">' + W('attend', 'How will you attend? *') + '</legend>' +
             '<div class="uc-segmented">';
         var open = 0;
         for (var i = 0; i < formats.length; i++) {
@@ -2084,14 +2152,15 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
             if (!isFull) { open++; }
             html += '<label class="uc-segment' + (isFull ? ' is-full' : '') + '">' +
                 '<input type="radio" name="uc_rsvp_format" value="' + f + '" />' +
-                '<span class="uc-segment-label">' + (labels[f] || f) + (isFull ? ' (waitlist)' : '') + '</span>' +
+                '<span class="uc-segment-label" data-uc-fmt="' + f + '"' + (isFull ? ' data-uc-fmt-full="1"' : '') + '>' +
+                    W(f === 'online' ? 'online' : 'in_person', labels[f] || f) + (isFull ? ' ' + W('waitlist_tag', '(waitlist)') : '') + '</span>' +
                 '</label>';
         }
         html += '</div>';
         if (0 === open) {
-            html += '<p class="uc-rsvp-note">Both options are full. Pick one to join its waitlist.</p>';
+            html += '<p class="uc-rsvp-note" data-uc-w="both_full">' + W('both_full', 'Both options are full. Pick one to join its waitlist.') + '</p>';
         } else if (open === 1) {
-            html += '<p class="uc-rsvp-note">One option is full. Picking it puts you on its waitlist.</p>';
+            html += '<p class="uc-rsvp-note" data-uc-w="one_full">' + W('one_full', 'One option is full. Picking it puts you on its waitlist.') + '</p>';
         }
         html += '</fieldset>';
         box.html(html).removeAttr('hidden');
@@ -2134,7 +2203,7 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
         if (formatBox.length && !formatBox.attr('hidden')) {
             format = formatBox.find('input[type="radio"]:checked').val() || '';
             if (!format) {
-                $('#uc-rsvp-error').text('Please choose whether you are attending in person or online.').show();
+                $('#uc-rsvp-error').text(W('pick_format', 'Please choose whether you are attending in person or online.')).show();
                 formatBox.find('input[type="radio"]').not('[disabled]').first().focus();
                 return;
             }
@@ -2143,13 +2212,13 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
         // Required questions, before the name, in the order they are asked.
         var qa = collectAnswers();
         if (qa.missing) {
-            $('#uc-rsvp-error').text(currentQuestions.required).show();
+            $('#uc-rsvp-error').text(W('q_required', currentQuestions.required)).show();
             $(qa.missing).find('input').first().focus();
             return;
         }
 
         if (!first) {
-            $('#uc-rsvp-error').text('Please fill in your first name.').show();
+            $('#uc-rsvp-error').text(W('need_first', 'Please fill in your first name.')).show();
             $('#uc-rsvp-first-name').focus();
             return;
         }
@@ -2159,7 +2228,7 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
             return;
         }
         if (!noEmail && !email) {
-            $('#uc-rsvp-error').text('Please fill in your email.').show();
+            $('#uc-rsvp-error').text(W('need_email', 'Please fill in your email.')).show();
             return;
         }
 
@@ -2171,7 +2240,7 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
         }
 
         var btn = $('#uc-rsvp-submit-btn');
-        btn.prop('disabled', true).text('Submitting...');
+        btn.prop('disabled', true).text(W('submitting', 'Submitting...'));
         $('#uc-rsvp-error').hide();
 
         $.ajax({
@@ -2196,7 +2265,9 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
                 answers_more: JSON.stringify(qa.more),
                 // Confirm RSVP was pressed in the agreement dialog (3.110.0).
                 agreed:       agreedNow ? '1' : '',
-                text_opt_in:  (phone && $('#uc-rsvp-text').is(':checked')) ? '1' : ''
+                text_opt_in:  (phone && $('#uc-rsvp-text').is(':checked')) ? '1' : '',
+                // The toggle (3.113.6): every message to this person speaks it.
+                lang:         currentLang
             },
             success: function(response) {
                 if (response.success) {
@@ -2207,13 +2278,16 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
                      * email greets from, so the screen and the email say the
                      * same word.
                      */
+                    // In the language on the toggle now, not the one it opened in.
+                    $('#uc-rsvp-success-msg').text(W('registered', 'You are registered!'));
+                    $('#uc-rsvp-success-sub').text(W('see_you', 'We look forward to seeing you.'));
                     if (response.waitlisted) {
-                        $('#uc-rsvp-success-msg').text('You are on the waitlist.');
-                        $('#uc-rsvp-success-sub').text('You are number ' + response.position + '. If a place opens, we will register you and email your confirmation.');
+                        $('#uc-rsvp-success-msg').text(W('on_waitlist', 'You are on the waitlist.'));
+                        $('#uc-rsvp-success-sub').text(W('position', 'You are number %s. If a place opens, we will register you and email your confirmation.').replace('%s', response.position));
                         response.gcal = '';
                         response.ics = '';
                     } else if (response.first_name) {
-                        $('#uc-rsvp-success-msg').text('You are registered, ' + response.first_name + '!');
+                        $('#uc-rsvp-success-msg').text(W('registered_name', 'You are registered, %s!').replace('%s', response.first_name));
                     }
 
                     // Add to calendar, drawn only where there is somewhere to
@@ -2242,12 +2316,12 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
                     $('#uc-rsvp-success').show();
 
                 } else {
-                    $('#uc-rsvp-error').text(response.message || 'Something went wrong.').show();
+                    $('#uc-rsvp-error').text(response.message || W('went_wrong', 'Something went wrong.')).show();
                     btn.prop('disabled', false).text(submitLabel());
                 }
             },
             error: function() {
-                $('#uc-rsvp-error').text('Network error. Please try again.').show();
+                $('#uc-rsvp-error').text(W('network', 'Network error. Please try again.')).show();
                 btn.prop('disabled', false).text(submitLabel());
             }
         });

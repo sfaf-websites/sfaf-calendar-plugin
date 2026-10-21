@@ -42,8 +42,8 @@ $plants = array(
      * places the format can be dropped and either alone is the whole fault. */
     'the reminder query stops selecting the format' => array(
         'file' => 'includes/class-sfaf-reminders.php',
-        'from' => "\"SELECT id, email, format FROM \$table WHERE event_id = %d AND status = 'confirmed'\"",
-        'to'   => "\"SELECT id, email FROM \$table WHERE event_id = %d AND status = 'confirmed'\"",
+        'from' => "\"SELECT id, email, format, lang FROM \$table WHERE event_id = %d AND status = 'confirmed'\"",
+        'to'   => "\"SELECT id, email, lang FROM \$table WHERE event_id = %d AND status = 'confirmed'\"",
     ),
 
     'the reminder builds a person with no format' => array(
@@ -57,8 +57,8 @@ $plants = array(
      * which is the shape that fails quietly rather than loudly. */
     'the reminder loop stops passing the format to send_one()' => array(
         'file' => 'includes/class-sfaf-reminders.php',
-        'from' => "self::send_one( \$event_id, \$email, \$type, \$claim['token'], \$format )",
-        'to'   => "self::send_one( \$event_id, \$email, \$type, \$claim['token'] )",
+        'from' => "self::send_one( \$event_id, \$email, \$type, \$claim['token'], \$format, ",
+        'to'   => "self::send_one( \$event_id, \$email, \$type, \$claim['token'], '', ",
     ),
 
     /* ---- THE TOKEN: the calendar file's half. --------------------------- */

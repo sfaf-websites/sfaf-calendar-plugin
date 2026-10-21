@@ -144,6 +144,8 @@ class SFAF_RSVP {
             'agreed'       => isset( $_POST['agreed'] ) && '1' === (string) wp_unslash( $_POST['agreed'] ),
             // "Text me about this event" under the phone (3.110.0).
             'text_opt_in'  => ! empty( $_POST['text_opt_in'] ),
+            // The form's English | Español toggle (3.113.6); submit() keeps only en or es.
+            'lang'         => isset( $_POST['lang'] ) ? sanitize_key( wp_unslash( $_POST['lang'] ) ) : '',
         ) );
 
         wp_send_json( $result );
@@ -256,18 +258,27 @@ class SFAF_RSVP {
             $data['email'] = '';
         }
 
+        /*
+         * THE LANGUAGE PICKED ON THE FORM (3.113.6), stored with the row so every
+         * message to this person speaks it. '' when the form sent none, which is
+         * a page loaded before 3.113.6: the row then follows the event, as every
+         * row before it does. Whatever is refused here is said in it too.
+         */
+        $data['lang'] = ( isset( $data['lang'] ) && in_array( $data['lang'], array( 'en', 'es' ), true ) ) ? $data['lang'] : '';
+        $say          = '' !== $data['lang'] ? $data['lang'] : ( empty( $data['event_id'] ) ? 'en' : sfaf_event_language( (int) $data['event_id'] ) );
+
         if ( empty( $data['event_id'] ) || '' === $data['first_name'] || ( ! $data['no_email'] && empty( $data['email'] ) ) ) {
-            return array( 'success' => false, 'message' => 'First name and email are required.' );
+            return array( 'success' => false, 'message' => SFAF_Messages::label( 'e_required', $say ) );
         }
 
         if ( ! $data['no_email'] && ! is_email( $data['email'] ) ) {
-            return array( 'success' => false, 'message' => 'Please enter a valid email address.' );
+            return array( 'success' => false, 'message' => SFAF_Messages::label( 'e_email', $say ) );
         }
 
         // Make sure this is a real, published event before accepting an RSVP.
         $event = get_post( $data['event_id'] );
         if ( ! $event || $event->post_type !== 'uc_event' || $event->post_status !== 'publish' ) {
-            return array( 'success' => false, 'message' => 'This event could not be found.' );
+            return array( 'success' => false, 'message' => SFAF_Messages::label( 'e_no_event', $say ) );
         }
 
         /*
@@ -285,13 +296,13 @@ class SFAF_RSVP {
          * know the event is off rather than that the button is broken.
          */
         if ( SFAF_Cancellation::is_cancelled( $data['event_id'] ) ) {
-            return array( 'success' => false, 'message' => 'This event has been cancelled, so registrations are closed.' );
+            return array( 'success' => false, 'message' => SFAF_Messages::label( 'e_cancelled', $say ) );
         }
 
         // Don't accept RSVPs for events that don't have RSVP enabled, or that
         // take their registrations on another site (3.110.1).
         if ( get_post_meta( $data['event_id'], '_uc_rsvp_enabled', true ) !== '1' || ( class_exists( 'SFAF_Register_Elsewhere' ) && SFAF_Register_Elsewhere::is_on( $data['event_id'] ) ) ) {
-            return array( 'success' => false, 'message' => 'RSVP is not available for this event.' );
+            return array( 'success' => false, 'message' => SFAF_Messages::label( 'e_closed', $say ) );
         }
 
         // Check for duplicate. Only by address: two people who both registered
@@ -303,7 +314,7 @@ class SFAF_RSVP {
         ) );
 
         if ( $existing > 0 ) {
-            return array( 'success' => false, 'message' => 'You have already registered for this event.' );
+            return array( 'success' => false, 'message' => SFAF_Messages::label( 'e_already', $say ) );
         }
 
         /*
@@ -341,10 +352,10 @@ class SFAF_RSVP {
         // Email required to register (3.106.0). The online case keeps its own
         // sentence below.
         if ( $data['no_email'] && SFAF_Online::MODE_ONLINE !== $attending && sfaf_email_required( $data['event_id'], $format ) ) {
-            return array( 'success' => false, 'message' => 'This event needs an email address to register.' );
+            return array( 'success' => false, 'message' => SFAF_Messages::label( 'e_needs_email', $say ) );
         }
         if ( $data['no_email'] && SFAF_Online::MODE_ONLINE === $attending ) {
-            return array( 'success' => false, 'message' => 'Joining online needs an email address for the meeting link.' );
+            return array( 'success' => false, 'message' => SFAF_Messages::label( 'f_online_email', $say ) );
         }
 
         /*
@@ -361,7 +372,7 @@ class SFAF_RSVP {
          * somebody attending in person. Before the full check, so somebody
          * joining a waitlist answers too.
          */
-        $checked = SFAF_Questions::clean( $data['event_id'], $attending, $data['answers'] ?? array(), $data['answers_more'] ?? array() );
+        $checked = SFAF_Questions::clean( $data['event_id'], $attending, $data['answers'] ?? array(), $data['answers_more'] ?? array(), $say );
         if ( isset( $checked['error'] ) ) {
             return array( 'success' => false, 'message' => $checked['error'] );
         }
@@ -373,7 +384,7 @@ class SFAF_RSVP {
          */
         if ( class_exists( 'SFAF_Agreement' ) && SFAF_Agreement::is_on( $data['event_id'] ) ) {
             if ( empty( $data['agreed'] ) ) {
-                return array( 'success' => false, 'message' => 'Agree to the event conditions to register.' );
+                return array( 'success' => false, 'message' => SFAF_Messages::label( 'e_agree', $say ) );
             }
             $data['agreed_at'] = current_time( 'mysql' );
         } else {
@@ -398,13 +409,13 @@ class SFAF_RSVP {
                 return $joined;
             }
             if ( $hybrid && ! sfaf_event_full( $data['event_id'] ) ) {
-                $other = ( SFAF_Online::MODE_ONLINE === $format ) ? 'in person' : 'online';
+                $other = SFAF_Messages::label( ( SFAF_Online::MODE_ONLINE === $format ) ? 'e_in_person' : 'e_online', $say );
                 return array(
                     'success' => false,
-                    'message' => 'That option is full. There are still places to attend ' . $other . '.',
+                    'message' => sprintf( SFAF_Messages::label( 'e_option_full', $say ), $other ),
                 );
             }
-            return array( 'success' => false, 'message' => 'This event is at capacity.' );
+            return array( 'success' => false, 'message' => SFAF_Messages::label( 'e_full', $say ) );
         }
 
         // Insert RSVP.
@@ -435,7 +446,9 @@ class SFAF_RSVP {
             // Schema 13 (3.110.0): when they agreed, and whether they want texts.
             'agreed_at'   => '' !== $data['agreed_at'] ? $data['agreed_at'] : null,
             'text_opt_in' => (int) $data['text_opt_in'],
-        ), array( '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d' ) );
+            // Schema 15 (3.113.6): the form's language, '' for a form without the toggle.
+            'lang'        => $data['lang'],
+        ), array( '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s' ) );
 
         if ( $inserted ) {
             /*
@@ -481,7 +494,7 @@ class SFAF_RSVP {
 
             return array(
                 'success'    => true,
-                'message'    => 'You are registered! We look forward to seeing you.',
+                'message'    => SFAF_Messages::label( 'f_registered', $say ) . ' ' . SFAF_Messages::label( 'f_see_you', $say ),
                 // FIRST NAME ONLY for the greeting on screen, matching the
                 // confirmation email's "You are registered, Mark."
                 'first_name' => $data['first_name'],
@@ -499,7 +512,7 @@ class SFAF_RSVP {
             );
         }
 
-        return array( 'success' => false, 'message' => 'Something went wrong. Please try again.' );
+        return array( 'success' => false, 'message' => SFAF_Messages::label( 'f_went_wrong', $say ) );
     }
 
     /**
@@ -551,6 +564,8 @@ class SFAF_RSVP {
              * told by the gate's "the event never asked" branch and still are.
              */
             'format'     => isset( $data['format'] ) ? (string) $data['format'] : '',
+            // The language they registered in (3.113.6), '' to follow the event.
+            'lang'       => isset( $data['lang'] ) ? (string) $data['lang'] : '',
         );
 
         /*

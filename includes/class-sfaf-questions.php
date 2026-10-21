@@ -175,9 +175,10 @@ class SFAF_Questions {
      * @param string $format   the format the person registered in
      * @param mixed  $answers  question id => option id or list of option ids
      * @param mixed  $more     question id => option id => text
+     * @param string $lang     the language to refuse in, '' for the event's (3.113.6)
      * @return array{rows:array[]}|array{error:string}
      */
-    public static function clean( $event_id, $format, $answers, $more ) {
+    public static function clean( $event_id, $format, $answers, $more, $lang = '' ) {
         $answers = is_array( $answers ) ? $answers : array();
         $more    = is_array( $more ) ? $more : array();
         $rows    = array();
@@ -196,7 +197,7 @@ class SFAF_Questions {
                 $picked = array_slice( $picked, 0, 1 );
             }
             if ( $q['required'] && ! $picked ) {
-                return array( 'error' => SFAF_Messages::label( 'q_required', sfaf_event_language( (int) $event_id ) ) );
+                return array( 'error' => SFAF_Messages::label( 'q_required', '' !== $lang ? $lang : sfaf_event_language( (int) $event_id ) ) );
             }
             foreach ( $picked as $oid ) {
                 $o    = $by_id[ $oid ];

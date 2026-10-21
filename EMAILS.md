@@ -273,3 +273,53 @@ Labels, buttons and the calendar file's words. These are not edited on the Templ
 | Join | Participar |
 | Join the event | Participar en el evento |
 | In person and online | En persona y en línea |
+| Register for this Event | Inscríbase en este evento |
+| Join the waitlist | Únase a la lista de espera |
+| First Name * | Nombre * |
+| Your first name | Su nombre |
+| Last Name (optional) | Apellido (opcional) |
+| Your last name | Su apellido |
+| Email * | Correo electrónico * |
+| your@email.com | su@correo.com |
+| We use your email only for this event: your confirmation, a reminder, and any changes. It is never shared or added to a list. | Usamos su correo electrónico solo para este evento: su confirmación, un recordatorio y cualquier cambio. Nunca se comparte ni se agrega a una lista. |
+| I do not use email, or prefer not to share it. | No uso correo electrónico o prefiero no compartirlo. |
+| You will not get a confirmation, a reminder, or notice of changes. | No recibirá una confirmación, un recordatorio ni avisos de cambios. |
+| Joining online needs an email address for the meeting link. | Para participar en línea se necesita un correo electrónico para el enlace de la reunión. |
+| Phone (optional) | Teléfono (opcional) |
+| Receive monthly email updates from SFAF with events, news, and updates. | Reciba correos mensuales de SFAF con eventos, noticias y novedades. |
+| Register Now | Inscribirse |
+| Submitting... | Enviando... |
+| Cancel | Cancelar |
+| Close | Cerrar |
+| How will you attend? * | ¿Cómo participará? * |
+| In person | En persona |
+| Online | En línea |
+| (waitlist) | (lista de espera) |
+| Both options are full. Pick one to join its waitlist. | Las dos opciones están llenas. Elija una para unirse a su lista de espera. |
+| One option is full. Picking it puts you on its waitlist. | Una opción está llena. Si la elige, quedará en su lista de espera. |
+| Please choose whether you are attending in person or online. | Indique si participará en persona o en línea. |
+| Please fill in your first name. | Escriba su nombre. |
+| Please fill in your email. | Escriba su correo electrónico. |
+| You are registered! | ¡Su inscripción está confirmada! |
+| You are registered, %s! | ¡Su inscripción está confirmada, %s! |
+| We look forward to seeing you. | Esperamos verle pronto. |
+| You are on the waitlist. | Está en la lista de espera. |
+| You are number %s. If a place opens, we will register you and email your confirmation. | Es el número %s. Si se abre un lugar, lo inscribiremos y le enviaremos su confirmación por correo electrónico. |
+| Check your inbox for a confirmation, including your spam folder. | Busque su confirmación en su bandeja de entrada, incluida la carpeta de spam. |
+| Add to Google Calendar | Agregar a Google Calendar |
+| Add to Apple or Outlook | Agregar a Apple u Outlook |
+| Something went wrong. Please try again. | Algo salió mal. Inténtelo de nuevo. |
+| Network error. Please try again. | Error de conexión. Inténtelo de nuevo. |
+| First name and email are required. | Escriba su nombre y su correo electrónico. |
+| Please enter a valid email address. | Escriba un correo electrónico válido. |
+| This event could not be found. | No se encontró este evento. |
+| This event has been cancelled, so registrations are closed. | Este evento se canceló, así que las inscripciones están cerradas. |
+| RSVP is not available for this event. | Este evento no acepta inscripciones. |
+| You have already registered for this event. | Ya se inscribió en este evento. |
+| You are already on the waitlist for this event. | Ya está en la lista de espera de este evento. |
+| This event needs an email address to register. | Para inscribirse en este evento se necesita un correo electrónico. |
+| Agree to the event conditions to register. | Acepte las condiciones del evento para inscribirse. |
+| That option is full. There are still places to attend %s. | Esa opción está llena. Todavía hay lugares para participar %s. |
+| in person | en persona |
+| online | en línea |
+| This event is at capacity. | Este evento está lleno. |
