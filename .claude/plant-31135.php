@@ -17,7 +17,7 @@ $root = dirname( __DIR__ );
 $bar  = "    border: 0; border-top: 1px solid #373433; border-radius: 0;\n    background: var(--p-panel); box-shadow: 0 -4px 12px rgba(55, 52, 51, 0.12);";
 
 $plants = array(
-    'E: the stylesheet the embed loads changes' => array( 'embed-identity-test.php', 'B: public/css/calendar.css differs from 3.113.4', array(
+    'E: the stylesheet the embed loads changes' => array( 'embed-identity-test.php', 'B: public/css/calendar.css differs from 3.113.', array(
         array( 'public/css/calendar.css', "/* SFAF Calendar Frontend Styles */\n", "/* SFAF Calendar Frontend Styles */\n.uc-editor-bar { background: #fff; }\n" ),
     ) ),
     'E: an embed answer changes' => array( 'embed-identity-test.php', 'A: ', array(

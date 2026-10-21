@@ -2255,7 +2255,6 @@
                      */
                     // In the language on the toggle now, not the one it opened in.
                     $('#uc-rsvp-success-msg').text(W('registered', 'You are registered!'));
-                    $('#uc-rsvp-success-sub').text(W('see_you', 'We look forward to seeing you.'));
                     if (response.waitlisted) {
                         $('#uc-rsvp-success-msg').text(W('on_waitlist', 'You are on the waitlist.'));
                         $('#uc-rsvp-success-sub').text(W('position', 'You are number %s. If a place opens, we will register you and email your confirmation.').replace('%s', response.position));
