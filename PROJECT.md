@@ -5062,9 +5062,24 @@ as a successful fetch.
 **Settings & Integrations carries the panel**: hub address (default
 `https://hub.sfaf.org`), API key, username, password, tracker ID (default
 `162570`), **Auto-Import events** (off by default), **Last fetch** (when, rows
-read, created, updated, or the failure), **Signup links** (when the list was
-last read, and how many upcoming imported events have their own page),
-**Test connection** and the **Tracker probe**.
+read, created, updated, then any of unchanged, not imported, dismissed here, in
+the trash here, deleted here for good, listed twice, could not be read and could
+not be saved, or the failure), the **last fetch row by row** under it, folded,
+**Signup links** (when the list was last read, and how many upcoming imported
+events have their own page), **Test connection** and the **Tracker probe**.
+
+- **The fetch log (3.113.7)** keeps the last fetch only, in
+  `sfaf_everyaction_fetch_log` (not autoloaded), replaced by each fetch: per
+  row the UUID, title, Start_Time and End_Time as the tracker sent them, both
+  times as `to_local()` read them (0 for one it could not read), the outcome
+  and why. **`SFAF_Sources::run_adapter()` records the outcome of every item**
+  in `$result['rows']` with its place in the fetch, for any source; the
+  adapter pairs it with the row it kept in `normalize()`, which keeps a row
+  before refusing it, so an unreadable one is logged too. `untouched` stays the
+  sum of the new `dismissed`, `trashed` and `deleted_skip`. **A repeated UUID
+  never reaches the run**: `read_rows()` keeps the first and returns the rest
+  as `repeated` (not the first page answered again, which is how pages count),
+  and the adapter logs them as listed twice.
 
 - **Test connection** logs in, reads the first page, logs out, and says
   "Connected. Tracker reachable, N rows." or names the step that failed with the

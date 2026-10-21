@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.113.6
+Stable tag: 3.113.7
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,16 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.113.7 =
+
+**The EveryAction panel keeps the last fetch row by row. The embed is 3.113.6's.**
+
+**THE EMBED IS UNCHANGED.** Its route, answers and headers, its script and stylesheet, the [sfaf_calendar] block, the scheduled tasks, the taxonomies and the rewrite rules are 3.113.6's; only the version number embed.js and its answers carry has moved. Nothing public changes.
+
+* **Settings & Integrations > EveryAction: "Rows in the last fetch"**, folded under Last fetch. One row for each row the tracker sent: its UUID, its title, Start_Time and End_Time exactly as received, both times as the calendar read them, and what happened: added, updated (and what changed), unchanged, not imported (and why), dismissed here, in the trash here, deleted here for good, listed twice, could not be read, or could not be saved. Each fetch replaces the one before.
+* **The Last fetch line adds what used to happen silently**: how many rows were unchanged, not imported, dismissed or in the trash here, deleted here for good, listed twice, or could not be read or saved.
+* A row the tracker sends twice under the same UUID is still used once, and now shows in the log as listed twice.
 
 = 3.113.6 =
 

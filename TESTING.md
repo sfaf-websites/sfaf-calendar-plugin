@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 369 items.** Quick 301, needs real conditions 64, blocked on other
+**Outstanding: 370 items.** Quick 301, needs real conditions 65, blocked on other
 people 4.
 
 ---
@@ -18,7 +18,7 @@ people 4.
 
 Opening a screen and looking, loading a URL, pressing a control. Fastest first.
 
-### 1.0 FIRST: installing 3.113.6 on the live site, and the first hour (3.113.0 to 3.113.6)
+### 1.0 FIRST: installing 3.113.7 on the live site, and the first hour (3.113.0 to 3.113.7)
 
 3.112.0 and 3.112.2 failed from the office network (no connection to
 resources.sfaf.org at all) and 3.111.0 cured it each time. **3.113.0 is built
@@ -26,9 +26,9 @@ from 3.111.0 and its public calendar is 3.111.0's**, and **3.113.1's embed is
 3.113.0's**, both proved by `.claude/embed-identity-test.php`; only the version
 number moves. 3.113.1 also changes the event page's contact line (1.289), and
 **3.113.2's embed is 3.113.1's**, **3.113.3's is 3.113.2's**, **3.113.4's is
-3.113.3's**, **3.113.5's is 3.113.4's** and **3.113.6's is 3.113.5's**, by the same
-check; 3.113.3 and 3.113.4 change the event page's flyer (1.299) and 3.113.6 its
-RSVP form (1.302). If any of 3.113.0 to 3.113.5 was never installed, install 3.113.6
+3.113.3's**, **3.113.5's is 3.113.4's**, **3.113.6's is 3.113.5's** and **3.113.7's
+is 3.113.6's**, by the same check; 3.113.3 and 3.113.4 change the event page's flyer (1.299) and 3.113.6 its
+RSVP form (1.302). If any of 3.113.0 to 3.113.6 was never installed, install 3.113.7
 directly; the steps are the same. So this
 install says whether a version change and caladmin work alone bring the fault
 back. The calendar is served from resources.sfaf.org, **LiteSpeed on AWS with
@@ -42,7 +42,7 @@ the LiteSpeed Cache plugin**; only www.sfaf.org is on WP Engine.
   condition that failed.
 
 **Install**: Plugins > SFAF Calendar > Check for updates, then Update (or upload
-`sfaf-calendar-3.113.6.zip` and choose Replace current with uploaded). Then
+`sfaf-calendar-3.113.7.zip` and choose Replace current with uploaded). Then
 **LiteSpeed Cache > Toolbox > Purge All**.
 
 **The first hour, four times** (at install, +15, +30, +60 minutes):
@@ -5002,6 +5002,21 @@ before, and no email per registration or cancellation.
 
 **Why it needs real conditions:** a real event, real registrations and the
 scheduled runner.
+### 2.67 The EveryAction fetch log after a real fetch (3.113.7)
+
+After the next fetch (Fetch updates on Pending, with Auto-Import off as 2.30
+says), open Settings & Integrations > EveryAction. The Last fetch line counts
+rows read, created and updated, then the quiet ones: unchanged, not imported,
+dismissed or in the trash here, deleted here for good, listed twice. Open "Rows
+in the last fetch": one line per tracker row. Check three things against the
+tracker: a row's Start_Time as received matches the tracker exactly, the time
+read beside it is the right Pacific time (the clock change in early November is
+the one to look at), and the 2027 Saturdays held twice under two UUID runs show
+as two separate rows (two UUIDs are not "listed twice"; only the same UUID
+twice is).
+
+**Why it needs a person:** a real tracker, read with the real credentials.
+
 ### 2.66 Every email to a Spanish registration on an English event (3.113.6)
 
 Register on an English event that is a few days off with the toggle on Español.
