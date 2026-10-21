@@ -16,10 +16,10 @@
 $root = dirname( __DIR__ );
 
 $plants = array(
-    'E: the stylesheet the embed loads changes' => array( 'embed-identity-test.php', 'B: public/css/calendar.css differs from 3.113.3', array(
+    'E: the stylesheet the embed loads changes' => array( 'embed-identity-test.php', 'B: public/css/calendar.css differs from 3.113.', array(
         array( 'public/css/calendar.css', "/* SFAF Calendar Frontend Styles */\n", "/* SFAF Calendar Frontend Styles */\n.uc-single .uc-flyer { margin: 0; }\n" ),
     ) ),
-    'E: the event template changes' => array( 'embed-identity-test.php', 'B: templates/single-uc_event.php differs from 3.113.3', array(
+    'E: the event template changes' => array( 'embed-identity-test.php', 'B: templates/single-uc_event.php differs from 3.113.', array(
         array( 'templates/single-uc_event.php', 'echo SFAF_Attachments::flyer_html( $post_id );', 'echo SFAF_Attachments::flyer_html( (int) $post_id );' ),
     ) ),
     'E: an embed answer changes' => array( 'embed-identity-test.php', 'A: ', array(
