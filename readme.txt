@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.113.5
+Stable tag: 3.113.6
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,24 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.113.6 =
+
+**An English | Español toggle on the RSVP form, and every email to that person in the language they picked. The embed is 3.113.5's.**
+
+**THE EMBED IS UNCHANGED.** Its route, answers and headers, its script and stylesheet, the [sfaf_calendar] block, the scheduled tasks, the taxonomies and the rewrite rules are 3.113.5's; only the version number embed.js and its answers carry has moved. The embed never shows the RSVP form: its Register button goes to the event page.
+
+**WHAT CHANGES ON PUBLIC PAGES** (the event page and any page with a calendar block, where the RSVP form opens):
+
+* **The RSVP form has a small English | Español toggle in its top corner.** It starts on the event's language. Pressing it changes the form's own words at once: the heading, the labels, the placeholders, the attend choice, the questions' heading, the opt-in line, the buttons, what the form says back, and the success screen. The form is no taller. The questions, their options and the registration agreement's text show as typed.
+* **The page carries the form's words in both languages** for the toggle (the calendar script's data). The calendar's stylesheet is unchanged.
+
+**EMAILS AND PAGES**
+
+* **The language picked is saved with the registration**, and every email that person gets uses it: the confirmation, the morning-of reminder, the waitlist confirmation and the confirmation on being added from it, and the cancellation, change and back-on notices. Their cancel page uses it too.
+* **Unchanged:** messages written with Email registrants stay in the event's language, and staff emails stay in English. Registrations made before this release follow the event's language, as before.
+* The database gets one new column for the language (schema 15).
+* The form's new words are in EMAILS.md for the Spanish review.
 
 = 3.113.5 =
 

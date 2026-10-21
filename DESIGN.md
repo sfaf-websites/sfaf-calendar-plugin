@@ -1400,6 +1400,19 @@ events in the full table, then a Subhead, 16px/600 `--p-text`, "Other events" 20
 below, and the public table, whose titles are `.uc-tlink` links to the public
 page where there is one. No count column, no action column.
 
+### The RSVP form's English | Español toggle (3.113.6)
+
+Measured in Chrome by `.claude/release-31136-live.php` at 1280px and 390px.
+Two words in the modal's top right corner, **inside its 32px top padding**, so
+the form is exactly as tall as before (measured: 0px taller) and the heading
+does not move. 13px Montserrat. The language the form is in is bold `#1A1D21`
+(16.9:1 on white) with no underline; the other is a 600-weight `#0E7680` link
+with an underline (5.35:1), the calendar's own link colour. A `|` in
+`#6B7280` between them. Each word is a button 24px tall, the WCAG target size,
+`aria-pressed` saying which is on, and takes the modal's teal focus ring.
+**Its styles are injected by `calendar.js`, not written in `calendar.css`**,
+because the embed loads `calendar.css` and never draws this form.
+
 ### The rest of caladmin on a phone, the users table and Send (3.110.2)
 
 Measured in Chrome by `.claude/release-31102-live.php` at 390px and 430px (and

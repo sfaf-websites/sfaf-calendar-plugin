@@ -6165,8 +6165,33 @@ event already has one or the choice differs from what it inherits**, so an
 event left alone goes on following its series. It travels with a repeating
 event.
 
-**Everything a registrant reads is built in it**: every message and page in
-the catalogue, the joining block, and the `.ics` file's words. Dates and times
+**THE PERSON'S OWN CHOICE COMES FIRST (3.113.6).** The RSVP form has an English
+| Español toggle in its top corner, opening on the event's language. What is
+picked is posted as `lang` and kept on the row (`uc_rsvps.lang`, schema 15,
+`en` or `es`); `''` is every row from before, and any page cached from before,
+and follows the event. Every message to that person asks the row first through
+`SFAF_Notifications::lang_for()`: the confirmation, the morning-of reminder,
+the waitlist confirmation and being added from it, the cancelled, changed and
+back-on notices (`SFAF_Announce` groups by address and speaks the person's
+choice for all their dates), and what the server says back to the form. The
+cancel page asks `SFAF_Reminders::registrant_lang()`, which looks the
+registration up when the link came from the reminder ledger, which keeps no
+language. **Email registrants does not pass the person and stays in the event's
+language**, by Mark's brief; the questions, their options and the agreement's
+text are printed as typed in either. The `.ics` file is per event and keeps the
+event's language.
+
+**The form's words are the catalogue's `f_` labels** (and `e_` for what the
+server refuses), so they are in `EMAILS.md` for the Spanish review with the
+rest. `SFAF_Messages::form_words()` hands both languages to `calendar.js` once
+per page in `ucData.rsvpWords`, with the question labels and the agreement and
+text lines as Email Templates has them. The toggle's styles are injected by
+`calendar.js` and are not in `calendar.css`, which the embed loads; the embed
+never draws the form, so it is unchanged.
+
+**Everything else a registrant reads is built in the event's language**: every
+message and page in the catalogue for a row with no choice, the joining block,
+and the `.ics` file's words. Dates and times
 go through the one formatter, which takes a `$lang` (`sfaf_ap_date( ..., $lang )`
 and its Spanish table), so "jueves, 12 de noviembre de 2026, 6–7:30 p. m., hora
 del Pacífico" is the formatter's output, not a translation of it. **Staff

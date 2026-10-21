@@ -217,6 +217,8 @@ for f in .claude/*.php; do
     plant-31134.php) continue ;;       # a fault planter for the 3.113.4 checks, not a check
     plant-31135.php) continue ;;       # a fault planter for the 3.113.5 checks, not a check
     release-31135-live.php) continue ;;  # run below with --run
+    plant-31136.php) continue ;;       # a fault planter for the 3.113.6 checks, not a check
+    release-31136-live.php) continue ;;  # run below with --run
     core-media.php) continue ;;        # core's media lookups the checks load (3.113.4), not a check
     embed-identity-probe.php) continue ;; # run by embed-identity-test.php in two trees, not a check
     embed-isolation-live.php) continue ;; # run below with --run
@@ -497,6 +499,9 @@ run "release-31132-live --run" php .claude/release-31132-live.php --run
 # The editor's bar white under a Dark Gray rule, floating over the grey page
 # while the form scrolls (3.113.5), at 1280px and 390px.
 run "release-31135-live --run" php .claude/release-31135-live.php --run
+# The RSVP form's English | Español toggle (3.113.6): no taller, every word at
+# once, the questions as typed, the choice posted, at 1280px and 390px.
+run "release-31136-live --run" php .claude/release-31136-live.php --run
 # The embed in its shadow root under a hostile host stylesheet, and the combined
 # sidebar ending at its content (3.111.0 J and K), at 1280px and 390px.
 run "embed-isolation-live --run" php .claude/embed-isolation-live.php --run

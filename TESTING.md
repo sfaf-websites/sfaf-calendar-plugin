@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 366 items.** Quick 299, needs real conditions 63, blocked on other
+**Outstanding: 369 items.** Quick 301, needs real conditions 64, blocked on other
 people 4.
 
 ---
@@ -18,7 +18,7 @@ people 4.
 
 Opening a screen and looking, loading a URL, pressing a control. Fastest first.
 
-### 1.0 FIRST: installing 3.113.5 on the live site, and the first hour (3.113.0 to 3.113.5)
+### 1.0 FIRST: installing 3.113.6 on the live site, and the first hour (3.113.0 to 3.113.6)
 
 3.112.0 and 3.112.2 failed from the office network (no connection to
 resources.sfaf.org at all) and 3.111.0 cured it each time. **3.113.0 is built
@@ -26,9 +26,9 @@ from 3.111.0 and its public calendar is 3.111.0's**, and **3.113.1's embed is
 3.113.0's**, both proved by `.claude/embed-identity-test.php`; only the version
 number moves. 3.113.1 also changes the event page's contact line (1.289), and
 **3.113.2's embed is 3.113.1's**, **3.113.3's is 3.113.2's**, **3.113.4's is
-3.113.3's** and **3.113.5's is 3.113.4's**, by the same check; 3.113.3 and 3.113.4
-change the event page's flyer (1.299). If any of 3.113.0 to 3.113.4 was never
-installed, install 3.113.5
+3.113.3's**, **3.113.5's is 3.113.4's** and **3.113.6's is 3.113.5's**, by the same
+check; 3.113.3 and 3.113.4 change the event page's flyer (1.299) and 3.113.6 its
+RSVP form (1.302). If any of 3.113.0 to 3.113.5 was never installed, install 3.113.6
 directly; the steps are the same. So this
 install says whether a version change and caladmin work alone bring the fault
 back. The calendar is served from resources.sfaf.org, **LiteSpeed on AWS with
@@ -42,7 +42,7 @@ the LiteSpeed Cache plugin**; only www.sfaf.org is on WP Engine.
   condition that failed.
 
 **Install**: Plugins > SFAF Calendar > Check for updates, then Update (or upload
-`sfaf-calendar-3.113.5.zip` and choose Replace current with uploaded). Then
+`sfaf-calendar-3.113.6.zip` and choose Replace current with uploaded). Then
 **LiteSpeed Cache > Toolbox > Purge All**.
 
 **The first hour, four times** (at install, +15, +30, +60 minutes):
@@ -4109,6 +4109,33 @@ when the request had them. Open a community submission: its "Submitted by a
 member of the public" card is unchanged.
 
 **Why it needs a person:** a real request in the live queue.
+
+### 1.302 The English | Español toggle on the RSVP form (3.113.6)
+
+Open the event page of an English event that takes RSVPs here and press
+Register. Top right of the form: **English | Español**, small, with English bold
+and Español a teal underlined link; the form is no taller than before. Press
+Español: the heading, every label, the placeholders, "How will you attend?" on
+a hybrid event, "Información adicional" over the questions, the opt-in line and
+the buttons change at once; the questions and their options stay as typed.
+Press English: all back. Open a Spanish event's form (an event or series set to
+Español): it opens with Español bold. Do the same on a phone. Then check the
+theme has not restyled the two words as big buttons.
+
+**Why it needs a person:** the live event page under the theme's own button
+styles, on a real phone.
+
+### 1.303 Schema 15 ran: a registration keeps its language (3.113.6)
+
+After installing, register on a test event with the toggle on Español, using an
+address you can read. The confirmation arrives in Spanish (dates read "de
+noviembre de 2026"). Then open the RSVP list for that event in caladmin and
+check the registration is there as usual. If the confirmation came in English
+on an English event, the column may not have been added: look for an
+"Unknown column 'lang'" line in the server's PHP error log.
+
+**Why it needs a person:** the database upgrade only runs on the live site, and
+there is no database here.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -4975,6 +5002,20 @@ before, and no email per registration or cancellation.
 
 **Why it needs real conditions:** a real event, real registrations and the
 scheduled runner.
+### 2.66 Every email to a Spanish registration on an English event (3.113.6)
+
+Register on an English event that is a few days off with the toggle on Español.
+Over the following days, check each message that person gets is in Spanish: the
+confirmation at once, the morning-of reminder on the day, and, if the event is
+changed or cancelled, that notice. Press the cancel link in the reminder: the
+page is in Spanish. A message sent with Email registrants to that event stays in
+English, as typed. A second person on the same event with English picked gets
+everything in English. The new form words and refusals are listed in
+`EMAILS.md` with the rest for the Spanish review (3.).
+
+**Why it needs a person:** real mail, sent by the scheduled reminder on the
+morning of a real event.
+
 ## 3. Blocked on other people
 
 Nothing here can move until somebody outside the build answers.
