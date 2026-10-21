@@ -13,8 +13,8 @@
  *      preview is made once, the first time the event page asks, and a file
  *      that cannot be previewed keeps the card and is not tried again; only
  *      a calendar PDF an event points at is ever touched
- *   2  the editor's bar is the grey --p-bg under a Light Gray rule; Cancel
- *      event's edge is --p-muted; Save changes green, Delete the red link
+ *   2  Cancel event's edge is --p-muted; Save changes green, Delete the red
+ *      link (the grey bar itself went in 3.113.5)
  *
  * The public calendar is embed-identity-test.php's. PLANTs in plant-31134.php.
  */
@@ -149,9 +149,8 @@ rt( '1: nothing in the stylesheet the embed loads', false === strpos( (string) f
 /* ======================================================================== 2 */
 $css = (string) file_get_contents( $root . '/public/css/portal.css' );
 $bar = preg_match( '#\.uc-portal \.uc-form-actions-primary\.uc-editor-bar \{([^}]*)\}#', $css, $bm ) ? $bm[1] : '';
-rt( '2: the bar is the grey --p-bg', false !== strpos( $bar, 'background: var(--p-bg);' ), true );
-rt( '2: under a thin Light Gray line', false !== strpos( $bar, 'border-top: 1px solid #D1D3D4;' ), true );
-rt( '2: --p-bg is the canvas grey', false !== strpos( $css, '--p-bg: #F5F6F7;' ), true );
+/* The grey bar under a Light Gray rule went in 3.113.5, which made it white
+   under a Dark Gray rule: release-31135-test.php has the bar now. */
 rt( '2: Cancel event\'s edge is --p-muted', false !== strpos( $css, '.uc-editor-actions .uc-cancel-open { border-color: var(--p-muted); }' ), true );
 rt( '2: --p-muted is #6B6764', false !== strpos( $css, '--p-muted: #6B6764;' ), true );
 rt( '2: Cancel event still has no face', false !== strpos( $css, ".uc-editor-actions .uc-cancel-open,\n.uc-editor-actions .uc-cancel-open:hover { background: transparent; }" ), true );
@@ -172,4 +171,4 @@ if ( $fails ) {
     foreach ( $fails as $f ) { echo '  - ' . $f . "\n"; }
     exit( 1 );
 }
-echo "The flyer finds the preview WordPress made, and makes one once where it is missing; the bar is grey and Cancel event outlined in --p-muted.\n";
+echo "The flyer finds the preview WordPress made, and makes one once where it is missing; Cancel event is outlined in --p-muted.\n";

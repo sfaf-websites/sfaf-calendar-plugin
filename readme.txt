@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.113.4
+Stable tag: 3.113.5
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,15 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.113.5 =
+
+**Edit event's and Add event's button bar is white and floats over the page. The embed is 3.113.4's.**
+
+**THE EMBED IS UNCHANGED.** Its route, answers and headers, its script and stylesheet, the [sfaf_calendar] block, the scheduled tasks, the taxonomies and the rewrite rules are 3.113.4's; only the version number embed.js and its answers carry has moved. Nothing public changes.
+
+* **The button bar at the foot of Edit event and Add event is white**, with a dark gray line along its top and a soft shadow above it, so it stands out from the gray page and the cards that scroll under it. 3.113.4's light gray bar blended into the page. On a phone the bar runs to both edges of the screen.
+* Cancel event keeps its darker outline, Save changes stays green, and Delete stays the red link at the far left.
 
 = 3.113.4 =
 

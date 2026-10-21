@@ -46,12 +46,7 @@ $plants = array(
     '1: a preview that is there is made again' => array( 'release-31134-test.php', '1: a preview that is there is never made again', array(
         array( 'includes/class-sfaf-attachments.php', "if ( ! empty( \$meta['sizes']['full'] ) || 'application/pdf'", "if ( 'application/pdf'" ),
     ) ),
-    '2: the bar is white again' => array( 'release-31134-test.php', '2: the bar is the grey --p-bg', array(
-        array( 'public/css/portal.css', "    background: var(--p-bg); box-shadow: none;", "    background: var(--p-panel); box-shadow: none;" ),
-    ) ),
-    '2: the line is the faint hairline again' => array( 'release-31134-test.php', '2: under a thin Light Gray line', array(
-        array( 'public/css/portal.css', "    border: 0; border-top: 1px solid #D1D3D4; border-radius: 0;", "    border: 0; border-top: 1px solid var(--p-border); border-radius: 0;" ),
-    ) ),
+    // The grey bar's two plants went with it in 3.113.5; plant-31135.php has the bar.
     '2: Cancel event keeps the pale edge' => array( 'release-31134-test.php', "2: Cancel event's edge is --p-muted", array(
         array( 'public/css/portal.css', ".uc-editor-actions .uc-cancel-open { border-color: var(--p-muted); }\n", '' ),
     ) ),

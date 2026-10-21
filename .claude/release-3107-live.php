@@ -21,8 +21,8 @@
  *       --p-muted; Insert image is outlined with no chevron; one sign-out; one
  *       empty line in Notifications; the FAQ set starts empty and follows the
  *       series
- *   E   the bar: sticky at the window's foot while the page scrolls, the grey
- *       --p-bg with a Light Gray top rule (3.113.4), Cancel event's --p-muted
+ *   E   the bar: sticky at the window's foot while the page scrolls, white
+ *       under a Dark Gray top rule (3.113.5), Cancel event's --p-muted
  *       edge, the note at 12px, every button inside the
  *       window at 390px, Delete / Save / main action left to right
  *   F   changing the series re-filters the picture list with no save, and a
@@ -315,14 +315,16 @@ foreach ( array_keys( $pages ) as $t ) {
     rv_check( isset( $bar['position'] ) && 'sticky' === $bar['position'] && '0px' === $bs['bottom'], "PLANT E: $t: the bar is not sticky to the foot: " . json_encode( array( $bar['position'] ?? null, $bs['bottom'] ?? null ) ) );
     rv_check( $v( $t, 'scrolled' ) > 0 && isset( $sc['bottom'] ) && abs( $sc['bottom'] - $v( $t, 'innerH' ) ) <= 1 && $sc['top'] < $v( $t, 'innerH' ),
         "PLANT E: $t: scrolled " . $v( $t, 'scrolled' ) . "px, the bar is not at the window's foot: " . json_encode( array( $sc, $v( $t, 'innerH' ) ) ) );
-    /* Grey, not white, from 3.113.4: --p-bg under a Light Gray rule. */
-    rv_check( isset( $bs['bg'] ) && 'rgb(245, 246, 247)' === $bs['bg'] && 'rgb(209, 211, 212) 1px' === $bs['top'] && '0px' === $bs['left'] && '0px' === $bs['radius'],
-        "$t: the bar is not --p-bg with one Light Gray top rule: " . json_encode( $bs ) );
+    /* White under a Dark Gray rule from 3.113.5 (grey under Light Gray in 3.113.4). */
+    rv_check( isset( $bs['bg'] ) && 'rgb(255, 255, 255)' === $bs['bg'] && 'rgb(55, 52, 51) 1px' === $bs['top'] && '0px' === $bs['left'] && '0px' === $bs['radius'],
+        "$t: the bar is not white with one Dark Gray top rule: " . json_encode( $bs ) );
     if ( ! $add ) {
         rv_check( 'rgb(107, 103, 100) rgba(0, 0, 0, 0)' === $v( $t, 'cancelEdge' ), "$t: Cancel event is not outlined in --p-muted with no face: " . json_encode( $v( $t, 'cancelEdge' ) ) );
     }
     $cb = (array) $v( $t, 'contentBox' );
-    rv_check( isset( $cb['left'], $bar['left'] ) && abs( $cb['left'] - $bar['left'] ) <= 1 && abs( $cb['right'] - $bar['right'] ) <= 1, "$t: the bar is not the editor's full width: " . json_encode( array( $cb, $bar['left'] ?? null, $bar['right'] ?? null ) ) );
+    /* At 390px it runs out through the 18px gutter to the window's edges (3.113.5). */
+    $out = $phone ? 18 : 0;
+    rv_check( isset( $cb['left'], $bar['left'] ) && abs( $cb['left'] - $out - $bar['left'] ) <= 1 && abs( $cb['right'] + $out - $bar['right'] ) <= 1, "$t: the bar is not the editor's full width: " . json_encode( array( $cb, $bar['left'] ?? null, $bar['right'] ?? null ) ) );
     $note = (array) $v( $t, 'barNote' );
     rv_check( isset( $note['size'] ) && '12px' === $note['size'] && $P_MUTED === $note['color'] && $note['seen'], "$t: the bar's note is not 12px --p-muted: " . json_encode( $note ) );
     $btns   = (array) $v( $t, 'buttons' );

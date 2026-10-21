@@ -18,16 +18,17 @@ people 4.
 
 Opening a screen and looking, loading a URL, pressing a control. Fastest first.
 
-### 1.0 FIRST: installing 3.113.4 on the live site, and the first hour (3.113.0 to 3.113.4)
+### 1.0 FIRST: installing 3.113.5 on the live site, and the first hour (3.113.0 to 3.113.5)
 
 3.112.0 and 3.112.2 failed from the office network (no connection to
 resources.sfaf.org at all) and 3.111.0 cured it each time. **3.113.0 is built
 from 3.111.0 and its public calendar is 3.111.0's**, and **3.113.1's embed is
 3.113.0's**, both proved by `.claude/embed-identity-test.php`; only the version
 number moves. 3.113.1 also changes the event page's contact line (1.289), and
-**3.113.2's embed is 3.113.1's**, **3.113.3's is 3.113.2's** and **3.113.4's is
-3.113.3's**, by the same check; 3.113.3 and 3.113.4 change the event page's flyer
-(1.299). If any of 3.113.0 to 3.113.3 was never installed, install 3.113.4
+**3.113.2's embed is 3.113.1's**, **3.113.3's is 3.113.2's**, **3.113.4's is
+3.113.3's** and **3.113.5's is 3.113.4's**, by the same check; 3.113.3 and 3.113.4
+change the event page's flyer (1.299). If any of 3.113.0 to 3.113.4 was never
+installed, install 3.113.5
 directly; the steps are the same. So this
 install says whether a version change and caladmin work alone bring the fault
 back. The calendar is served from resources.sfaf.org, **LiteSpeed on AWS with
@@ -41,7 +42,7 @@ the LiteSpeed Cache plugin**; only www.sfaf.org is on WP Engine.
   condition that failed.
 
 **Install**: Plugins > SFAF Calendar > Check for updates, then Update (or upload
-`sfaf-calendar-3.113.4.zip` and choose Replace current with uploaded). Then
+`sfaf-calendar-3.113.5.zip` and choose Replace current with uploaded). Then
 **LiteSpeed Cache > Toolbox > Purge All**.
 
 **The first hour, four times** (at install, +15, +30, +60 minutes):
@@ -4050,11 +4051,14 @@ naming where people register.
 **Why it needs a person:** real events with real registrations, and the live
 editor's script.
 
-### 1.298 The Edit event button bar (3.113.3, 3.113.4)
+### 1.298 The Edit event button bar (3.113.3, 3.113.4, 3.113.5)
 
-Open a published event in caladmin Edit event. The bar at the foot is light
-gray with a thin gray line along its top, so it stands apart from the white
-cards scrolling under it (3.113.4); Add event's bar is the same. It reads, left
+Open a published event in caladmin Edit event. The bar at the foot is white
+with a dark gray line along its top and a soft shadow above it, so it looks
+like it floats over the gray page and the cards scrolling under it (3.113.5;
+3.113.4's light gray bar blended into the page). Scroll the form: the bar stays
+at the foot of the window and the cards pass under it. On a phone the white
+runs to both edges of the screen. Add event's bar is the same. It reads, left
 to right: **Delete** as red text with no box, the note, then **Cancel event**
 outlined (no fill) with a dark gray edge that reads as a button (3.113.4), and
 **Save changes** green and largest. Save changes is the

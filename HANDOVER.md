@@ -4,7 +4,7 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-20, at 3.113.4, **built from 3.113.3, from 3.113.2, from 3.113.1, from 3.113.0, from 3.111.0.** **The live site runs 3.113.3** (its event page, 2026-10-20).
+**Last updated:** 2026-10-21, at 3.113.5, **built from 3.113.4, from 3.113.3, from 3.113.2, from 3.113.1, from 3.113.0, from 3.111.0.** **The live site runs 3.113.3** (its event page, 2026-10-20).
 
 ---
 
@@ -17,11 +17,11 @@ layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 > `TESTING.md` **1.0**, which says what to capture before any rollback.
 > **resources.sfaf.org is LiteSpeed on AWS with LiteSpeed Cache; only www.sfaf.org
 > is WP Engine.** The Events Calendar is still on (1.283).
-**3.113.0** to **3.113.4** are caladmin work (`readme.txt`); each one's public calendar is
+**3.113.0** to **3.113.5** are caladmin work (`readme.txt`); each one's public calendar is
 the one before's, proved by `embed-identity-test.php`, so all are 3.111.0's but for
 3.113.1's contact email link and **the event page flyer** (3.113.3; 3.113.4 makes it find the picture).
 **3.113.2** puts staff requests on the MarCom team **by name** (`TESTING.md` 1.296). **3.113.3**:
-the RSVP card's one choice, one solid button on Edit event's bar, Notifications copy. **3.113.4**: the bar grey.
+the RSVP card's one choice, one solid button on Edit event's bar, Notifications copy. **3.113.4**: the bar grey. **3.113.5**: the bar white under a Dark Gray rule, floating.
 > **3.110.1: EDITORS NO LONGER HAVE EVERY EVENT.** A team decides which events a
 > person has; their level decides what they can do on them (CLAUDE.md 7,
 > `PROJECT.md` 5). An editor has what they created and what **Team and
@@ -86,7 +86,7 @@ and from 3.111.0 `calendar-files/` for PDFs, beside them.
 ## Outstanding, and only Mark can move it
 
 **`TESTING.md` holds the manual testing backlog: 366 items**, 19 of them marked set
-aside until their 3.112.x feature returns. **1.0** (installing 3.113.4 and its
+aside until their 3.112.x feature returns. **1.0** (installing 3.113.5 and its
 first hour), then **1.287** (how many events now send the two emails), **1.281**
 (the hidden age values), **1.279** (the dialogs), **1.284** (the Notifications
 card), **1.285** to **1.290** (3.113.1) and **1.291** to **1.296** (3.113.2) and **1.297** to **1.301** (3.113.3) first, then **1.249** (signed out

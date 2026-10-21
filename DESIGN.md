@@ -129,9 +129,10 @@ a draft         Delete          Save draft       Publish
 an existing     Delete          Cancel event     Save changes      (3.113.3)
 event           red text link   outlined         GREEN, largest
                 #c0392b on      #6B6764 edge     #15803D
-                #F5F6F7 5.03:1  (3.113.4),       white 5.02:1
-                                5.18:1 on the
-                                bar, dark ink
+                white 5.44:1    (3.113.4),       white 5.02:1
+                (3.113.5)       5.60:1 on the
+                                white bar,
+                                dark ink
 
 a submission    Reject          Save changes     Approve           (3.113.2)
 waiting for     red             plain secondary  GREEN, largest
@@ -161,7 +162,8 @@ whose auto margin sets it apart; below 600px it takes the last line. Cancel
 event is `.uc-btn` with no face and dark ink, transparent at rest and on
 hover. **Its edge is `--p-muted` #6B6764, not the control edge (3.113.4)**: on
 the grey bar `--p-border-strong` measured 3.07:1 and, Mark reported, did not
-read as a button; #6B6764 is 5.18:1 there. Hover still turns it teal. Both open their dialogs, which carry the red. What follows
+read as a button; #6B6764 was 5.18:1 there, and is 5.60:1 on the white bar of
+3.113.5. Hover still turns it teal. Both open their dialogs, which carry the red. What follows
 is the 3.98.0 reasoning for two reds, kept so the reversal is visible.
 
 **CANCEL EVENT WAS RED, NOT AMBER (3.98.0), until 3.113.3.** It takes the event off the public
@@ -1065,11 +1067,16 @@ questions are a section of the card: a 16px subhead, space, and one
 `--p-border` hairline above, not a card inside a card.
 
 **The action bar** is `position: sticky; bottom: 0` inside the content column,
-so it is the editor's full width and never covers the sidebar: the canvas grey
-`--p-bg` #F5F6F7 with one Light Gray #D1D3D4 1px rule on top, no side borders,
-no radius, no shadow (3.113.4). **Until 3.113.4 it was white `--p-panel` under
-a `--p-border` hairline**, and Mark reported that the bar and the outlined
-Cancel event both blended into the page. Add event's bar is the same bar. The note in it is 12px `--p-muted`. At 390px the note takes its own
+so it is the editor's full width and never covers the sidebar: **white
+`--p-panel` under one 1px Dark Gray #373433 rule, with a soft shadow cast
+upward**, `0 -4px 12px rgba(55, 52, 51, 0.12)`, so it floats over the page; no
+side borders, no radius (3.113.5). **The rule is Dark Gray because Light Gray is
+the faint line it replaced**, and the brand has no neutral between the two:
+12.34:1 on the white bar, 11.41:1 against the grey page. Below 600px it runs out
+through the 18px gutter to both edges of the window. **3.113.4 made it the canvas
+grey `--p-bg` under a Light Gray #D1D3D4 rule** and it blended into the grey page
+behind the cards; **before that it was white under a `--p-border` hairline**,
+which did not tell it from the white cards. Add event's bar is the same bar. The note in it is 12px `--p-muted`. At 390px the note takes its own
 line and every button sits inside the window. Cancel event and Delete open
 centred dialogs (3.112.1), so the bar stays where it is.
 Buttons keep the colours in "The one exception" above. **Their left-to-right
