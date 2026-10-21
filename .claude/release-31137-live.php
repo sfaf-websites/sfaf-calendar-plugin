@@ -61,6 +61,7 @@ $probe = <<<'JS'
     out.box = rect(box);
     out.table = rect(table);
     out.boxScrolls = !!box && box.scrollWidth > box.clientWidth;
+    out.boxOverflow = box ? [getComputedStyle(box).overflowX, getComputedStyle(box).overflowY] : null;
     out.rows = d ? d.querySelectorAll('tbody tr').length : 0;
     var oc = d ? d.querySelector('tbody tr td:nth-child(3)') : null;
     out.outcomeCell = rect(oc);
@@ -107,7 +108,7 @@ foreach ( $frames as $wn => $f ) {
     rl( $r['outcomeCell'] && $r['outcomeCell']['right'] <= $r['box']['right'] && 'Not imported: its end time has passed' === $r['outcomeText'], "2L: $wn: the outcome is not in view without scrolling: " . json_encode( array( $r['outcomeCell'], $r['box'], $r['outcomeText'] ) ) );
     rl( (int) $r['pageWidth'] <= (int) $r['vw'], "2L: $wn: the page scrolls sideways, " . $r['pageWidth'] . 'px in ' . $r['vw'] );
     rl( $r['box'] && $r['panel'] && $r['box']['right'] <= $r['panel']['right'] && $r['box']['left'] >= $r['panel']['left'], "2L: $wn: the log's box leaves the panel: " . json_encode( array( $r['box'], $r['panel'] ) ) );
-    rl( $r['boxScrolls'], "2L: $wn: the wide table does not scroll inside its box" );
+    rl( $r['boxScrolls'] && is_array( $r['boxOverflow'] ) && ! array_diff( $r['boxOverflow'], array( 'auto', 'scroll' ) ), "2L: $wn: the wide table does not scroll inside its box: " . json_encode( $r['boxOverflow'] ) );
     rl( $r['box'] && $r['box']['h'] <= 482, "2L: $wn: the box is " . $r['box']['h'] . 'px tall, over 480' );
     rl( false !== strpos( (string) $r['line'], '40 rows read, 0 created, 0 updated, 32 unchanged, 8 not imported.' ), "$wn: the Last fetch line reads " . json_encode( $r['line'] ) );
 }

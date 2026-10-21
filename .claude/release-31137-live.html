@@ -15,6 +15,7 @@
     out.box = rect(box);
     out.table = rect(table);
     out.boxScrolls = !!box && box.scrollWidth > box.clientWidth;
+    out.boxOverflow = box ? [getComputedStyle(box).overflowX, getComputedStyle(box).overflowY] : null;
     out.rows = d ? d.querySelectorAll('tbody tr').length : 0;
     var oc = d ? d.querySelector('tbody tr td:nth-child(3)') : null;
     out.outcomeCell = rect(oc);

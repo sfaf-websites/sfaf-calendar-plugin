@@ -84,7 +84,7 @@ rt( '2: a status other than dismissed is named', SFAF_EveryAction::outcome_label
 delete_option( SFAF_EveryAction::LOG_OPTION );
 rt( '3: no log, no fold', false === strpos( rt_panel(), 'uc-everyaction-log' ), true );
 $src = (string) file_get_contents( $root . '/includes/class-sfaf-everyaction.php' );
-rt( '3: the log is stored without autoload', (bool) preg_match( "#update_option\( self::LOG_OPTION, array\(.*?\), false \);#s", $src ), true );
+rt( '3: the log is stored without autoload', false !== strpos( $src, "            'rows'  => \$rows,\n        ), false );" ), true );
 rt( '3: nothing for the embed: the stylesheet it loads is untouched', false === strpos( (string) file_get_contents( $root . '/public/css/calendar.css' ), 'everyaction' ), true );
 
 echo "\nRelease 3.113.7\n" . str_repeat( '=', 72 ) . "\nran $ran assertions.\n";

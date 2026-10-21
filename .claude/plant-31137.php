@@ -57,7 +57,7 @@ $plants = array(
     '2L: the log is open on arrival' => array( 'release-31137-live.php', 'the log is not folded', array(
         array( 'admin/class-sfaf-admin.php', '<details class="uc-everyaction-log">', '<details class="uc-everyaction-log" open>' ),
     ) ),
-    '2L: the table is not boxed' => array( 'release-31137-live.php', 'scroll', array(
+    '2L: the table is not boxed' => array( 'release-31137-live.php', 'does not scroll inside its box', array(
         array( 'admin/css/admin.css', '.uc-everyaction-log-scroll { max-height: 480px; overflow: auto;', '.uc-everyaction-log-scroll { max-height: none; overflow: visible;' ),
     ) ),
     '2L: the outcome is the last column' => array( 'release-31137-live.php', 'the outcome is not in view', array(
