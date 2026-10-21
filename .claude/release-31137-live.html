@@ -1,0 +1,467 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>EveryAction fetch log</title><link rel="stylesheet" href="../admin/css/admin.css"><script>(function () {
+  var out = { errors: [] };
+  window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+  window.sfafAdmin = { ajaxUrl: '/wp-admin/admin-ajax.php', nonce: 'n' };
+  function rect(el) { if (!el) { return null; } var r = el.getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom), w: Math.round(r.width), h: Math.round(r.height) }; }
+  window.addEventListener('load', function () {
+    document.querySelector('.uc-everyaction-panel .uc-panel-header').click();
+    var d = document.querySelector('.uc-everyaction-log');
+    out.folded = !!d && !d.open;
+    out.summary = d ? d.querySelector('summary').textContent.trim() : null;
+    if (d) { d.querySelector('summary').click(); }
+    var box = document.querySelector('.uc-everyaction-log-scroll'), table = d ? d.querySelector('table') : null;
+    out.open = !!d && d.open;
+    out.panel = rect(document.querySelector('.uc-everyaction-panel'));
+    out.box = rect(box);
+    out.table = rect(table);
+    out.boxScrolls = !!box && box.scrollWidth > box.clientWidth;
+    out.rows = d ? d.querySelectorAll('tbody tr').length : 0;
+    var oc = d ? d.querySelector('tbody tr td:nth-child(3)') : null;
+    out.outcomeCell = rect(oc);
+    out.outcomeText = oc ? oc.textContent.trim() : null;
+    out.line = (document.querySelector('.uc-everyaction-last-fetch') || {}).textContent;
+    out.pageWidth = document.documentElement.scrollWidth;
+    out.vw = window.innerWidth;
+    var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+  });
+})();</script></head><body class="wp-admin"><div class="wrap uc-admin-wrap"><form><!-- EVERYACTION -->
+                                <div class="uc-integration-panel uc-everyaction-panel">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><svg class="sfaf-icon sfaf-icon-calendar" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span>
+                        <div class="uc-panel-info">
+                            <h2>EveryAction</h2>
+                            <p>Events from Val's tracker on the hub</p>
+                        </div>
+                        <span class="uc-panel-status uc-everyaction-panel-status uc-status-pending">Not tested</span>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                        <div class="uc-field-row">
+                            <label for="uc-ea-auto">Auto-Import events</label>
+                            <label class="uc-toggle"><input type="checkbox" id="uc-ea-auto" name="uc_settings[everyaction_auto_import]" value="1"  /><span class="uc-toggle-slider"></span></label>
+                        </div>
+                        <p class="description">Off: EveryAction is read only when somebody presses Fetch updates on the Pending screen.</p>
+                                                <div class="uc-field-row">
+                            <label>Last fetch</label>
+                            <p class="uc-everyaction-last-fetch">Oct 21, 2026 at 4:05 pm: 40 rows read, 0 created, 0 updated, 32 unchanged, 8 not imported.</p>
+                        </div>
+                                                <details class="uc-everyaction-log">
+                            <summary>Rows in the last fetch (40)</summary>
+                            <div class="uc-everyaction-log-scroll">
+                            <table class="widefat striped">
+                                <thead><tr><th scope="col">UUID</th><th scope="col">Title</th><th scope="col">Outcome</th><th scope="col">Start_Time as received</th><th scope="col">End_Time as received</th><th scope="col">Start, read as</th><th scope="col">End, read as</th></tr></thead>
+                                <tbody>
+                                                                    <tr data-uc-ea-outcome="refused">
+                                        <td><code>750059398</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 1</td>
+                                        <td>Not imported: its end time has passed</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059399</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 2</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059400</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 3</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059401</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 4</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059402</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 5</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="refused">
+                                        <td><code>750059403</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 6</td>
+                                        <td>Not imported: its end time has passed</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059404</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 7</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059405</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 8</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059406</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 9</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059407</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 10</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="refused">
+                                        <td><code>750059408</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 11</td>
+                                        <td>Not imported: its end time has passed</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059409</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 12</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059410</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 13</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059411</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 14</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059412</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 15</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="refused">
+                                        <td><code>750059413</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 16</td>
+                                        <td>Not imported: its end time has passed</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059414</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 17</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059415</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 18</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059416</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 19</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059417</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 20</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="refused">
+                                        <td><code>750059418</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 21</td>
+                                        <td>Not imported: its end time has passed</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059419</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 22</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059420</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 23</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059421</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 24</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059422</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 25</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="refused">
+                                        <td><code>750059423</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 26</td>
+                                        <td>Not imported: its end time has passed</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059424</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 27</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059425</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 28</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059426</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 29</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059427</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 30</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="refused">
+                                        <td><code>750059428</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 31</td>
+                                        <td>Not imported: its end time has passed</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059429</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 32</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059430</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 33</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059431</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 34</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059432</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 35</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="refused">
+                                        <td><code>750059433</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 36</td>
+                                        <td>Not imported: its end time has passed</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059434</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 37</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059435</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 38</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059436</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 39</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                    <tr data-uc-ea-outcome="unchanged">
+                                        <td><code>750059437</code></td>
+                                        <td>50-Plus Saturday AM Coffee Social at Maxfield&#039;s House of Caffeine, row 40</td>
+                                        <td>Unchanged</td>
+                                        <td><code>10/09/2027 05:00 PM +0000</code></td>
+                                        <td><code>10/09/2027 07:00 PM +0000</code></td>
+                                        <td>Oct 9, 2027 at 10 am</td>
+                                        <td>Oct 9, 2027 at 12 pm</td>
+                                    </tr>
+                                                                </tbody>
+                            </table>
+                            </div>
+                        </details>
+                                                <div class="uc-field-row">
+                            <label>Signup links</label>
+                            <p class="uc-everyaction-links">Not read yet.</p>
+                        </div>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-hub">Hub address</label>
+                            <input type="url" id="uc-ea-hub" name="uc_settings[everyaction_hub_url]" value="https://hub.sfaf.org" class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-key">API key</label>
+                            <input type="password" id="uc-ea-key" name="uc_settings[everyaction_api_key]" value="" autocomplete="new-password"
+                                   placeholder="Paste the API key"
+                                   class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-user">Username</label>
+                            <input type="text" id="uc-ea-user" name="uc_settings[everyaction_username]" value="" autocomplete="off" class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-pass">Password</label>
+                            <input type="password" id="uc-ea-pass" name="uc_settings[everyaction_password]" value="" autocomplete="new-password"
+                                   placeholder="The account's MangoApps password"
+                                   class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-tracker">Tracker ID</label>
+                            <input type="text" id="uc-ea-tracker" name="uc_settings[everyaction_tracker_id]" value="162570" class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Connection</label>
+                            <div class="uc-conn-controls">
+                                <button type="button" class="button uc-everyaction-connect">Test connection</button>
+                                <span class="uc-conn-pill uc-everyaction-pill ">Not connected</span>
+                            </div>
+                        </div>
+                        <p class="description uc-everyaction-conn-msg" hidden></p>
+
+                        <div class="uc-probe-box uc-everyaction-probe-box">
+                            <h3>Tracker probe <span class="uc-probe-tag">diagnostic</span></h3>
+                            <p class="description">Logs in, reads the first page of the tracker, logs out, and prints the body exactly as the hub sent it. <strong>Read-only:</strong> it imports nothing and changes nothing.</p>
+                            <div class="uc-conn-controls">
+                                <button type="button" class="button uc-everyaction-probe">Probe tracker</button>
+                            </div>
+                            <p class="description uc-everyaction-probe-msg" hidden></p>
+                            <pre class="uc-probe-pre uc-everyaction-probe-out" hidden></pre>
+                        </div>
+                    </div>
+                </div>
+
+                </form></div><script src="../admin/js/everyaction.js"></script></body></html>

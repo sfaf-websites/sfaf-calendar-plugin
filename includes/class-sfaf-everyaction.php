@@ -75,6 +75,9 @@ class SFAF_EveryAction {
     /** The last fetch: when, rows read, created, updated, or what failed. */
     const FETCH_OPTION = 'sfaf_everyaction_fetch';
 
+    /** The last fetch, row by row (3.113.7). Not autoloaded. */
+    const LOG_OPTION = 'sfaf_everyaction_fetch_log';
+
     public function register() {
         add_action( 'wp_ajax_sfaf_everyaction_test', array( $this, 'ajax_test' ) );
         add_action( 'wp_ajax_sfaf_everyaction_probe', array( $this, 'ajax_probe' ) );
@@ -437,10 +440,13 @@ class SFAF_EveryAction {
      *
      * @param array  $cfg
      * @param string $token
-     * @return array{rows:array,complete:bool,reason:string,reads:int,error:string}
+     * @return array{rows:array,complete:bool,reason:string,reads:int,error:string,repeated:array}
+     *         repeated: a row whose UUID came earlier in the read, kept out of
+     *         rows and kept here for the fetch log (3.113.7); not the first
+     *         page answered twice, which is how pages count.
      */
     public static function read_rows( $cfg, $token ) {
-        $out  = array( 'rows' => array(), 'complete' => false, 'reason' => '', 'reads' => 0, 'error' => '' );
+        $out  = array( 'rows' => array(), 'complete' => false, 'reason' => '', 'reads' => 0, 'error' => '', 'repeated' => array() );
         $seen = array();
 
         for ( $page = 0; $page <= self::MAX_PAGES; $page++ ) {
@@ -456,9 +462,11 @@ class SFAF_EveryAction {
 
             $rows = self::rows_in( $r['body'] );
             $new  = 0;
+            $again = array();
             foreach ( $rows as $row ) {
                 $key = isset( $row['UUID'] ) && '' !== trim( (string) $row['UUID'] ) ? 'u:' . trim( (string) $row['UUID'] ) : 'r:' . md5( wp_json_encode( $row ) );
                 if ( isset( $seen[ $key ] ) ) {
+                    $again[] = $row;
                     continue;
                 }
                 $seen[ $key ]  = true;
@@ -467,12 +475,16 @@ class SFAF_EveryAction {
             }
 
             if ( count( $rows ) < self::PER_PAGE ) {
+                if ( ! ( 1 === $page && 0 === $new ) ) {
+                    $out['repeated'] = array_merge( $out['repeated'], $again );
+                }
                 $out['complete'] = true;
                 return $out;
             }
             if ( 1 === $page && 0 === $new ) {
                 continue; // page=1 was the first page again: pages count from 1
             }
+            $out['repeated'] = array_merge( $out['repeated'], $again );
             if ( $page > 0 && 0 === $new ) {
                 $out['reason'] = 'the tracker gave the same rows twice, so its pages could not be told apart and the list may be incomplete';
                 return $out;
@@ -751,13 +763,116 @@ class SFAF_EveryAction {
 
     /** Record a fetch from its run_adapter() result. */
     public static function record_fetch( $result ) {
-        update_option( self::FETCH_OPTION, array(
+        $row = array(
             'at'      => time(),
             'rows'    => isset( $result['fetched'] ) ? (int) $result['fetched'] : 0,
             'new'     => isset( $result['new'] ) ? (int) $result['new'] : 0,
             'updated' => isset( $result['updated'] ) ? (int) $result['updated'] : 0,
             'error'   => isset( $result['error'] ) ? (string) $result['error'] : '',
+        );
+        // The outcomes nothing on the calendar shows (3.113.7).
+        foreach ( array_keys( self::silent_outcomes() ) as $k ) {
+            $row[ $k ] = isset( $result[ $k ] ) ? (int) $result[ $k ] : 0;
+        }
+        update_option( self::FETCH_OPTION, $row, false );
+    }
+
+    /**
+     * The counts the Last fetch line adds after created and updated, as key =>
+     * array( one, many ), in the order it says them (3.113.7).
+     *
+     * @return array<string,string[]>
+     */
+    public static function silent_outcomes() {
+        return array(
+            'unchanged'    => array( '%d unchanged', '%d unchanged' ),
+            'refused'      => array( '%d not imported', '%d not imported' ),
+            'dismissed'    => array( '%d dismissed here', '%d dismissed here' ),
+            'trashed'      => array( '%d in the trash here', '%d in the trash here' ),
+            'deleted_skip' => array( '%d deleted here for good', '%d deleted here for good' ),
+            'duplicate'    => array( '%d listed twice', '%d listed twice' ),
+            'invalid'      => array( '%d could not be read', '%d could not be read' ),
+            'failed'       => array( '%d could not be saved', '%d could not be saved' ),
+        );
+    }
+
+    /** The Last fetch line on the panel. */
+    public static function fetch_line( $f ) {
+        if ( empty( $f['at'] ) ) {
+            return 'Not fetched yet.';
+        }
+        if ( '' !== (string) $f['error'] ) {
+            return sprintf( 'Failed %s: %s', sfaf_ap_datetime( (int) $f['at'] ), $f['error'] );
+        }
+        $line = sprintf(
+            '%s: %d %s read, %d created, %d updated',
+            sfaf_ap_datetime( (int) $f['at'] ),
+            (int) $f['rows'],
+            1 === (int) $f['rows'] ? 'row' : 'rows',
+            (int) $f['new'],
+            (int) $f['updated']
+        );
+        foreach ( self::silent_outcomes() as $k => $say ) {
+            $n = isset( $f[ $k ] ) ? (int) $f[ $k ] : 0;
+            if ( $n > 0 ) {
+                $line .= ', ' . sprintf( 1 === $n ? $say[0] : $say[1], $n );
+            }
+        }
+        return $line . '.';
+    }
+
+    /**
+     * Keep the last fetch row by row (3.113.7): each row as it arrived, the
+     * times as read, and what was done with it. Replaces the one before.
+     *
+     * @param array $result run_adapter()'s result, with its rows
+     * @param array $raw    the adapter's rows as received, in fetch order
+     */
+    public static function record_log( $result, $raw ) {
+        $rows = array();
+        foreach ( isset( $result['rows'] ) ? (array) $result['rows'] : array() as $r ) {
+            $x = isset( $raw[ (int) $r['n'] - 1 ] ) ? $raw[ (int) $r['n'] - 1 ] : array();
+            $rows[] = array(
+                'uuid'        => isset( $x['uuid'] ) ? (string) $x['uuid'] : (string) $r['id'],
+                'title'       => isset( $x['title'] ) ? (string) $x['title'] : (string) $r['title'],
+                'start_raw'   => isset( $x['start_raw'] ) ? (string) $x['start_raw'] : '',
+                'end_raw'     => isset( $x['end_raw'] ) ? (string) $x['end_raw'] : '',
+                'start_local' => isset( $x['start_local'] ) ? (int) $x['start_local'] : 0,
+                'end_local'   => isset( $x['end_local'] ) ? (int) $x['end_local'] : 0,
+                'outcome'     => (string) $r['outcome'],
+                'why'         => (string) $r['why'],
+                'post_id'     => (int) $r['post_id'],
+            );
+        }
+        update_option( self::LOG_OPTION, array(
+            'at'    => time(),
+            'error' => isset( $result['error'] ) ? (string) $result['error'] : '',
+            'rows'  => $rows,
         ), false );
+    }
+
+    /** The last fetch, row by row, for the panel. */
+    public static function last_log() {
+        $l = get_option( self::LOG_OPTION, array() );
+        return is_array( $l ) ? $l : array();
+    }
+
+    /** What happened to one logged row, in a few words. */
+    public static function outcome_label( $row ) {
+        $why = (string) $row['why'];
+        switch ( (string) $row['outcome'] ) {
+            case 'added':        return 'Added';
+            case 'updated':      return 'Updated: ' . $why;
+            case 'unchanged':    return '' !== $why ? 'Unchanged; ' . $why : 'Unchanged';
+            case 'refused':      return 'Not imported: ' . $why;
+            case 'dismissed':    return '' !== $why ? 'Left alone: it is ' . $why . ' here' : 'Dismissed here, left alone';
+            case 'trashed':      return 'In the trash here, left alone';
+            case 'deleted_skip': return 'Deleted here for good, not made again';
+            case 'duplicate':    return 'Listed twice; the first was used';
+            case 'invalid':      return '' === (string) $row['uuid'] ? 'Could not be read: no UUID' : 'Could not be read: Start_Time not understood';
+            case 'failed':       return 'Could not be saved: ' . $why;
+        }
+        return (string) $row['outcome'];
     }
 
     /* ---------------------------------------------------------------------

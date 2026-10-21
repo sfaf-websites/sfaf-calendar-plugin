@@ -206,6 +206,9 @@ function lift( $src, $needle ) {
 $tpl = file_get_contents( $root . '/includes/sfaf-template-functions.php' );
 eval( lift( $tpl, 'function sfaf_location_part_keys(' ) );
 eval( lift( $tpl, 'function sfaf_event_takes_rsvps(' ) );
+// The panel's dates (3.113.7). Their wording is the formatter's own test; this
+// section reads the outcomes, so a plain stand-in is enough here.
+function sfaf_ap_datetime( $when ) { return date( 'Y-m-d', (int) $when ); }
 
 SFAF_Sources::register_adapter( new SFAF_Source_EveryAction() );
 
@@ -533,9 +536,55 @@ same( 'the record names it', SFAF_Sources::was_deleted( 'everyaction', $u_del ),
 check( by_uuid( $u_ctl ) > 0, 'the control, deleted with no record, did not come back, so this section proves nothing' );
 same( 'and only the control is new', $r10['new'], 1 );
 /* ===========================================================================
+ * 10. THE FETCH LOG, ROW BY ROW (3.113.7).
+ *
+ * One fetch carrying every outcome there is, on top of section 8's world: the
+ * dismissed, trashed and deleted-for-good rows, the rest unchanged, a row sent
+ * twice, a past row, one with no UUID and one whose Start_Time is not a shape
+ * the adapter reads. The log keeps each row as it arrived, the times as read
+ * and what was done; the Last fetch line counts the silent ones.
+ * ======================================================================== */
+$dup     = array_values( array_filter( $ROWS, function ( $r ) use ( $u_ctl ) { return (string) $r['UUID'] === (string) $u_ctl; } ) )[0];
+$past    = past_rows()[0];
+$nouuid  = array_merge( $ROWS[1], array( 'UUID' => '', 'Title' => 'No UUID' ) );
+$badtime = array_merge( $ROWS[1], array( 'UUID' => '999000777', 'Title' => 'Odd time', 'Start_Time' => "$Y-10-09T17:00:00Z" ) );
+$sent    = array_merge( $ROWS, array( $dup, $past, $nouuid, $badtime ) );
+hub_with( array( 'bare' => $sent, 1 => $sent, 2 => array() ) );
+$r11 = run_ea( 'manual' );
+$log = SFAF_EveryAction::last_log();
+$by  = array();
+foreach ( (array) $log['rows'] as $i => $row ) { $by[ $row['uuid'] . '#' . ( isset( $by[ $row['uuid'] . '#0' ] ) ? 1 : 0 ) ] = $row; }
+same( '10: one log row per row fetched', count( (array) $log['rows'] ), (int) $r11['fetched'] );
+same( '10: in the order they came', array_column( array_slice( (array) $log['rows'], 0, 2 ), 'uuid' ), array( (string) $ROWS[0]['UUID'], (string) $ROWS[1]['UUID'] ) );
+same( '10: a dismissed row', isset( $by[ $u_dis . '#0' ] ) ? $by[ $u_dis . '#0' ]['outcome'] : null, 'dismissed' );
+same( '10: a trashed row', isset( $by[ $u_rej . '#0' ] ) ? $by[ $u_rej . '#0' ]['outcome'] : null, 'trashed' );
+same( '10: a row deleted here for good', isset( $by[ $u_del . '#0' ] ) ? $by[ $u_del . '#0' ]['outcome'] : null, 'deleted_skip' );
+same( '10: the first of a row sent twice is used', isset( $by[ $dup['UUID'] . '#0' ] ) ? $by[ $dup['UUID'] . '#0' ]['outcome'] : null, 'unchanged' );
+same( '10: the second is a duplicate', isset( $by[ $dup['UUID'] . '#1' ] ) ? $by[ $dup['UUID'] . '#1' ]['outcome'] : null, 'duplicate' );
+same( '10: a past row is refused, and why', isset( $by[ $past['UUID'] . '#0' ] ) ? array( $by[ $past['UUID'] . '#0' ]['outcome'], $by[ $past['UUID'] . '#0' ]['why'] ) : null, array( 'refused', 'its end time has passed' ) );
+same( '10: a row with no UUID could not be read', isset( $by['#0'] ) ? array( $by['#0']['outcome'], SFAF_EveryAction::outcome_label( $by['#0'] ), $by['#0']['title'] ) : null, array( 'invalid', 'Could not be read: no UUID', 'No UUID' ) );
+same( '10: a Start_Time it cannot read', isset( $by['999000777#0'] ) ? array( $by['999000777#0']['outcome'], $by['999000777#0']['start_raw'], $by['999000777#0']['start_local'], SFAF_EveryAction::outcome_label( $by['999000777#0'] ) ) : null,
+    array( 'invalid', "$Y-10-09T17:00:00Z", 0, 'Could not be read: Start_Time not understood' ) );
+$first = $by[ (string) $ROWS[0]['UUID'] . '#0' ];
+same( '10: the times as received', array( $first['start_raw'], $first['end_raw'] ), array( $ROWS[0]['Start_Time'], $ROWS[0]['End_Time'] ) );
+same( '10: and as read here', array( $first['start_local'], $first['end_local'] ),
+    array( SFAF_Source_EveryAction::to_local( $ROWS[0]['Start_Time'] )->getTimestamp(), SFAF_Source_EveryAction::to_local( $ROWS[0]['End_Time'] )->getTimestamp() ) );
+same( '10: the title as received', $first['title'], $ROWS[0]['Title'] );
+same( '10: and the event it is', $first['post_id'], by_uuid( (string) $ROWS[0]['UUID'] ) );
+$counts = array_count_values( array_column( (array) $log['rows'], 'outcome' ) );
+same( '10: the counts match the rows', array( $r11['unchanged'], $r11['dismissed'], $r11['trashed'], $r11['deleted_skip'], $r11['duplicate'], $r11['invalid'], $r11['refused'] ),
+    array( $counts['unchanged'], $counts['dismissed'], $counts['trashed'], $counts['deleted_skip'], $counts['duplicate'], $counts['invalid'], $counts['refused'] ) );
+same( '10: untouched is still the sum of the three it always was', $r11['untouched'], $r11['dismissed'] + $r11['trashed'] + $r11['deleted_skip'] );
+$line = SFAF_EveryAction::fetch_line( SFAF_EveryAction::last_fetch() );
+check( (bool) preg_match( '/: ' . count( $sent ) . ' rows read, 0 created, 0 updated, ' . $counts['unchanged'] . ' unchanged, 1 not imported, 1 dismissed here, 1 in the trash here, 1 deleted here for good, 1 listed twice, 2 could not be read\.$/', $line ),
+    '10: the Last fetch line does not count the silent outcomes: ' . $line );
+same( '10: a line with nothing silent says only what moved', preg_replace( '/^[^:]+: /', '', SFAF_EveryAction::fetch_line( array( 'at' => 1, 'rows' => 3, 'new' => 1, 'updated' => 2, 'error' => '' ) ) ), '3 rows read, 1 created, 2 updated.' );
+same( '10: the next fetch replaces the log', ( function () use ( $ROWS ) { hub_with( array( 'bare' => array( $ROWS[0] ), 1 => array( $ROWS[0] ), 2 => array() ) ); run_ea( 'manual' ); return count( SFAF_EveryAction::last_log()['rows'] ); } )(), 1 );
+
+/* ===========================================================================
  * 9. NO CREDENTIAL IN ANYTHING STORED.
  * ======================================================================== */
-$stored = json_encode( array( $GLOBALS['opt'][ SFAF_EveryAction::FETCH_OPTION ], $GLOBALS['opt'][ SFAF_EveryAction::LINKS_RUN_OPTION ], $GLOBALS['meta'] ) );
+$stored = json_encode( array( $GLOBALS['opt'][ SFAF_EveryAction::FETCH_OPTION ], $GLOBALS['opt'][ SFAF_EveryAction::LINKS_RUN_OPTION ], $GLOBALS['opt'][ SFAF_EveryAction::LOG_OPTION ], $GLOBALS['meta'] ) );
 foreach ( array( 'k3y0000000000000000000000000000000000abc', 'p@ss w0rd!x', TOK ) as $secret ) {
     check( false === strpos( $stored, $secret ), 'a credential reached stored data' );
 }

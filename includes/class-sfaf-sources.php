@@ -1694,7 +1694,30 @@ class SFAF_Sources {
              * permanent, so the collection goes with the table.
              */
             'changed'       => array(),
+            /*
+             * WHAT HAPPENED TO EACH ROW, IN ORDER (3.113.7). One entry per item
+             * the source sent, { n, id, title, outcome, why, post_id }, n
+             * counting from 1 in the order fetch() returned them, so an adapter
+             * can pair it with the row as it arrived. The counts above say how
+             * many; this says which, including the rows nothing visible
+             * happened to. untouched stays the sum of the last three below.
+             */
+            'rows'          => array(),
+            'duplicate'     => 0,
+            'deleted_skip'  => 0,
+            'dismissed'     => 0,
+            'trashed'       => 0,
         );
+        $log = function ( $outcome, $event, $why = '', $post_id = 0 ) use ( &$result ) {
+            $result['rows'][] = array(
+                'n'       => (int) $result['fetched'],
+                'id'      => is_array( $event ) && isset( $event['external_id'] ) ? (string) $event['external_id'] : '',
+                'title'   => is_array( $event ) && isset( $event['title'] ) ? (string) $event['title'] : '',
+                'outcome' => $outcome,
+                'why'     => (string) $why,
+                'post_id' => (int) $post_id,
+            );
+        };
 
         $response = $adapter->fetch();
 
@@ -1734,11 +1757,14 @@ class SFAF_Sources {
 
             if ( ! is_array( $event ) || empty( $event['external_id'] ) || empty( $event['external_source'] ) ) {
                 $result['invalid']++;
+                $log( 'invalid', $event );
                 continue;
             }
 
             $key = $event['external_source'] . '|' . $event['external_id'];
             if ( isset( $seen[ $key ] ) ) {
+                $result['duplicate']++;
+                $log( 'duplicate', $event );
                 continue; // the same event twice in one run
             }
             $seen[ $key ]           = true;
@@ -1749,6 +1775,8 @@ class SFAF_Sources {
             // Deleted for good here: not made again (3.113.2).
             if ( ! $existing && self::was_deleted( $event['external_source'], $event['external_id'] ) ) {
                 $result['untouched']++;
+                $result['deleted_skip']++;
+                $log( 'deleted_skip', $event );
                 continue;
             }
 
@@ -1759,13 +1787,17 @@ class SFAF_Sources {
                 // They are neither updated nor resurrected.
                 if ( ! in_array( $status, self::updatable_statuses(), true ) ) {
                     $result['untouched']++;
+                    $kind = ( 'trash' === $status ) ? 'trashed' : 'dismissed';
+                    $result[ $kind ]++;
+                    $log( $kind, $event, ( 'trash' === $status || self::STATUS_DISMISSED === $status ) ? '' : (string) $status, $existing );
                     continue;
                 }
 
                 // An event that had been removed at the source and is back is
                 // reported, never auto-republished — putting something live
                 // again without a person looking is exactly what we do not do.
-                if ( get_post_meta( $existing, self::META_REMOVED_AT, true ) ) {
+                $back = (bool) get_post_meta( $existing, self::META_REMOVED_AT, true );
+                if ( $back ) {
                     delete_post_meta( $existing, self::META_REMOVED_AT );
                     delete_post_meta( $existing, self::META_REMOVED_WHY );
                     $result['reappeared']++;
@@ -1779,6 +1811,7 @@ class SFAF_Sources {
                 if ( is_wp_error( $update ) ) {
                     $result['failed']++;
                     $result['notes'][] = sprintf( 'Could not refresh #%d: %s', $existing, $update->get_error_message() );
+                    $log( 'failed', $event, $update->get_error_message(), $existing );
                     continue;
                 }
 
@@ -1795,7 +1828,9 @@ class SFAF_Sources {
 
                 if ( empty( $update['changed'] ) ) {
                     $result['unchanged']++;
+                    $log( 'unchanged', $event, $back ? 'back at the source, left a draft' : '', $existing );
                 } else {
+                    $log( 'updated', $event, implode( ', ', array_keys( $update['changed'] ) ) . ( $back ? '; back at the source, left a draft' : '' ), $existing );
                     $result['updated']++;
                     $result['changed'][] = array(
                         'id'     => (int) $existing,
@@ -1821,6 +1856,7 @@ class SFAF_Sources {
             $refusal = self::import_refusal( $event );
             if ( '' !== $refusal ) {
                 $result['refused']++;
+                $log( 'refused', $event, $refusal );
                 $result['notes'][] = sprintf(
                     'Not imported: "%s", because %s.',
                     isset( $event['title'] ) && '' !== $event['title'] ? $event['title'] : $event['external_id'],
@@ -1833,6 +1869,7 @@ class SFAF_Sources {
             $post_id    = self::import_event( $event, $faq_counts );
             if ( is_wp_error( $post_id ) ) {
                 $result['failed']++;
+                $log( 'failed', $event, $post_id->get_error_message() );
                 $result['notes'][] = sprintf(
                     'Could not save "%s": %s',
                     isset( $event['title'] ) ? $event['title'] : $event['external_id'],
@@ -1844,6 +1881,7 @@ class SFAF_Sources {
             $adapter->after_save( $post_id, $event, true );
 
             $result['new']++;
+            $log( 'added', $event, '', $post_id );
             $result['changed'][] = array(
                 'id'     => (int) $post_id,
                 'title'  => isset( $event['title'] ) ? (string) $event['title'] : (string) $event['external_id'],

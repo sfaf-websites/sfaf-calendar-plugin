@@ -2600,23 +2600,38 @@ class SFAF_Admin {
                         ?>
                         <div class="uc-field-row">
                             <label>Last fetch</label>
-                            <p class="uc-everyaction-last-fetch"><?php
-                                if ( empty( $ea_fetch['at'] ) ) {
-                                    echo 'Not fetched yet.';
-                                } elseif ( '' !== (string) $ea_fetch['error'] ) {
-                                    echo esc_html( sprintf( 'Failed %s: %s', sfaf_ap_datetime( (int) $ea_fetch['at'] ), $ea_fetch['error'] ) );
-                                } else {
-                                    echo esc_html( sprintf(
-                                        '%s: %d %s read, %d created, %d updated.',
-                                        sfaf_ap_datetime( (int) $ea_fetch['at'] ),
-                                        (int) $ea_fetch['rows'],
-                                        1 === (int) $ea_fetch['rows'] ? 'row' : 'rows',
-                                        (int) $ea_fetch['new'],
-                                        (int) $ea_fetch['updated']
-                                    ) );
-                                }
-                            ?></p>
+                            <p class="uc-everyaction-last-fetch"><?php echo esc_html( SFAF_EveryAction::fetch_line( $ea_fetch ) ); ?></p>
                         </div>
+                        <?php
+                        /* THE LAST FETCH, ROW BY ROW (3.113.7): each row as the
+                           tracker sent it, the times as read here, and what was
+                           done with it, which comes third so it shows without
+                           scrolling. Folded, because it can run to hundreds. */
+                        $ea_log = SFAF_EveryAction::last_log();
+                        if ( ! empty( $ea_log['rows'] ) ) :
+                        ?>
+                        <details class="uc-everyaction-log">
+                            <summary>Rows in the last fetch (<?php echo (int) count( $ea_log['rows'] ); ?>)</summary>
+                            <div class="uc-everyaction-log-scroll">
+                            <table class="widefat striped">
+                                <thead><tr><th scope="col">UUID</th><th scope="col">Title</th><th scope="col">Outcome</th><th scope="col">Start_Time as received</th><th scope="col">End_Time as received</th><th scope="col">Start, read as</th><th scope="col">End, read as</th></tr></thead>
+                                <tbody>
+                                <?php foreach ( $ea_log['rows'] as $ea_row ) : ?>
+                                    <tr data-uc-ea-outcome="<?php echo esc_attr( $ea_row['outcome'] ); ?>">
+                                        <td><code><?php echo esc_html( $ea_row['uuid'] ); ?></code></td>
+                                        <td><?php echo esc_html( $ea_row['title'] ); ?></td>
+                                        <td><?php echo esc_html( SFAF_EveryAction::outcome_label( $ea_row ) ); ?></td>
+                                        <td><code><?php echo esc_html( $ea_row['start_raw'] ); ?></code></td>
+                                        <td><code><?php echo esc_html( $ea_row['end_raw'] ); ?></code></td>
+                                        <td><?php echo esc_html( $ea_row['start_local'] ? sfaf_ap_datetime( (int) $ea_row['start_local'] ) : 'not understood' ); ?></td>
+                                        <td><?php echo esc_html( $ea_row['end_local'] ? sfaf_ap_datetime( (int) $ea_row['end_local'] ) : ( '' === $ea_row['end_raw'] ? 'none' : 'not understood' ) ); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                            </div>
+                        </details>
+                        <?php endif; ?>
                         <div class="uc-field-row">
                             <label>Signup links</label>
                             <p class="uc-everyaction-links"><?php

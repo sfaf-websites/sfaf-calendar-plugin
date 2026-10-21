@@ -47,6 +47,12 @@ class SFAF_Source_EveryAction extends SFAF_Source_Adapter {
     /** Rows this run marked with a visibility, for the report. */
     private $marked = array();
 
+    /** Each row as it arrived, in order, for the fetch log (3.113.7). */
+    private $raw = array();
+
+    /** Rows the tracker sent a second time, which never reach the run (3.113.7). */
+    private $repeated = array();
+
     public function slug() {
         return self::SLUG;
     }
@@ -104,7 +110,9 @@ class SFAF_Source_EveryAction extends SFAF_Source_Adapter {
      * @return array|WP_Error
      */
     public function fetch() {
-        $this->marked = array();
+        $this->marked   = array();
+        $this->raw      = array();
+        $this->repeated = array();
 
         $cfg  = SFAF_EveryAction::config();
         $miss = SFAF_EveryAction::missing( $cfg );
@@ -117,6 +125,7 @@ class SFAF_Source_EveryAction extends SFAF_Source_Adapter {
             return new WP_Error( 'sfaf_ea_login', SFAF_EveryAction::scrub( SFAF_EveryAction::sentence( 'Login failed: ' . $token->get_error_message() ), $cfg ) );
         }
         $read = SFAF_EveryAction::read_rows( $cfg, $token );
+        $this->repeated = isset( $read['repeated'] ) ? (array) $read['repeated'] : array();
         SFAF_EveryAction::logout( $cfg, $token );
 
         if ( '' !== $read['error'] ) {
@@ -228,10 +237,19 @@ class SFAF_Source_EveryAction extends SFAF_Source_Adapter {
         }
         $uuid  = self::field( $item, 'UUID' );
         $start = self::to_local( self::field( $item, 'Start_Time' ) );
+        $end   = self::to_local( self::field( $item, 'End_Time' ) );
+        // As received and as read, before anything can refuse it (3.113.7).
+        $this->raw[] = array(
+            'uuid'        => $uuid,
+            'title'       => self::field( $item, 'Title' ),
+            'start_raw'   => self::field( $item, 'Start_Time' ),
+            'end_raw'     => self::field( $item, 'End_Time' ),
+            'start_local' => $start ? $start->getTimestamp() : 0,
+            'end_local'   => $end ? $end->getTimestamp() : 0,
+        );
         if ( '' === $uuid || ! $start ) {
             return null;
         }
-        $end = self::to_local( self::field( $item, 'End_Time' ) );
 
         $title      = self::field( $item, 'Title' );
         $start_date = $start->format( 'Y-m-d' );
@@ -428,7 +446,22 @@ class SFAF_Source_EveryAction extends SFAF_Source_Adapter {
                 1 === count( $this->marked ) ? 'it' : 'them'
             );
         }
+        /*
+         * THE TRACKER'S OWN REPEATS (3.113.7). read_rows() keeps the first row
+         * for a UUID and drops the rest before the run sees them, so they are
+         * counted and logged here, after the rows that were run.
+         */
+        foreach ( $this->repeated as $row ) {
+            $result['duplicate']++;
+            $result['fetched']++;
+            $this->normalize( $row );
+            $result['rows'][] = array(
+                'n' => (int) $result['fetched'], 'id' => self::field( $row, 'UUID' ), 'title' => self::field( $row, 'Title' ),
+                'outcome' => 'duplicate', 'why' => 'sent twice by the tracker', 'post_id' => 0,
+            );
+        }
         SFAF_EveryAction::record_fetch( $result );
+        SFAF_EveryAction::record_log( $result, $this->raw );
         if ( SFAF_EveryAction::links_read_at() ) {
             $run = SFAF_EveryAction::links_run();
             $run = array_merge( $run, SFAF_EveryAction::count_matches() );

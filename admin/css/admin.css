@@ -703,3 +703,13 @@
 .uc-open-label { font-size: 12px; color: #50575e; }
 .uc-open-row .uc-timepick { display: inline-flex; gap: 4px; }
 .uc-open-row .button-link-delete { align-self: center; }
+
+/* THE EVERYACTION FETCH LOG (3.113.7): folded under Last fetch, the table
+   scrolling inside its own box so a wide row never widens the panel. */
+.uc-everyaction-log { margin: 4px 0 16px; }
+.uc-everyaction-log > summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+.uc-everyaction-log-scroll { max-height: 480px; overflow: auto; margin-top: 8px; border: 1px solid #D1D3D4; }
+.uc-everyaction-log table { margin: 0; border: 0; }
+.uc-everyaction-log td, .uc-everyaction-log th { white-space: nowrap; }
+/* The title wraps, so the outcome beside it stays in view at 782px. */
+.uc-everyaction-log td:nth-child(2) { white-space: normal; min-width: 14em; }
