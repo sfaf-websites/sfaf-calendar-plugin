@@ -29,7 +29,7 @@ $plants = array(
         array( 'includes/class-sfaf-waitlist.php', "            'lang'       => isset( \$data['lang'] ) ? (string) \$data['lang'] : '',\n        );\n        // The agreement", "        );\n        // The agreement" ),
     ) ),
     '1: anything is stored' => array( 'release-31136-test.php', '1: and anything but en or es is nothing', array(
-        array( 'includes/class-sfaf-rsvp.php', "in_array( \$data['lang'], array( 'en', 'es' ), true ) ? \$data['lang'] : '';", "\$data['lang'];" ),
+        array( 'includes/class-sfaf-rsvp.php', "array( 'en', 'es' ), true ) ) ? \$data['lang'] : '';", "array( 'en', 'es' ), true ) ) ? \$data['lang'] : \$data['lang'];" ),
     ) ),
     '2: refusals stay English' => array( 'release-31136-test.php', '2: a missing name, refused in Spanish', array(
         array( 'includes/class-sfaf-rsvp.php', "'message' => SFAF_Messages::label( 'e_required', \$say ) );", "'message' => 'First name and email are required.' );" ),
