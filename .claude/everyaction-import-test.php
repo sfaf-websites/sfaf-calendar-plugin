@@ -551,7 +551,7 @@ $badtime = array_merge( $ROWS[1], array( 'UUID' => '999000777', 'Title' => 'Odd 
 $sent    = array_merge( $ROWS, array( $dup, $past, $nouuid, $badtime ) );
 hub_with( array( 'bare' => $sent, 1 => $sent, 2 => array() ) );
 $r11 = run_ea( 'manual' );
-$log = SFAF_EveryAction::last_log();
+$log = SFAF_EveryAction::last_log() + array( 'rows' => array() );
 $by  = array();
 foreach ( (array) $log['rows'] as $i => $row ) { $by[ $row['uuid'] . '#' . ( isset( $by[ $row['uuid'] . '#0' ] ) ? 1 : 0 ) ] = $row; }
 same( '10: one log row per row fetched', count( (array) $log['rows'] ), (int) $r11['fetched'] );
@@ -565,13 +565,13 @@ same( '10: a past row is refused, and why', isset( $by[ $past['UUID'] . '#0' ] )
 same( '10: a row with no UUID could not be read', isset( $by['#0'] ) ? array( $by['#0']['outcome'], SFAF_EveryAction::outcome_label( $by['#0'] ), $by['#0']['title'] ) : null, array( 'invalid', 'Could not be read: no UUID', 'No UUID' ) );
 same( '10: a Start_Time it cannot read', isset( $by['999000777#0'] ) ? array( $by['999000777#0']['outcome'], $by['999000777#0']['start_raw'], $by['999000777#0']['start_local'], SFAF_EveryAction::outcome_label( $by['999000777#0'] ) ) : null,
     array( 'invalid', "$Y-10-09T17:00:00Z", 0, 'Could not be read: Start_Time not understood' ) );
-$first = $by[ (string) $ROWS[0]['UUID'] . '#0' ];
+$first = isset( $by[ (string) $ROWS[0]['UUID'] . '#0' ] ) ? $by[ (string) $ROWS[0]['UUID'] . '#0' ] : array( 'start_raw' => null, 'end_raw' => null, 'start_local' => null, 'end_local' => null, 'title' => null, 'post_id' => null );
 same( '10: the times as received', array( $first['start_raw'], $first['end_raw'] ), array( $ROWS[0]['Start_Time'], $ROWS[0]['End_Time'] ) );
 same( '10: and as read here', array( $first['start_local'], $first['end_local'] ),
     array( SFAF_Source_EveryAction::to_local( $ROWS[0]['Start_Time'] )->getTimestamp(), SFAF_Source_EveryAction::to_local( $ROWS[0]['End_Time'] )->getTimestamp() ) );
 same( '10: the title as received', $first['title'], $ROWS[0]['Title'] );
 same( '10: and the event it is', $first['post_id'], by_uuid( (string) $ROWS[0]['UUID'] ) );
-$counts = array_count_values( array_column( (array) $log['rows'], 'outcome' ) );
+$counts = array_count_values( array_column( (array) $log['rows'], 'outcome' ) ) + array_fill_keys( array( 'unchanged', 'dismissed', 'trashed', 'deleted_skip', 'duplicate', 'invalid', 'refused' ), 0 );
 same( '10: the counts match the rows', array( $r11['unchanged'], $r11['dismissed'], $r11['trashed'], $r11['deleted_skip'], $r11['duplicate'], $r11['invalid'], $r11['refused'] ),
     array( $counts['unchanged'], $counts['dismissed'], $counts['trashed'], $counts['deleted_skip'], $counts['duplicate'], $counts['invalid'], $counts['refused'] ) );
 same( '10: untouched is still the sum of the three it always was', $r11['untouched'], $r11['dismissed'] + $r11['trashed'] + $r11['deleted_skip'] );
@@ -579,7 +579,7 @@ $line = SFAF_EveryAction::fetch_line( SFAF_EveryAction::last_fetch() );
 check( (bool) preg_match( '/: ' . count( $sent ) . ' rows read, 0 created, 0 updated, ' . $counts['unchanged'] . ' unchanged, 1 not imported, 1 dismissed here, 1 in the trash here, 1 deleted here for good, 1 listed twice, 2 could not be read\.$/', $line ),
     '10: the Last fetch line does not count the silent outcomes: ' . $line );
 same( '10: a line with nothing silent says only what moved', preg_replace( '/^[^:]+: /', '', SFAF_EveryAction::fetch_line( array( 'at' => 1, 'rows' => 3, 'new' => 1, 'updated' => 2, 'error' => '' ) ) ), '3 rows read, 1 created, 2 updated.' );
-same( '10: the next fetch replaces the log', ( function () use ( $ROWS ) { hub_with( array( 'bare' => array( $ROWS[0] ), 1 => array( $ROWS[0] ), 2 => array() ) ); run_ea( 'manual' ); return count( SFAF_EveryAction::last_log()['rows'] ); } )(), 1 );
+same( '10: the next fetch replaces the log', ( function () use ( $ROWS ) { hub_with( array( 'bare' => array( $ROWS[0] ), 1 => array( $ROWS[0] ), 2 => array() ) ); run_ea( 'manual' ); return count( (array) ( SFAF_EveryAction::last_log() + array( 'rows' => array() ) )['rows'] ); } )(), 1 );
 
 /* ===========================================================================
  * 9. NO CREDENTIAL IN ANYTHING STORED.

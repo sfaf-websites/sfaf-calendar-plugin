@@ -33,8 +33,8 @@ $plants = array(
         array( 'includes/class-sfaf-sources.php', "                \$log( 'deleted_skip', \$event );\n", '' ),
     ) ),
     '1: the tracker\'s repeats are dropped unseen' => array( 'everyaction-import-test.php', '10: the second is a duplicate', array(
-        array( 'includes/class-sfaf-everyaction.php', "            \$out['repeated'] = array_merge( \$out['repeated'], \$again );\n", '' ),
         array( 'includes/class-sfaf-everyaction.php', "                if ( ! ( 1 === \$page && 0 === \$new ) ) {\n                    \$out['repeated'] = array_merge( \$out['repeated'], \$again );\n                }\n", '' ),
+        array( 'includes/class-sfaf-everyaction.php', "            }\n            \$out['repeated'] = array_merge( \$out['repeated'], \$again );\n", "            }\n" ),
     ) ),
     '1: a refusal loses its reason' => array( 'everyaction-import-test.php', '10: a past row is refused, and why', array(
         array( 'includes/class-sfaf-sources.php', "                \$log( 'refused', \$event, \$refusal );", "                \$log( 'refused', \$event );" ),
