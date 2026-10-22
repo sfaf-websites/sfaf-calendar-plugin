@@ -58,12 +58,19 @@ function hiddenOk() {
   });
   return bad;
 }
+/* Every phrase the toggle switches, in order: what shows, and whether it holds
+   the other language's room. */
+function phrases() {
+  return Array.prototype.map.call(document.querySelectorAll('#uc-rsvp-modal .uc-rsvp-form-view #uc-rsvp-heading, #uc-rsvp-modal .uc-rsvp-form-view [data-uc-w], #uc-rsvp-modal [data-uc-fmt], #uc-rsvp-submit-btn, #uc-rsvp-questions .uc-rsvp-q-heading, #uc-rsvp-questions .uc-rsvp-q-more-label, #uc-rsvp-text-label'), function (el) {
+    return { id: el.id || el.getAttribute('data-uc-w') || el.getAttribute('data-uc-fmt') || el.className, seen: seen(el), twin: !!el.querySelector('.uc-w2-off') };
+  });
+}
 function measure() {
   var v = q('#uc-rsvp-modal .uc-rsvp-form-view');
   return { view: Math.round(v.getBoundingClientRect().height), submit: top_('#uc-rsvp-submit-btn'), cancel: top_('#uc-rsvp-cancel-btn'),
     heading: seen(q('#uc-rsvp-heading')), first: seen(q('label[for="uc-rsvp-first-name"]')), emailUse: seen(q('#uc-rsvp-email + .uc-rsvp-note')),
     submitText: seen(q('#uc-rsvp-submit-btn')), optin: seen(q('#uc-rsvp-optin + span')), legend: seen(q('#uc-rsvp-format legend')),
-    lang: (q('#uc-rsvp-modal .uc-rsvp-modal') || {}).lang, hiddenBad: hiddenOk() };
+    lang: (q('#uc-rsvp-modal .uc-rsvp-modal') || {}).lang, hiddenBad: hiddenOk(), phrases: phrases() };
 }
 function pick(l) { jQuery('[data-uc-lang-pick="' + l + '"]').trigger('click'); }
 ['plain', 'busy'].forEach(function (k) {
@@ -159,6 +166,12 @@ foreach ( $widths as $wn => $w ) {
             $s = $f[ $step ];
             rl( $set['heading'] === $s['heading'] && $set['first'] === $s['first'] && $set['email_use'] === $s['emailUse'] && $set['submit'] === $s['submitText'] && $set['optin'] === $s['optin'],
                 "$wn $k $step: what shows is not the language picked, or not only it: " . json_encode( $s, JSON_UNESCAPED_UNICODE ) );
+        }
+        foreach ( (array) $f['en']['phrases'] as $i => $ph ) {
+            $other = isset( $f['es']['phrases'][ $i ] ) ? $f['es']['phrases'][ $i ] : null;
+            if ( $other && $ph['seen'] !== $other['seen'] ) {
+                rl( $ph['twin'] && $other['twin'], "1: $wn $k: \"" . $ph['seen'] . '" holds no room for "' . $other['seen'] . '"' );
+            }
         }
         if ( 'busy' === $k ) {
             rl( $es['attend'] === $f['es']['legend'] && $en['attend'] === $f['en']['legend'], "$wn busy: the format question did not switch: " . json_encode( array( $f['en']['legend'], $f['es']['legend'] ), JSON_UNESCAPED_UNICODE ) );

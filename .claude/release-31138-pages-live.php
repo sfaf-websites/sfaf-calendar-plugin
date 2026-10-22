@@ -126,6 +126,11 @@ foreach ( array( 'desktop' => 1280, 'stacked' => 700, 'phone' => 390 ) as $wn =>
         rl( $b['l'] >= $r['inner']['l'] - 0.5 && $b['r'] <= $r['inner']['r'] + 0.5, "7L: $wn: " . $t['name'] . ' reaches past the column: ' . json_encode( array( $b, $r['inner'] ) ) );
     }
     rl( 2 === count( $r['tabs'] ), "$wn: not two month buttons" );
+    if ( 2 === count( $r['tabs'] ) ) {
+        $t0 = $r['tabs'][0]['box']; $t1 = $r['tabs'][1]['box'];
+        rl( abs( $t0['l'] - $r['inner']['l'] ) < 1 && abs( $t1['r'] - $r['inner']['r'] ) < 1 && abs( $t0['w'] - $t1['w'] ) < 1,
+            "7L: $wn: the month buttons do not share the column's width: " . json_encode( array( $t0, $t1, $r['inner'] ) ) );
+    }
     foreach ( $r['tabs'] as $t ) {
         rl( 'rgb(14, 118, 128)' === $t['edge'] && '1px' === $t['edgeW'] && $t['edgeRatio'] >= 4.5, "7L: $wn: " . $t['name'] . ' has no teal outline: ' . json_encode( $t ) );
         rl( (float) $t['radius'] >= 99 && 'rgb(255, 255, 255)' === $t['bg'], "7L: $wn: " . $t['name'] . ' is not the pill: ' . json_encode( $t ) );

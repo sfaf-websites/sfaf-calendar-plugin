@@ -23,7 +23,7 @@ $plants = array(
     '1: the held words can be seen' => array( 'release-31138-live.php', "the other language's words can be seen or heard", array(
         array( 'public/js/calendar.js', "'.uc-rsvp-modal-overlay .uc-w2-off{visibility:hidden;-webkit-user-select:none;user-select:none}' +", "'.uc-rsvp-modal-overlay .uc-w2-off{-webkit-user-select:none;user-select:none}' +" ),
     ) ),
-    '1: the button keeps one language' => array( 'release-31138-live.php', 'Register Now or Cancel moves', array(
+    '1: the button keeps one language' => array( 'release-31138-live.php', 'holds no room for', array(
         array( 'public/js/calendar.js', "        return waitlistChosen() ? WW('wait_heading', 'Join the waitlist') : WW('submit', 'Register Now');", "        return waitlistChosen() ? W('wait_heading', 'Join the waitlist') : W('submit', 'Register Now');" ),
     ) ),
     '2: a moment is formatted as UTC again' => array( 'pacific-time-test.php', "1: Mark's \"Last run\"", array(
@@ -68,8 +68,8 @@ $plants = array(
     '7L: the count stays grey' => array( 'release-31138-pages-live.php', "label is not the button's teal", array(
         array( 'public/css/calendar.css', ".uc-month-tab-count { font-size: 12.5px; font-weight: 400; color: inherit; flex: 0 0 auto; }", ".uc-month-tab-count { font-size: 12.5px; font-weight: 400; color: var(--uc-secondary); flex: 0 0 auto; }" ),
     ) ),
-    '7L: the buttons lose their layout' => array( 'release-31138-pages-live.php', '7L: ', array(
-        array( 'public/css/calendar.css', ".uc-sidebar .uc-month-tab {\n    flex: 1 1 0; min-width: 0;", ".uc-month-tab {\n    flex: 1 1 0; min-width: 0;" ),
+    '7L: the buttons stop sharing the column' => array( 'release-31138-pages-live.php', "do not share the column's width", array(
+        array( 'public/css/calendar.css', ".uc-sidebar .uc-month-tab {\n    flex: 1 1 0; min-width: 0;\n", ".uc-sidebar .uc-month-tab {\n" ),
     ) ),
 );
 
