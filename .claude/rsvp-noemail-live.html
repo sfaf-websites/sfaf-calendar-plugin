@@ -1999,12 +1999,19 @@
         /* Here and not in calendar.css, which the embed loads: the embed never
            draws this form, and 3.113.6 changes nothing the embed receives.
            #0E7680 on white is 5.35:1, #1A1D21 is 16.9:1. 24px tall, the WCAG
-           target size, inside the modal's 32px top padding. */
+           target size, inside the modal's 32px top padding. ON A PHONE each
+           word is 44px tall, as every control on this form is there (3.110.0),
+           so the toggle joins the flow, pulled 28px up into the padding: the
+           form is 16px taller and nothing overlaps the heading. */
         $('head').append('<style id="uc-rsvp-lang-css">' +
             '.uc-rsvp-modal-overlay .uc-rsvp-form-view{position:relative}' +
             '.uc-rsvp-modal-overlay .uc-rsvp-lang{position:absolute;top:-28px;right:-12px;display:flex;align-items:center;gap:0;font-family:var(--uc-font-heading);font-size:13px;line-height:16px;color:#6B7280}' +
             '.uc-rsvp-modal-overlay .uc-rsvp-lang button{margin:0;padding:4px 6px;border:0;border-radius:4px;background:none;color:#0E7680;font-family:var(--uc-font-heading);font-size:13px;font-weight:600;line-height:16px;text-decoration:underline;text-underline-offset:2px;cursor:pointer}' +
             '.uc-rsvp-modal-overlay .uc-rsvp-lang button[aria-pressed="true"]{color:#1A1D21;font-weight:700;text-decoration:none;cursor:default}' +
+            '@media (max-width:600px){' +
+                '.uc-rsvp-modal-overlay .uc-rsvp-lang{position:static;justify-content:flex-end;margin:-28px -12px 0 0}' +
+                '.uc-rsvp-modal-overlay .uc-rsvp-lang button{padding:14px 8px}' +
+            '}' +
             '</style>');
     }
 
