@@ -36,7 +36,7 @@
              data-filter-pin=""
              data-pagination="load_more"
              data-page="1"
-                                       data-month="2026-10-22 17:50:12"
+                                       data-month="2026-10-22 21:45:50"
              data-max-pages="1">
 
                                                 <form class="uc-filter-form" method="get" action="" data-uc-filter-form>
@@ -79,12 +79,12 @@
                 <span class="uc-who-label" data-uc-who-label>Organizers and groups</span>
                 <svg class="sfaf-icon sfaf-icon-chevron uc-who-chevron" width="1em" height="1em" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg>            </summary>
 
-            <div class="uc-who-panel" id="uc-who-1601" data-uc-who-panel>
+            <div class="uc-who-panel" id="uc-who-1723" data-uc-who-panel>
                                 <button type="button" class="uc-who-clear" data-uc-who-clear>Clear all</button>
                                 <div class="uc-who-cols">
                                             <section class="uc-who-col uc-who-col-org">
-                            <p class="uc-who-heading" id="uc-who-1601-org">Organizers</p>
-                            <div class="uc-who-list" role="group" aria-labelledby="uc-who-1601-org">
+                            <p class="uc-who-heading" id="uc-who-1723-org">Organizers</p>
+                            <div class="uc-who-list" role="group" aria-labelledby="uc-who-1723-org">
                                                                     <label class="uc-who-opt">
                                         <input type="checkbox" name="uc_org[]"
                                                value="sfaf"
@@ -1843,7 +1843,7 @@ jQuery.ajax = function () {
             currentAgreement = null;
             agreedNow = false;
             try { currentAgreement = JSON.parse($(this).attr('data-uc-agreement') || 'null'); } catch (err) { currentAgreement = null; }
-            $('#uc-rsvp-text-label').text($(this).attr('data-uc-text-label') || 'Text me about this event');
+            $('#uc-rsvp-text-label').text($(this).attr('data-uc-text-label') || 'Text me about this event').data('ucEn', $('#uc-rsvp-text-label').text());
             currentLang = ($(this).attr('data-uc-lang') === 'es') ? 'es' : 'en';
             $('#uc-rsvp-text').prop('checked', false);
             $('#uc-rsvp-text-wrap').attr('hidden', 'hidden');
@@ -2083,23 +2083,36 @@ jQuery.ajax = function () {
         return chosen !== '' && currentFull.indexOf(chosen) !== -1;
     }
     function submitLabel() {
-        return waitlistChosen() ? W('wait_heading', 'Join the waitlist') : W('submit', 'Register Now');
+        return waitlistChosen() ? WW('wait_heading', 'Join the waitlist') : WW('submit', 'Register Now');
     }
     function syncWaitlist() {
         var wait = waitlistChosen();
-        $('#uc-rsvp-heading').text(wait ? W('wait_heading', 'Join the waitlist') : W('heading', 'Register for this Event'));
-        $('#uc-rsvp-submit-btn').text(submitLabel());
+        $('#uc-rsvp-heading').html(wait ? WW('wait_heading', 'Join the waitlist') : WW('heading', 'Register for this Event'));
+        $('#uc-rsvp-submit-btn').html(submitLabel());
     }
 
     /* ENGLISH | ESPAÑOL (3.113.6). The words come from the server once per page,
        both languages, in ucData.rsvpWords (SFAF_Messages::form_words()); the
        English in the markup is what shows if they did not arrive. What people
        typed for the event, its questions and its agreement, is printed as typed. */
-    function W(key, fallback) {
+    function Wl(lang, key, fallback) {
         var all = (window.ucData && window.ucData.rsvpWords) || {};
-        var set = all[currentLang] || {};
+        var set = all[lang] || {};
         return (typeof set[key] === 'string' && set[key] !== '') ? set[key] : fallback;
     }
+    function W(key, fallback) { return Wl(currentLang, key, fallback); }
+    /* ONE HEIGHT IN BOTH LANGUAGES (3.113.8). Spanish runs longer and wrapped
+       where English did not, so the form grew and shrank under the toggle. Each
+       phrase that switches now carries the other language's words in the same
+       grid cell, invisible, so every line already takes the room of the longer
+       of the two and nothing moves when the toggle is pressed. The hidden twin
+       is out of the accessibility tree and cannot be selected. */
+    function otherLang() { return currentLang === 'es' ? 'en' : 'es'; }
+    function twin(on, off) {
+        if (off === on) { return esc(on); }
+        return '<span class="uc-w2"><span>' + esc(on) + '</span><span class="uc-w2-off" aria-hidden="true" lang="' + otherLang() + '">' + esc(off) + '</span></span>';
+    }
+    function WW(key, fallback) { return twin(W(key, fallback), Wl(otherLang(), key, fallback)); }
     function setLang(lang) {
         currentLang = (lang === 'es') ? 'es' : 'en';
         $('#uc-rsvp-modal .uc-rsvp-modal').attr('lang', currentLang);
@@ -2108,24 +2121,25 @@ jQuery.ajax = function () {
         });
         $('#uc-rsvp-modal [data-uc-w]').each(function () {
             var key = $(this).attr('data-uc-w');
-            if (!$(this).data('ucEn')) { $(this).data('ucEn', $(this).text()); }
-            $(this).text(W(key, $(this).data('ucEn')));
+            if (!$(this).data('ucEn')) { $(this).data('ucEn', $(this).find('.uc-w2').length ? Wl('en', key, '') : $(this).text()); }
+            $(this).html(WW(key, $(this).data('ucEn')));
         });
         $('#uc-rsvp-modal [data-uc-w-ph]').each(function () {
             if (!$(this).data('ucEnPh')) { $(this).data('ucEnPh', $(this).attr('placeholder')); }
             $(this).attr('placeholder', W($(this).attr('data-uc-w-ph'), $(this).data('ucEnPh')));
         });
         $('#uc-rsvp-modal [data-uc-fmt]').each(function () {
-            var f = $(this).attr('data-uc-fmt');
-            $(this).text(W(f === 'online' ? 'online' : 'in_person', f === 'online' ? 'Online' : 'In person') +
-                ($(this).attr('data-uc-fmt-full') ? ' ' + W('waitlist_tag', '(waitlist)') : ''));
+            var f = $(this).attr('data-uc-fmt'), k = (f === 'online') ? 'online' : 'in_person', en = (f === 'online') ? 'Online' : 'In person';
+            var full = !!$(this).attr('data-uc-fmt-full');
+            $(this).html(twin(W(k, en) + (full ? ' ' + W('waitlist_tag', '(waitlist)') : ''),
+                Wl(otherLang(), k, en) + (full ? ' ' + Wl(otherLang(), 'waitlist_tag', '(waitlist)') : '')));
         });
         if (currentQuestions) {
-            $('#uc-rsvp-questions .uc-rsvp-q-heading').text(W('q_heading', currentQuestions.heading));
-            $('#uc-rsvp-questions .uc-rsvp-q-more-label').text(W('q_more', currentQuestions.more));
+            $('#uc-rsvp-questions .uc-rsvp-q-heading').html(WW('q_heading', currentQuestions.heading));
+            $('#uc-rsvp-questions .uc-rsvp-q-more-label').html(WW('q_more', currentQuestions.more));
         }
-        $('#uc-rsvp-text-label').text(W('text_opt_in', $('#uc-rsvp-text-label').text()));
-        if (!$('#uc-rsvp-submit-btn').prop('disabled')) { syncWaitlist(); } else { $('#uc-rsvp-heading').text(waitlistChosen() ? W('wait_heading', 'Join the waitlist') : W('heading', 'Register for this Event')); }
+        $('#uc-rsvp-text-label').html(WW('text_opt_in', $('#uc-rsvp-text-label').data('ucEn') || 'Text me about this event'));
+        if (!$('#uc-rsvp-submit-btn').prop('disabled')) { syncWaitlist(); } else { $('#uc-rsvp-heading').html(waitlistChosen() ? WW('wait_heading', 'Join the waitlist') : WW('heading', 'Register for this Event')); }
         $('#uc-rsvp-error').hide();
     }
     function addLangStyle() {
@@ -2142,6 +2156,9 @@ jQuery.ajax = function () {
             '.uc-rsvp-modal-overlay .uc-rsvp-lang{position:absolute;top:-28px;right:-12px;display:flex;align-items:center;gap:0;font-family:var(--uc-font-heading);font-size:13px;line-height:16px;color:#6B7280}' +
             '.uc-rsvp-modal-overlay .uc-rsvp-lang button{margin:0;padding:4px 6px;border:0;border-radius:4px;background:none;color:#0E7680;font-family:var(--uc-font-heading);font-size:13px;font-weight:600;line-height:16px;text-decoration:underline;text-underline-offset:2px;cursor:pointer}' +
             '.uc-rsvp-modal-overlay .uc-rsvp-lang button[aria-pressed="true"]{color:#1A1D21;font-weight:700;text-decoration:none;cursor:default}' +
+            '.uc-rsvp-modal-overlay .uc-w2{display:inline-grid;max-width:100%}' +
+            '.uc-rsvp-modal-overlay .uc-w2>span{grid-area:1/1;min-width:0}' +
+            '.uc-rsvp-modal-overlay .uc-w2-off{visibility:hidden;-webkit-user-select:none;user-select:none}' +
             '@media (max-width:600px){' +
                 '.uc-rsvp-modal-overlay .uc-rsvp-lang{position:static;justify-content:flex-end;margin:-28px -12px 0 0}' +
                 '.uc-rsvp-modal-overlay .uc-rsvp-lang button{padding:14px 8px}' +
@@ -2439,12 +2456,12 @@ jQuery.ajax = function () {
 
                 } else {
                     $('#uc-rsvp-error').text(response.message || W('went_wrong', 'Something went wrong.')).show();
-                    btn.prop('disabled', false).text(submitLabel());
+                    btn.prop('disabled', false).html(submitLabel());
                 }
             },
             error: function() {
                 $('#uc-rsvp-error').text(W('network', 'Network error. Please try again.')).show();
-                btn.prop('disabled', false).text(submitLabel());
+                btn.prop('disabled', false).html(submitLabel());
             }
         });
     }
