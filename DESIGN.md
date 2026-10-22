@@ -1404,11 +1404,14 @@ page where there is one. No count column, no action column.
 
 Measured in Chrome by `.claude/release-31136-live.php` at 1280px and 390px.
 Two words in the modal's top right corner, **inside its 32px top padding**, so
-the form is exactly as tall as before (measured: 0px taller) and the heading
-does not move. 13px Montserrat. The language the form is in is bold `#1A1D21`
+on a desktop the form is exactly as tall as before (measured: 0px taller) and
+the heading does not move. **On a phone (600px and under) each word is 44px
+tall**, the tap target every control on this form has there (3.110.0), so the
+toggle joins the flow pulled 28px up into the padding: the form is 16px taller
+and the toggle still ends above the heading. 13px Montserrat. The language the form is in is bold `#1A1D21`
 (16.9:1 on white) with no underline; the other is a 600-weight `#0E7680` link
 with an underline (5.35:1), the calendar's own link colour. A `|` in
-`#6B7280` between them. Each word is a button 24px tall, the WCAG target size,
+`#6B7280` between them. Each word is a button 24px tall on a desktop, the WCAG target size,
 `aria-pressed` saying which is on, and takes the modal's teal focus ring.
 **Its styles are injected by `calendar.js`, not written in `calendar.css`**,
 because the embed loads `calendar.css` and never draws this form.

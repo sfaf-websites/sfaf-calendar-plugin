@@ -12,8 +12,10 @@
  * At 1280px and in a 390px frame:
  *
  *   - the toggle sits in the modal's top padding: the modal is no taller with
- *     it than without it, and nothing overlaps the heading
- *   - each half is at least 24px tall and inside the window
+ *     it than without it at 1280px, and 16px taller at most at 390px, where
+ *     each half is 44px tall like every control on the form; nothing overlaps
+ *     the heading
+ *   - each half is at least 24px tall, 44px on a phone, and inside the window
  *   - a Spanish event opens in Spanish, an English one in English, with the
  *     pressed half saying which
  *   - a press changes the heading, the labels, the placeholders, the format
@@ -169,10 +171,11 @@ foreach ( $files as $wn => $f ) {
     rl( (int) $r['pageWidth'] <= $f['w'], "$wn: the page scrolls sideways" );
 
     $g = $r['geo'];
-    rl( 0 === (int) $g['tallerBy'], "3L: $wn: the toggle makes the form " . $g['tallerBy'] . 'px taller' );
+    rl( (int) $g['tallerBy'] <= ( 'phone' === $wn ? 16 : 0 ), "3L: $wn: the toggle makes the form " . $g['tallerBy'] . 'px taller' );
     rl( $g['toggle']['top'] >= $g['modal']['top'] && $g['toggle']['bottom'] <= $g['heading']['top'], "3L: $wn: the toggle is not in the space above the heading: " . json_encode( array( $g['modal'], $g['toggle'], $g['heading'] ) ) );
     rl( $g['toggle']['right'] <= $g['modal']['right'] && $g['toggle']['right'] <= $g['vw'], "3L: $wn: the toggle leaves the modal: " . json_encode( array( $g['modal'], $g['toggle'] ) ) );
-    foreach ( (array) $g['halves'] as $h ) { rl( $h['h'] >= 24, "3L: $wn: a half of the toggle is " . $h['h'] . 'px tall, under 24' ); }
+    $min = ( 'phone' === $wn ) ? 44 : 24;
+    foreach ( (array) $g['halves'] as $h ) { rl( $h['h'] >= $min, "3L: $wn: a half of the toggle is " . $h['h'] . "px tall, under $min" ); }
     rl( '13px' === $g['css']['fontSize'], "3L: $wn: the toggle is not small: " . json_encode( $g['css'] ) );
 
     $s = $r['steps'];
@@ -192,5 +195,5 @@ foreach ( $files as $wn => $f ) {
 
 echo "\n3.113.6: the RSVP form's English | Español toggle, in Chrome\n" . str_repeat( '=', 72 ) . "\n";
 if ( $fails ) { echo count( $fails ) . " problem(s):\n  - " . implode( "\n  - ", $fails ) . "\n"; exit( 1 ); }
-echo "The toggle sits above the heading and adds no height; it opens on the event's language, switches every word of the form\nat once, keeps the questions as typed, and posts the choice, at 1280px and 390px.\n";
+echo "The toggle sits above the heading, adding no height on a desktop and 16px at most on a phone; it opens on the event's language, switches every word of the form\nat once, keeps the questions as typed, and posts the choice, at 1280px and 390px.\n";
 exit( 0 );
