@@ -49,9 +49,11 @@ function sweep(profile) {
 
 function once(args) {
     return new Promise(function (resolve) {
-        const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'uc-chrome-'));
-        const own = args.some(function (a) { return /^--user-data-dir=/.test(a); });
-        const child = spawn(CHROME, own ? args : args.concat(['--user-data-dir=' + profile]), { windowsHide: true });
+        // The caller's own profile when it names one, which is then the one
+        // swept; otherwise a fresh one of ours, swept and removed.
+        const given = args.filter(function (a) { return /^--user-data-dir=/.test(a); })[0];
+        const profile = given ? given.replace(/^--user-data-dir=/, '').replace(/^"|"$/g, '') : fs.mkdtempSync(path.join(os.tmpdir(), 'uc-chrome-'));
+        const child = spawn(CHROME, given ? args : args.concat(['--user-data-dir=' + profile]), { windowsHide: true });
         const out = [];
         let timedOut = false;
         child.stdout.on('data', function (b) { out.push(b); });
@@ -63,7 +65,9 @@ function once(args) {
         child.on('close', function (code) {
             clearTimeout(timer);
             sweep(profile);
-            try { fs.rmSync(profile, { recursive: true, force: true }); } catch (e) { /* Chrome may hold a file a moment longer */ }
+            if (!given) {
+                try { fs.rmSync(profile, { recursive: true, force: true }); } catch (e) { /* Chrome may hold a file a moment longer */ }
+            }
             resolve({ timedOut: timedOut, code: code, out: Buffer.concat(out) });
         });
     });
