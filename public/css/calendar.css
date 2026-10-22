@@ -2702,6 +2702,14 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
    same result: a landscape photo overflowing the 16:9 box and losing its
    middle to the wrapper's overflow: hidden. */
 .uc-single .uc-single-image img, .uc-single .uc-single-image svg { width: 100%; max-width: none; height: 100%; object-fit: cover; object-position: center center; display: block; border-radius: 0; }
+/* AN IMPORTED PICTURE AT ITS OWN SHAPE (3.113.8). Eventbrite's and the other
+   sources' pictures are wider than 16:9 and lost their edges to the crop above,
+   which is right for a picture chosen for this calendar and wrong for one made
+   for another platform. Uncropped, the full column wide, and never taller than
+   most of the window, so a portrait flyer narrows rather than filling the page.
+   Event page only: list rows, the month grid's card and the embed keep 16:9. */
+.uc-single .uc-single-image.uc-single-image-own-shape { aspect-ratio: auto; background: none; }
+.uc-single .uc-single-image.uc-single-image-own-shape img { width: auto; max-width: 100%; height: auto; max-height: 80vh; margin: 0 auto; object-fit: contain; border-radius: 14px; }
 
 /* FAQ accordion. The question is a <button> and the answer is prose, so both
    halves of the event page's reset land on this block. Raised: the heading's
@@ -3035,6 +3043,11 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
 .uc-calendar .uc-view-panels-combined .uc-sidebar {
     --uc-sidebar-pad-x: 0px; --uc-sidebar-pad-t: 0px; --uc-sidebar-head-radius: 0px;
     border: 0; padding: 0; background: none;
+    /* NOT A CARD OF ITS OWN (3.113.8). The standalone block's lift and corner
+       stayed on here when its border and padding went, so a shadow drew a card
+       edge flush with the month buttons and See all events, and they read as
+       sitting outside it and clipped at its side. The shared card is the edge. */
+    box-shadow: none; border-radius: 0;
 }
 /* THE BAND NEEDS NO CORNER RADIUS, AND 3.80.0 GAVE IT ONE FOR A CORNER IT
    NEVER TOUCHES (3.81.0).
@@ -4221,19 +4234,22 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
    not. The next month is always offered; the previous one only exists once
    somebody has moved forward, because the current month is the floor.
    ------------------------------------------------------------------------ */
+/* SECONDARY BUTTONS (3.113.8): .uc-actionbtn .uc-actionbtn-secondary, the
+   public navigation button, so they read as something to press. A white box
+   with a hairline edge did not. The button gives the outline, the pill, the
+   teal ink and the hover fill; these rules give the row its two halves. The
+   name and count take the button's ink, so the hover's Dark Gray reaches both.
+   Raised to two classes to set layout over `.uc-sidebar .uc-actionbtn`. */
 .uc-month-tabs { display: flex; gap: 8px; margin: 14px 0 2px; }
-.uc-month-tab {
+.uc-sidebar .uc-month-tab {
     flex: 1 1 0; min-width: 0;
     display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
-    padding: 9px 12px; cursor: pointer;
-    border: 1px solid var(--uc-border); border-radius: 8px; background: #fff;
-    font: inherit; text-align: left;
+    padding: 9px 14px; text-align: left;
 }
-.uc-month-tab:hover { border-color: var(--uc-text); }
-.uc-month-tab:focus-visible { outline: 2px solid var(--uc-text); outline-offset: 2px; }
-.uc-month-tab-name { font-size: 13px; font-weight: 600; color: var(--uc-text);
+.uc-sidebar .uc-month-tab:focus-visible { outline: 2px solid var(--uc-text); outline-offset: 2px; }
+.uc-month-tab-name { font-size: 13px; font-weight: 600; color: inherit;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.uc-month-tab-count { font-size: 12.5px; font-weight: 400; color: var(--uc-secondary); flex: 0 0 auto; }
+.uc-month-tab-count { font-size: 12.5px; font-weight: 400; color: inherit; flex: 0 0 auto; }
 .uc-sidebar .uc-when-date, .uc-sidebar .uc-when-time { white-space: nowrap; }
 .uc-sidebar .uc-when-sep { margin: 0 3px; }
 /* Raised for the same reason as .uc-series-list: `.uc-sidebar p` declares

@@ -146,6 +146,8 @@ function get_post( $id = 0 ) {
 }
 function get_permalink( $id = 0 ) { return 'https://example.org/e/' . (int) $id; }
 function get_the_date( $f = '', $id = 0 ) { return 'U' === $f ? time() : date( 'Y-m-d' ); }
+function get_post_time( $f = 'U', $gmt = false, $id = 0 ) { return time(); }
+function wp_date( $f, $ts = null, $tz = null ) { return date( $f, null === $ts ? time() : $ts ); }
 function get_userdata( $id ) { return false; }
 function has_post_thumbnail( $id = 0 ) { return false; }
 function get_post_thumbnail_id( $id = 0 ) { return 0; }

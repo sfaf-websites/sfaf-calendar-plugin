@@ -1940,7 +1940,7 @@ class SFAF_Shortcodes {
                 $named = sfaf_ap_date( $tab['month'] . '-01', 'month_year' );
                 ?>
                 <button type="button"
-                        class="uc-month-tab uc-month-tab-<?php echo esc_attr( $tab['dir'] ); ?>"
+                        class="uc-month-tab uc-month-tab-<?php echo esc_attr( $tab['dir'] ); ?> uc-actionbtn uc-actionbtn-secondary"
                         aria-label="<?php echo esc_attr( sprintf( '%s, %d %s', $named, (int) $count, 1 === (int) $count ? 'event' : 'events' ) ); ?>"
                         data-goto="<?php echo esc_attr( $tab['month'] ); ?>">
                     <span class="uc-month-tab-name"><?php echo esc_html( $label ); ?></span>

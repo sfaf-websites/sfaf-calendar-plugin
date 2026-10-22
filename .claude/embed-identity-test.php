@@ -19,7 +19,8 @@
  *      except embed.js's EMBED_JS_VERSION line, and the caladmin files in
  *      CALADMIN_ONLY, which no public calendar page loads.
  *
- * BASE is the release compared against: 3.113.6's released commit from 3.113.7
+ * BASE is the release compared against: 3.113.7's released commit from 3.113.8
+ * (3.113.6's, dde38d8, for 3.113.7)
  * (3.113.5's, def23b2, for 3.113.6)
  * (3.113.4's, 1c03ed2, for 3.113.5)
  * (3.113.3's, ab3c620, for 3.113.4; 3.113.2's, 60548c9, for 3.113.3; 3.113.1's, c242c72, for 3.113.2; 3.113.0's, 84fd1ab, for 3.113.1). Its public calendar is 3.111.0's apart from the event
@@ -28,8 +29,8 @@
  * name, in ALLOWED or ALLOWED_FILES.
  */
 
-const BASE      = 'dde38d8';
-const BASE_NAME = '3.113.6';
+const BASE      = '9d916ae';
+const BASE_NAME = '3.113.7';
 
 /* Files under public/ and templates/ a release means to change, as path =>
    why. Probe A still compares every embed answer, so none of these can reach
@@ -38,7 +39,14 @@ const ALLOWED_FILES = array(
     // The RSVP form and its English | Español toggle (3.113.6). calendar.js is
     // the event page's and the calendar block's script; the embed loads embed.js
     // and calendar.css and never this file, and draws no RSVP form.
-    'public/js/calendar.js' => 'the RSVP form toggle between English and Español (3.113.6)',
+    'public/js/calendar.js' => 'the RSVP form toggle between English and Español (3.113.6), one height in both (3.113.8)',
+    // 3.113.8: the combined view's sidebar draws no card of its own and its
+    // month buttons are secondary buttons, which the embed shows (Mark asked
+    // for it there); an imported picture at its own shape on the event page,
+    // a rule the embed's markup never matches. Probe A holds the embed's
+    // answers to EXPECTED_EDITS below and nothing else.
+    'public/css/calendar.css' => 'the sidebar month buttons and card, and imported pictures on the event page (3.113.8)',
+    'templates/single-uc_event.php' => 'an imported picture marked for its own shape (3.113.8)',
     // None in 3.113.5 or 3.113.4. 3.113.3 named templates/single-uc_event.php, the event
     // page flyer; 3.113.4 changes the flyer in includes/ and not the template.
 );
@@ -49,12 +57,19 @@ const CALADMIN_ONLY = array( 'public/css/portal.css', 'public/js/portal.js', 'pu
 
 /* Differences a release means to make, as 'key path' => why. None in 3.113.0 to 3.113.2. */
 const ALLOWED = array(
-    // The form's words in both languages, handed to calendar.js on a public page
-    // (3.113.6). Not in the embed's answers, which probe A compares.
-    'localized > sfaf-calendar-public ucData' => 'the RSVP form words in both languages (3.113.6)',
+    // None in 3.113.8. 3.113.6 named 'localized > sfaf-calendar-public ucData',
+    // the form's words in both languages.
 );
 
 $root    = str_replace( '\\', '/', dirname( __DIR__ ) );
+/* Edits a release means to make to what the embed answers, as base text =>
+   this tree's text (3.113.8). Applied to the base's answers before they are
+   compared, so the embed may differ by exactly these and by nothing else. */
+const EXPECTED_EDITS = array(
+    'class="uc-month-tab uc-month-tab-prev"' => 'class="uc-month-tab uc-month-tab-prev uc-actionbtn uc-actionbtn-secondary"',
+    'class="uc-month-tab uc-month-tab-next"' => 'class="uc-month-tab uc-month-tab-next uc-actionbtn uc-actionbtn-secondary"',
+);
+
 $verbose = in_array( '--verbose', $argv, true );
 $fails   = array();
 
@@ -82,6 +97,13 @@ function ei_run( $tree ) {
 }
 $was = ei_run( $base );
 $now = ei_run( $root );
+$edits_made = 0;
+if ( is_array( $was ) && ! isset( $was['error'] ) ) {
+    array_walk_recursive( $was, function ( &$v ) use ( &$edits_made ) {
+        if ( is_string( $v ) ) { $v = str_replace( array_keys( EXPECTED_EDITS ), array_values( EXPECTED_EDITS ), $v, $n ); $edits_made += $n; }
+    } );
+}
+if ( EXPECTED_EDITS && 0 === $edits_made ) { $fails[] = 'A: none of EXPECTED_EDITS is in ' . BASE_NAME . "'s answers, so they compared nothing"; }
 
 foreach ( array( 'base' => $was, 'this tree' => $now ) as $who => $d ) {
     if ( isset( $d['error'] ) ) { $fails[] = "A: the probe failed in $who: " . $d['error']; }

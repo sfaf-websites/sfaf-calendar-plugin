@@ -58,6 +58,15 @@ class SFAF_EveryAction {
     /** The public events list, and how many entries it shows a page. */
     const LIST_URL       = 'https://50plus.sfaf.org/a/asevents';
     const LIST_PAGE_SIZE = 10;
+
+    /**
+     * The program sites that serve the list (3.113.8). Each answers /a/asevents
+     * with the same list, measured 2026-10-22: the same entries and the same
+     * signup addresses, every one on han.sfaf.org, branded by the host. The
+     * first is the default, read for the links and used for an event whose
+     * program has given no form address.
+     */
+    const LIST_HOSTS = array( '50plus.sfaf.org', 'han.sfaf.org' );
     const LIST_MAX_PAGES = 40;
 
     /** How often the runner reads the list. */
@@ -617,13 +626,39 @@ class SFAF_EveryAction {
      * @param string $date Y-m-d.
      * @return string
      */
-    public static function day_url( $date ) {
-        $d = DateTime::createFromFormat( 'Y-m-d', (string) $date );
+    public static function day_url( $date, $host = '' ) {
+        $list = self::list_on( $host );
+        $d    = DateTime::createFromFormat( 'Y-m-d', (string) $date );
         if ( ! $d ) {
-            return self::LIST_URL;
+            return $list;
         }
         $day = $d->format( 'm-d-Y' );
-        return self::LIST_URL . '?date_start=' . $day . '&date_end=' . $day;
+        return $list . '?date_start=' . $day . '&date_end=' . $day;
+    }
+
+    /** The list on one of the program sites, or on the default one. */
+    public static function list_on( $host ) {
+        $host = strtolower( (string) $host );
+        return in_array( $host, self::LIST_HOSTS, true ) ? 'https://' . $host . '/a/asevents' : self::LIST_URL;
+    }
+
+    /**
+     * The event's own form address from its row's Public_URL (3.113.8), or ''.
+     *
+     * HOW AN EVENT THE LIST DOES NOT SHOW GETS ITS OWN PAGE. The list holds two
+     * programs' events; any other program's events are not on it, and their day
+     * on it is a page they are not on either. A row that names its form is the
+     * source saying where to sign up, so it is used when the list has no page.
+     */
+    public static function form_url( $value ) {
+        $value = trim( (string) $value );
+        return preg_match( '#^https?://[^\s/]+#i', $value ) ? esc_url_raw( $value ) : '';
+    }
+
+    /** The host of an address, lower case, or ''. */
+    public static function host_of( $url ) {
+        $host = wp_parse_url( (string) $url, PHP_URL_HOST );
+        return is_string( $host ) ? strtolower( $host ) : '';
     }
 
     /** The event's own signup page from the last read, or '' when the list has none. */
@@ -635,7 +670,12 @@ class SFAF_EveryAction {
 
     /** Whether an address is the list's own, filtered or not, rather than an event's page. */
     public static function is_list_url( $url ) {
-        return 0 === strpos( (string) $url, self::LIST_URL );
+        foreach ( self::LIST_HOSTS as $host ) {
+            if ( 0 === strpos( (string) $url, self::list_on( $host ) ) ) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

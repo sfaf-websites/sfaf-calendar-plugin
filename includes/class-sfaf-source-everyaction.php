@@ -30,8 +30,9 @@
  *   Submitted*           the hub's own, not event data.
  *
  * THE SIGNUP LINK is the event's own page on the public list, found by the
- * UUID, which is the list's data-event-id. Until the list shows it, the button
- * goes to the list filtered to the event's day. See after_save().
+ * UUID, which is the list's data-event-id. Without one, the row's Public_URL,
+ * the event's own form (3.113.8). Without either, the list filtered to the
+ * event's day, on the site its program's forms are on. See after_save().
  *
  * @package SFAF_Calendar
  */
@@ -52,6 +53,9 @@ class SFAF_Source_EveryAction extends SFAF_Source_Adapter {
 
     /** Rows the tracker sent a second time, which never reach the run (3.113.7). */
     private $repeated = array();
+
+    /** Series_ID => the program site its rows' forms are on (3.113.8). */
+    private $sites = array();
 
     public function slug() {
         return self::SLUG;
@@ -113,6 +117,7 @@ class SFAF_Source_EveryAction extends SFAF_Source_Adapter {
         $this->marked   = array();
         $this->raw      = array();
         $this->repeated = array();
+        $this->sites    = array();
 
         $cfg  = SFAF_EveryAction::config();
         $miss = SFAF_EveryAction::missing( $cfg );
@@ -148,6 +153,19 @@ class SFAF_Source_EveryAction extends SFAF_Source_Adapter {
          * empty list is not a tracker that deleted everything.
          */
         $complete = $read['complete'] && ! empty( $read['rows'] );
+
+        /*
+         * WHICH SITE EACH PROGRAM'S FORMS ARE ON (3.113.8), from the forms its
+         * rows name. An event with no page and no form of its own goes to its
+         * day on that site's list, so a HAN event is not sent to 50-Plus.
+         */
+        foreach ( (array) $read['rows'] as $row ) {
+            $sid  = self::field( $row, 'Series_ID' );
+            $host = SFAF_EveryAction::host_of( SFAF_EveryAction::form_url( self::field( $row, 'Public_URL' ) ) );
+            if ( '' !== $sid && ! isset( $this->sites[ $sid ] ) && in_array( $host, SFAF_EveryAction::LIST_HOSTS, true ) ) {
+                $this->sites[ $sid ] = $host;
+            }
+        }
         $reason   = '';
         if ( ! $read['complete'] ) {
             $reason = $read['reason'];
@@ -253,6 +271,12 @@ class SFAF_Source_EveryAction extends SFAF_Source_Adapter {
 
         $title      = self::field( $item, 'Title' );
         $start_date = $start->format( 'Y-m-d' );
+        $sid        = self::field( $item, 'Series_ID' );
+        $form       = SFAF_EveryAction::form_url( self::field( $item, 'Public_URL' ) );
+        $site       = SFAF_EveryAction::host_of( $form );
+        if ( ! in_array( $site, SFAF_EveryAction::LIST_HOSTS, true ) ) {
+            $site = isset( $this->sites[ $sid ] ) ? $this->sites[ $sid ] : '';
+        }
         $visibility = self::field( $item, 'Visibility' );
         if ( '' !== $visibility && 'public' !== strtolower( $visibility ) ) {
             $this->marked[] = array( 'title' => $title, 'date' => $start_date, 'visibility' => $visibility );
@@ -278,11 +302,11 @@ class SFAF_Source_EveryAction extends SFAF_Source_Adapter {
              * the list. after_save() puts the day's list in when there is no
              * page at all, or when the date moved.
              */
-            'source_url'      => SFAF_EveryAction::matched_url( $uuid ),
+            'source_url'      => '' !== SFAF_EveryAction::matched_url( $uuid ) ? SFAF_EveryAction::matched_url( $uuid ) : $form,
             'image_url'       => '',
             'everyaction'     => array(
-                'day_url'     => SFAF_EveryAction::day_url( $start_date ),
-                'series_id'   => self::field( $item, 'Series_ID' ),
+                'day_url'     => SFAF_EveryAction::day_url( $start_date, $site ),
+                'series_id'   => $sid,
                 'description' => self::field( $item, 'Description' ),
                 'place'       => self::place( $item ),
             ),

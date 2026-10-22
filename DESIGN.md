@@ -1243,6 +1243,24 @@ dates, the month pills, then See all events directly under them, with no gap to
 the foot of the card. The divider stays on the grid's side and runs the full
 height. **The month pills show the short month**, "Oct 48", so they never
 truncate; the full month and year are the pill's accessible name.
+
+**The month pills are secondary buttons (3.113.8)**, `.uc-actionbtn
+.uc-actionbtn-secondary`: the 1px `#0E7680` outline and label on white (5.35:1
+for both), the full pill radius, and the brand teal fill with Dark Gray ink on
+hover; the count takes the button's ink. A white box with the `#E2E5EA`
+hairline did not read as something to press. **In the combined view the sidebar
+draws no card of its own**: no lift, no corner. The standalone block's shadow
+had stayed on when its border and padding went, and drew an edge flush with
+the pills and See all events. Measured by `.claude/release-31138-pages-live.php`
+at 1280px, 700px and 390px: both sit 19px or more inside the shared card.
+
+### Imported pictures on the event page (3.113.8)
+
+A picture from an import (`sfaf_event_image_source()` is `source` or `remote`)
+is drawn whole at its own shape on the event page, the column's width and no
+taller than 80% of the window, with the 14px radius on the picture itself. One
+chosen for this calendar keeps the 16:9 crop. List rows, the month grid's card,
+the sidebar and the embed keep 16:9 everywhere.
 ### Private in the Display card, the sign-in pages and the logos (3.109.0)
 
 Measured in Chrome by `.claude/release-3109-live.php` at 1280px and 390px.
@@ -1415,6 +1433,14 @@ with an underline (5.35:1), the calendar's own link colour. A `|` in
 `aria-pressed` saying which is on, and takes the modal's teal focus ring.
 **Its styles are injected by `calendar.js`, not written in `calendar.css`**,
 because the embed loads `calendar.css` and never draws this form.
+
+**The form is one height in both languages (3.113.8).** Each phrase that
+switches holds the other language's words, invisible, in the same grid cell,
+so a line is as tall as the longer of the two. Measured by
+`.claude/release-31138-live.php`: 0px between English and Spanish at 1280px,
+390px, 360px and 320px, a plain form and a hybrid one with a question. The
+English form on a phone is the Spanish one's height, up to 60px taller than in
+3.113.7.
 
 ### The rest of caladmin on a phone, the users table and Send (3.110.2)
 

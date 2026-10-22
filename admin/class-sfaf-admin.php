@@ -2212,8 +2212,6 @@ class SFAF_Admin {
                             Mail goes out through <code>wp_mail()</code>, so an SMTP plugin or a transactional
                             service can take delivery over without any code change. These three are settings and
                             not constants for exactly that reason. Nothing in the plugin hardcodes a provider.
-                            <strong>WordPress mail through Bluehost has poor deliverability;</strong> configure a
-                            transactional service before launch or reminders will land in spam.
                         </p>
                         <div class="uc-field-row">
                             <label>From name</label>

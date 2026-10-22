@@ -141,7 +141,12 @@ while ( have_posts() ) :
             <div class="uc-single-grid">
                 <div class="uc-single-main">
                     <?php if ( sfaf_event_image_url( $post_id ) ) : ?>
-                        <div class="uc-single-image"><?php echo sfaf_event_thumbnail( $post_id, 'large' ); ?></div>
+                        <?php
+                        // An imported picture at its own shape (3.113.8): it was
+                        // made for its own platform, not cropped for 16:9 here.
+                        $own_shape = in_array( sfaf_event_image_source( $post_id ), array( 'source', 'remote' ), true );
+                        ?>
+                        <div class="uc-single-image<?php echo $own_shape ? ' uc-single-image-own-shape' : ''; ?>"><?php echo sfaf_event_thumbnail( $post_id, 'large' ); ?></div>
                     <?php endif; ?>
 
                     <?php

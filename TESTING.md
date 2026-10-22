@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 370 items.** Quick 301, needs real conditions 65, blocked on other
+**Outstanding: 376 items.** Quick 306, needs real conditions 66, blocked on other
 people 4.
 
 ---
@@ -18,7 +18,7 @@ people 4.
 
 Opening a screen and looking, loading a URL, pressing a control. Fastest first.
 
-### 1.0 FIRST: installing 3.113.7 on the live site, and the first hour (3.113.0 to 3.113.7)
+### 1.0 FIRST: installing 3.113.8 on the live site, and the first hour (3.113.0 to 3.113.8)
 
 3.112.0 and 3.112.2 failed from the office network (no connection to
 resources.sfaf.org at all) and 3.111.0 cured it each time. **3.113.0 is built
@@ -27,8 +27,9 @@ from 3.111.0 and its public calendar is 3.111.0's**, and **3.113.1's embed is
 number moves. 3.113.1 also changes the event page's contact line (1.289), and
 **3.113.2's embed is 3.113.1's**, **3.113.3's is 3.113.2's**, **3.113.4's is
 3.113.3's**, **3.113.5's is 3.113.4's**, **3.113.6's is 3.113.5's** and **3.113.7's
-is 3.113.6's**, by the same check; 3.113.3 and 3.113.4 change the event page's flyer (1.299) and 3.113.6 its
-RSVP form (1.302). If any of 3.113.0 to 3.113.6 was never installed, install 3.113.7
+is 3.113.6's**, by the same check, and **3.113.8's is 3.113.7's but for the month
+buttons under the sidebar** (1.308), which the same check holds to exactly that; 3.113.3 and 3.113.4 change the event page's flyer (1.299) and 3.113.6 its
+RSVP form (1.302, 1.304). If any of 3.113.0 to 3.113.7 was never installed, install 3.113.8
 directly; the steps are the same. So this
 install says whether a version change and caladmin work alone bring the fault
 back. The calendar is served from resources.sfaf.org, **LiteSpeed on AWS with
@@ -42,7 +43,7 @@ the LiteSpeed Cache plugin**; only www.sfaf.org is on WP Engine.
   condition that failed.
 
 **Install**: Plugins > SFAF Calendar > Check for updates, then Update (or upload
-`sfaf-calendar-3.113.7.zip` and choose Replace current with uploaded). Then
+`sfaf-calendar-3.113.8.zip` and choose Replace current with uploaded). Then
 **LiteSpeed Cache > Toolbox > Purge All**.
 
 **The first hour, four times** (at install, +15, +30, +60 minutes):
@@ -4136,6 +4137,57 @@ on an English event, the column may not have been added: look for an
 
 **Why it needs a person:** the database upgrade only runs on the live site, and
 there is no database here.
+
+### 1.304 The RSVP form does not change height between languages (3.113.8)
+
+Open an event page's Register form on a phone and press Español, then English,
+a few times, watching Register Now and Cancel at the bottom: they do not move,
+and nothing jumps. Do the same on a hybrid event with a question, and on a
+desktop. Then select the text of a label by dragging over it: only the
+language shown is selected.
+
+**Why it needs a person:** the theme's own fonts and button styles on the live
+event page, on a real phone.
+
+### 1.305 Fetch and run times read Pacific time (3.113.8)
+
+Note the time on a clock, then press Fetch updates on Pending. The fetch panel's
+"Last run" and the Automation screen's last run read that time, not seven hours
+later. Open Settings & Integrations > EveryAction: Last fetch reads the same.
+On Pending, an item fetched this evening says "Received" today, not tomorrow.
+Open an RSVP list with a registration made in the evening: its Registered time
+is the evening it was made.
+
+**Why it needs a person:** the live site's PHP clock and WordPress's own date
+functions, which no check here runs.
+
+### 1.306 An online imported event shows no map (3.113.8)
+
+Open the event page of an Eventbrite event that is online (its location reads
+"Online"). There is no Getting there heading and no map. Open an in-person
+event and a hybrid one: each still has Getting there with the map of its place.
+
+**Why it needs a person:** a real imported event, and the live Google map.
+
+### 1.307 An imported picture is whole on the event page (3.113.8)
+
+Open the event page of an Eventbrite or GoFundMe Pro event with a picture wider
+than 16:9: it shows whole, edge to edge of the column, nothing cut off at the
+sides. Its card on the list and the month grid's hover card are still 16:9.
+An event whose picture was chosen in caladmin still shows it 16:9 on its page.
+
+**Why it needs a person:** real imported pictures under the theme's styles.
+
+### 1.308 The sidebar's month buttons on sfaf.org/calendar (3.113.8)
+
+Open sfaf.org/calendar on a desktop and a phone. Under the right column's list:
+the month buttons are teal-outlined pills that fill teal when the pointer is
+over them, both inside the calendar's card with space on each side, and See all
+events under them inside the card too. Press the next month's: both halves move
+to it.
+
+**Why it needs a person:** the embed under sfaf.org's own stylesheet, which the
+checks here only imitate.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -5016,6 +5068,19 @@ as two separate rows (two UUIDs are not "listed twice"; only the same UUID
 twice is).
 
 **Why it needs a person:** a real tracker, read with the real credentials.
+
+### 2.68 Each program's EveryAction events go to the right signup page (3.113.8)
+
+After a fetch, open the event page of an imported EveryAction event from a
+program other than the 50-Plus coffee social and the community meal (a HAN
+event). Press its signup button: it opens that event's own form when its
+tracker row has a Public_URL, or the list on han.sfaf.org at its day when another
+row of its program has one. If it opens 50plus.sfaf.org, its program's rows have
+no Public_URL in the tracker: tell me, and say whether Val can fill it in or
+which Series_ID values are HAN's.
+
+**Why it needs a person:** the real tracker's rows, which have never been seen
+here.
 
 ### 2.66 Every email to a Spanish registration on an English event (3.113.6)
 

@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.113.7
+Stable tag: 3.113.8
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,20 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.113.8 =
+
+**Seven fixes. The embed changes in one place: the month buttons under the sidebar.**
+
+**THE EMBED.** Its route, headers, script and the [sfaf_calendar] block are 3.113.7's. Its answers differ only by the month buttons' two new classes, and calendar.css changes for the sidebar and for the event page's pictures.
+
+* **The RSVP form is the same height in English and Español**, on a desktop and on a phone, so nothing moves when the toggle is pressed. Each phrase keeps room for the longer of its two languages. On a phone the English form is up to 60px taller than before, the height the Spanish one already was.
+* **Fetch and run times are in Pacific time.** "Last run", "Last fetch", the run log, Automation, the EveryAction panel and its log, and the Pending screen's Received date all read UTC on the site. So did every other recorded time: an RSVP list's Registered, Cancelled and Agreed times, a cancelled event's "Cancelled", the picture upload email and "Goes live". All read Pacific time now.
+* **An online event has no Getting there and no map.** An imported online event carries the location "Online", which the map searched for and found a business. A location that only says how to join (Online, Virtual, Zoom and the like) draws neither. A hybrid event keeps its map for the place.
+* **Imported pictures on the event page are shown whole, at their own shape**, rather than cropped to 16:9. A portrait one is no taller than most of the window. List rows, the month grid's card and the embed are unchanged.
+* **EveryAction signup links:** an event the public list has no page for uses its row's Public_URL, its own form, when the tracker gives one. With neither, its button goes to its day on the list on the site its program's forms are on, han.sfaf.org for HAN's, and 50plus.sfaf.org when nothing says.
+* **Email Templates, Sender:** the line about WordPress mail through Bluehost is gone.
+* **The sidebar's month buttons are secondary buttons**, the teal outline every public navigation button has. In the combined view the sidebar no longer draws a shadowed card of its own, which put the month buttons and See all events on its edge.
 
 = 3.113.7 =
 

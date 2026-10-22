@@ -52,14 +52,16 @@ jQuery.ajax = function (opts) {
 };
 function q(s) { return document.querySelector(s); }
 function rect(el) { if (!el) { return null; } var r = el.getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom), w: Math.round(r.width), h: Math.round(r.height) }; }
-function txt(s) { var e = q(s); return e ? e.textContent.replace(/\s+/g, ' ').trim() : null; }
+/* What shows: 3.113.8 lays the other language's words, hidden, under each phrase. */
+function seen(e) { var t = '', w = document.createTreeWalker(e, NodeFilter.SHOW_TEXT); while (w.nextNode()) { if (!w.currentNode.parentNode.closest('.uc-w2-off')) { t += w.currentNode.nodeValue; } } return t.replace(/\s+/g, ' ').trim(); }
+function txt(s) { var e = q(s); return e ? seen(e) : null; }
 function snap() {
   return {
     pressed: Array.prototype.map.call(document.querySelectorAll('[data-uc-lang-pick]'), function (b) { return b.getAttribute('data-uc-lang-pick') + ':' + b.getAttribute('aria-pressed'); }),
     heading: txt('#uc-rsvp-heading'), first: txt('label[for="uc-rsvp-first-name"]'), email: txt('label[for="uc-rsvp-email"]'),
     firstPh: (q('#uc-rsvp-first-name') || {}).placeholder, emailUse: txt('#uc-rsvp-email + .uc-rsvp-note'),
     submit: txt('#uc-rsvp-submit-btn'), cancel: txt('#uc-rsvp-cancel-btn'), optin: txt('#uc-rsvp-optin + span'),
-    legend: txt('#uc-rsvp-format legend'), formats: Array.prototype.map.call(document.querySelectorAll('#uc-rsvp-format .uc-segment-label'), function (s) { return s.textContent.trim(); }),
+    legend: txt('#uc-rsvp-format legend'), formats: Array.prototype.map.call(document.querySelectorAll('#uc-rsvp-format .uc-segment-label'), function (s) { return seen(s); }),
     qHeading: txt('#uc-rsvp-questions .uc-rsvp-q-heading'), qText: txt('#uc-rsvp-questions legend'), qMore: txt('#uc-rsvp-questions .uc-rsvp-q-more-label'),
     lang: (q('#uc-rsvp-modal .uc-rsvp-modal') || {}).lang
   };

@@ -19669,15 +19669,17 @@ class SFAF_Portal {
             return (int) $prov['imported_at'];
         }
 
+        // Real moments, all three (3.113.8): the import's is time(), so the
+        // other two are read on the site's clock rather than as UTC.
         $at = (string) get_post_meta( $id, SFAF_Request::META_AT, true );
         if ( '' !== $at ) {
-            $ts = strtotime( $at );
+            $ts = sfaf_local_timestamp( $at );
             if ( $ts ) {
                 return (int) $ts;
             }
         }
 
-        return (int) get_the_date( 'U', $id );
+        return (int) get_post_time( 'U', true, $id );
     }
 
     /**
@@ -20123,7 +20125,7 @@ class SFAF_Portal {
                         <span><?php echo esc_html( $this->pending_when( $id, $date, SFAF_Sources::provenance( $id ) ) ); ?></span>
                         <?php if ( '' !== $where ) : ?><span><?php echo esc_html( $where ); ?></span><?php endif; ?>
                         <span><?php echo esc_html( 'From ' . ( '' !== $who['name'] ? $who['name'] : 'somebody with no account' ) ); ?></span>
-                        <span class="uc-muted"><?php echo esc_html( 'Received ' . sfaf_ap_date( $this->pending_received( $id ), 'short_year' ) ); ?></span>
+                        <span class="uc-muted"><?php echo esc_html( 'Received ' . sfaf_ap_date( wp_date( 'Y-m-d', $this->pending_received( $id ) ), 'short_year' ) ); ?></span>
                     </p>
                     <?php if ( '' !== trim( $desc ) ) : ?>
                         <details class="uc-review-desc" data-uc-disclosure>
@@ -20689,7 +20691,7 @@ class SFAF_Portal {
                             ?></span>
                         <?php endif; ?>
                         <span class="uc-muted"><?php
-                            echo esc_html( 'Received ' . sfaf_ap_date( $this->pending_received( $id ), 'short_year' ) );
+                            echo esc_html( 'Received ' . sfaf_ap_date( wp_date( 'Y-m-d', $this->pending_received( $id ) ), 'short_year' ) );
                         ?></span>
                     </p>
 

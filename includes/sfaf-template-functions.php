@@ -3700,6 +3700,14 @@ function sfaf_ap_date_es( $ts, $style ) {
  * The time half is sfaf_ap_time()'s rules, applied to a timestamp: ":00" is
  * dropped and the meridiem is lowercase.
  *
+ * THE DAY AND THE CLOCK COME FROM wp_date() (3.113.8). Every value here is a
+ * real moment: time() for a fetch or a run, or a site-clock string turned into
+ * one by sfaf_local_timestamp(). date_i18n() reads a timestamp it is given as
+ * one that already carries the site's offset and formats it as UTC, so on the
+ * site "Last run" said 6:49 pm at 11:49 am Pacific, and every recorded time was
+ * seven or eight hours ahead. wp_date() converts the moment to the site's zone.
+ * The day goes to sfaf_ap_date() as Y-m-d, which it reads at the site's noon.
+ *
  * @param int|string $when  Timestamp, or anything strtotime() reads.
  * @param string     $style Any sfaf_ap_date() style; the date half.
  * @return string
@@ -3715,9 +3723,8 @@ function sfaf_ap_datetime( $when, $style = 'short_year', $lang = 'en', $zone = f
         return '';
     }
     $when  = (int) $when;
-    $date  = sfaf_ap_date( $when, $style, $lang );
-    $clock = ( '00' === date_i18n( 'i', $when ) ) ? date_i18n( 'g', $when ) : date_i18n( 'g:i', $when );
-    $clock .= ' ' . sfaf_ap_meridiem( date_i18n( 'A', $when ), $lang );
+    $date  = sfaf_ap_date( wp_date( 'Y-m-d', $when ), $style, $lang );
+    $clock = sfaf_ap_time( wp_date( 'H:i', $when ), true, $lang );
     // With the zone for a message read elsewhere (3.106.0): an offer's expiry.
     if ( $zone ) {
         $clock = sfaf_ap_zoned( $clock, $lang );
@@ -4076,6 +4083,28 @@ function sfaf_map_search_url( $location ) {
 }
 
 /**
+ * Whether a location line names no place, only a way of joining (3.113.8).
+ *
+ * AN IMPORTED ONLINE EVENT IS NOT MARKED ONLINE. Eventbrite's adapter writes
+ * the word "Online" as the location of an online event, and nothing sets the
+ * event's online format, so the map asked Google for "Online" and drew a real
+ * business called Edge Studios Online. A line made only of these words is not
+ * somewhere to go. A hybrid event's line is its in-person place and keeps its
+ * map.
+ *
+ * @param string $location
+ * @return bool
+ */
+function sfaf_location_is_online_only( $location ) {
+    $words = preg_split( '/[^a-z]+/', strtolower( (string) $location ), -1, PREG_SPLIT_NO_EMPTY );
+    if ( empty( $words ) ) {
+        return false;
+    }
+    $joining = array( 'online', 'virtual', 'event', 'events', 'only', 'via', 'on', 'zoom', 'webinar', 'livestream', 'live', 'stream', 'streamed', 'remote', 'meeting', 'microsoft', 'teams', 'google', 'meet', 'web', 'internet' );
+    return ! array_diff( $words, $joining ) && array_intersect( $words, array( 'online', 'virtual', 'zoom', 'webinar', 'livestream', 'remote', 'teams', 'meet', 'web', 'internet', 'stream', 'streamed' ) );
+}
+
+/**
  * The location section for the single event page: an address link always, and
  * the map itself when a key is configured.
  *
@@ -4146,7 +4175,7 @@ function sfaf_event_map_html( $post_id ) {
     }
 
     $location = sfaf_event_location( $post_id );
-    if ( '' === $location ) {
+    if ( '' === $location || sfaf_location_is_online_only( $location ) ) {
         return '';
     }
 

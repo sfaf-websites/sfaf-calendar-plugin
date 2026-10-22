@@ -56,9 +56,9 @@ function se_row( $title, $when, $where ) {
 /* SFAF_Shortcodes::render_month_tabs(). */
 function se_tabs() {
     return '<div class="uc-month-tabs">'
-         . '<button type="button" class="uc-month-tab" data-goto="2026-08">'
+         . '<button type="button" class="uc-month-tab uc-actionbtn uc-actionbtn-secondary" data-goto="2026-08">'
          . '<span class="uc-month-tab-name">August</span><span class="uc-month-tab-count">3</span></button>'
-         . '<button type="button" class="uc-month-tab" data-goto="2026-10">'
+         . '<button type="button" class="uc-month-tab uc-actionbtn uc-actionbtn-secondary" data-goto="2026-10">'
          . '<span class="uc-month-tab-name">October</span><span class="uc-month-tab-count">0</span></button>'
          . '</div>';
 }

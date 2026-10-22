@@ -4229,6 +4229,14 @@ of them can be forgotten. `sfaf_event_map_html()` returns nothing for an online
 event: the Google frame loads on view, and asking for a map of two words that
 are not a place buys nothing and attributes a visit.
 
+**A location that only says how to join gets no map either (3.113.8).** The
+Eventbrite adapter writes "Online" as an online event's location and does not
+set the online format, so the map searched Google for "Online" and drew a real
+business. `sfaf_location_is_online_only()` answers yes for a line made only of
+joining words (Online, Virtual, Zoom, Online Event via Zoom) and no for anything
+with a place in it, "Edge Studios Online, 50 Main St" included. A hybrid
+event's location is its place and keeps its map.
+
 **The meeting link is a credential and is treated as one.** Anybody holding it
 can join, and this calendar carries HIV, substance use and trans health
 programming. It is on no public surface: not the event page, the cards, the
@@ -5107,7 +5115,7 @@ events have their own page), **Test connection** and the **Tracker probe**.
 | `Description` | **Seeds the description once**, see below. |
 | `Visibility` | Empty means public. Any other value is said in the fetch report ("1 row is marked "Internal" at the source. Check it before publishing."). The privacy flag stays the manager's. |
 | `Capacity`, `SignUps` | Not read. Registration is at the source (3.97.0), so a capacity here has nothing to limit. |
-| `Public_URL` | Not read. Usually empty; the signup link comes from the list. |
+| `Public_URL` | **The event's own form (3.113.8)**, used when the list has no page for it. Its host also says which program site that `Series_ID`'s forms are on. See the signup link, below. |
 | `RowId`, `CreatedAt`, the `Submitted` fields | The hub's own. Not event data. |
 
 **THE TIMES ARE UTC, AND THE +0000 IS CORRECT.** 3.100.2 recorded Val's reading
@@ -5211,6 +5219,23 @@ the list is EveryAction's page, not ours, and every selector above is theirs.
 `han.sfaf.org/a/<slug>`, the kebab-cased title plus an occurrence number that is
 not derivable from the date, which is why the link has to be read rather than
 built.
+
+**THE LIST IS ONE LIST ON TWO SITES (measured 2026-10-22).**
+`han.sfaf.org/a/asevents` and `50plus.sfaf.org/a/asevents` answer with the same
+entries and the same signup addresses, titled "Upcoming Events with SFAF Aging
+Services"; only the host's branding differs. It held 98 entries, the 50-Plus
+Saturday coffee social and the monthly community meal, and nothing else. **An
+event of any other program is on neither**, so its own page cannot come from the
+list, and its day on the list is a page it is not on.
+
+**SO THE BUTTON, IN ORDER (3.113.8):** the event's own page on the list; else
+the row's `Public_URL`, the event's own form, when it is a web address; else its
+day on the list on the site its program's forms are on (`LIST_HOSTS`). That
+site is the host of a `Public_URL` in the row or in any row with the same
+`Series_ID` in the fetch, and `50plus.sfaf.org` when nothing says, as before.
+`is_list_url()` knows the list on either site, so a day is replaced by a page
+once there is one. **A HAN row with no Public_URL anywhere in its program still
+goes to the 50-Plus day**: nothing else in a row says which program it is.
 
 #### Auto-Import gates the runner, not the button
 
@@ -6203,6 +6228,14 @@ per page in `ucData.rsvpWords`, with the question labels and the agreement and
 text lines as Email Templates has them. The toggle's styles are injected by
 `calendar.js` and are not in `calendar.css`, which the embed loads; the embed
 never draws the form, so it is unchanged.
+
+**ONE HEIGHT IN BOTH LANGUAGES (3.113.8).** Spanish runs longer and wrapped
+where English did not, so the form grew and shrank by up to 60px on a phone
+under the toggle. Every phrase that switches is written by `twin()` in
+`calendar.js`: the language picked, and the other language's words in the same
+grid cell with `visibility: hidden` and `aria-hidden`, so each line already
+holds the room of the longer of the two and nothing moves. Anything that reads
+the form's text back reads around `.uc-w2-off`, as the browser checks do.
 
 **Everything else a registrant reads is built in the event's language**: every
 message and page in the catalogue for a row with no choice, the joining block,
@@ -7841,7 +7874,8 @@ applies. `--uc-control-edge` is `#8C8D8E` at 3.33:1, the same value portal.css
 has used since 3.64.0. **The month arrows use it; these do not yet**, and the
 list is here rather than left to a search: the filter bar's search field and
 dropdown, the group pills, the groups disclosure, the RSVP modal's cancel and
-its secondary add-to-calendar button, and the month tabs under the sidebar.
+and its secondary add-to-calendar button. (The month tabs under the sidebar
+became secondary buttons in 3.113.8, with the 5.35:1 teal outline.)
 
 ### Both ends can be right and the join still broken (3.96.0, found 3.97.3)
 
@@ -8173,6 +8207,29 @@ whether a submit button has a form, and these had one.
 > no navigation written anywhere. The only place a default is visible is a
 > running page, which is why the check for this is a browser pressing the
 > control and watching whether anything moves.
+
+### Every recorded time read UTC on the site, and every stub agreed with the code (3.113.8)
+
+"Last run ... at 6:49 pm" at 11:49 am Pacific. `sfaf_ap_datetime()` formatted a
+real moment with `date_i18n()`, and **WordPress's `date_i18n()` reads a
+timestamp it is given as one that already carries the site's offset**: it
+formats that number's UTC wall clock. PHP runs on UTC under WordPress. So every
+fetch and run time, and every registration, cancellation and agreement time in
+the RSVP lists, was seven or eight hours ahead, and an evening one was the next
+day. The 3.24.2 date sweep fixed `date()` calls and never asked this.
+
+**THE STUBS MODELLED THE WRONG FUNCTION.** `wp-kit.php`, `mail-kit.php` and a
+dozen tests define `date_i18n()` as PHP's `date()` on a Los Angeles clock,
+which converts a real moment correctly, so every check agreed with the code.
+`.claude/pacific-time-test.php` models `date_i18n()` and `wp_date()` as
+WordPress 6 writes them, with PHP on UTC, and runs the shipped formatters.
+
+> **A STUB IS A CLAIM ABOUT THE PLATFORM, AND THIS ONE WAS FALSE.** Where a
+> core function's behaviour is the question, model it from core's source, not
+> from what the name suggests. The rule now: **a real moment is formatted with
+> `wp_date()`**; `date_i18n()` is only for a site-clock timestamp such as
+> `strtotime()` of a stored local string, which is what `sfaf_ap_date()` and
+> `sfaf_ap_time()` are handed.
 
 **THE SECOND HALF IS THE ONE WORTH KEEPING.** The remedy is not only the
 `preventDefault()` that stops the reload: it is that the type is now WRITTEN
