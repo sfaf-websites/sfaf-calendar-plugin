@@ -339,7 +339,7 @@ foreach ( array(
     'status_header', 'language_attributes', 'bloginfo', 'wp_print_styles', 'wp_print_head_scripts',
     'wp_print_footer_scripts', 'wp_enqueue_media', 'wp_enqueue_editor',
     'sanitize_hex_color', 'wp_logout_url', 'wp_print_media_templates', 'submit_button', 'rest_url', 'settings_fields',
-    'get_the_date',
+    'get_the_date', 'get_post_time',
     '_prime_post_caches', 'wp_nonce_url',
     'wp_reset_postdata',
 ) as $kit_fn ) {
