@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 381 items.** Quick 310, needs real conditions 67, blocked on other
+**Outstanding: 382 items.** Quick 311, needs real conditions 67, blocked on other
 people 4.
 
 ---
@@ -4235,6 +4235,17 @@ without touching the FAQ. Back on the event page the link and the bold are still
 there.
 
 **Why it needs a person:** WordPress's own editor screen and its save.
+
+### 1.313 A series' RSVP choice reaches Add event (3.115.0)
+
+As a calendar admin, open a series, choose **RSVP Here** under RSVP, and save.
+Open Add event and pick that series in the dropdown: the RSVP card switches to
+RSVP Here. Set another series to **External RSVP** with a link, pick it: the
+card shows External RSVP with that link greyed in the box. Pick "Not part of a
+series": No RSVP. Then sign in as an editor who lacks one of that series' events
+(Team and access): the series page shows the choice as words, with no control.
+
+**Why it needs a person:** real users, levels and teams on the real site.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event

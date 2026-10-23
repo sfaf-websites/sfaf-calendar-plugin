@@ -6062,9 +6062,26 @@ allows; they never widen it.
 **The RSVP card asks first** (3.113.3, one control with No RSVP and RSVP Here;
 "Take registrations here" or "Register on another site" until then): External
 RSVP is another site, with a link.
-The series screen has the same choice and link as a default its events follow
-until they set their own (`_uc_reg_mode`, `_uc_reg_url`;
-`_sfaf_series_reg_mode`, `_sfaf_series_reg_url`), `SFAF_Register_Elsewhere`.
+The series screen has the same three choices (3.115.0, from the one renderer,
+`render_rsvp_choice()` with the `series_` prefix) and the link, as the choice its
+new events start on (`SFAF_Register_Elsewhere::series_choice()`, read by
+`choice()` and by Add event's script when the series dropdown changes) and the
+link its events follow until they set their own (`_uc_reg_mode`, `_uc_reg_url`;
+`_sfaf_series_reg_mode`, `_sfaf_series_reg_url`).
+
+**THE SERIES STORES `here` FROM 3.115.0.** Until then only `elsewhere` was stored
+and "Take registrations here" deleted the key, so nothing stored and "here" read
+the same, and a new event in such a series started on No RSVP whatever the
+screen said. Now `here` and `elsewhere` are stored and nothing stored is No RSVP,
+which is what every series' new events were already starting on, so no series'
+behaviour changed on updating. `series_mode()`, the fallback an event's own
+`mode()` reads, still answers `elsewhere` or `here` (not elsewhere).
+
+**BEHIND THE SERIES ACCESS GATE (3.115.0).** An event that makes no choice of its
+own follows its series' link, so changing it changes events. Only somebody who
+passes `can_manage_series_events()` (has every event in the series) sees the
+control and has it saved, as with Team and access; anybody else sees the choice
+as text.
 
 - **On another site, nothing about registering here applies.**
   `SFAF_Register_Elsewhere::is_on()` makes `sfaf_event_takes_rsvps()`,

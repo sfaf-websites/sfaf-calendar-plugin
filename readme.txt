@@ -531,6 +531,14 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.115.0 =
+
+**The series page's RSVP choice and Language on every event. The embed is 3.114.0's.**
+
+* **The series page offers No RSVP, RSVP Here and External RSVP**, the event editor's three, in place of "Where people register". New events in the series start on that choice. A series showing "Take registrations here" used to start its new events on No RSVP; every series now shows the choice its events actually start on, so nothing changes until you pick another.
+* **Only somebody who has every event in a series can change its RSVP choice**, as with its Team and access, because events that make no choice of their own follow it. Anybody else sees it as text.
+* **Add and Edit event show Language when the site has no series.** It was in the series card, which was left out.
+
 = 3.114.0 =
 
 **The WordPress event editor stops damaging events and is for administrators only; Eventbrite events get their full description. The embed is 3.113.8's.**
