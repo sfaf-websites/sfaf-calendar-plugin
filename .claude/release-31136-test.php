@@ -218,7 +218,7 @@ rt( '7: the form opens on the button\'s language', false !== strpos( $js, "curre
 rt( '7: the toggle is two pressed-state buttons', false !== strpos( $js, '<button type="button" lang="en" data-uc-lang-pick="en" aria-pressed="true">English</button>' )
     && false !== strpos( $js, '<button type="button" lang="es" data-uc-lang-pick="es" aria-pressed="false">Español</button>' ), true );
 rt( '7: its styles are not in calendar.css, which the embed loads', false === strpos( $cal, 'uc-rsvp-lang' ), true );
-rt( '7: schema 15 adds the column', false !== strpos( $pl, "define( 'SFAF_DB_VERSION', '15' );" ) && false !== strpos( $pl, "        lang varchar(5) NOT NULL DEFAULT '',\n" ), true );
+rt( '7: schema 15 adds the column', ( preg_match( "/define\( 'SFAF_DB_VERSION', '(\d+)' \);/", $pl, $dbv ) && (int) $dbv[1] >= 15 ) && false !== strpos( $pl, "        lang varchar(5) NOT NULL DEFAULT '',\n" ), true );
 
 echo "\nRelease 3.113.6\n" . str_repeat( '=', 72 ) . "\nran $ran assertions.\n";
 if ( $fails ) {
