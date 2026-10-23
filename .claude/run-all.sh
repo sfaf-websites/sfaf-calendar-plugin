@@ -223,6 +223,8 @@ for f in .claude/*.php; do
     release-31137-live.php) continue ;;  # run below with --run
     plant-31138.php) continue ;;       # a fault planter for the 3.113.8 checks, not a check
     plant-31140.php) continue ;;       # a fault planter for the 3.114.0 checks, not a check
+    plant-31150.php) continue ;;       # a fault planter for the 3.115.0 checks, not a check
+    release-31150-live.php) continue ;;  # run below with --run
     release-31138-live.php) continue ;;  # run below with --run
     release-31138-pages-live.php) continue ;;  # run below with --run
     series-picture-live.php) continue ;;  # run below with --run
@@ -521,6 +523,8 @@ run "release-31138-pages-live --run" php .claude/release-31138-pages-live.php --
 # The series screen's picture: the event editor's block, this series' pictures
 # only, Remove and choose, and the upload (3.113.8).
 run "series-picture-live --run" php .claude/series-picture-live.php --run
+# The RSVP choice on the series page and Add event (3.115.0).
+run "release-31150-live --run" php .claude/release-31150-live.php --run
 # The embed in its shadow root under a hostile host stylesheet, and the combined
 # sidebar ending at its content (3.111.0 J and K), at 1280px and 390px.
 run "embed-isolation-live --run" php .claude/embed-isolation-live.php --run

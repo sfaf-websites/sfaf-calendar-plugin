@@ -8368,11 +8368,10 @@ class SFAF_Portal {
      *                            whether the prefill offer is drawn at all.
      */
     private function render_series_prefill( $all_series, $cur_series, $event_id = 0 ) {
-        if ( empty( $all_series ) ) {
-            // No series, no choice to make, and no card saying so.
-            return;
-        }
-        $offer = ! (int) $event_id;
+        $all_series = (array) $all_series;
+        $has_series = ! empty( $all_series );
+        // With no series there is no prefill to offer; the card keeps Language (3.115.0).
+        $offer = $has_series && ! (int) $event_id;
 
         /* Built only where it is offered. The payload is every series' whole
          * prefill set, which is not small, and an edit has nothing to do with
@@ -8386,6 +8385,7 @@ class SFAF_Portal {
         ?>
         <?php // "Series and language", the first card of the main column (3.107.1). ?>
         <section class="uc-bento-card uc-series-first" data-uc-card="series"<?php echo $offer ? ' data-uc-series-prefill' : ''; ?>>
+            <?php if ( $has_series ) : ?>
             <h2 class="uc-bento-title">Series and language
                 <?php
                 echo sfaf_help(
@@ -8407,6 +8407,9 @@ class SFAF_Portal {
                     <?php endforeach; ?>
                 </select>
             </label>
+            <?php else : ?>
+            <h2 class="uc-bento-title">Language</h2>
+            <?php endif; ?>
 
             <?php
             /*
@@ -8433,7 +8436,8 @@ class SFAF_Portal {
                 <span class="uc-hint">Emails to people who register go out in this language.</span>
             </label>
 
-            <?php if ( ! $offer ) : ?>
+            <?php if ( ! $has_series ) : ?>
+            <?php elseif ( ! $offer ) : ?>
                 <?php
                 /*
                  * ON AN EDIT, WHAT THE SELECT ACTUALLY DOES, SAID ONCE.
@@ -10240,11 +10244,14 @@ class SFAF_Portal {
      * every event in the series may change it, since it gives them away.
      */
     private function save_series_access( $user, $term_id ) {
-        // Where the series' events register by default (3.110.1). A setting of
-        // the series itself, so the series level answers it.
+        if ( ! $term_id || ! $this->can_manage_series_events( $user, $term_id ) ) {
+            return;
+        }
+        // The series' RSVP choice (3.115.0): its events that make no choice
+        // follow its link, so it is behind the same gate as Team and access.
         SFAF_Register_Elsewhere::save_series_from_post( $term_id, $_POST );
         $c = SFAF_Access::from_post( $_POST, 'series_access' );
-        if ( ! $term_id || ! $c['present'] || ! $this->can_manage_series_events( $user, $term_id ) ) {
+        if ( ! $c['present'] ) {
             return;
         }
         SFAF_Access::set_series( $term_id, $c['teams'], $c['people'] );
@@ -10975,9 +10982,29 @@ class SFAF_Portal {
                 <?php // The default Team and access its events follow (3.110.1). ?>
                 <?php $this->render_series_access( $user, (int) $term_id ); ?>
 
-                <?php // Where its events' people register, by default (3.110.1). ?>
-                <div class="uc-reg-choice" data-uc-reg-choice>
-                    <?php SFAF_Register_Elsewhere::render_choice( 'series_', SFAF_Register_Elsewhere::series_mode( (int) $term_id ), SFAF_Register_Elsewhere::series_url( (int) $term_id ) ); ?>
+                <?php
+                /*
+                 * THE RSVP CHOICE ITS NEW EVENTS START ON (3.115.0), the event
+                 * editor's three. An event that makes no choice of its own
+                 * follows the series' link, so only somebody who has every
+                 * event in the series may change it, as with Team and access.
+                 */
+                $s_choice = SFAF_Register_Elsewhere::series_choice( (int) $term_id );
+                $s_url    = SFAF_Register_Elsewhere::series_url( (int) $term_id );
+                ?>
+                <div class="uc-field" data-uc-series-rsvp>
+                    <span class="uc-field-label">RSVP</span>
+                    <?php if ( $this->can_manage_series_events( $user, (int) $term_id ) ) : ?>
+                        <div class="uc-reg-choice" data-uc-reg-choice>
+                            <?php SFAF_Register_Elsewhere::render_rsvp_choice( $s_choice, $s_url, '', false, false, 'series_' ); ?>
+                        </div>
+                        <span class="uc-hint">New events in this series start on this.</span>
+                    <?php else : ?>
+                        <?php $labels = SFAF_Register_Elsewhere::choice_labels(); ?>
+                        <p class="uc-muted" data-uc-series-rsvp-readonly><?php
+                            echo esc_html( $labels[ $s_choice ] . ( 'elsewhere' === $s_choice && '' !== $s_url ? ': ' . $s_url : '' ) );
+                        ?></p>
+                    <?php endif; ?>
                 </div>
 
                 <?php
@@ -14871,8 +14898,9 @@ class SFAF_Portal {
                         $reg_series = array();
                         foreach ( SFAF_Series::all() as $term ) {
                             $reg_series[ (string) $term->term_id ] = array(
-                                'mode' => SFAF_Register_Elsewhere::series_mode( $term->term_id ),
-                                'url'  => SFAF_Register_Elsewhere::series_url( $term->term_id ),
+                                'mode'   => SFAF_Register_Elsewhere::series_mode( $term->term_id ),
+                                'choice' => SFAF_Register_Elsewhere::series_choice( $term->term_id ),
+                                'url'    => SFAF_Register_Elsewhere::series_url( $term->term_id ),
                             );
                         }
                         $reg_mode = $event_id ? SFAF_Register_Elsewhere::mode( (int) $event_id ) : SFAF_Register_Elsewhere::series_mode( (int) $cur_series );

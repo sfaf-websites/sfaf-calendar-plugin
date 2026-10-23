@@ -47,6 +47,16 @@ class SFAF_Register_Elsewhere {
         return ( (int) $series_id && 'elsewhere' === (string) get_term_meta( (int) $series_id, self::SERIES_MODE, true ) ) ? 'elsewhere' : 'here';
     }
 
+    /**
+     * The series' RSVP choice for its new events (3.115.0): 'none', 'here' or
+     * 'elsewhere'. 'here' was never stored before 3.115.0, so a series with
+     * nothing stored is No RSVP, which is what its events started on.
+     */
+    public static function series_choice( $series_id ) {
+        $stored = (int) $series_id ? (string) get_term_meta( (int) $series_id, self::SERIES_MODE, true ) : '';
+        return in_array( $stored, array( 'here', 'elsewhere' ), true ) ? $stored : 'none';
+    }
+
     /** The series' default link, or ''. */
     public static function series_url( $series_id ) {
         return (int) $series_id ? self::clean_url( get_term_meta( (int) $series_id, self::SERIES_URL, true ) ) : '';
@@ -122,7 +132,7 @@ class SFAF_Register_Elsewhere {
     public static function choice( $event_id, $series_id = 0 ) {
         $event_id = (int) $event_id;
         if ( ! $event_id ) {
-            return 'elsewhere' === self::series_mode( (int) $series_id ) ? 'elsewhere' : 'none';
+            return self::series_choice( (int) $series_id );
         }
         if ( 'elsewhere' === self::mode( $event_id ) ) {
             return 'elsewhere';
@@ -169,29 +179,39 @@ class SFAF_Register_Elsewhere {
      * @param bool   $hybrid    A hybrid event cannot be No RSVP.
      * @param bool   $stored_on _uc_rsvp_enabled as stored, for the script.
      */
-    public static function render_rsvp_choice( $choice, $url, $inherited = '', $hybrid = false, $stored_on = false ) {
-        $opts = array(
+    /** The three choices, in order. */
+    public static function choice_labels() {
+        return array(
             'none'      => 'No RSVP',
             'here'      => 'RSVP Here',
             'elsewhere' => 'External RSVP',
         );
+    }
+
+    /**
+     * @param string $prefix    '' for an event, 'series_' for the series
+     *                          screen's default (3.115.0).
+     */
+    public static function render_rsvp_choice( $choice, $url, $inherited = '', $hybrid = false, $stored_on = false, $prefix = '' ) {
+        $opts = self::choice_labels();
+        $id   = 'uc-' . str_replace( '_', '-', $prefix ) . 'reg-url';
         ?>
-        <fieldset class="uc-reg-where" data-uc-reg-where data-uc-rsvp-stored="<?php echo $stored_on ? '1' : '0'; ?>">
+        <fieldset class="uc-reg-where" data-uc-reg-where<?php echo '' === $prefix ? ' data-uc-rsvp-stored="' . ( $stored_on ? '1' : '0' ) . '"' : ''; ?>>
             <legend class="uc-visually-hidden">RSVP</legend>
-            <input type="hidden" name="reg_choice_present" value="1" />
+            <input type="hidden" name="<?php echo esc_attr( $prefix ); ?>reg_choice_present" value="1" />
             <div class="uc-seg" role="radiogroup" aria-label="RSVP">
                 <?php foreach ( $opts as $value => $label ) : ?>
                     <label class="uc-seg-opt">
-                        <input type="radio" name="reg_choice" value="<?php echo esc_attr( $value ); ?>" data-uc-reg-mode
+                        <input type="radio" name="<?php echo esc_attr( $prefix ); ?>reg_choice" value="<?php echo esc_attr( $value ); ?>" data-uc-reg-mode
                                <?php checked( $choice, $value ); ?><?php echo ( 'none' === $value && $hybrid ) ? ' disabled' : ''; ?> />
                         <span><?php echo esc_html( $label ); ?></span>
                     </label>
                 <?php endforeach; ?>
             </div>
             <span class="uc-hint uc-hint-spec" data-uc-rsvp-hybrid-note<?php echo $hybrid ? '' : ' hidden'; ?>>No RSVP is not available for a hybrid event.</span>
-            <label class="uc-field uc-reg-url" for="uc-reg-url" data-uc-reg-url<?php echo 'elsewhere' === $choice ? '' : ' hidden'; ?>>
+            <label class="uc-field uc-reg-url" for="<?php echo esc_attr( $id ); ?>" data-uc-reg-url<?php echo 'elsewhere' === $choice ? '' : ' hidden'; ?>>
                 <span class="uc-field-label">Registration link</span>
-                <input type="url" id="uc-reg-url" name="reg_url" value="<?php echo esc_attr( $url ); ?>"
+                <input type="url" id="<?php echo esc_attr( $id ); ?>" name="<?php echo esc_attr( $prefix ); ?>reg_url" value="<?php echo esc_attr( $url ); ?>"
                        placeholder="<?php echo esc_attr( '' !== $inherited ? $inherited : 'https://' ); ?>" inputmode="url" />
                 <span class="uc-hint">The Register button opens this page in a new tab.</span>
             </label>
@@ -202,13 +222,14 @@ class SFAF_Register_Elsewhere {
     /** Save the series default from the series form. */
     public static function save_series_from_post( $series_id, $post ) {
         $series_id = (int) $series_id;
-        if ( ! $series_id || empty( $post['series_reg_mode_present'] ) ) {
+        if ( ! $series_id || empty( $post['series_reg_choice_present'] ) ) {
             return;
         }
-        $mode = ( isset( $post['series_reg_mode'] ) && 'elsewhere' === $post['series_reg_mode'] ) ? 'elsewhere' : 'here';
-        $url  = isset( $post['series_reg_url'] ) ? self::clean_url( wp_unslash( $post['series_reg_url'] ) ) : '';
-        if ( 'elsewhere' === $mode ) {
-            update_term_meta( $series_id, self::SERIES_MODE, 'elsewhere' );
+        $choice = isset( $post['series_reg_choice'] ) ? sanitize_key( wp_unslash( $post['series_reg_choice'] ) ) : 'none';
+        $url    = isset( $post['series_reg_url'] ) ? self::clean_url( wp_unslash( $post['series_reg_url'] ) ) : '';
+        // 'here' is stored from 3.115.0, so it can be told from No RSVP.
+        if ( 'here' === $choice || 'elsewhere' === $choice ) {
+            update_term_meta( $series_id, self::SERIES_MODE, $choice );
         } else {
             delete_term_meta( $series_id, self::SERIES_MODE );
         }
@@ -217,40 +238,5 @@ class SFAF_Register_Elsewhere {
         } else {
             delete_term_meta( $series_id, self::SERIES_URL );
         }
-    }
-
-    /**
-     * The choice, for the Registration card and the series screen.
-     *
-     * @param string $prefix    '' for an event, 'series_' for a series.
-     * @param string $mode      'here' or 'elsewhere'.
-     * @param string $url       The link shown in the box.
-     * @param string $inherited The series link an event falls back to, shown as the placeholder.
-     */
-    public static function render_choice( $prefix, $mode, $url, $inherited = '' ) {
-        $name = $prefix . 'reg_mode';
-        $id   = 'uc-' . str_replace( '_', '-', $prefix ) . 'reg-url';
-        ?>
-        <fieldset class="uc-reg-where" data-uc-reg-where>
-            <legend class="uc-field-label">Where people register</legend>
-            <input type="hidden" name="<?php echo esc_attr( $prefix ); ?>reg_mode_present" value="1" />
-            <div class="uc-seg" role="radiogroup" aria-label="Where people register">
-                <label class="uc-seg-opt">
-                    <input type="radio" name="<?php echo esc_attr( $name ); ?>" value="here" data-uc-reg-mode <?php checked( 'elsewhere' !== $mode ); ?> />
-                    <span>Take registrations here</span>
-                </label>
-                <label class="uc-seg-opt">
-                    <input type="radio" name="<?php echo esc_attr( $name ); ?>" value="elsewhere" data-uc-reg-mode <?php checked( 'elsewhere' === $mode ); ?> />
-                    <span>Register on another site</span>
-                </label>
-            </div>
-            <label class="uc-field uc-reg-url" for="<?php echo esc_attr( $id ); ?>" data-uc-reg-url<?php echo 'elsewhere' === $mode ? '' : ' hidden'; ?>>
-                <span class="uc-field-label">Registration link</span>
-                <input type="url" id="<?php echo esc_attr( $id ); ?>" name="<?php echo esc_attr( $prefix ); ?>reg_url" value="<?php echo esc_attr( $url ); ?>"
-                       placeholder="<?php echo esc_attr( '' !== $inherited ? $inherited : 'https://' ); ?>" inputmode="url" />
-                <span class="uc-hint">The Register button opens this page in a new tab.</span>
-            </label>
-        </fieldset>
-        <?php
     }
 }
