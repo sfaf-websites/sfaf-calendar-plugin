@@ -89,9 +89,8 @@ $plants = array(
     '8: the upload is not tagged' => array( 'release-31138-test.php', '8: is tagged to this series', array(
         array( 'includes/class-sfaf-portal.php', "        SFAF_Media::add_tag( array( \$att ), \$term_id );\n        SFAF_Media_Folder::file_into_library( \$att );", "        SFAF_Media_Folder::file_into_library( \$att );" ),
     ) ),
-    '8L: Remove leaves the picture showing' => array( 'series-picture-live.php', 'Remove does not empty the preview', array(
-        array( 'includes/class-sfaf-media.php', "                    <label class=\"uc-check uc-picker-option uc-image-option\" data-uc-filter-text=\"no picture the series picture\"", "                    <label class=\"uc-check uc-picker-option uc-image-option\" data-uc-filter-text=\"no picture the series picture\" hidden" ),
-        array( 'includes/class-sfaf-media.php', "<input type=\"radio\" name=\"<?php echo esc_attr( \$args['name'] ); ?>\" value=\"0\" <?php checked( 0, \$chosen ); ?>", "<input type=\"radio\" name=\"<?php echo esc_attr( \$args['name'] ); ?>\" value=\"x0\" <?php checked( 0, \$chosen ); ?>" ),
+    '8L: the block is not bound on the series screen' => array( 'series-picture-live.php', 'Remove does not empty the preview', array(
+        array( 'includes/class-sfaf-portal.php', 'data-uc-image-reset disabled', 'data-uc-image-unbound disabled' ),
     ) ),
 );
 
