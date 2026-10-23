@@ -12,6 +12,73 @@ class SFAF_Post_Types {
         $this->register_taxonomies();
         add_action( 'add_meta_boxes', array( $this, 'add_meta_boxes' ) );
         add_action( 'save_post_uc_event', array( $this, 'save_meta' ) );
+
+        /* Everyone but a WordPress administrator adds and edits events in
+           caladmin (3.114.0). */
+        foreach ( array( 'load-post.php', 'load-post-new.php', 'load-edit.php' ) as $screen ) {
+            add_action( $screen, array( $this, 'send_to_caladmin' ) );
+        }
+        add_filter( 'rest_pre_dispatch', array( $this, 'refuse_rest_write' ), 10, 3 );
+        add_action( 'wp_ajax_inline-save', array( $this, 'refuse_quick_edit' ), 0 );
+    }
+
+    /**
+     * WordPress administrators only on the WordPress event screens (3.114.0).
+     *
+     * The WordPress editor answers to edit_posts and skips everything caladmin
+     * enforces: teams and levels, approval, the RSVP and waitlist rules. So
+     * anybody else is sent to the same place in caladmin, which asks
+     * SFAF_Portal::user_can_edit_event() as every caladmin route does.
+     * The REST route and Quick Edit are the other two ways in, and refuse.
+     */
+    public static function wp_editor_allowed() {
+        return current_user_can( 'manage_options' );
+    }
+
+    public function send_to_caladmin() {
+        if ( self::wp_editor_allowed() ) {
+            return;
+        }
+        global $pagenow;
+        $post_id = isset( $_GET['post'] ) ? (int) $_GET['post'] : ( isset( $_POST['post_ID'] ) ? (int) $_POST['post_ID'] : 0 );
+        $type    = $post_id ? get_post_type( $post_id ) : ( isset( $_REQUEST['post_type'] ) ? sanitize_key( wp_unslash( $_REQUEST['post_type'] ) ) : 'post' );
+        if ( 'uc_event' !== $type ) {
+            return;
+        }
+        if ( 'post-new.php' === $pagenow ) {
+            $to = SFAF_Portal::link( 'events/new' );
+        } elseif ( 'post.php' === $pagenow && $post_id ) {
+            $to = SFAF_Portal::link( 'events/edit/' . $post_id );
+        } else {
+            $to = SFAF_Portal::link( 'events' );
+        }
+        wp_safe_redirect( $to );
+        exit;
+    }
+
+    /**
+     * @param mixed           $result
+     * @param WP_REST_Server  $server
+     * @param WP_REST_Request $request
+     * @return mixed
+     */
+    public function refuse_rest_write( $result, $server, $request ) {
+        if ( null !== $result || 'GET' === $request->get_method() || self::wp_editor_allowed() ) {
+            return $result;
+        }
+        $obj  = get_post_type_object( 'uc_event' );
+        $base = ( $obj && is_string( $obj->rest_base ) && '' !== $obj->rest_base ) ? $obj->rest_base : 'uc_event';
+        if ( preg_match( '#^/wp/v2/' . preg_quote( $base, '#' ) . '(/|$)#', (string) $request->get_route() ) ) {
+            return new WP_Error( 'sfaf_events_in_caladmin', 'Events are added and edited in the calendar portal.', array( 'status' => 403 ) );
+        }
+        return $result;
+    }
+
+    public function refuse_quick_edit() {
+        $post_id = isset( $_POST['post_ID'] ) ? (int) $_POST['post_ID'] : 0;
+        if ( $post_id && 'uc_event' === get_post_type( $post_id ) && ! self::wp_editor_allowed() ) {
+            wp_die( 'Events are added and edited in the calendar portal.', '', array( 'response' => 403 ) );
+        }
     }
 
     public function register_post_type() {
@@ -243,14 +310,20 @@ class SFAF_Post_Types {
                      * the same field.
                      */
                     ?>
-                    <?php if ( SFAF_Online::is_online( $post->ID ) ) : ?>
-                        <input type="text" id="uc_location" value="<?php echo esc_attr( $location ); ?>" readonly />
-                        <p class="description">
-                            Change this on <a href="<?php echo esc_url( SFAF_Portal::link( 'events/edit/' . (int) $post->ID ) ); ?>">this event in the calendar portal</a>.
-                        </p>
-                    <?php else : ?>
-                        <input type="text" id="uc_location" name="uc_location" value="<?php echo esc_attr( $location ); ?>" placeholder="e.g., Strut - 470 Castro St" />
-                    <?php endif; ?>
+                    <?php
+                    /*
+                     * READ-ONLY ON EVERY EVENT FROM 3.114.0. The box showed
+                     * sfaf_event_location(), the place name and the address
+                     * joined, and saved that back as the address, so every save
+                     * put the name in front of it once more. It also could not
+                     * reach the venue or the street, city and ZIP caladmin
+                     * keeps. The place is set in caladmin.
+                     */
+                    ?>
+                    <input type="text" id="uc_location" value="<?php echo esc_attr( $location ); ?>" readonly />
+                    <p class="description">
+                        Change this on <a href="<?php echo esc_url( SFAF_Portal::link( 'events/edit/' . (int) $post->ID ) ); ?>">this event in the calendar portal</a>.
+                    </p>
                 </div>
             </div>
             <div class="uc-meta-row">
@@ -761,7 +834,9 @@ class SFAF_Post_Types {
         $faqs = array();
         foreach ( (array) wp_unslash( $raw ) as $row ) {
             $q = isset( $row['question'] ) ? sanitize_text_field( $row['question'] ) : '';
-            $a = isset( $row['answer'] ) ? sanitize_textarea_field( $row['answer'] ) : '';
+            /* The answer's links and formatting kept, as caladmin keeps them
+               (3.114.0). sanitize_textarea_field() stripped every tag. */
+            $a = isset( $row['answer'] ) ? trim( SFAF_Rich_Text::sanitize( (string) $row['answer'] ) ) : '';
             if ( $q === '' && $a === '' ) {
                 continue;
             }
@@ -792,23 +867,10 @@ class SFAF_Post_Types {
             'uc_event_date'  => '_uc_event_date',
             'uc_start_time'  => '_uc_start_time',
             'uc_end_time'    => '_uc_end_time',
-            'uc_location'    => '_uc_location',
             'uc_capacity'    => '_uc_capacity',
             'uc_email_subject' => '_uc_email_subject',
         );
-        /*
-         * AN ONLINE EVENT HAS NO LOCATION FOR THIS BOX TO WRITE.
-         *
-         * The input renders read-only and without a name for one, so this never
-         * fires in the ordinary case. It is here as the second mechanism, for a
-         * bookmarked form or a hand-made POST: a save may only speak for the
-         * fields its form actually showed, and this form showed no editable
-         * location. See render_meta_box() and SFAF_Online.
-         */
-        if ( SFAF_Online::is_online( $post_id ) ) {
-            unset( $text_fields['uc_location'] );
-        }
-
+        /* No location: the box is read-only on every event (3.114.0). */
         foreach ( $text_fields as $post_key => $meta_key ) {
             if ( isset( $_POST[ $post_key ] ) ) {
                 update_post_meta( $post_id, $meta_key, sanitize_text_field( wp_unslash( $_POST[ $post_key ] ) ) );

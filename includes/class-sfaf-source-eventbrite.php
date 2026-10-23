@@ -179,8 +179,19 @@ class SFAF_Source_Eventbrite extends SFAF_Source_Adapter {
             $reason   = 'the source returned no events, which is never treated as "everything was deleted"';
         }
 
+        /* The full description of each event (3.114.0). One that cannot be
+           read falls back to what the event itself carries, and is counted. */
+        $items  = $result['events'];
+        $missed = 0;
+        foreach ( $items as $i => $row ) {
+            $items[ $i ] = self::with_structured_html( $token, $row, $missed );
+        }
+        if ( $missed ) {
+            $notes[] = sprintf( 'The full description of %d event(s) could not be read, so their summary was used.', $missed );
+        }
+
         return array(
-            'items'           => $result['events'],
+            'items'           => $items,
             'notes'           => $notes,
             'complete'        => $complete,
             'complete_reason' => $reason,
@@ -213,7 +224,29 @@ class SFAF_Source_Eventbrite extends SFAF_Source_Adapter {
             return $raw;
         }
 
-        return SFAF_Eventbrite::normalize_event( $raw );
+        $missed = 0;
+        return self::with_structured_html( $token, SFAF_Eventbrite::normalize_event( $raw ), $missed );
+    }
+
+    /**
+     * A flattened row with its full description attached as structured_html.
+     *
+     * @param string $token
+     * @param array  $row
+     * @param int    $missed Counts a description that could not be read.
+     * @return array
+     */
+    private static function with_structured_html( $token, $row, &$missed ) {
+        if ( ! is_array( $row ) || empty( $row['id'] ) ) {
+            return $row;
+        }
+        $html = SFAF_Eventbrite::fetch_structured_html( $token, (string) $row['id'] );
+        if ( is_wp_error( $html ) ) {
+            $missed++;
+            $html = '';
+        }
+        $row['structured_html'] = (string) $html;
+        return $row;
     }
 
     /**
@@ -246,6 +279,9 @@ class SFAF_Source_Eventbrite extends SFAF_Source_Adapter {
             'external_id'     => (string) $item['id'],
             'title'           => isset( $item['name'] ) ? (string) $item['name'] : '',
             'description'     => $this->description( $item, $raw ),
+            /* What 3.113.8 and earlier stored, so a fetch can tell its own
+               old description from one a person wrote (3.114.0). */
+            'description_was' => $this->old_descriptions( $item, $raw ),
             'start_date'      => $start['date'],
             'start_time'      => $start['time'],
             'end_date'        => $end['date'],
@@ -325,17 +361,87 @@ class SFAF_Source_Eventbrite extends SFAF_Source_Adapter {
     }
 
     /**
-     * The event description.
+     * The event description, with its formatting (3.114.0).
      *
-     * Eventbrite's description.text is the full body; summary is the short
-     * blurb that replaced it in newer payloads. Preference goes to the fuller
-     * one, and the preview row's excerpt is the last resort.
+     * The full body is the structured content's text modules, fetched beside
+     * the event. Without them, the event's own description HTML, then its
+     * text. The summary leads, unless the body already opens with it, which
+     * is how Eventbrite's own page reads.
+     *
+     * @param array $item Flattened row.
+     * @param array $raw  Untouched payload.
+     * @return string HTML.
+     */
+    private function description( $item, $raw ) {
+        $summary = ( isset( $raw['summary'] ) && is_string( $raw['summary'] ) ) ? trim( $raw['summary'] ) : '';
+        $body    = isset( $item['structured_html'] ) ? trim( (string) $item['structured_html'] ) : '';
+        $desc    = ( isset( $raw['description'] ) && is_array( $raw['description'] ) ) ? $raw['description'] : array();
+        if ( '' === $body && ! empty( $desc['html'] ) && is_string( $desc['html'] ) ) {
+            $body = trim( $desc['html'] );
+        }
+        if ( '' === $body && ! empty( $desc['text'] ) && is_string( $desc['text'] ) ) {
+            $body = wpautop( esc_html( trim( $desc['text'] ) ) );
+        }
+        if ( '' === $body ) {
+            if ( '' !== $summary ) {
+                return '<p>' . esc_html( $summary ) . '</p>';
+            }
+            return ( isset( $item['description'] ) && is_array( $item['description'] ) && ! empty( $item['description']['excerpt'] ) )
+                ? (string) $item['description']['excerpt'] : '';
+        }
+        if ( '' !== $summary && ! self::opens_with( $body, $summary ) ) {
+            $body = '<p>' . esc_html( $summary ) . "</p>\n" . $body;
+        }
+        return $body;
+    }
+
+    /**
+     * Whether HTML's text begins with this line, ignoring case, spacing and
+     * closing punctuation.
+     *
+     * @param string $html
+     * @param string $line
+     * @return bool
+     */
+    public static function opens_with( $html, $line ) {
+        $norm = function ( $s ) {
+            $s = function_exists( 'sfaf_flatten_html' ) ? sfaf_flatten_html( (string) $s ) : trim( wp_strip_all_tags( (string) $s ) );
+            $s = html_entity_decode( $s, ENT_QUOTES, 'UTF-8' );
+            $s = function_exists( 'mb_strtolower' ) ? mb_strtolower( $s ) : strtolower( $s );
+            return trim( preg_replace( '/\s+/u', ' ', $s ) );
+        };
+        $line = rtrim( $norm( $line ), ' .!?:;' );
+        $text = $norm( $html );
+        if ( '' === $line || 0 !== strpos( $text, $line ) ) {
+            return false;
+        }
+        // A whole word: "Over" does not open "Overview".
+        return ! preg_match( '/^[\p{L}\p{N}]/u', (string) substr( $text, strlen( $line ) ) );
+    }
+
+    /**
+     * The descriptions earlier releases stored for this event.
+     *
+     * @param array $item
+     * @param array $raw
+     * @return string[]
+     */
+    private function old_descriptions( $item, $raw ) {
+        $was = array( $this->description_before_31140( $item, $raw ) );
+        if ( ! empty( $raw['summary'] ) && is_string( $raw['summary'] ) ) {
+            $was[] = $raw['summary'];
+        }
+        return array_values( array_unique( array_filter( $was, 'strlen' ) ) );
+    }
+
+    /**
+     * 3.113.8's description(), kept to recognise what it stored.
      *
      * @param array $item Flattened row.
      * @param array $raw  Untouched payload.
      * @return string
      */
-    private function description( $item, $raw ) {
+    private function description_before_31140( $item, $raw ) {
         if ( isset( $raw['description'] ) && is_array( $raw['description'] ) ) {
             if ( ! empty( $raw['description']['text'] ) && is_string( $raw['description']['text'] ) ) {
                 return $raw['description']['text'];

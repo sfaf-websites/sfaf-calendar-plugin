@@ -591,6 +591,9 @@ class SFAF_Sources {
         if ( is_wp_error( $post_id ) ) {
             return $post_id;
         }
+        if ( '' !== trim( $description ) ) {
+            self::remember_description( (int) $post_id );
+        }
 
         // Platform-owned fields, written to the meta keys this calendar
         // already uses so every existing screen reads an imported event
@@ -1143,6 +1146,52 @@ class SFAF_Sources {
      *                       governs event removal.
      * @return array|WP_Error {changed: array<string,array{from:string,to:string}>, faqs: array}
      */
+    /**
+     * A fingerprint of the description a fetch last wrote (3.114.0).
+     */
+    const META_DESC_HASH = '_uc_source_description_hash';
+
+    /** @param int $post_id */
+    public static function remember_description( $post_id ) {
+        update_post_meta( (int) $post_id, self::META_DESC_HASH, md5( (string) get_post_field( 'post_content', (int) $post_id ) ) );
+    }
+
+    /**
+     * Whether the event's description is a person's rather than a fetch's.
+     *
+     * With a fingerprint stored, any difference from it is a person's edit.
+     * Without one (an event imported before 3.114.0), the description is the
+     * fetch's when it is empty or matches what an earlier release stored
+     * (`description_was` from the adapter), compared as text.
+     *
+     * @param WP_Post $post
+     * @param array   $event Normalized row.
+     * @return bool
+     */
+    public static function description_edited( $post, $event ) {
+        $now  = (string) $post->post_content;
+        $hash = (string) get_post_meta( (int) $post->ID, self::META_DESC_HASH, true );
+        if ( '' !== $hash ) {
+            return md5( $now ) !== $hash;
+        }
+        $text = function ( $html ) {
+            $s = function_exists( 'sfaf_flatten_html' ) ? sfaf_flatten_html( (string) $html ) : trim( wp_strip_all_tags( (string) $html ) );
+            return trim( preg_replace( '/\s+/u', ' ', html_entity_decode( $s, ENT_QUOTES, 'UTF-8' ) ) );
+        };
+        $mine = $text( $now );
+        if ( '' === $mine ) {
+            return false;
+        }
+        $was = ( isset( $event['description_was'] ) && is_array( $event['description_was'] ) ) ? $event['description_was'] : array();
+        $was[] = isset( $event['description'] ) ? (string) $event['description'] : '';
+        foreach ( $was as $old ) {
+            if ( $text( wp_kses_post( (string) $old ) ) === $mine ) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public static function update_event( $post_id, $event, $context = array() ) {
         $post_id = (int) $post_id;
         $post    = get_post( $post_id );
@@ -1200,6 +1249,11 @@ class SFAF_Sources {
         }
 
         $description = ( $may_write( 'description' ) && isset( $event['description'] ) ) ? (string) $event['description'] : '';
+        /* A description somebody changed since the last fetch wrote it is
+           theirs (3.114.0). */
+        if ( '' !== trim( $description ) && self::description_edited( $post, $event ) ) {
+            $description = '';
+        }
         if ( '' !== trim( $description ) ) {
             $new_content = wp_kses_post( $description );
             if ( $new_content !== $post->post_content ) {
@@ -1213,6 +1267,9 @@ class SFAF_Sources {
 
         if ( count( $postarr ) > 1 ) {
             wp_update_post( $postarr );
+        }
+        if ( '' !== trim( $description ) ) {
+            self::remember_description( $post_id );
         }
 
         /* ---- Platform meta, each skipped when the source said nothing. ---- */

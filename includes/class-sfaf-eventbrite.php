@@ -336,6 +336,52 @@ class SFAF_Eventbrite {
     }
 
     /**
+     * An event's full description: GET {api_base}/events/{id}/structured_content/
+     * (3.114.0).
+     *
+     * An event made in Eventbrite's current editor keeps its description here,
+     * as modules. The event's own description field holds only the summary,
+     * which is why "The roadmap to zero" arrived as one line. The text modules'
+     * HTML, in order; images and videos are left out.
+     *
+     * @param string $token
+     * @param string $event_id
+     * @return string|WP_Error HTML, '' when there is no text module.
+     */
+    public static function fetch_structured_html( $token, $event_id ) {
+        $event_id = trim( (string) $event_id );
+        if ( '' === trim( (string) $token ) || '' === $event_id ) {
+            return new WP_Error( 'sfaf_eventbrite_missing', 'A private token and an event ID are required.' );
+        }
+        $body = self::request_json( $token, self::endpoint( 'events/' . rawurlencode( $event_id ) . '/structured_content/' ) );
+        if ( is_wp_error( $body ) ) {
+            return $body;
+        }
+        return self::structured_html( $body );
+    }
+
+    /**
+     * The text modules of a structured_content payload, joined.
+     *
+     * @param array $body
+     * @return string
+     */
+    public static function structured_html( $body ) {
+        $out = array();
+        $modules = ( is_array( $body ) && isset( $body['modules'] ) && is_array( $body['modules'] ) ) ? $body['modules'] : array();
+        foreach ( $modules as $m ) {
+            if ( ! is_array( $m ) || ! isset( $m['type'] ) || 'text' !== $m['type'] ) {
+                continue;
+            }
+            $text = isset( $m['data']['body']['text'] ) ? $m['data']['body']['text'] : '';
+            if ( is_string( $text ) && '' !== trim( $text ) ) {
+                $out[] = trim( $text );
+            }
+        }
+        return implode( "\n", $out );
+    }
+
+    /**
      * The primary email from a /users/me/ payload.
      *
      * Eventbrite returns every address on the account; the one flagged primary

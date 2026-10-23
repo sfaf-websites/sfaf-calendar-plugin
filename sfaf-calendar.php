@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.113.8
+ * Version: 3.114.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.113.8' );
+define( 'SFAF_VERSION', '3.114.0' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -24,7 +24,7 @@ define( 'SFAF_VERSION', '3.113.8' );
  * hook — still gets its new tables, instead of throwing "table doesn't exist"
  * the first time the runner looks for one.
  */
-define( 'SFAF_DB_VERSION', '15' );
+define( 'SFAF_DB_VERSION', '16' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -1166,6 +1166,8 @@ function sfaf_install_tables() {
     sfaf_migrate_capacity_zero();
     // Schema 14 (3.111.0): the Other details card's two old keys find their new homes.
     sfaf_migrate_other_details();
+    // Schema 16 (3.114.0): the place name the WordPress editor put in front of the address.
+    sfaf_migrate_location_name_repeat();
 
     update_option( 'sfaf_db_version', SFAF_DB_VERSION );
 }
@@ -1503,6 +1505,79 @@ function sfaf_migrate_other_details() {
         'at'      => current_time( 'mysql' ),
     ), false );
     return $touched;
+}
+/**
+ * Take the place name back off the front of the address (schema 16, 3.114.0).
+ *
+ * Until 3.114.0 the WordPress event editor showed the place name and the
+ * address joined, and saved that line back as the address. The page puts the
+ * name in front again, so every such save added one more copy: "Strut, Strut,
+ * 470 Castro St". Each leading copy of the event's own place name is removed,
+ * and an address that is only the name becomes empty. Nothing else changes.
+ * Once, under its own option, which lists the events it touched.
+ *
+ * @return int Events touched.
+ */
+function sfaf_migrate_location_name_repeat() {
+    if ( false !== get_option( 'sfaf_location_name_migration', false ) ) {
+        return 0;
+    }
+    $q = new WP_Query( array(
+        'post_type'      => 'uc_event',
+        'post_status'    => 'any',
+        'posts_per_page' => -1,
+        'fields'         => 'ids',
+        'no_found_rows'  => true,
+        'meta_query'     => array( array( 'key' => '_uc_location_name', 'value' => '', 'compare' => '!=' ) ),
+    ) );
+    $ids = array();
+    foreach ( array_map( 'intval', (array) $q->posts ) as $id ) {
+        $name = trim( (string) get_post_meta( $id, '_uc_location_name', true ) );
+        $line = trim( (string) get_post_meta( $id, '_uc_location', true ) );
+        $fixed = sfaf_strip_repeated_place_name( $line, $name );
+        if ( $fixed === $line ) {
+            continue;
+        }
+        if ( '' === $fixed ) {
+            delete_post_meta( $id, '_uc_location' );
+        } else {
+            update_post_meta( $id, '_uc_location', $fixed );
+        }
+        $ids[] = $id;
+    }
+    update_option( 'sfaf_location_name_migration', array(
+        'touched' => count( $ids ),
+        'ids'     => $ids,
+        'at'      => current_time( 'mysql' ),
+    ), false );
+    return count( $ids );
+}
+
+/**
+ * An address with every leading copy of the place name removed.
+ *
+ * @param string $line
+ * @param string $name
+ * @return string
+ */
+function sfaf_strip_repeated_place_name( $line, $name ) {
+    $line = trim( (string) $line );
+    $name = trim( (string) $name );
+    if ( '' === $name ) {
+        return $line;
+    }
+    $lower = function_exists( 'mb_strtolower' ) ? 'mb_strtolower' : 'strtolower';
+    while ( '' !== $line ) {
+        if ( $lower( $line ) === $lower( $name ) ) {
+            return '';
+        }
+        $head = substr( $line, 0, strlen( $name ) + 1 );
+        if ( $lower( $head ) !== $lower( $name . ',' ) ) {
+            break;
+        }
+        $line = ltrim( substr( $line, strlen( $name ) + 1 ) );
+    }
+    return $line;
 }
 /**
  * Run the installer when the stored schema version is behind the code's.

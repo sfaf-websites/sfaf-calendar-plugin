@@ -199,7 +199,7 @@ function get_current_user_id() { return (int) $GLOBALS['kit_user_id']; }
    calendar role can be modelled; get_userdata() says who it is. Off, nothing
    changes: every user is the one administrator. */
 function get_userdata( $id ) { if ( ! empty( $GLOBALS['kit_users'] ) ) { foreach ( $GLOBALS['kit_users'] as $ku ) { if ( (int) $ku->ID === (int) $id ) { return $ku; } } } $u = new WP_User(); if ( isset( $GLOBALS['kit_umeta'] ) ) { $u->ID = (int) $id; $u->display_name = 'User ' . (int) $id; $u->user_email = 'user' . (int) $id . '@sfaf.org'; } return $u; }
-function current_user_can( $c ) { return true; }
+function current_user_can( $c ) { return ! in_array( $c, (array) ( isset( $GLOBALS['kit_cannot'] ) ? $GLOBALS['kit_cannot'] : array() ), true ); } // kit_cannot: capabilities a check denies (3.114.0)
 function user_can( $u, $c ) { return ! in_array( (int) ( is_object( $u ) ? $u->ID : $u ), $GLOBALS['kit_refused'], true ); }
 function is_user_logged_in() { return empty( $GLOBALS['kit_logged_out'] ); }
 /* JSON answers end a request; here they throw what they would have sent (3.110.5). */

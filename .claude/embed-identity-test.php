@@ -19,7 +19,8 @@
  *      except embed.js's EMBED_JS_VERSION line, and the caladmin files in
  *      CALADMIN_ONLY, which no public calendar page loads.
  *
- * BASE is the release compared against: 3.113.7's released commit from 3.113.8
+ * BASE is the release compared against: 3.113.8's released commit from 3.114.0
+ * (3.113.7's, 9d916ae, for 3.113.8)
  * (3.113.6's, dde38d8, for 3.113.7)
  * (3.113.5's, def23b2, for 3.113.6)
  * (3.113.4's, 1c03ed2, for 3.113.5)
@@ -29,26 +30,14 @@
  * name, in ALLOWED or ALLOWED_FILES.
  */
 
-const BASE      = '9d916ae';
-const BASE_NAME = '3.113.7';
+const BASE      = '19ce554';
+const BASE_NAME = '3.113.8';
 
 /* Files under public/ and templates/ a release means to change, as path =>
    why. Probe A still compares every embed answer, so none of these can reach
    the embed unseen. */
 const ALLOWED_FILES = array(
-    // The RSVP form and its English | Español toggle (3.113.6). calendar.js is
-    // the event page's and the calendar block's script; the embed loads embed.js
-    // and calendar.css and never this file, and draws no RSVP form.
-    'public/js/calendar.js' => 'the RSVP form toggle between English and Español (3.113.6), one height in both (3.113.8)',
-    // 3.113.8: the combined view's sidebar draws no card of its own and its
-    // month buttons are secondary buttons, which the embed shows (Mark asked
-    // for it there); an imported picture at its own shape on the event page,
-    // a rule the embed's markup never matches. Probe A holds the embed's
-    // answers to EXPECTED_EDITS below and nothing else.
-    'public/css/calendar.css' => 'the sidebar month buttons and card, and imported pictures on the event page (3.113.8)',
-    'templates/single-uc_event.php' => 'an imported picture marked for its own shape (3.113.8)',
-    // None in 3.113.5 or 3.113.4. 3.113.3 named templates/single-uc_event.php, the event
-    // page flyer; 3.113.4 changes the flyer in includes/ and not the template.
+    // None in 3.114.0: release 1 of the alignment changes no public file.
 );
 
 /* Loaded by caladmin and the two public forms, never by the calendar, an event
@@ -66,8 +55,7 @@ $root    = str_replace( '\\', '/', dirname( __DIR__ ) );
    this tree's text (3.113.8). Applied to the base's answers before they are
    compared, so the embed may differ by exactly these and by nothing else. */
 const EXPECTED_EDITS = array(
-    'class="uc-month-tab uc-month-tab-prev"' => 'class="uc-month-tab uc-month-tab-prev uc-actionbtn uc-actionbtn-secondary"',
-    'class="uc-month-tab uc-month-tab-next"' => 'class="uc-month-tab uc-month-tab-next uc-actionbtn uc-actionbtn-secondary"',
+    // None in 3.114.0.
 );
 
 $verbose = in_array( '--verbose', $argv, true );
