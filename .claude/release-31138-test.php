@@ -20,6 +20,9 @@
  *   6  Email Templates says nothing about Bluehost
  *   7  the sidebar's month buttons are the public secondary button, and the
  *      combined view's sidebar draws no card of its own
+ *   8  the series screen draws the event editor's picture block with this
+ *      series' pictures only and + Upload a picture; a save keeps a URL it
+ *      never showed, Remove clears both; the upload is tagged and filed
  *
  * Item 1 is release-31138-live.php, item 2 pacific-time-test.php. The embed is
  * embed-identity-test.php's. PLANTs in plant-31138.php.

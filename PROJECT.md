@@ -2439,6 +2439,23 @@ id rides the library query the way the folder flag already does, and
 `SFAF_Media_Folder::restrict_query()` reads both off the raw request for the same
 reason.
 
+**NO CALADMIN SCREEN OPENS wp.media NOW (3.113.8).** The event editor moved to
+the inline picker in 3.94.0 and the series screen in 3.113.8. The series screen
+calls `render_image_picker()` inline with `series_only`, so
+`SFAF_Media::picker()` writes out "No picture" and this series' pictures and
+nothing else, with no Other images group. A hidden `series_image_id` ahead of
+the radios carries the stored id, so a save with no row on keeps it, and a
+picture chosen from outside the series before is still written out and stays
+chosen. The way in for a series with nothing tagged, which is why 3.90.0 had
+stopped narrowing this screen, is **+ Upload a picture**: the file goes up with
+Save through `save_series_upload()`, under the same `SFAF_Uploads::inspect()`
+rule, into `calendar/` (`SFAF_Media_Folder::upload_to_series()`), tagged to the
+series and set as its picture. It writes no `META_UPLOAD`, which is the event
+upload's notice to websites@. There is no URL box: the save reads
+`series_image_url` only when posted, and Remove (`reset_series_image`) clears
+the id and the URL. The wp.media branch of `render_image_picker()` and
+`bindImageField()` in portal.js have no caller left.
+
 **WHICH FOLDER A FILE LANDS IN IS THE WHOLE DECISION.**
 
 ```

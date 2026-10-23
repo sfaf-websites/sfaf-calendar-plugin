@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 376 items.** Quick 306, needs real conditions 66, blocked on other
+**Outstanding: 377 items.** Quick 307, needs real conditions 66, blocked on other
 people 4.
 
 ---
@@ -4188,6 +4188,20 @@ to it.
 
 **Why it needs a person:** the embed under sfaf.org's own stylesheet, which the
 checks here only imitate.
+
+### 1.309 The series screen's picture and its upload (3.113.8)
+
+Open a series in caladmin, Series & Categories, Edit. Under Image: the preview
+of the series' picture with Remove on it, and "Choose a picture" listing only
+this series' pictures. Press **+ Upload a picture**, choose a 1200 by 675 JPEG
+under 500KB and Save: the series shows it, the Images screen lists it under
+this series in the calendar folder, and the media library's Calendar folder
+has it. Then try a picture of another size: the save says the picture was not
+added and keeps everything else. Then Remove and Save: the series has no
+picture.
+
+**Why it needs a person:** a real upload through WordPress's media handling
+into the real uploads folder, which nothing here can run.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
