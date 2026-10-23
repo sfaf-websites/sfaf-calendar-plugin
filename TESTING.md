@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 377 items.** Quick 307, needs real conditions 66, blocked on other
+**Outstanding: 381 items.** Quick 310, needs real conditions 67, blocked on other
 people 4.
 
 ---
@@ -4202,6 +4202,39 @@ picture.
 
 **Why it needs a person:** a real upload through WordPress's media handling
 into the real uploads folder, which nothing here can run.
+
+### 1.310 Editors are taken to caladmin from the WordPress event screens (3.114.0)
+
+Sign in to wp-admin as somebody who is not a WordPress administrator (an editor
+or a contributor). Open SFAF Calendar's event list, then
+`/wp-admin/post-new.php?post_type=uc_event`, then an event's Edit link: each
+lands on the same place in caladmin (the events list, Add event, that event's
+Edit event). Then sign in as an administrator: all three open in WordPress as
+before, and the Location box is greyed with "Change this on this event in the
+calendar portal".
+
+**Why it needs a person:** real WordPress roles and real admin screens, which
+nothing here runs.
+
+### 1.311 The repeated place name is gone from addresses (3.114.0)
+
+After installing 3.114.0, open an event whose page showed its place name twice
+in the address, such as "Strut, Strut, 470 Castro St" (the release report names
+any found on the live site). The address reads "Strut, 470 Castro St" on the
+event page and in Edit event. An administrator can list every event the repair
+changed with `wp option get sfaf_location_name_migration`.
+
+**Why it needs a person:** the real database, which the repair runs against once
+on the first page load after the update.
+
+### 1.312 An FAQ answer keeps its link after a WordPress editor save (3.114.0)
+
+As an administrator, give an event an FAQ answer with a link and bold text in
+caladmin, save, then open the same event in the WordPress editor and Update it
+without touching the FAQ. Back on the event page the link and the bold are still
+there.
+
+**Why it needs a person:** WordPress's own editor screen and its save.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -5109,6 +5142,19 @@ everything in English. The new form words and refusals are listed in
 
 **Why it needs a person:** real mail, sent by the scheduled reminder on the
 morning of a real event.
+
+### 2.69 Eventbrite's full description after a real fetch (3.114.0)
+
+After the next Eventbrite fetch, open "The roadmap to zero: Virtual event" in
+caladmin and on its event page. The description is the full one from Eventbrite
+(the Overview, the moderator and the speakers), with its bold, italics, line
+breaks and links, and "What's next in HIV, and how we get there" appears once,
+not twice. Then, as an administrator, change one word of another Eventbrite
+event's description in the WordPress editor, run Fetch again, and the word stays.
+The fetch report should not say that any full description could not be read.
+
+**Why it needs a person:** Eventbrite's real API, and whether its structured
+content answers this account's token the way its documentation says.
 
 ## 3. Blocked on other people
 

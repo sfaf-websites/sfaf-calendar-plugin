@@ -531,6 +531,14 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.114.0 =
+
+**The WordPress event editor stops damaging events and is for administrators only; Eventbrite events get their full description. The embed is 3.113.8's.**
+
+* **The WordPress editor no longer changes an event's address.** Its Location box showed the place name and the address together and saved both back as the address, so every save added the name again ("Strut, Strut, 470 Castro St"). The box is read-only now, with a link to the event in caladmin. On updating, every event whose address starts with its own place name has the extra copies taken off, once.
+* **The WordPress editor keeps an FAQ answer's links and formatting** when it saves. Formatting it removed before cannot be brought back; re-add it in caladmin.
+* **Only WordPress administrators use the WordPress event screens.** Anybody else opening the event list, Add New or an event there is taken to the same place in caladmin, where teams, approval, RSVP and waitlist rules apply. Saving through WordPress's REST API or Quick Edit is refused for them.
+* **Eventbrite events import their full description**, with its bold, italics, line breaks and links, rather than only the short summary. The summary is kept at the top unless the description already opens with it. Existing Eventbrite events update on the next fetch, except a description somebody has changed by hand, which a fetch never overwrites.
 = 3.113.8 =
 
 **Eight fixes. The embed changes in one place: the month buttons under the sidebar.**

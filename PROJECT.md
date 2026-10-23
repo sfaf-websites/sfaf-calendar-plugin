@@ -2356,7 +2356,8 @@ true. It had been reported as a fault twice.
 
 ### The image library, and tags that are series
 
-**WHY IT EXISTS.** Contributors and editors never see wp-admin, so the WordPress
+**WHY IT EXISTS.** Contributors and editors work in caladmin, not wp-admin (enforced for
+events from 3.114.0, see §5), so the WordPress
 media library is not available to most of the people who maintain this calendar.
 An organizer who wanted to know what pictures already exist for their programme
 had nowhere at all to look, and the only route to an image was the picker inside
@@ -5035,6 +5036,31 @@ and leaves the others intact.
 The image comes from `logo.original.url`, the full-resolution one, not
 `logo.url`, which is Eventbrite's crop.
 
+**THE DESCRIPTION IS THE STRUCTURED CONTENT (3.114.0).** An event made in
+Eventbrite's current editor keeps its body in
+`/events/{id}/structured_content/`, as modules; the event's own `description`
+holds only the summary, which is all that arrived until 3.114.0 ("The roadmap to
+zero" showed one line). Each fetched event, and a single refetch, also asks for
+its structured content; the text modules' HTML, in order, is the description,
+with its formatting through `wp_kses_post()`. Without it: the event's
+`description.html`, then its text as paragraphs, then the summary. **The summary
+leads only when the body does not already open with it**, compared as text, whole
+words. A structured content that cannot be read falls back and is counted in the
+fetch's notes.
+
+**A DESCRIPTION A PERSON CHANGED IS NEVER OVERWRITTEN.** Every description a
+fetch writes is fingerprinted (`_uc_source_description_hash`, an md5 of the
+stored content). A fetch rewrites the description only while it still matches
+that fingerprint. An event imported before 3.114.0 has none, so its description
+counts as the fetch's when it is empty or matches, as text, what 3.113.8 stored
+(the adapter sends it as `description_was`); anything else is a person's, kept,
+and never fingerprinted. caladmin locks the description on an Eventbrite event,
+so such an edit came from the WordPress editor or from before the lock.
+
+**GoFundMe Pro and EveryAction import no description at all**: it is a
+manager-owned field on both, because neither platform offers one through what
+this plugin reads, so they cannot have this fault.
+
 Manager-owned: `category`, `organizer`, `private`, and only those.
 
 Category and Organizer are **this calendar's own taxonomies**. No platform
@@ -6778,6 +6804,28 @@ event. Levels are unchanged: what an editor or a contributor may do, they may
 do on their events, the RSVP list, Details, check-in and Email registrants
 included. **An editor no longer has every event.** `SFAF_Portal::user_can_edit_event()`
 is the only place the rule lives; see "The event gate" below.
+
+### The WordPress event screens are administrators' only (3.114.0)
+
+**Everyone but a WordPress administrator (`manage_options`) adds and edits events
+in caladmin.** The WordPress editor answers to `edit_posts` and skips everything
+caladmin enforces: teams and levels, approval, the hybrid and waitlist rules,
+the reply-to check. `SFAF_Post_Types::send_to_caladmin()` sends anybody else
+from the event list, Add New and the editor (`load-edit.php`, `load-post-new.php`,
+`load-post.php`, which covers trashing too) to the same place in caladmin;
+`refuse_rest_write()` refuses every non-GET on `/wp/v2/uc_event` with a 403, and
+`refuse_quick_edit()` refuses Quick Edit. Reading is unchanged.
+
+**WHAT AN ADMINISTRATOR'S SAVE NO LONGER DOES.** The Location box is read-only on
+every event: it showed the place name and address joined and saved that back as
+the address, so each save put the name in front once more, and it could not
+reach the venue or the street, city and ZIP. Schema 16
+(`sfaf_migrate_location_name_repeat()`) took every leading copy of an event's own
+place name off its address once, and lists the events it touched in the
+`sfaf_location_name_migration` option. An FAQ answer saves through
+`SFAF_Rich_Text::sanitize()`, as caladmin's does; `sanitize_textarea_field()`
+had stripped every link and all formatting, and what it stripped cannot be
+recovered.
 
 ### Passwords are WordPress's, in caladmin's own pages (3.109.0)
 
