@@ -90,7 +90,7 @@ re( false === SFAF_Register_Elsewhere::is_on( $id ), 'C.1: another site with no 
 
 /* ---- The series default. -------------------------------------------------- */
 $S = 12;   // one of the kit's two series
-$_POST = array( 'series_reg_mode_present' => '1', 'series_reg_mode' => 'elsewhere', 'series_reg_url' => 'https://tickets.example.org/series' );
+$_POST = array( 'series_reg_choice_present' => '1', 'series_reg_choice' => 'elsewhere', 'series_reg_url' => 'https://tickets.example.org/series' );
 SFAF_Register_Elsewhere::save_series_from_post( $S, $_POST );
 $_POST = array();
 $e2 = kit_write_post( array( 'post_type' => 'uc_event', 'post_status' => 'publish', 'post_title' => 'Second party', 'post_author' => 1 ) );

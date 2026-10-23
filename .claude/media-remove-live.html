@@ -493,12 +493,15 @@ function ucDismissOnBackdrop(dialog) {
             var series = {};
             try { series = JSON.parse(box.getAttribute('data-uc-reg-series') || '{}') || {}; } catch (e) { series = {}; }
             var own = '1' === box.getAttribute('data-uc-reg-own');
-            /* What a series default of "here" goes back to on Add event. */
-            var local = regChoice() === 'here' ? 'here' : 'none';
+            /* This box's own choice, so the series screen's series_reg_choice
+               works the same (3.115.0). */
+            function boxChoice() {
+                var r = box.querySelector('input[data-uc-reg-mode]:checked');
+                return r ? r.value : '';
+            }
             function apply() {
-                var choice = regChoice();
+                var choice = boxChoice();
                 var away = choice === 'elsewhere';
-                if (choice && choice !== 'elsewhere') { local = choice; }
                 if (urlBox) { urlBox.hidden = !away; }
                 if (here) { here.hidden = choice !== 'here'; }
                 /* The Notifications card follows (3.111.0): one line while
@@ -513,8 +516,10 @@ function ucDismissOnBackdrop(dialog) {
             if (select) {
                 select.addEventListener('change', function () {
                     if (own) { return; }
-                    var d = series[String(select.value)] || { mode: 'here', url: '' };
-                    var want = d.mode === 'elsewhere' ? 'elsewhere' : local;
+                    /* The series' own choice for its new events (3.115.0);
+                       none without a series. */
+                    var d = series[String(select.value)] || { choice: 'none', url: '' };
+                    var want = d.choice || (d.mode === 'elsewhere' ? 'elsewhere' : 'none');
                     radios.forEach(function (r) { r.checked = (r.value === want); });
                     var input = urlBox ? urlBox.querySelector('input') : null;
                     if (input) { input.placeholder = d.url || 'https://'; }
