@@ -78,8 +78,8 @@ class SFAF_Media_Folder {
     /**
      * The picture rule on an upload made through the media modal (3.110.3).
      *
-     * The series screen's picker is still wp.media, and its uploads go to
-     * async-upload.php rather than through a form of ours, so they never pass
+     * The series screen's picker was wp.media until 3.113.8, and a wp.media
+     * upload goes to async-upload.php rather than through a form of ours, so it never passes
      * SFAF_Uploads::inspect() on the way. This puts them through it. Only for
      * a request carrying the calendar flag, so an upload anywhere else on the
      * site is untouched.
@@ -164,6 +164,25 @@ class SFAF_Media_Folder {
     }
 
     /**
+     * Send this request's upload into the calendar folder, for the series
+     * screen's "+ Upload a picture" (3.113.8). Added and removed around the
+     * one upload, as upload_to_other() is; upload_to_folder() answers only a
+     * wp.media request carrying the flag.
+     *
+     * @param array $dirs
+     * @return array
+     */
+    public static function upload_to_series( $dirs ) {
+        if ( empty( $dirs['basedir'] ) || empty( $dirs['baseurl'] ) ) {
+            return $dirs;
+        }
+        $dirs['subdir'] = '/' . self::FOLDER;
+        $dirs['path']   = $dirs['basedir'] . $dirs['subdir'];
+        $dirs['url']    = $dirs['baseurl'] . $dirs['subdir'];
+        return $dirs;
+    }
+
+    /**
      * Tag a picture uploaded from the event editor with that event's series.
      *
      * WHAT THIS FIXES, AND IT IS NOT WHERE THE FILE WENT (3.87.0). An image
@@ -242,6 +261,16 @@ class SFAF_Media_Folder {
         if ( ! self::asked_for() ) {
             return;
         }
+        self::file_into_library( $attachment_id );
+    }
+
+    /**
+     * The same filing with no request flag to ask about, for an upload this
+     * plugin made itself (3.113.8, the series screen).
+     *
+     * @param int $attachment_id
+     */
+    public static function file_into_library( $attachment_id ) {
         if ( ! apply_filters( 'sfaf_library_folder_enabled', true ) ) {
             return;
         }

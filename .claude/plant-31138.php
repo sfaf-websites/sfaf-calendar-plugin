@@ -71,6 +71,28 @@ $plants = array(
     '7L: the buttons stop sharing the column' => array( 'release-31138-pages-live.php', "do not share the column's width", array(
         array( 'public/css/calendar.css', ".uc-sidebar .uc-month-tab {\n    flex: 1 1 0; min-width: 0;\n", ".uc-sidebar .uc-month-tab {\n" ),
     ) ),
+    '8: the series screen offers every picture' => array( 'release-31138-test.php', "8: another series' picture is not", array(
+        array( 'includes/class-sfaf-portal.php', "                        'series_only'   => true,\n", "                        'series_only'   => false,\n" ),
+    ) ),
+    '8: the URL box is back' => array( 'release-31138-test.php', '8: no image URL box', array(
+        array( 'includes/class-sfaf-portal.php', "                        'show_url'      => false,\n                        'pill'          => \$preview ? 'Series picture' : 'Placeholder',", "                        'show_url'      => true,\n                        'url_name'      => 'series_image_url',\n                        'pill'          => \$preview ? 'Series picture' : 'Placeholder'," ),
+    ) ),
+    '8: a save clears a URL it never showed' => array( 'release-31138-test.php', '8: a save without the URL box keeps a stored URL', array(
+        array( 'includes/class-sfaf-portal.php', "        if ( isset( \$_POST['series_image_url'] ) ) {\n            \$args['image_url'] = wp_unslash( \$_POST['series_image_url'] );\n        }", "        \$args['image_url'] = wp_unslash( \$_POST['series_image_url'] ?? '' );" ),
+    ) ),
+    '8: Remove keeps the URL' => array( 'release-31138-test.php', '8: and the URL', array(
+        array( 'includes/class-sfaf-portal.php', "            \$args['image_id']  = 0;\n            \$args['image_url'] = '';\n", "            \$args['image_id']  = 0;\n" ),
+    ) ),
+    '8: no row on loses the picture' => array( 'release-31138-test.php', '8: a save with no row on keeps the stored picture', array(
+        array( 'includes/class-sfaf-media.php', "                        <input type=\"hidden\" name=\"<?php echo esc_attr( \$args['name'] ); ?>\" value=\"<?php echo (int) \$chosen; ?>\" />\n", "" ),
+    ) ),
+    '8: the upload is not tagged' => array( 'release-31138-test.php', '8: is tagged to this series', array(
+        array( 'includes/class-sfaf-portal.php', "        SFAF_Media::add_tag( array( \$att ), \$term_id );\n        SFAF_Media_Folder::file_into_library( \$att );", "        SFAF_Media_Folder::file_into_library( \$att );" ),
+    ) ),
+    '8L: Remove leaves the picture showing' => array( 'series-picture-live.php', 'Remove does not empty the preview', array(
+        array( 'includes/class-sfaf-media.php', "                    <label class=\"uc-check uc-picker-option uc-image-option\" data-uc-filter-text=\"no picture the series picture\"", "                    <label class=\"uc-check uc-picker-option uc-image-option\" data-uc-filter-text=\"no picture the series picture\" hidden" ),
+        array( 'includes/class-sfaf-media.php', "<input type=\"radio\" name=\"<?php echo esc_attr( \$args['name'] ); ?>\" value=\"0\" <?php checked( 0, \$chosen ); ?>", "<input type=\"radio\" name=\"<?php echo esc_attr( \$args['name'] ); ?>\" value=\"x0\" <?php checked( 0, \$chosen ); ?>" ),
+    ) ),
 );
 
 $missed = 0;

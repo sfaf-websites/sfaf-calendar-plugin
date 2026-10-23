@@ -119,7 +119,102 @@ rt( '7: name and count take the button\'s ink', false !== strpos( $css, '.uc-mon
 rt( '7: the old white box is gone', false === strpos( $css, 'border: 1px solid var(--uc-border); border-radius: 8px; background: #fff;
     font: inherit; text-align: left;' ), true );
 
-echo "\n3.113.8: Online, imported pictures, signup pages, Sender, month buttons\n" . str_repeat( '=', 72 ) . "\n";
+/* ======================================================================== 8 */
+/* The picture queries, answered: the folder by its path, the series by its tag. */
+function rt8_query( $a ) {
+    $out = array();
+    $ids = array_keys( $GLOBALS['kit_posts'] );
+    rsort( $ids );
+    foreach ( $ids as $id ) {
+        $p = $GLOBALS['kit_posts'][ $id ];
+        if ( ( isset( $a['post_type'] ) ? $a['post_type'] : 'uc_event' ) !== $p->post_type ) { continue; }
+        if ( 'attachment' === $p->post_type ) {
+            $file = isset( $GLOBALS['kit_meta'][ $id ]['_wp_attached_file'] ) ? (string) $GLOBALS['kit_meta'][ $id ]['_wp_attached_file'] : '';
+            $ok = true;
+            foreach ( (array) ( isset( $a['meta_query'] ) ? $a['meta_query'] : array() ) as $k => $c ) {
+                if ( is_array( $c ) && isset( $c['key'] ) && '_wp_attached_file' === $c['key'] && isset( $c['compare'] ) && 'REGEXP' === strtoupper( $c['compare'] ) ) {
+                    $ok = $ok && (bool) preg_match( '#' . $c['value'] . '#', $file );
+                }
+            }
+            foreach ( (array) ( isset( $a['tax_query'] ) ? $a['tax_query'] : array() ) as $k => $t ) {
+                if ( ! is_array( $t ) || ! isset( $t['taxonomy'] ) ) { continue; }
+                $on = isset( $GLOBALS['kit_terms'][ $id ][ $t['taxonomy'] ] ) ? $GLOBALS['kit_terms'][ $id ][ $t['taxonomy'] ] : array();
+                $ok = $ok && ( ( isset( $t['operator'] ) && 'NOT EXISTS' === $t['operator'] ) ? ! $on : (bool) array_intersect( array_map( 'intval', (array) $t['terms'] ), $on ) );
+            }
+            if ( ! $ok ) { continue; }
+        }
+        $out[] = ( isset( $a['fields'] ) && 'ids' === $a['fields'] ) ? (int) $id : $p;
+    }
+    return $out;
+}
+$GLOBALS['kit_query']     = 'rt8_query';
+$GLOBALS['kit_get_posts'] = 'rt8_query';
+function rt8_picture( $id, $file, $series = 0 ) {
+    kit_write_post( array( 'ID' => $id, 'post_type' => 'attachment', 'post_status' => 'inherit', 'post_title' => '' ) );
+    update_post_meta( $id, '_wp_attached_file', $file );
+    $GLOBALS['kit_images'][ $id ] = 'https://resources.sfaf.org/wp-content/uploads/' . $file;
+    if ( $series ) { $GLOBALS['kit_terms'][ $id ][ SFAF_Media::TAXONOMY ] = array( $series ); }
+}
+rt8_picture( 8101, 'calendar/coffee-social.jpg', 11 );
+rt8_picture( 8102, 'calendar/another-series.jpg', 12 );
+rt8_picture( 8103, 'calendar-other/one-off.jpg' );
+
+$portal = ( new ReflectionClass( 'SFAF_Portal' ) )->newInstanceWithoutConstructor();
+function rt8_screen( $portal, $term ) {
+    $_GET = array();
+    ob_start();
+    kit_call( 'SFAF_Portal', 'render_series_edit', $portal, array( new WP_User(), $term ) );
+    return (string) ob_get_clean();
+}
+update_term_meta( 11, SFAF_Series::META_IMAGE_ID, 8101 );
+$s = rt8_screen( $portal, 11 );
+$block = (string) strstr( $s, 'data-uc-image-block' );
+$block = substr( $block, 0, (int) strpos( $block, '<span class="uc-field-label">Description' ) );
+rt( '8: the series screen draws the event editor\'s picture block', '' !== $block, true );
+rt( '8: no WordPress media box', false === strpos( $s, 'uc-choose-image' ), true );
+rt( '8: no image URL box', false === strpos( $s, 'Or enter image URL' ) && false === strpos( $s, 'name="series_image_url"' ), true );
+rt( '8: this series\' picture is offered', false !== strpos( $block, 'name="series_image_id" value="8101"' ), true );
+rt( '8: another series\' picture is not', false === strpos( $block, 'value="8102"' ), true );
+rt( '8: nor Other images', false === strpos( $block, 'value="8103"' ) && false === strpos( $block, 'Other images' ), true );
+rt( '8: the preview shows the series picture', (bool) preg_match( '#data-uc-image-preview-img(?! hidden)#', $block ) && false !== strpos( $block, 'calendar/coffee-social.jpg' ), true );
+rt( '8: Remove is on it', (bool) preg_match( '#data-uc-image-remove>Remove#', $block ), true );
+rt( '8: a save with no row on keeps the stored picture', false !== strpos( $block, '<input type="hidden" name="series_image_id" value="8101" />' ), true );
+rt( '8: "+ Upload a picture", under the picture rule', (bool) preg_match( '#<span>\+ Upload a picture</span>\s*<input type="file" name="uc_series_picture"[^>]*data-uc-event-upload\s+data-uc-rule-width="1200"\s+data-uc-rule-height="675"\s+data-uc-rule-bytes="512000"#', $block ), true );
+rt( '8: the form can carry the file', (bool) preg_match( '#<form method="post" action="[^"]*series/edit/11"[^>]*enctype="multipart/form-data"#', $s ), true );
+
+update_term_meta( 11, SFAF_Series::META_IMAGE_ID, 8102 );
+$s = rt8_screen( $portal, 11 );
+rt( '8: a picture chosen from outside the series stays chosen', (bool) preg_match( '#name="series_image_id" value="8102"\s+checked#', $s ), true );
+rt( '8: and says so', (bool) preg_match( '#data-uc-image-outside>Not in this series#', $s ), true );
+
+$s = rt8_screen( $portal, 0 );
+rt( '8: a new series has no pictures yet, and can upload one', false !== strpos( $s, 'No pictures for this series yet.' ) && false !== strpos( $s, 'name="uc_series_picture"' ), true );
+
+/* The save. */
+function rt8_save( $portal, $post ) {
+    $_POST = array_merge( array( 'series_id' => '11', 'series_name' => 'Coffee social' ), $post );
+    $_FILES = array();
+    return kit_call( 'SFAF_Portal', 'save_series_from_post', $portal, array( new WP_User() ) );
+}
+update_term_meta( 11, SFAF_Series::META_IMAGE_ID, 8101 );
+update_term_meta( 11, SFAF_Series::META_IMAGE_URL, 'https://elsewhere.example/old.jpg' );
+rt8_save( $portal, array( 'series_image_id' => '8101' ) );
+rt( '8: a save without the URL box keeps a stored URL', get_term_meta( 11, SFAF_Series::META_IMAGE_URL, true ), 'https://elsewhere.example/old.jpg' );
+rt( '8: and the picture', (int) get_term_meta( 11, SFAF_Series::META_IMAGE_ID, true ), 8101 );
+rt8_save( $portal, array( 'series_image_id' => '0', 'reset_series_image' => '1' ) );
+rt( '8: Remove clears the picture', get_term_meta( 11, SFAF_Series::META_IMAGE_ID, true ), '' );
+rt( '8: and the URL', get_term_meta( 11, SFAF_Series::META_IMAGE_URL, true ), '' );
+
+$psrc = file_get_contents( $root . '/includes/class-sfaf-portal.php' );
+$up   = substr( $psrc, strpos( $psrc, 'private function save_series_upload' ), 2600 );
+rt( '8: the upload answers to the picture rule', false !== strpos( $up, "SFAF_Uploads::inspect( 'uc_series_picture' )" ), true );
+rt( '8: lands in the calendar folder', false !== strpos( $up, "'upload_to_series'" ) && false !== strpos( $up, 'SFAF_Media_Folder::holds( $att )' ), true );
+rt( '8: is tagged to this series and becomes its picture', false !== strpos( $up, 'SFAF_Media::add_tag( array( $att ), $term_id );' ) && false !== strpos( $up, 'update_term_meta( $term_id, SFAF_Series::META_IMAGE_ID, $att );' ), true );
+rt( '8: and sends no event-upload notice', false === strpos( $up, 'META_UPLOAD' . ', array' ), true );
+$dirs = SFAF_Media_Folder::upload_to_series( array( 'basedir' => '/u', 'baseurl' => 'https://x/u', 'subdir' => '/2026/10', 'path' => '', 'url' => '' ) );
+rt( '8: upload_to_series() is the calendar folder', $dirs['path'] . ' ' . $dirs['url'], '/u/calendar https://x/u/calendar' );
+
+echo "\n3.113.8: Online, imported pictures, signup pages, Sender, month buttons, the series picture\n" . str_repeat( '=', 72 ) . "\n";
 if ( $fails ) { echo count( $fails ) . " of $ran failed:\n  - " . implode( "\n  - ", $fails ) . "\n"; exit( 1 ); }
 echo "$ran assertions passed. \"Online\" draws no map and a place does, hybrid included; an import's picture is shown at its own shape on the\nevent page only; EveryAction events get their own page, their own form, or their program's site; Sender says nothing\nabout Bluehost; and the month buttons are secondary buttons in a sidebar with no card of its own.\n";
 exit( 0 );

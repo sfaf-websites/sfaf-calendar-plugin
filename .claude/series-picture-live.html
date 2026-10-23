@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html >
+<head>
+    <meta charset="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Series - SFAF Calendar</title>
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.113.8" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.113.8" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.113.8" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.113.8" />
+    <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
+        <script>
+    (function (d) {
+        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        d.setAttribute('data-uc-motion', reduced ? 'reduced' : 'on');
+        if (reduced) { return; }
+        d.className += ' uc-anim';
+        // The nav stagger is once per session, not once per navigation: every
+        // screen here is a full page load. A storage failure means it simply
+        // runs again, which is the harmless outcome.
+        try {
+            if (window.sessionStorage.getItem('ucNavIntro') !== '1') {
+                window.sessionStorage.setItem('ucNavIntro', '1');
+                d.className += ' uc-anim-nav';
+            }
+        } catch (e) {
+            d.className += ' uc-anim-nav';
+        }
+    })(document.documentElement);
+    </script>
+    </head>
+<body class="uc-portal">        <div class="uc-portal-layout">
+            <aside class="uc-portal-sidebar" id="uc-sidebar">
+                                <div class="uc-portal-brand">
+                    <span class="uc-portal-logo-wrap" data-uc-sidebar-logo>
+                        <img src="https://resources.sfaf.org/wp-content/uploads/SFAF-heritage-logo_stacked-Yellow-15Gray-preview.webp" alt="San Francisco AIDS Foundation"
+                             class="uc-portal-logo" width="1470" height="901" />
+                    </span>
+                    <span class="uc-portal-brandtext">Calendar Admin</span>
+                </div>
+                <nav class="uc-portal-nav" aria-label="Calendar admin">
+                                                                    <a href="https://resources.sfaf.org/caladmin"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 1"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-home" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 11 12 4l8 7"/><path d="M6.5 9.5V20h11V9.5"/></svg></span>
+                            <span class="uc-nav-label">Dashboard</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/events"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 2"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-calendar" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span>
+                            <span class="uc-nav-label">Events</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/series"
+                           class="uc-nav-item active"
+                           style="--uc-nav-i: 3"
+                            aria-current="page">
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-repeat" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17 2.5 21 6.5l-4 4"/><path d="M3 12.5v-2a4 4 0 0 1 4-4h14"/><path d="M7 21.5 3 17.5l4-4"/><path d="M21 11.5v2a4 4 0 0 1-4 4H3"/></svg></span>
+                            <span class="uc-nav-label">Series &amp; Categories</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/faq-sets"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 4"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-help" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.6"/><path d="M12 17h.01"/></svg></span>
+                            <span class="uc-nav-label">FAQ Sets</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/media"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 5"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-image" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.5"/><path d="m3.5 16.5 4.5-4 3.5 3 3-2.5 6 5"/></svg></span>
+                            <span class="uc-nav-label">Images</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/venues"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 6"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-venue" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 21h18"/><path d="M12 3.5 4 8.5h16z"/><path d="M6.5 21v-9M10.2 21v-9M13.8 21v-9M17.5 21v-9"/></svg></span>
+                            <span class="uc-nav-label">Venues</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/organizers"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 7"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-users" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5"/><path d="M17 13.2a5.5 5.5 0 0 1 3.5 5.8"/></svg></span>
+                            <span class="uc-nav-label">Organizers</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/optins"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 8"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-mail" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/></svg></span>
+                            <span class="uc-nav-label">Email Opt-ins</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/pending"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 9"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-clock" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>
+                            <span class="uc-nav-label">Pending</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/users"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 10"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-users" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5"/><path d="M17 13.2a5.5 5.5 0 0 1 3.5 5.8"/></svg></span>
+                            <span class="uc-nav-label">Users &amp; Teams</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/email-templates"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 11"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-mail" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/></svg></span>
+                            <span class="uc-nav-label">Email Templates</span>
+                                                    </a>
+                                                                    <a href="https://resources.sfaf.org/caladmin/preferences"
+                           class="uc-nav-item"
+                           style="--uc-nav-i: 12"
+                           >
+                            <span class="uc-nav-icon"><svg class="sfaf-icon sfaf-icon-bell" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 10.5a6 6 0 0 0-12 0c0 4.5-2 6-2 6h16s-2-1.5-2-6z"/><path d="M13.7 19.5a2 2 0 0 1-3.4 0"/></svg></span>
+                            <span class="uc-nav-label">Preferences</span>
+                                                    </a>
+                                    </nav>
+
+                                <div class="uc-portal-foot">
+                    <div class="uc-portal-me">
+                        <span class="uc-portal-me-name">Admin</span>
+                        <span class="uc-portal-me-role">Admin</span>
+                        <a class="uc-portal-signout" href="">Sign out</a>
+                    </div>
+                </div>
+            </aside>
+
+            <div class="uc-portal-main">
+                <header class="uc-portal-topbar">
+                                        <button type="button" class="uc-portal-menu-btn" id="uc-menu-btn" aria-label="Menu"><svg class="sfaf-icon sfaf-icon-menu" width="22px" height="22px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+                                    </header>
+                <main class="uc-portal-content">
+                <div class="uc-page-head">
+            <h1>Alpha</h1>
+            <a href="https://resources.sfaf.org/caladmin/series" class="uc-btn">&larr; Back</a>
+        </div>
+                    <p class="uc-help">This event and all of its dates. The schedule is below the series details.</p>
+        
+                <form method="post" action="https://resources.sfaf.org/caladmin/series/edit/11" class="uc-form" enctype="multipart/form-data">
+            <input type="hidden" name="uc_action" value="save_series" />
+            <input type="hidden" name="series_id" value="11" />
+            <input type="hidden" name="uc_nonce" value="nonce" />
+            <div class="uc-card">
+                <div class="uc-card-head"><h2>Series details</h2></div>
+                <label class="uc-field">
+                    <span class="uc-field-label">Series name</span>
+                    <input type="text" name="series_name" value="Alpha" required />
+                </label>
+                        <label class="uc-field uc-slug-field">
+            <span class="uc-field-label">Slug</span>
+            <input type="text" name="series_slug" value="alpha"
+                   maxlength="190" autocomplete="off" spellcheck="false" required />
+            <span class="uc-hint">In its web address and in embed code. Change it and the old one keeps working.</span>
+        </label>
+        
+                                                <div class="uc-field uc-image-field" data-uc-media-folder="calendar" data-uc-media-flag="uc_calendar_media" data-uc-media-series="11" data-uc-media-upload="1">
+                    <span class="uc-field-label">Image</span>
+                                                <div class="uc-image-block" data-uc-image-block
+             data-uc-series-pictures="{}"
+             data-uc-image-start="event"
+             data-uc-image-start-name="coffee-social.jpg">
+            <div class="uc-image-preview" id="uc-image-preview-series"
+                 data-uc-image-preview>
+                <img src="https://resources.sfaf.org/wp-content/uploads/calendar/coffee-social.jpg" alt="" data-uc-image-preview-img />
+                <span class="uc-image-pill" data-uc-img-source-tag
+                      data-uc-img-source-own="Series picture"
+                      data-uc-img-source-series=""
+                      data-uc-img-source-none="Placeholder">Series picture</span>
+                                    <button type="button" class="uc-image-remove" data-uc-image-remove>Remove</button>
+                            </div>
+                                            <input type="hidden" name="reset_series_image" value="1" data-uc-image-reset disabled />
+                    
+        
+                            <details class="uc-picker uc-image-picker" data-uc-image-picker data-uc-image-groups
+                 data-uc-image-series-fixed="11">
+            <summary class="uc-picker-toggle">
+                <span class="uc-picker-label">Choose a picture</span>
+                        <span class="uc-picker-count uc-image-current" data-uc-image-current>
+                            <img class="uc-image-current-thumb" src="https://resources.sfaf.org/wp-content/uploads/calendar/coffee-social.jpg" alt="" />
+                <span class="uc-image-current-name">coffee-social.jpg</span>
+                    </span>
+                        <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+            </summary>
+
+            <div class="uc-picker-panel" data-uc-filter-scope>
+                <div class="uc-image-tools">
+                    <label class="uc-picker-filter uc-image-search">
+                        <span class="uc-visually-hidden">Search pictures by name</span>
+                                                <input type="search" placeholder="Search by name&hellip;"
+                               data-uc-filter data-uc-image-search autocomplete="off" />
+                    </label>
+                    <label class="uc-check uc-image-active-only">
+                        <input type="checkbox" data-uc-image-active-only />
+                        Show active images only
+                    </label>
+                </div>
+
+                <div class="uc-picker-options uc-image-options" data-uc-filter-list>
+                                                                    <input type="hidden" name="series_image_id" value="8101" />
+                                        <label class="uc-check uc-picker-option uc-image-option" data-uc-filter-text="no picture the series picture"
+                           data-uc-image-default>
+                        <input type="radio" name="series_image_id" value="0"                                data-uc-image-option data-uc-image-name="No picture" />
+                                                    <span class="uc-image-option-thumb uc-image-option-blank" aria-hidden="true"></span>
+                            <span class="uc-image-option-text">
+                                <span class="uc-image-option-name">No picture</span>
+                            </span>
+                                            </label>
+
+                                                                        <label class="uc-check uc-picker-option uc-image-option"
+               data-uc-filter-text="coffee-social.jpg"
+               data-uc-image-active="0" data-uc-image-series=" 11 ">
+            <input type="radio" name="series_image_id" value="8101"
+                    checked="checked"                   data-uc-image-option
+                   data-uc-image-thumb="https://resources.sfaf.org/wp-content/uploads/calendar/coffee-social.jpg"
+                   data-uc-image-full="https://resources.sfaf.org/wp-content/uploads/calendar/coffee-social.jpg"
+                   data-uc-image-name="coffee-social.jpg" />
+            <img class="uc-image-option-thumb" src="https://resources.sfaf.org/wp-content/uploads/calendar/coffee-social.jpg" alt="" loading="lazy" />
+            <span class="uc-image-option-text">
+                <span class="uc-image-option-name">coffee-social.jpg</span>
+            </span>
+        </label>
+                                                                                                            </div>
+                <p class="uc-muted uc-picker-empty" data-uc-filter-empty hidden>No pictures match that.</p>
+            </div>
+        </details>
+                        <label class="uc-outline-btn uc-image-upload">
+                    <span>+ Upload a picture</span>
+                    <input type="file" name="uc_series_picture" class="uc-visually-hidden"
+                           accept="image/jpeg,image/png,image/webp"
+                           data-uc-event-upload
+                           data-uc-rule-width="1200"
+                           data-uc-rule-height="675"
+                           data-uc-rule-bytes="512000"
+                           data-uc-rule-message="Pictures must be 1200 by 675 pixels and under 500KB." />
+                </label>
+                <p class="uc-field-error uc-image-upload-error" role="alert" data-uc-event-upload-error hidden></p>
+                            <p class="uc-hint uc-image-outside" data-uc-image-outside hidden>Not in this series. It stays chosen until you pick another.</p>
+        </div>
+                                            <p class="uc-hint">Shown on the series page, and used by any event in the series with no image of its own.</p>
+                        <p class="uc-hint uc-hint-spec"><strong>Pictures must be 1200 by 675 pixels and under 500KB.</strong></p>
+                                                            </div>
+
+                                <div class="uc-field">
+                    <span class="uc-field-label">Description</span>
+                    <textarea name="series_desc" id="uc-series-desc"></textarea>                    <span class="uc-hint">Shown on the series page, including while it has no dates scheduled.</span>
+                </div>
+
+                                <label class="uc-field">
+                    <span class="uc-field-label">Video</span>
+                    <input type="url" name="series_video" id="uc-series-video"
+                           value=""
+                           placeholder="https://www.youtube.com/watch?v=&hellip;"
+                            />
+                                        <span class="uc-hint">
+                        A YouTube or Vimeo link. Paste the address from the browser bar, not embed code.
+                        It plays on every event in this series unless that event has its own.
+                    </span>
+                </label>
+
+                                                <label class="uc-field">
+                    <span class="uc-field-label">Default language</span>
+                    <select name="series_language">
+                                                    <option value="en"  selected="selected">English</option>
+                                                    <option value="es" >Spanish</option>
+                                            </select>
+                    <span class="uc-hint">Messages to registrants of events in this series go out in this language unless the event sets its own.</span>
+                </label>
+
+                <label class="uc-field">
+                    <span class="uc-field-label">Donation link</span>
+                    <input type="url" name="series_donate_url"
+                           value=""
+                           placeholder="https://donate.sfaf.org/&hellip;" />
+                    <span class="uc-hint">Goes in the confirmation and reminder emails of every event in this series set to Series link. Leave empty to use the SFAF default.</span>
+                </label>
+
+                                <div class="uc-field">
+                    <span class="uc-field-label" id="uc-series-agreement-label">Default registration agreement</span>
+                    <textarea name="series_agreement" id="uc-series-agreement"></textarea>                    <span class="uc-hint">Used by events in this series that ask registrants to agree and have no text of their own.</span>
+                </div>
+
+                                        <div class="uc-field uc-series-access" data-uc-series-access>
+            <input type="hidden" name="series_access_present" value="1" />
+            <span class="uc-field-label">Default team and access</span>
+            <p class="uc-hint">Events in this series get these teams and people until an event sets its own.</p>
+                                                            <label class="uc-check uc-series-access-apply">
+                <input type="checkbox" name="series_access_apply" value="1" data-uc-series-access-apply />
+                Apply to all upcoming events in this series
+            </label>
+            <span class="uc-hint">Events that set their own keep it and gain these teams and people.</span>
+        </div>
+        
+                                <div class="uc-reg-choice" data-uc-reg-choice>
+                            <fieldset class="uc-reg-where" data-uc-reg-where>
+            <legend class="uc-field-label">Where people register</legend>
+            <input type="hidden" name="series_reg_mode_present" value="1" />
+            <div class="uc-seg" role="radiogroup" aria-label="Where people register">
+                <label class="uc-seg-opt">
+                    <input type="radio" name="series_reg_mode" value="here" data-uc-reg-mode  checked="checked" />
+                    <span>Take registrations here</span>
+                </label>
+                <label class="uc-seg-opt">
+                    <input type="radio" name="series_reg_mode" value="elsewhere" data-uc-reg-mode  />
+                    <span>Register on another site</span>
+                </label>
+            </div>
+            <label class="uc-field uc-reg-url" for="uc-series-reg-url" data-uc-reg-url hidden>
+                <span class="uc-field-label">Registration link</span>
+                <input type="url" id="uc-series-reg-url" name="series_reg_url" value=""
+                       placeholder="https://" inputmode="url" />
+                <span class="uc-hint">The Register button opens this page in a new tab.</span>
+            </label>
+        </fieldset>
+                        </div>
+
+                                <input type="hidden" name="uc_series_defaults_present" value="1" />
+                <div class="uc-field uc-series-default" data-uc-series-default="category" role="group" aria-labelledby="uc-series-default-category">
+                    <span class="uc-field-label" id="uc-series-default-category">Default categories</span>
+                                            <div class="uc-check-grid">
+                                                            <label class="uc-check">
+                                    <input type="checkbox" name="series_categories[]" value="11"
+                                            />
+                                    Alpha                                </label>
+                                                            <label class="uc-check">
+                                    <input type="checkbox" name="series_categories[]" value="12"
+                                            />
+                                    Beta                                </label>
+                                                    </div>
+                                        <span class="uc-hint">Given to an event that joins this series with no category. Events already in it keep their own.</span>
+                </div>
+
+                <div class="uc-field uc-series-default" data-uc-series-default="organizer" role="group" aria-labelledby="uc-series-default-organizer">
+                    <span class="uc-field-label" id="uc-series-default-organizer">Default organizers</span>
+                                            <div class="uc-check-grid">
+                                                            <label class="uc-check">
+                                    <input type="checkbox" name="series_organizers[]" value="11"
+                                            />
+                                    Alpha                                </label>
+                                                            <label class="uc-check">
+                                    <input type="checkbox" name="series_organizers[]" value="12"
+                                            />
+                                    Beta                                </label>
+                                                    </div>
+                                        <span class="uc-hint">Given to an event that joins this series with no organizer. Events already in it keep their own.</span>
+                </div>
+
+                <label class="uc-field">
+                    <span class="uc-field-label">Default FAQ set</span>
+                    <select name="series_faq_set">
+                        <option value="">None</option>
+                                            </select>
+                </label>
+            </div>
+
+            <div class="uc-form-actions">
+                <button type="submit" class="uc-btn uc-btn-primary">Save Series</button>
+            </div>
+        </form>
+
+                            <div class="uc-card uc-schedule">
+            <div class="uc-card-head">
+                <h3>Schedule</h3>
+                            </div>
+
+                            <p class="uc-hint">
+                    No dates yet. Create an event and choose this series on it, or set a repeat on a new event, which
+                    makes its dates and its series in one step.
+                </p>
+            
+                    </div>
+        
+                        <div class="uc-series-remove-row">
+                <a class="uc-btn uc-btn-danger" href="https://resources.sfaf.org/caladmin/series/remove/11">Remove series</a>
+            </div>
+                                </main>
+            </div>
+        </div>
+        <script type="application/json" id="uc-session-config">{"ajax":"https:\/\/resources.sfaf.org\/wp-admin\/admin-ajax.php","action":"sfaf_caladmin_session","signin":"https:\/\/resources.sfaf.org\/caladmin","screen":"dashboard","signedIn":true}</script>
+<script src="../public/js/caladmin-session.js?ver=3.113.8"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.113.8"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.113.8"></script>
+<script src="../public/js/portal.js?ver=3.113.8"></script>
+<script>(function () {
+var out = { errors: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function seen(el) { return !!el && el.getBoundingClientRect().height > 0 && getComputedStyle(el).visibility !== 'hidden' && !el.closest('[hidden]'); }
+function text(el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }
+window.addEventListener('load', function () { setTimeout(function () {
+  var block = document.querySelector('.uc-image-field [data-uc-image-block]');
+  out.block = !!block;
+  if (block) {
+    var img = block.querySelector('[data-uc-image-preview-img]');
+    var reset = block.querySelector('[data-uc-image-reset]');
+    var pill = block.querySelector('[data-uc-img-source-tag]');
+    var remove = block.querySelector('[data-uc-image-remove]');
+    var picker = block.querySelector('[data-uc-image-picker]');
+    function state() {
+      return { state: block.getAttribute('data-uc-image-state'), img: seen(img) ? (img.getAttribute('src') || '') : 'HIDDEN',
+               pill: text(pill), remove: seen(remove), reset: reset ? (reset.disabled ? 'off' : 'on') : 'none',
+               name: text(picker && picker.querySelector('[data-uc-image-current]')) };
+    }
+    out.atLoad = state();
+    if (picker) { picker.open = true; }
+    out.rows = Array.prototype.filter.call(block.querySelectorAll('[data-uc-image-option]'), function (r) { return seen(r.closest('label')); })
+      .map(function (r) { return r.value + (r.checked ? '*' : ''); });
+    if (remove) { remove.click(); }
+    out.afterRemove = state();
+    var row = block.querySelector('[data-uc-image-option][value="8101"]');
+    if (row) { row.checked = true; row.dispatchEvent(new Event('change', { bubbles: true })); }
+    out.afterChoose = state();
+    var up = block.querySelector('input[type="file"][data-uc-event-upload]');
+    var lab = up && up.closest('label');
+    out.upload = lab ? { name: up.name, text: text(lab), seen: seen(lab), border: getComputedStyle(lab).borderTopStyle } : null;
+  }
+  out.mediaButtons = document.querySelectorAll('.uc-choose-image').length;
+  out.urlBox = !!document.querySelector('[name="series_image_url"]');
+  out.pageWidth = document.documentElement.scrollWidth;
+  var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+}, 400); });
+})();</script></body></html>

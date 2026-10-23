@@ -1212,6 +1212,13 @@ class SFAF_Media {
              * The public forms keep the list below.
              */
             'groups' => false,
+            /*
+             * THE SERIES SCREEN (3.113.8), with groups: this series' pictures
+             * and nothing else, written out by the server, with "No picture"
+             * as the first row. No Other images group. A chosen picture from
+             * outside the series is still written out, so it stays chosen.
+             */
+            'series_only' => false,
         ), $args );
 
         if ( ! empty( $args['groups'] ) ) {
@@ -1479,8 +1486,14 @@ class SFAF_Media {
         $chosen = (int) $args['chosen'];
         $series = (int) $args['series'];
         $limit  = max( (int) $args['limit'], 200 );
-        $pics   = self::rows( self::pictures( array( 'place' => 'series', 'per_page' => $limit ) )['ids'] );
-        $others = self::rows( self::pictures( array( 'place' => 'other', 'per_page' => $limit ) )['ids'] );
+        $only   = ! empty( $args['series_only'] );
+        if ( $only ) {
+            $pics   = $series ? self::rows( self::pictures( array( 'place' => 'series', 'series' => $series, 'per_page' => $limit ) )['ids'] ) : array();
+            $others = array();
+        } else {
+            $pics   = self::rows( self::pictures( array( 'place' => 'series', 'per_page' => $limit ) )['ids'] );
+            $others = self::rows( self::pictures( array( 'place' => 'other', 'per_page' => $limit ) )['ids'] );
+        }
         $live   = self::active_ids();
 
         $current = null;
@@ -1490,9 +1503,16 @@ class SFAF_Media {
                 break;
             }
         }
-        $fallback = ( $series && '' === $args['series_thumb'] )
+        $series_rows = $pics;
+        if ( $only && $chosen && ! $current ) {
+            $current = self::row( $chosen );
+            if ( $current ) {
+                $series_rows[] = $current;
+            }
+        }
+        $fallback = $only ? '' : ( ( $series && '' === $args['series_thumb'] )
             ? SFAF_Series::image_url( $series, 'medium' )
-            : (string) $args['series_thumb'];
+            : (string) $args['series_thumb'] );
         ?>
         <details class="uc-picker uc-image-picker" data-uc-image-picker data-uc-image-groups
                  data-uc-image-series-fixed="<?php echo (int) $args['series_fixed']; ?>">
@@ -1519,6 +1539,10 @@ class SFAF_Media {
                 </div>
 
                 <div class="uc-picker-options uc-image-options" data-uc-filter-list>
+                    <?php if ( $only ) : ?>
+                        <?php // Ahead of the radios, so a save with none of them on keeps the picture the series has. ?>
+                        <input type="hidden" name="<?php echo esc_attr( $args['name'] ); ?>" value="<?php echo (int) $chosen; ?>" />
+                    <?php endif; ?>
                     <label class="uc-check uc-picker-option uc-image-option" data-uc-filter-text="no picture the series picture"
                            data-uc-image-default>
                         <input type="radio" name="<?php echo esc_attr( $args['name'] ); ?>" value="0" <?php checked( 0, $chosen ); ?>
@@ -1540,8 +1564,10 @@ class SFAF_Media {
                         <?php endif; ?>
                     </label>
 
+                    <?php if ( ! $only ) : ?>
                     <p class="uc-image-group-head" data-uc-image-group-head="series">Series pictures</p>
-                    <?php foreach ( $pics as $row ) : ?>
+                    <?php endif; ?>
+                    <?php foreach ( $series_rows as $row ) : ?>
                         <?php
                         $ids = array();
                         foreach ( $row['tags'] as $term ) {
@@ -1551,6 +1577,11 @@ class SFAF_Media {
                             ' data-uc-image-series="' . esc_attr( $ids ? ' ' . implode( ' ', $ids ) . ' ' : '' ) . '"' );
                         ?>
                     <?php endforeach; ?>
+                    <?php if ( $only ) : ?>
+                        <?php if ( empty( $pics ) ) : ?>
+                            <p class="uc-muted uc-image-group-none">No pictures for this series yet.</p>
+                        <?php endif; ?>
+                    <?php else : ?>
                     <p class="uc-muted uc-image-group-none" data-uc-image-choose<?php echo $series ? ' hidden' : ''; ?>>Choose a series to see its pictures.</p>
                     <p class="uc-muted uc-image-group-none" data-uc-image-none hidden>No pictures for this series yet.</p>
 
@@ -1560,6 +1591,7 @@ class SFAF_Media {
                     <?php endforeach; ?>
                     <?php if ( empty( $others ) ) : ?>
                         <p class="uc-muted uc-image-group-none">No other images yet.</p>
+                    <?php endif; ?>
                     <?php endif; ?>
                 </div>
                 <p class="uc-muted uc-picker-empty" data-uc-filter-empty hidden>No pictures match that.</p>

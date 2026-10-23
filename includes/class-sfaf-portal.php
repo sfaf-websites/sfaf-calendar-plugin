@@ -23,6 +23,9 @@ class SFAF_Portal {
     /** Set by save_series_from_post() when a typed slug was refused (3.110.3). */
     private $series_slug_refused = false;
 
+    /** Set by save_series_from_post() when an uploaded picture was refused (3.113.8). */
+    private $series_picture_refused = false;
+
     /**
      * Post meta: the URL a person typed into the image box, stored as typed
      * (3.104.0). The folder rule exempts `_uc_image_url` only while it equals
@@ -1573,7 +1576,8 @@ class SFAF_Portal {
                 if ( ! $id ) {
                     $this->redirect( 'series', array( 'msg' => 'series_failed' ) );
                 }
-                $this->redirect( 'series/edit/' . $id, array( 'msg' => $this->series_slug_refused ? 'series_slug_refused' : 'series_saved' ) );
+                $this->redirect( 'series/edit/' . $id, array( 'msg' => $this->series_picture_refused ? 'series_picture_refused'
+                    : ( $this->series_slug_refused ? 'series_slug_refused' : 'series_saved' ) ) );
                 break;
 
             /* ---- The schedule. Four writes. ------------------------------
@@ -5104,6 +5108,7 @@ class SFAF_Portal {
             'team_deleted'   => 'Team deleted. No event named it, so nobody lost access and no notification changed.',
             'series_saved'   => 'Series saved. Nothing about the events in it changed: a series groups them, it does not overwrite them.',
             'series_slug_refused' => 'Series saved, and its slug was not changed: it was empty or another series has it.',
+            'series_picture_refused' => 'Series saved without the picture you uploaded. Pictures must be 1200 by 675 pixels and under 500KB.',
             'category_saved' => 'Category saved. Its color and icon are what a card and its placeholder are drawn from, so events in it change appearance straight away.',
             'category_failed'=> 'That category could not be saved. Give it a name and try again.',
             'series_failed'  => 'That series could not be saved. Give it a name and try again.',
@@ -9320,6 +9325,11 @@ class SFAF_Portal {
             /* "+ Upload a picture for this event" (3.110.3): Add and Edit
                event only, never the pending queue. */
             'upload'          => false,
+            'upload_name'     => 'uc_event_picture',
+            'upload_label'    => '+ Upload a picture for this event',
+            /* The series screen (3.113.8): this series' pictures only. See
+               SFAF_Media::picker(). */
+            'series_only'     => false,
         ), $args );
 
         $inline = ! empty( $a['inline'] );
@@ -9406,6 +9416,7 @@ class SFAF_Portal {
                 'series_fixed' => (int) $a['inline_series'],
                 'series_follow' => true,
                 'groups'       => true,
+                'series_only'  => ! empty( $a['series_only'] ),
                 'label'        => 'Choose a picture',
                 'current_name' => (string) $a['current_name'],
             ) );
@@ -9419,8 +9430,8 @@ class SFAF_Portal {
                  */
                 ?>
                 <label class="uc-outline-btn uc-image-upload">
-                    <span>+ Upload a picture for this event</span>
-                    <input type="file" name="uc_event_picture" class="uc-visually-hidden"
+                    <span><?php echo esc_html( $a['upload_label'] ); ?></span>
+                    <input type="file" name="<?php echo esc_attr( $a['upload_name'] ); ?>" class="uc-visually-hidden"
                            accept="<?php echo esc_attr( SFAF_Uploads::picture_accept() ); ?>"
                            data-uc-event-upload
                            data-uc-rule-width="<?php echo (int) SFAF_Uploads::PICTURE_WIDTH; ?>"
@@ -10139,10 +10150,18 @@ class SFAF_Portal {
         $args = array(
             'description' => wp_unslash( $_POST['series_desc'] ?? '' ),
             'image_id'    => intval( $_POST['series_image_id'] ?? 0 ),
-            'image_url'   => wp_unslash( $_POST['series_image_url'] ?? '' ),
             'faq_set'     => sanitize_text_field( wp_unslash( $_POST['series_faq_set'] ?? '' ) ),
             'video'       => trim( (string) wp_unslash( $_POST['series_video'] ?? '' ) ),
         );
+        /* The URL only when a form drew its box, which the series screen no
+         * longer does (3.113.8); Remove clears it with the picture. */
+        if ( isset( $_POST['series_image_url'] ) ) {
+            $args['image_url'] = wp_unslash( $_POST['series_image_url'] );
+        }
+        if ( isset( $_POST['reset_series_image'] ) ) {
+            $args['image_id']  = 0;
+            $args['image_url'] = '';
+        }
         // Under its own presence check, so a form that does not draw the box
         // cannot clear a link it never showed (3.105.0).
         if ( isset( $_POST['series_language'] ) ) {
@@ -10194,6 +10213,7 @@ class SFAF_Portal {
                 $this->series_slug_refused = is_wp_error( $moved );
             }
             $this->tag_series_image( $term_id, (int) $args['image_id'] );
+            $this->series_picture_refused = $this->save_series_upload( $user, $term_id );
             $this->save_series_agreement( $term_id );
             $this->save_series_access( $user, $term_id );
             return $term_id;
@@ -10204,6 +10224,7 @@ class SFAF_Portal {
             return 0;
         }
         $this->tag_series_image( (int) $created, (int) $args['image_id'] );
+        $this->series_picture_refused = $this->save_series_upload( $user, (int) $created );
         $this->save_series_agreement( (int) $created );
         $this->save_series_access( $user, (int) $created );
         return (int) $created;
@@ -10285,6 +10306,55 @@ class SFAF_Portal {
             return;
         }
         SFAF_Media::add_tag( array( $attachment_id ), $term_id );
+    }
+
+    /**
+     * Take a picture uploaded from the series screen (3.113.8).
+     *
+     * The event editor's upload, save_event_upload(), with two differences:
+     * the file lands in the calendar folder rather than Other images, since
+     * it is a series picture, and it is tagged to this series. Same rule,
+     * through SFAF_Uploads::inspect(). The rest of the save goes through
+     * either way.
+     *
+     * @return bool True when a file was sent and refused.
+     */
+    private function save_series_upload( $user, $term_id ) {
+        if ( empty( $_FILES['uc_series_picture'] ) || empty( $_FILES['uc_series_picture']['name'] ) || $term_id < 1 ) {
+            return false;
+        }
+        $seen = SFAF_Uploads::inspect( 'uc_series_picture' );
+        if ( ! $seen['ok'] ) {
+            return true;
+        }
+
+        if ( ! function_exists( 'media_handle_upload' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+        }
+        add_filter( 'upload_dir', array( 'SFAF_Media_Folder', 'upload_to_series' ), 20 );
+        $att = media_handle_upload( 'uc_series_picture', 0, array( 'post_author' => (int) $user->ID ), array(
+            'test_form' => false,
+            'mimes'     => array( 'jpg|jpeg|jpe' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp' ),
+        ) );
+        remove_filter( 'upload_dir', array( 'SFAF_Media_Folder', 'upload_to_series' ), 20 );
+
+        if ( is_wp_error( $att ) || ! $att ) {
+            return true;
+        }
+        $att = (int) $att;
+        if ( ! SFAF_Media_Folder::holds( $att ) ) {
+            wp_delete_attachment( $att, true );
+            return true;
+        }
+
+        /* No META_UPLOAD: that is the event upload's notice to websites@, and
+           an event choosing this picture later must not send it. */
+        SFAF_Media::add_tag( array( $att ), $term_id );
+        SFAF_Media_Folder::file_into_library( $att );
+        update_term_meta( $term_id, SFAF_Series::META_IMAGE_ID, $att );
+        return false;
     }
 
     /**
@@ -10752,7 +10822,8 @@ class SFAF_Portal {
             </p>
         <?php endif; ?>
 
-        <form method="post" action="<?php echo esc_url( $this->url( $term_id ? 'series/edit/' . $term_id : 'series/new' ) ); ?>" class="uc-form">
+        <?php // multipart for "+ Upload a picture" (3.113.8). ?>
+        <form method="post" action="<?php echo esc_url( $this->url( $term_id ? 'series/edit/' . $term_id : 'series/new' ) ); ?>" class="uc-form" enctype="multipart/form-data">
             <input type="hidden" name="uc_action" value="save_series" />
             <input type="hidden" name="series_id" value="<?php echo (int) $term_id; ?>" />
             <?php wp_nonce_field( 'uc_portal_save_series', 'uc_nonce' ); ?>
@@ -10779,37 +10850,39 @@ class SFAF_Portal {
                 ?>
                 <?php
                 /*
-                 * THE SERIES SCREEN DOES NOT NARROW TO ITS OWN SERIES (3.90.0).
+                 * THE EVENT EDITOR'S PICKER, NARROWED TO THIS SERIES (3.113.8).
                  *
-                 * It did, and the reasoning was circular: this screen is where
-                 * a series' picture is ESTABLISHED, so offering only pictures
-                 * already tagged to it means the first one can never be chosen.
-                 * A series with nothing tagged got a blank wp.media grid with no
-                 * sentence in it, and the way out was a button that has never
-                 * been visible. That is a dead end built out of three correct
-                 * decisions.
-                 *
-                 * THE EVENT EDITOR'S NARROWING STAYS. There the series is
-                 * context rather than the subject: somebody setting a picture
-                 * for one date wants that programme's pictures first, and has
-                 * the escape button beside it, which now renders.
-                 *
-                 * Passing 0 is what the "All calendar images" trigger passes,
-                 * so this opens on the whole folder.
+                 * 3.90.0 stopped narrowing this screen because a series with
+                 * nothing tagged could never be given its first picture. The
+                 * inline picker's "+ Upload a picture" is the way in now: the
+                 * file goes up with Save, into the calendar folder, tagged to
+                 * this series. A picture held only as a URL, or chosen from
+                 * outside the series before, stays until Remove or another
+                 * choice. No URL box: nothing posts series_image_url, and the
+                 * save leaves a stored one alone.
                  */
+                $img_name = $preview ? $this->picture_name( $img_id, $preview ) : '';
                 ?>
-                <div class="uc-field uc-image-field"<?php echo $this->image_picker_atts( SFAF_Media_Folder::has_any(), 0 ); ?>>
+                <div class="uc-field uc-image-field"<?php echo $this->image_picker_atts( SFAF_Media_Folder::has_any(), $term_id ); ?>>
                     <span class="uc-field-label">Image</span>
                     <?php $this->render_image_picker( array(
-                        'uid'         => 'series',
-                        'id_name'     => 'series_image_id',
-                        'url_name'    => 'series_image_url',
-                        'id_value'    => $img_id,
-                        'url_value'   => $img_url,
-                        'preview'     => $preview,
-                        'show_remove' => (bool) $preview,
-                        'url_label'   => 'Or enter image URL',
-                        'extra_hint'  => 'Shown on the series page, and used by any event in the series with no image of its own.',
+                        'inline'        => true,
+                        'inline_series' => $term_id,
+                        'series_only'   => true,
+                        'uid'           => 'series',
+                        'id_name'       => 'series_image_id',
+                        'id_value'      => $img_id,
+                        'preview'       => $preview,
+                        'show_remove'   => (bool) $preview,
+                        'show_url'      => false,
+                        'pill'          => $preview ? 'Series picture' : 'Placeholder',
+                        'pill_labels'   => array( 'event' => 'Series picture', 'none' => 'Placeholder' ),
+                        'current_name'  => $img_name,
+                        'source'        => $preview ? 'event' : 'none',
+                        'upload'        => true,
+                        'upload_name'   => 'uc_series_picture',
+                        'upload_label'  => '+ Upload a picture',
+                        'extra_hint'    => 'Shown on the series page, and used by any event in the series with no image of its own.',
                         'folder_has_any' => SFAF_Media_Folder::has_any(),
                     ) ); ?>
                 </div>

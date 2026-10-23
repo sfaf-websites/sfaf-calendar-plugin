@@ -127,13 +127,13 @@ $edits = array(
     /* The series screen goes back to its own copy of the markup, which is the
      * 3.43.1 bug exactly: hooks the binder never finds. */
     'picker-copy' => array( $P,
-        "                    <?php \$this->render_image_picker( array(\n                        'uid'         => 'series',",
-        "                    <input type=\"hidden\" name=\"series_image_id\" id=\"uc-featured-image-id\" value=\"0\" />\n                    <div class=\"uc-image-preview\" id=\"uc-image-preview\"><img id=\"uc-image-preview-img\" /></div>\n                    <button type=\"button\" class=\"uc-btn uc-choose-image\">Choose Image</button>\n                    <?php \$this->render_image_picker( array(\n                        'uid'         => 'series'," ),
+        "                    <?php \$this->render_image_picker( array(\n                        'inline'        => true,\n                        'inline_series' => \$term_id,",
+        "                    <input type=\"hidden\" name=\"series_image_id\" id=\"uc-featured-image-id\" value=\"0\" />\n                    <div class=\"uc-image-preview\" id=\"uc-image-preview\"><img id=\"uc-image-preview-img\" /></div>\n                    <button type=\"button\" class=\"uc-btn uc-choose-image\">Choose Image</button>\n                    <?php \$this->render_image_picker( array(\n                        'inline'        => true,\n                        'inline_series' => \$term_id," ),
 
     /* The series picker loses the folder attributes, so that screen would
      * offer the whole media library while the editor offers the folder. */
     'picker-unfiltered' => array( $P,
-        '<div class="uc-field uc-image-field"<?php echo $this->image_picker_atts( SFAF_Media_Folder::has_any(), 0 ); ?>>',
+        '<div class="uc-field uc-image-field"<?php echo $this->image_picker_atts( SFAF_Media_Folder::has_any(), $term_id ); ?>>',
         '<div class="uc-field uc-image-field">' ),
 
     /* A screen stops loading the media library. */
