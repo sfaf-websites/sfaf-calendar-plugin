@@ -174,9 +174,9 @@
                                             <tr>
                             <td class="uc-series-thumb"><a href="https://resources.sfaf.org/caladmin/series/edit/11"><span class="uc-series-thumb-none" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-calendar" width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span></a></td>
                             <td><a class="uc-tlink" href="https://resources.sfaf.org/caladmin/series/edit/11"><strong>Alpha</strong></a></td>
-                            <td>Wednesday, October 28, 2026, 6–7:30 pm</td>
+                            <td>Thursday, October 29, 2026, 6–7:30 pm</td>
                             <td>4</td>
-                            <td>Oct 28, 2026</td>
+                            <td>Oct 29, 2026</td>
                             <td class="uc-row-actions">
                                 <div class="uc-actions">
                                     <a class="uc-action-link" href="https://resources.sfaf.org/caladmin/series/edit/11">Schedule</a>
@@ -187,9 +187,9 @@
                                             <tr>
                             <td class="uc-series-thumb"><a href="https://resources.sfaf.org/caladmin/series/edit/12"><span class="uc-series-thumb-none" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-calendar" width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span></a></td>
                             <td><a class="uc-tlink" href="https://resources.sfaf.org/caladmin/series/edit/12"><strong>Beta</strong></a></td>
-                            <td>Wednesday, October 28, 2026, 6–7:30 pm</td>
+                            <td>Thursday, October 29, 2026, 6–7:30 pm</td>
                             <td>4</td>
-                            <td>Oct 28, 2026</td>
+                            <td>Oct 29, 2026</td>
                             <td class="uc-row-actions">
                                 <div class="uc-actions">
                                     <a class="uc-action-link" href="https://resources.sfaf.org/caladmin/series/edit/12">Schedule</a>
@@ -299,6 +299,9 @@ function small(root) {
     if (!seen(el)) { return; }
     if (el.tagName === 'LABEL' && !q('input[type="checkbox"], input[type="radio"]', el)) { return; }
     if (el.closest('.uc-tpl-editor, [hidden], #uc-sidebar, .uc-portal-sidebar')) { return; }
+    /* A visually hidden input inside a label is pressed through the label
+       ("+ Upload a picture", 3.113.8), so the label is what is measured. */
+    if (el.tagName === 'INPUT' && el.classList.contains('uc-visually-hidden') && el.closest('label')) { el = el.closest('label'); }
     var r = el.getBoundingClientRect(); if (!r.width || !r.height) { return; }
     var h = r.height, a = getComputedStyle(el, '::after');
     if (a.content !== 'none' && a.position === 'absolute') { h = r.height - parseFloat(a.top) - parseFloat(a.bottom); }

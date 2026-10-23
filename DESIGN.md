@@ -1247,7 +1247,10 @@ truncate; the full month and year are the pill's accessible name.
 **The month pills are secondary buttons (3.113.8)**, `.uc-actionbtn
 .uc-actionbtn-secondary`: the 1px `#0E7680` outline and label on white (5.35:1
 for both), the full pill radius, and the brand teal fill with Dark Gray ink on
-hover; the count takes the button's ink. A white box with the `#E2E5EA`
+hover; the count takes the button's ink. **A chevron on the outer side**, before
+the earlier month and after the later one: the house `chevron` icon's path as a
+14px mask in `currentColor`, drawn in CSS so the embed's markup gains nothing
+but the two classes. A white box with the `#E2E5EA`
 hairline did not read as something to press. **In the combined view the sidebar
 draws no card of its own**: no lift, no corner. The standalone block's shadow
 had stayed on when its border and padding went, and drew an edge flush with

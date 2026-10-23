@@ -60,7 +60,9 @@ out.card = cb;
 out.tabs = Array.prototype.map.call(document.querySelectorAll('.uc-month-tab'), function (t) {
   var s = getComputedStyle(t), n = t.querySelector('.uc-month-tab-name'), c = t.querySelector('.uc-month-tab-count');
   return { box: rect(t), edge: s.borderTopColor, edgeW: s.borderTopWidth, bg: s.backgroundColor, radius: s.borderTopLeftRadius, ink: getComputedStyle(n).color, count: getComputedStyle(c).color,
-    name: n.textContent, nameClipped: n.scrollWidth > n.clientWidth, edgeRatio: ratio(s.borderTopColor, 'rgb(255,255,255)'), inkRatio: ratio(getComputedStyle(n).color, s.backgroundColor) };
+    name: n.textContent, nameClipped: n.scrollWidth > n.clientWidth, edgeRatio: ratio(s.borderTopColor, 'rgb(255,255,255)'), inkRatio: ratio(getComputedStyle(n).color, s.backgroundColor),
+    dir: t.classList.contains('uc-month-tab-prev') ? 'prev' : 'next', nameBox: rect(n), countBox: rect(c),
+    chev: (function (p) { return { w: p.width, h: p.height, fill: p.backgroundColor, mask: (p.webkitMaskImage || p.maskImage || 'none').indexOf('m9 5 7 7-7 7') !== -1, flip: p.transform }; })(getComputedStyle(t, t.classList.contains('uc-month-tab-prev') ? '::before' : '::after')) };
 });
 out.all = rect(document.querySelector('.uc-sidebar-all'));
 out.pics = {};
@@ -137,6 +139,10 @@ foreach ( array( 'desktop' => 1280, 'stacked' => 700, 'phone' => 390 ) as $wn =>
         rl( 'rgb(14, 118, 128)' === $t['ink'] && $t['ink'] === $t['count'] && $t['inkRatio'] >= 4.5, "7L: $wn: " . $t['name'] . "'s label is not the button's teal: " . json_encode( $t ) );
         rl( ! $t['nameClipped'], "$wn: " . $t['name'] . ' is cut off' );
         rl( $t['box']['h'] >= 24, "$wn: " . $t['name'] . ' is under 24px tall' );
+        $ch = $t['chev'];
+        rl( '14px' === $ch['w'] && '14px' === $ch['h'] && $ch['mask'] && $ch['fill'] === $t['ink'], "7C: $wn: " . $t['name'] . ' has no chevron in its ink: ' . json_encode( $ch ) );
+        rl( 'prev' === $t['dir'] ? ( 'none' !== $ch['flip'] && $t['nameBox']['l'] - $t['box']['l'] >= 34 ) : ( 'none' === $ch['flip'] && $t['box']['r'] - $t['countBox']['r'] >= 34 ),
+            "7C: $wn: " . $t['name'] . "'s chevron is not on its outer side, pointing out: " . json_encode( $t ) );
     }
 
     $p = $r['pics'];

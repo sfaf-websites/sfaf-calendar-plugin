@@ -71,6 +71,12 @@ $plants = array(
     '7L: the buttons stop sharing the column' => array( 'release-31138-pages-live.php', "do not share the column's width", array(
         array( 'public/css/calendar.css', ".uc-sidebar .uc-month-tab {\n    flex: 1 1 0; min-width: 0;\n", ".uc-sidebar .uc-month-tab {\n" ),
     ) ),
+    '7C: the month buttons lose their chevrons' => array( 'release-31138-pages-live.php', '7C: ', array(
+        array( 'public/css/calendar.css', ".uc-sidebar .uc-month-tab-prev::before, .uc-sidebar .uc-month-tab-next::after {\n    content: '';", ".uc-sidebar .uc-month-tab-prev::before, .uc-sidebar .uc-month-tab-next::after {\n    content: none;" ),
+    ) ),
+    '7C: the earlier month\'s chevron points forward' => array( 'release-31138-pages-live.php', 'is not on its outer side', array(
+        array( 'public/css/calendar.css', ".uc-sidebar .uc-month-tab-prev::before { transform: scaleX(-1); }\n", "" ),
+    ) ),
     '8: the series screen offers every picture' => array( 'release-31138-test.php', "8: another series' picture is not", array(
         array( 'includes/class-sfaf-portal.php', "                        'series_only'   => true,\n", "                        'series_only'   => false,\n" ),
     ) ),

@@ -543,7 +543,7 @@ restriction is what makes a key that is visible by design safe to have visible.
 * **Imported pictures on the event page are shown whole, at their own shape**, rather than cropped to 16:9. A portrait one is no taller than most of the window. List rows, the month grid's card and the embed are unchanged.
 * **EveryAction signup links:** an event the public list has no page for uses its row's Public_URL, its own form, when the tracker gives one. With neither, its button goes to its day on the list on the site its program's forms are on, han.sfaf.org for HAN's, and 50plus.sfaf.org when nothing says.
 * **Email Templates, Sender:** the line about WordPress mail through Bluehost is gone.
-* **The sidebar's month buttons are secondary buttons**, the teal outline every public navigation button has. In the combined view the sidebar no longer draws a shadowed card of its own, which put the month buttons and See all events on its edge.
+* **The sidebar's month buttons are secondary buttons with chevrons**, the teal outline every public navigation button has, a chevron before the earlier month and after the later one. In the combined view the sidebar no longer draws a shadowed card of its own, which put the month buttons and See all events on its edge.
 * **The series screen's picture is the event editor's picker**, showing only this series' pictures, with a preview of the series picture and Remove on it. **+ Upload a picture** takes a 1200 by 675 picture under 500KB, puts it in the calendar folder tagged to this series, and makes it the series picture when you save. The WordPress media box and the image URL box are gone; a picture the series already has as a URL stays until Remove.
 
 = 3.113.7 =

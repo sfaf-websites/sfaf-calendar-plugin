@@ -343,6 +343,9 @@ function small(root) {
     if (!seen(el)) { return; }
     if (el.tagName === 'LABEL' && !q('input[type="checkbox"], input[type="radio"]', el)) { return; }
     if (el.closest('.uc-tpl-editor, [hidden], #uc-sidebar, .uc-portal-sidebar')) { return; }
+    /* A visually hidden input inside a label is pressed through the label
+       ("+ Upload a picture", 3.113.8), so the label is what is measured. */
+    if (el.tagName === 'INPUT' && el.classList.contains('uc-visually-hidden') && el.closest('label')) { el = el.closest('label'); }
     var r = el.getBoundingClientRect(); if (!r.width || !r.height) { return; }
     var h = r.height, a = getComputedStyle(el, '::after');
     if (a.content !== 'none' && a.position === 'absolute') { h = r.height - parseFloat(a.top) - parseFloat(a.bottom); }

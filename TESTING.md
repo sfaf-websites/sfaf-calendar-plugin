@@ -4181,8 +4181,8 @@ An event whose picture was chosen in caladmin still shows it 16:9 on its page.
 ### 1.308 The sidebar's month buttons on sfaf.org/calendar (3.113.8)
 
 Open sfaf.org/calendar on a desktop and a phone. Under the right column's list:
-the month buttons are teal-outlined pills that fill teal when the pointer is
-over them, both inside the calendar's card with space on each side, and See all
+the month buttons are teal-outlined pills with a chevron on the outer side,
+that fill teal when the pointer is over them, both inside the calendar's card with space on each side, and See all
 events under them inside the card too. Press the next month's: both halves move
 to it.
 

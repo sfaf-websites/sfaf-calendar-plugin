@@ -48,7 +48,9 @@ out.card = cb;
 out.tabs = Array.prototype.map.call(document.querySelectorAll('.uc-month-tab'), function (t) {
   var s = getComputedStyle(t), n = t.querySelector('.uc-month-tab-name'), c = t.querySelector('.uc-month-tab-count');
   return { box: rect(t), edge: s.borderTopColor, edgeW: s.borderTopWidth, bg: s.backgroundColor, radius: s.borderTopLeftRadius, ink: getComputedStyle(n).color, count: getComputedStyle(c).color,
-    name: n.textContent, nameClipped: n.scrollWidth > n.clientWidth, edgeRatio: ratio(s.borderTopColor, 'rgb(255,255,255)'), inkRatio: ratio(getComputedStyle(n).color, s.backgroundColor) };
+    name: n.textContent, nameClipped: n.scrollWidth > n.clientWidth, edgeRatio: ratio(s.borderTopColor, 'rgb(255,255,255)'), inkRatio: ratio(getComputedStyle(n).color, s.backgroundColor),
+    dir: t.classList.contains('uc-month-tab-prev') ? 'prev' : 'next', nameBox: rect(n), countBox: rect(c),
+    chev: (function (p) { return { w: p.width, h: p.height, fill: p.backgroundColor, mask: (p.webkitMaskImage || p.maskImage || 'none').indexOf('m9 5 7 7-7 7') !== -1, flip: p.transform }; })(getComputedStyle(t, t.classList.contains('uc-month-tab-prev') ? '::before' : '::after')) };
 });
 out.all = rect(document.querySelector('.uc-sidebar-all'));
 out.pics = {};
