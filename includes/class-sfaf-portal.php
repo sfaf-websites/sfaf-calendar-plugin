@@ -5145,7 +5145,7 @@ class SFAF_Portal {
             'schedule_extend_nothing'  => 'Nothing to add: every date the pattern produces up to then is already on the schedule, or was removed on purpose.',
             'schedule_extend_failed'   => 'The series could not be extended.',
             'schedule_publish_none'    => 'Nothing was published. Either no date was ticked, or the drafts left are ones this action does not touch.',
-            'schedule_no_group' => 'These dates are not on a repeating pattern, so there is no pattern to change. Each date can still be edited on its own.',
+            'schedule_no_group' => 'These dates are not on a repeating pattern. Edit each date on its own.',
             'schedule_nothing_upcoming' => 'There are no upcoming dates to change. Dates that have already been are the record of what happened and are never rewritten.',
             'schedule_imported' => 'This event comes from another platform, which decides when it happens. Changing the schedule here would be undone by the next fetch.',
             'schedule_no_seed'  => 'There is no existing date to copy, so there is nothing to base a new one on. Create the first event and choose this series on it.',
@@ -10399,11 +10399,8 @@ class SFAF_Portal {
             <?php $this->render_not_their_name( 'uc_series' ); ?>
 
         <p class="uc-help">
-            <strong>A series is an event's schedule: the event, and all of its dates.</strong> Open one to see the
-            pattern it runs on, change the day or the time for everything still to come, add a date, or take one off.
-            <br />
-            You do not normally create a series here: set a repeat on a new event and its series is made in the same
-            step. Create one by hand when a program needs describing before any of its dates are known.
+            Open a series to change the day or the time of everything still to come, add a date, or take one off.
+            To start a series, set a repeat on a new event; create one here only for a program whose dates are not known yet.
         </p>
 
         <div class="uc-card">
@@ -10819,30 +10816,35 @@ class SFAF_Portal {
             <h1><?php echo $term ? esc_html( $term->name ) : 'New Series'; ?></h1>
             <a href="<?php echo esc_url( $this->url( 'series' ) ); ?>" class="uc-btn">&larr; Back</a>
         </div>
-        <?php if ( $term ) : ?>
-            <p class="uc-help">This event and all of its dates. The schedule is below the series details.</p>
-        <?php else : ?>
-            <p class="uc-help">
-                A series made by hand, for a program that needs describing before its dates are known. If you already
-                know the dates, create the event instead and set a repeat on it: the series is made from the event's own
-                name in the same step.
-            </p>
+        <?php if ( ! $term ) : ?>
+            <p class="uc-help">If you know the dates, create the event instead and set a repeat on it: its series is made in the same step.</p>
         <?php endif; ?>
 
         <?php // multipart for "+ Upload a picture" (3.113.8). ?>
-        <form method="post" action="<?php echo esc_url( $this->url( $term_id ? 'series/edit/' . $term_id : 'series/new' ) ); ?>" class="uc-form" enctype="multipart/form-data">
+        <form method="post" id="uc-series-form" action="<?php echo esc_url( $this->url( $term_id ? 'series/edit/' . $term_id : 'series/new' ) ); ?>" class="uc-form" enctype="multipart/form-data" data-uc-leave-warn>
             <input type="hidden" name="uc_action" value="save_series" />
             <input type="hidden" name="series_id" value="<?php echo (int) $term_id; ?>" />
             <?php wp_nonce_field( 'uc_portal_save_series', 'uc_nonce' ); ?>
+            <p class="uc-hint uc-required-note">Fields marked * are required.</p>
 
-            <div class="uc-card">
-                <div class="uc-card-head"><h2>Series details</h2></div>
+            <?php
+            /*
+             * THE EVENT EDITOR'S LAYOUT (3.116.0): its two columns of topic
+             * cards, its sticky bar, its leave warning and its required mark.
+             */
+            ?>
+            <div class="uc-bento">
+            <div class="uc-bento-main">
+                <section class="uc-bento-card" data-uc-card="title">
+                    <h2 class="uc-bento-title" id="uc-series-title-heading">Title<span class="uc-req" aria-hidden="true">*</span></h2>
                 <label class="uc-field">
-                    <span class="uc-field-label">Series name</span>
-                    <input type="text" name="series_name" value="<?php echo esc_attr( $term ? $term->name : '' ); ?>" required />
+                    <input type="text" name="series_name" value="<?php echo esc_attr( $term ? $term->name : '' ); ?>" required aria-labelledby="uc-series-title-heading" />
                 </label>
                 <?php if ( $term ) { $this->render_slug_field( 'series_slug', $term->slug ); } ?>
+                </section>
 
+                <section class="uc-bento-card" data-uc-card="details">
+                    <h2 class="uc-bento-title">Series details</h2>
                 <?php
                 /*
                  * THE SAME PICKER AS THE EVENT EDITOR, AND THAT IS THE FIX.
@@ -10871,7 +10873,7 @@ class SFAF_Portal {
                 $img_name = $preview ? $this->picture_name( $img_id, $preview ) : '';
                 ?>
                 <div class="uc-field uc-image-field"<?php echo $this->image_picker_atts( SFAF_Media_Folder::has_any(), $term_id ); ?>>
-                    <span class="uc-field-label">Image</span>
+                    <span class="uc-field-label">Featured Image</span>
                     <?php $this->render_image_picker( array(
                         'inline'        => true,
                         'inline_series' => $term_id,
@@ -10904,7 +10906,7 @@ class SFAF_Portal {
                 <div class="uc-field">
                     <span class="uc-field-label">Description</span>
                     <?php SFAF_Rich_Text::render( 'uc-series-desc', 'series_desc', $term ? $term->description : '', array( 'rows' => 8 ) ); ?>
-                    <span class="uc-hint">Shown on the series page, including while it has no dates scheduled.</span>
+                    <span class="uc-hint">Shown on the series page.</span>
                 </div>
 
                 <?php
@@ -10934,54 +10936,14 @@ class SFAF_Portal {
                         </p>
                     <?php endif; ?>
                     <span class="uc-hint">
-                        A YouTube or Vimeo link. Paste the address from the browser bar, not embed code.
+                        Paste a YouTube or Vimeo address from the browser bar, not embed code.
                         It plays on every event in this series unless that event has its own.
                     </span>
                 </label>
+                </section>
 
-                <?php
-                /*
-                 * THE SERIES' DONATION LINK (3.105.0). Read at render time by
-                 * sfaf_donate_resolve() on every event in the series that
-                 * inherits, so it is not copied and correcting it here
-                 * corrects them all. Empty means the series has none and its
-                 * events fall through to the default in Settings.
-                 */
-                ?>
-                <?php
-                /* THE SERIES' DEFAULT LANGUAGE (3.106.0), for the messages of an
-                   event that names none of its own. */
-                $series_lang = $term_id ? SFAF_Series::language( $term_id ) : 'en';
-                ?>
-                <label class="uc-field">
-                    <span class="uc-field-label">Default language</span>
-                    <select name="series_language">
-                        <?php foreach ( SFAF_Messages::languages() as $code => $name ) : ?>
-                            <option value="<?php echo esc_attr( $code ); ?>" <?php selected( $series_lang, $code ); ?>><?php echo esc_html( $name ); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <span class="uc-hint">Messages to registrants of events in this series go out in this language unless the event sets its own.</span>
-                </label>
-
-                <label class="uc-field">
-                    <span class="uc-field-label">Donation link</span>
-                    <input type="url" name="series_donate_url"
-                           value="<?php echo esc_attr( $term_id ? SFAF_Series::donate_url( $term_id ) : '' ); ?>"
-                           placeholder="https://donate.sfaf.org/&hellip;" />
-                    <span class="uc-hint">Goes in the confirmation and reminder emails of every event in this series set to Series link. Leave empty to use the SFAF default.</span>
-                </label>
-
-                <?php /* THE DEFAULT REGISTRATION AGREEMENT (3.110.0). An event that asks
-                   registrants to agree uses this unless it has text of its own. */ ?>
-                <div class="uc-field">
-                    <span class="uc-field-label" id="uc-series-agreement-label">Default registration agreement</span>
-                    <?php SFAF_Rich_Text::render( 'uc-series-agreement', 'series_agreement', SFAF_Agreement::series_text( (int) $term_id ), array( 'rows' => 6, 'aria_label' => 'Default registration agreement' ) ); ?>
-                    <span class="uc-hint">Used by events in this series that ask registrants to agree and have no text of their own.</span>
-                </div>
-
-                <?php // The default Team and access its events follow (3.110.1). ?>
-                <?php $this->render_series_access( $user, (int) $term_id ); ?>
-
+                <section class="uc-bento-card" data-uc-card="registration">
+                    <h2 class="uc-bento-title">RSVP</h2>
                 <?php
                 /*
                  * THE RSVP CHOICE ITS NEW EVENTS START ON (3.115.0), the event
@@ -10993,7 +10955,6 @@ class SFAF_Portal {
                 $s_url    = SFAF_Register_Elsewhere::series_url( (int) $term_id );
                 ?>
                 <div class="uc-field" data-uc-series-rsvp>
-                    <span class="uc-field-label">RSVP</span>
                     <?php if ( $this->can_manage_series_events( $user, (int) $term_id ) ) : ?>
                         <div class="uc-reg-choice" data-uc-reg-choice>
                             <?php SFAF_Register_Elsewhere::render_rsvp_choice( $s_choice, $s_url, '', false, false, 'series_' ); ?>
@@ -11007,6 +10968,53 @@ class SFAF_Portal {
                     <?php endif; ?>
                 </div>
 
+                <?php /* THE DEFAULT REGISTRATION AGREEMENT (3.110.0). An event that asks
+                   registrants to agree uses this unless it has text of its own. */ ?>
+                <div class="uc-field">
+                    <span class="uc-field-label" id="uc-series-agreement-label">Registration agreement</span>
+                    <?php SFAF_Rich_Text::render( 'uc-series-agreement', 'series_agreement', SFAF_Agreement::series_text( (int) $term_id ), array( 'rows' => 6, 'aria_label' => 'Registration agreement' ) ); ?>
+                    <span class="uc-hint">Used by events in this series that ask registrants to agree and have no text of their own.</span>
+                </div>
+                </section>
+
+                <section class="uc-bento-card" data-uc-card="faqs">
+                    <h2 class="uc-bento-title">FAQs</h2>
+                <label class="uc-field">
+                    <span class="uc-field-label">FAQ set</span>
+                    <select name="series_faq_set">
+                        <option value="">None</option>
+                        <?php foreach ( $sets as $s ) : ?>
+                            <option value="<?php echo esc_attr( $s['id'] ); ?>" <?php selected( $set, $s['id'] ); ?>>
+                                <?php echo esc_html( $s['name'] ); ?> (<?php echo (int) count( $s['rows'] ); ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <span class="uc-hint">Its questions are added to an event that joins this series with no questions of its own.</span>
+                </label>
+                </section>
+
+            </div><?php // .uc-bento-main ?>
+            <div class="uc-bento-side">
+                <section class="uc-bento-card" data-uc-card="language">
+                    <h2 class="uc-bento-title">Language</h2>
+                <?php
+                /* THE SERIES' DEFAULT LANGUAGE (3.106.0), for the messages of an
+                   event that names none of its own. */
+                $series_lang = $term_id ? SFAF_Series::language( $term_id ) : 'en';
+                ?>
+                <label class="uc-field">
+                    <span class="uc-field-label">Language</span>
+                    <select name="series_language">
+                        <?php foreach ( SFAF_Messages::languages() as $code => $name ) : ?>
+                            <option value="<?php echo esc_attr( $code ); ?>" <?php selected( $series_lang, $code ); ?>><?php echo esc_html( $name ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <span class="uc-hint">Emails to people who register for its events go out in this language, unless an event sets its own.</span>
+                </label>
+                </section>
+
+                <section class="uc-bento-card" data-uc-card="classification">
+                    <h2 class="uc-bento-title">Classification</h2>
                 <?php
                 /*
                  * THE DEFAULT CATEGORIES AND ORGANIZERS (3.103.0). Copied onto
@@ -11022,7 +11030,7 @@ class SFAF_Portal {
                 ?>
                 <input type="hidden" name="uc_series_defaults_present" value="1" />
                 <div class="uc-field uc-series-default" data-uc-series-default="category" role="group" aria-labelledby="uc-series-default-category">
-                    <span class="uc-field-label" id="uc-series-default-category">Default categories</span>
+                    <span class="uc-field-label" id="uc-series-default-category">Categories</span>
                     <?php if ( empty( $all_cats ) ) : ?>
                         <p class="uc-hint">There are no categories yet.</p>
                     <?php else : ?>
@@ -11040,7 +11048,7 @@ class SFAF_Portal {
                 </div>
 
                 <div class="uc-field uc-series-default" data-uc-series-default="organizer" role="group" aria-labelledby="uc-series-default-organizer">
-                    <span class="uc-field-label" id="uc-series-default-organizer">Default organizers</span>
+                    <span class="uc-field-label" id="uc-series-default-organizer">Organizers</span>
                     <?php if ( empty( $all_orgs ) ) : ?>
                         <p class="uc-hint">There are no organizers yet.</p>
                     <?php else : ?>
@@ -11056,23 +11064,36 @@ class SFAF_Portal {
                     <?php endif; ?>
                     <span class="uc-hint">Given to an event that joins this series with no organizer. Events already in it keep their own.</span>
                 </div>
+                </section>
 
+                <section class="uc-bento-card" data-uc-card="links">
+                    <h2 class="uc-bento-title">Links</h2>
+                <?php
+                /*
+                 * THE SERIES' DONATION LINK (3.105.0). Read at render time by
+                 * sfaf_donate_resolve() on every event in the series that
+                 * inherits, so it is not copied and correcting it here
+                 * corrects them all. Empty means the series has none and its
+                 * events fall through to the default in Settings.
+                 */
+                ?>
                 <label class="uc-field">
-                    <span class="uc-field-label">Default FAQ set</span>
-                    <select name="series_faq_set">
-                        <option value="">None</option>
-                        <?php foreach ( $sets as $s ) : ?>
-                            <option value="<?php echo esc_attr( $s['id'] ); ?>" <?php selected( $set, $s['id'] ); ?>>
-                                <?php echo esc_html( $s['name'] ); ?> (<?php echo (int) count( $s['rows'] ); ?>)
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                    <span class="uc-field-label">Donation link in emails</span>
+                    <input type="url" name="series_donate_url"
+                           value="<?php echo esc_attr( $term_id ? SFAF_Series::donate_url( $term_id ) : '' ); ?>"
+                           placeholder="https://donate.sfaf.org/&hellip;" />
+                    <span class="uc-hint">Goes in the confirmation and reminder emails of every event in this series set to Series link. Leave empty to use the SFAF default.</span>
                 </label>
-            </div>
+                </section>
 
-            <div class="uc-form-actions">
-                <button type="submit" class="uc-btn uc-btn-primary"><?php echo $term ? 'Save Series' : 'Create Series'; ?></button>
-            </div>
+                <section class="uc-bento-card" data-uc-card="access">
+                    <h2 class="uc-bento-title">Team and access</h2>
+                <?php // The default Team and access its events follow (3.110.1). ?>
+                <?php $this->render_series_access( $user, (int) $term_id ); ?>
+                </section>
+
+            </div><?php // .uc-bento-side ?>
+            </div><?php // .uc-bento ?>
         </form>
 
         <?php if ( $term ) : ?>
@@ -11087,28 +11108,21 @@ class SFAF_Portal {
             }
             ?>
 
-            <?php
-            /*
-             * A BUTTON, AND NOTHING ELSE. 3.18.0.
-             *
-             * There was a card here, with a heading and a paragraph explaining
-             * that removal asks before it acts. The paragraph described the
-             * next screen instead of letting the reader get to it: everything
-             * it said, the two options and the real counts, is on that screen,
-             * stated better, with the numbers filled in. Explaining a
-             * confirmation in front of the control that opens it is a longer
-             * road to the same place.
-             *
-             * A LINK, NOT A SUBMIT. This used to post straight through to
-             * deletion behind a browser confirm(), which is one stray Return
-             * key away from acting. It opens render_series_remove(), which is
-             * where the choice is actually made.
-             */
-            ?>
-            <div class="uc-series-remove-row">
-                <a class="uc-btn uc-btn-danger" href="<?php echo esc_url( $this->url( 'series/remove/' . (int) $term_id ) ); ?>">Remove series</a>
-            </div>
         <?php endif; ?>
+        <?php
+        /*
+         * THE EVENT EDITOR'S BAR (3.116.0), sticky at the foot of the window,
+         * after the schedule so it is in reach from all of it. Save reaches
+         * the form by form=; Remove series is a red link at its left, as
+         * Delete is on Edit event, and opens the screen that asks.
+         */
+        ?>
+        <div class="uc-form-actions uc-form-actions-primary uc-editor-actions uc-editor-bar" data-uc-card="actions" data-uc-editor-bar data-uc-series-bar>
+            <?php if ( $term ) : ?>
+                <a class="uc-link-danger uc-editor-delete" href="<?php echo esc_url( $this->url( 'series/remove/' . (int) $term_id ) ); ?>">Remove series</a>
+            <?php endif; ?>
+            <button type="submit" form="uc-series-form" class="uc-btn uc-btn-go uc-editor-save-main uc-editor-save"><?php echo $term ? 'Save changes' : 'Create series'; ?></button>
+        </div>
         <?php
         $this->chrome_close();
     }
@@ -13497,8 +13511,7 @@ class SFAF_Portal {
                     </p>
                 <?php elseif ( '' === $group ) : ?>
                     <p class="uc-hint">
-                        These dates are not on a repeating pattern, so there is no pattern to change. Each one can still
-                        be edited on its own, and a date can be added below.
+                        These dates are not on a repeating pattern. Edit each one on its own, or add a date below.
                     </p>
                 <?php else : ?>
 
@@ -13650,9 +13663,8 @@ class SFAF_Portal {
                         <p class="uc-hint">
                             Copies <?php echo ( '' !== $seed_name ) ? '&ldquo;' . esc_html( $seed_name ) . '&rdquo;' : 'this event'; ?>
                             onto a date you choose: same location, description, times, category,
-                            organizer and questions. It starts with nobody registered, because registrations belong to
-                            the date they were made for. A time change to the group reaches it; a change to the pattern
-                            leaves it where you put it.
+                            organizer and questions, with nobody registered. A time change to the group reaches it; a
+                            change to the pattern leaves it where you put it.
                         </p>
                         <form method="post" action="<?php echo esc_url( $this->url( $back ) ); ?>" class="uc-form">
                             <input type="hidden" name="uc_action" value="schedule_add_date" />
@@ -13661,17 +13673,17 @@ class SFAF_Portal {
 
                             <div class="uc-field-row">
                                 <label class="uc-field">
-                                    <span class="uc-field-label">Date</span>
+                                    <span class="uc-field-label">Date<span class="uc-req" aria-hidden="true">*</span></span>
                                     <?php // min is today: this route copies an event forward, and a date in the
                                           // past would create a session that never happened. ?>
                                     <input type="date" name="date" min="<?php echo esc_attr( $today ); ?>" required />
                                 </label>
                                 <label class="uc-field">
-                                    <span class="uc-field-label">Start time</span>
+                                    <span class="uc-field-label">Start</span>
                                     <?php echo sfaf_time_field( 'start_time', $start, array( 'label' => 'Start time' ) ); ?>
                                 </label>
                                 <label class="uc-field">
-                                    <span class="uc-field-label">End time</span>
+                                    <span class="uc-field-label">End</span>
                                     <?php echo sfaf_time_field( 'end_time', $end, array( 'label' => 'End time' ) ); ?>
                                 </label>
                             </div>
@@ -13707,8 +13719,7 @@ class SFAF_Portal {
                             Create a new event in this series
                         </a>
                         <span class="uc-hint">For a date with different details: another location, another
-                            description. It joins the series for browsing and filtering, and is not tied to this
-                            schedule, so a change to the pattern or the times does not reach it.</span>
+                            description. A change to the pattern or the times does not reach it.</span>
                     </p>
                 </div>
             <?php endif; ?>
@@ -13872,11 +13883,11 @@ class SFAF_Portal {
 
                 <div class="uc-field-row">
                     <label class="uc-field">
-                        <span class="uc-field-label">Start time</span>
+                        <span class="uc-field-label">Start</span>
                         <?php echo sfaf_time_field( 'start_time', $ctx['start'], array( 'label' => 'Start time' ) ); ?>
                     </label>
                     <label class="uc-field">
-                        <span class="uc-field-label">End time</span>
+                        <span class="uc-field-label">End</span>
                         <?php echo sfaf_time_field( 'end_time', $ctx['end'], array( 'label' => 'End time' ) ); ?>
                     </label>
                 </div>
@@ -17638,7 +17649,6 @@ class SFAF_Portal {
             foreach ( $cp as $pid ) { if ( isset( $people[ $pid ] ) ) { $names[] = $people[ $pid ]; } }
             ?>
             <div class="uc-field" data-uc-series-access-readonly>
-                <span class="uc-field-label">Default team and access</span>
                 <p class="uc-muted"><?php echo $names ? esc_html( implode( ', ', $names ) ) : 'None.'; ?></p>
             </div>
             <?php
@@ -17647,7 +17657,6 @@ class SFAF_Portal {
         ?>
         <div class="uc-field uc-series-access" data-uc-series-access>
             <input type="hidden" name="series_access_present" value="1" />
-            <span class="uc-field-label">Default team and access</span>
             <p class="uc-hint">Events in this series get these teams and people until an event sets its own.</p>
             <?php
             $applied = get_transient( 'sfaf_series_access_applied_' . $user->ID );

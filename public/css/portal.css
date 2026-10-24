@@ -3700,6 +3700,8 @@ body.uc-modal-open { overflow: hidden; }
    control edge and no face. Two classes beat .uc-btn and its :hover, so both
    states are named. */
 .uc-editor-actions .uc-editor-delete  { margin-right: 20px; font-size: 14px; }
+/* The series page's bar has no caption to push Remove series left (3.116.0). */
+.uc-editor-actions[data-uc-series-bar] .uc-editor-delete { margin-right: auto; }
 .uc-editor-actions .uc-cancel-open,
 .uc-editor-actions .uc-cancel-open:hover { background: transparent; }
 /* ITS EDGE IS --p-muted, NOT --p-border-strong (3.113.4): on the grey bar the

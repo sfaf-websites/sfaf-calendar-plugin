@@ -2760,6 +2760,29 @@ Tags are set aside, §8.)
   editor says why, and the route refuses a constructed post. The ladder still
   holds in what each dialog says: cancelling keeps the registrations and offers
   to tell everybody; deleting keeps nothing and cannot be undone.
+### The series page is built like the editor (3.116.0)
+
+**The same layout, the same bar.** One form (`#uc-series-form`) holding the
+editor's two columns of `uc-bento-card` topic cards. **Main**: Title (the name,
+marked required and labelled by the card heading, and the slug), Series details
+(Featured Image, Description, Video), RSVP (the choice and the registration
+agreement), FAQs (the FAQ set). **Side**: Language, Classification (categories
+and organizers), Links (Donation link in emails), Team and access. Then the
+schedule, which posts its own forms, and after it the editor's sticky bar:
+Save changes (Create series on a new one), green, reaching the form by `form=`,
+and **Remove series as a red text link at its left**, as Delete is on Edit
+event, opening the screen that asks. The form carries `data-uc-leave-warn`, so
+leaving with unsaved changes warns, and "Fields marked * are required."
+
+**The words are the editor's.** No "Default" in front of a label; the card says
+what a field is and its hint says what an event takes from it. The schedule's
+times are Start and End.
+
+**The controls are still the series page's own** where they differ from the
+editor's: categories and organizers as ticks, the donation link as an address,
+Team and access drawn by `render_series_access()`. Bringing those to the
+editor's controls was not part of 3.116.0.
+
 ### The editor's cards, and the bar (3.107.0, series card moved 3.107.1)
 
 **Main column**: Series and language, Title, Schedule, Location,

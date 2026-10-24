@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 382 items.** Quick 311, needs real conditions 67, blocked on other
+**Outstanding: 383 items.** Quick 312, needs real conditions 67, blocked on other
 people 4.
 
 ---
@@ -4246,6 +4246,18 @@ series": No RSVP. Then sign in as an editor who lacks one of that series' events
 (Team and access): the series page shows the choice as words, with no control.
 
 **Why it needs a person:** real users, levels and teams on the real site.
+
+### 1.314 The series page as cards with the bar (3.116.0)
+
+Open a series in caladmin on a desktop and on a phone. Its fields sit in cards
+in two columns (one on a phone), the green Save changes stays at the foot of the
+window while you scroll, and Remove series is red text at the bar's left. Change
+the description, then click Series & Categories in the sidebar: the browser asks
+whether to leave. Save, and nothing is lost: name, picture, description, video,
+RSVP, agreement, FAQ set, language, categories, organizers, donation link and
+Team and access all as you set them.
+
+**Why it needs a person:** the real page under the real theme, and a real save.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
