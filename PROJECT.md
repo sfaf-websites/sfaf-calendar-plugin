@@ -2455,7 +2455,10 @@ series and set as its picture. It writes no `META_UPLOAD`, which is the event
 upload's notice to websites@. There is no URL box: the save reads
 `series_image_url` only when posted, and Remove (`reset_series_image`) clears
 the id and the URL. The wp.media branch of `render_image_picker()` and
-`bindImageField()` in portal.js have no caller left.
+`bindImageField()` in portal.js were removed in 3.117.0; every picker is the
+inline block, and `.claude/image-picker-test.php` reads what `initImageBlock()`
+requires. `wp_enqueue_media()` is still called on the three screens with a
+picker or a rich text box.
 
 **WHICH FOLDER A FILE LANDS IN IS THE WHOLE DECISION.**
 
@@ -5996,8 +5999,13 @@ exist and inferring an intention about it would be inventing one.
 The card holding who hears about an event (the creator, the recipient picker,
 anyone else), the message ticks and the reply-to was drawn only on Edit event,
 because `render_notify_box()` read the event's author and stored lists. On Add
-event the person adding it is the creator, the lists start empty and the
-reply-to starts on their address. **The save needed nothing new**: every field
+event the person adding it is the creator and the lists start empty.
+**Replies go to holds only the event's own address (3.117.0).** It was filled
+with the fallback (the creator's or the site's address), so a save stored the
+fallback as the event's own and the line "Empty sends replies to" sat beside a
+box that was never empty. The fallback is now the placeholder and the line
+under an empty box names it; an empty box saves as nothing, so the event
+follows the fallback at send time. **The save needed nothing new**: every field
 carries its own marker and `save_event_from_post()` inserts the post before it
 saves them. `.claude/notifications-card-test.php` renders both screens and
 compares the card's fields, and saves a new event with chosen recipients and

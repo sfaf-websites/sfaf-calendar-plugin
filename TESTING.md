@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 383 items.** Quick 312, needs real conditions 67, blocked on other
+**Outstanding: 384 items.** Quick 313, needs real conditions 67, blocked on other
 people 4.
 
 ---
@@ -4258,6 +4258,19 @@ RSVP, agreement, FAQ set, language, categories, organizers, donation link and
 Team and access all as you set them.
 
 **Why it needs a person:** the real page under the real theme, and a real save.
+
+### 1.315 The event editor's tidy-ups (3.117.0)
+
+On Edit event for an event with no reply-to of its own, Replies go to is empty
+with the creator's address greyed in it and named under it; type another
+address, save, and it stays. On Add event, Display has no Follow the series
+until a series is chosen in the dropdown. A scheduled event's bar has one green
+button, Schedule. Organizers is plural, and Capacity says what 0 does. A
+picture can still be chosen and uploaded on Add event, Edit event and the
+series page.
+
+**Why it needs a person:** the real editor on the real site, after the old
+media-box code was removed.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event

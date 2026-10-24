@@ -4,7 +4,7 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-23, at 3.116.0, **built from 3.115.0, from 3.114.0, from 3.113.8, from 3.113.7, from 3.113.6, from 3.113.5, from 3.113.4, from 3.113.3, from 3.113.2, from 3.113.1, from 3.113.0, from 3.111.0.** **The live site runs 3.113.7** (sfaf.org/calendar loads its calendar.css, 2026-10-22).
+**Last updated:** 2026-10-24, at 3.117.0, **built from 3.116.0, from 3.115.0, from 3.114.0, from 3.113.8, from 3.113.7, from 3.113.6, from 3.113.5, from 3.113.4, from 3.113.3, from 3.113.2, from 3.113.1, from 3.113.0, from 3.111.0.** **The live site runs 3.113.7** (sfaf.org/calendar loads its calendar.css, 2026-10-22).
 
 ---
 
@@ -21,7 +21,7 @@ layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 the one before's, proved by `embed-identity-test.php`, so all are 3.111.0's but for
 3.113.1's contact email link and **the event page flyer** (3.113.3; 3.113.4 makes it find the picture).
 **3.113.2** puts staff requests on the MarCom team **by name** (`TESTING.md` 1.296). **3.113.3**:
-the RSVP card's one choice, one solid button on Edit event's bar, Notifications copy. **3.113.4**: the bar grey. **3.113.5**: the bar white under a Dark Gray rule, floating. **3.113.6**: an English | Español toggle on the RSVP form; each registration keeps its language (**schema 15**) and every email to that person speaks it (`TESTING.md` 1.302, 1.303, 2.66). Its embed is 3.113.5's; the event page's form changes. **3.113.7**: the EveryAction panel keeps the last fetch row by row (`TESTING.md` 2.67). **3.113.8**: the RSVP form one height in both languages; **every recorded time was UTC on the site and is Pacific now** (`PROJECT.md` 7); no map for "Online"; imported pictures whole on the event page; EveryAction rows' Public_URL; the sidebar's month buttons are secondary buttons, the embed's one change; the series screen's picture is the event editor's picker with + Upload a picture (`TESTING.md` 1.304 to 1.309, 2.68). **3.114.0**: the WordPress event editor is administrators' only and no longer damages addresses or FAQ answers (**schema 16** repairs addresses once); Eventbrite's full description (`TESTING.md` 1.310 to 1.312, 2.69). Its embed is 3.113.8's. **3.115.0**: the series page's RSVP choice is the editor's three, behind the series access gate; Language with no series (`TESTING.md` 1.313). **3.116.0**: the series page in the editor's cards and bar (`TESTING.md` 1.314).
+the RSVP card's one choice, one solid button on Edit event's bar, Notifications copy. **3.113.4**: the bar grey. **3.113.5**: the bar white under a Dark Gray rule, floating. **3.113.6**: an English | Español toggle on the RSVP form; each registration keeps its language (**schema 15**) and every email to that person speaks it (`TESTING.md` 1.302, 1.303, 2.66). Its embed is 3.113.5's; the event page's form changes. **3.113.7**: the EveryAction panel keeps the last fetch row by row (`TESTING.md` 2.67). **3.113.8**: the RSVP form one height in both languages; **every recorded time was UTC on the site and is Pacific now** (`PROJECT.md` 7); no map for "Online"; imported pictures whole on the event page; EveryAction rows' Public_URL; the sidebar's month buttons are secondary buttons, the embed's one change; the series screen's picture is the event editor's picker with + Upload a picture (`TESTING.md` 1.304 to 1.309, 2.68). **3.114.0**: the WordPress event editor is administrators' only and no longer damages addresses or FAQ answers (**schema 16** repairs addresses once); Eventbrite's full description (`TESTING.md` 1.310 to 1.312, 2.69). Its embed is 3.113.8's. **3.115.0**: the series page's RSVP choice is the editor's three, behind the series access gate; Language with no series (`TESTING.md` 1.313). **3.116.0**: the series page in the editor's cards and bar (`TESTING.md` 1.314). **3.117.0**: editor tidy-ups, the media box code removed (1.315).
 > **3.110.1: EDITORS NO LONGER HAVE EVERY EVENT.** A team decides which events a
 > person has; their level decides what they can do on them (CLAUDE.md 7,
 > `PROJECT.md` 5). An editor has what they created and what **Team and
@@ -75,7 +75,7 @@ and from 3.111.0 `calendar-files/` for PDFs, beside them.
 
 ## In flight
 
-- **The event-page alignment, releases 1 to 8 (3.114.0 to 3.121.0)**, from the 2026-10-23 audit, one release at a time; 3.116.0 is release 3.
+- **The event-page alignment, releases 1 to 8 (3.114.0 to 3.121.0)**, from the 2026-10-23 audit, one release at a time; 3.117.0 is release 4.
 - **Following a series is half built.** 3.53.0 established the followers; nothing
   sends them. `PROJECT.md` 8, then `TESTING.md` 1.22.
 - **Automated fetching is ON and its own copy says it should not be**, and only
@@ -86,7 +86,7 @@ and from 3.111.0 `calendar-files/` for PDFs, beside them.
 
 ## Outstanding, and only Mark can move it
 
-**`TESTING.md` holds the manual testing backlog: 383 items**, 19 of them marked set
+**`TESTING.md` holds the manual testing backlog: 384 items**, 19 of them marked set
 aside until their 3.112.x feature returns. **1.0** (installing 3.113.7 and its
 first hour), then **1.287** (how many events now send the two emails), **1.281**
 (the hidden age values), **1.279** (the dialogs), **1.284** (the Notifications

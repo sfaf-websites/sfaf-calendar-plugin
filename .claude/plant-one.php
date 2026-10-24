@@ -141,10 +141,10 @@ $edits = array(
         "        \$this->load_media  = true;\n        \$this->load_editor = true;\n        wp_enqueue_media();\n\n        \$this->chrome_open( \$user, 'series' );",
         "        \$this->chrome_open( \$user, 'series' );" ),
 
-    /* The renderer drops a hook the binder needs, so every picker dies. */
+    /* The renderer drops a hook the block needs, so every picker dies. */
     'picker-hook-gone' => array( $P,
-        '               data-uc-image-id value="<?php echo (int) $a[\'id_value\']; ?>" />',
-        '               value="<?php echo (int) $a[\'id_value\']; ?>" />' ),
+        '<span class="uc-image-pill" data-uc-img-source-tag',
+        '<span class="uc-image-pill"' ),
 
     /* A second caller of wp_editor(), which is a second control with its own
      * rules. This is the 3.43.1 duplication in a worse place. */

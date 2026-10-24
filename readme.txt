@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.116.0
+Stable tag: 3.117.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,16 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.117.0 =
+
+**Event editor tidy-ups and old code removed. The embed is 3.116.0's.**
+
+* **Replies go to shows only the event's own address.** With none, the box is empty, the address replies will go to is greyed in it and named under it, and saving leaves it empty, so replies follow the creator or the site default. It used to be filled in with that address and saved it as the event's own.
+* **Follow the series appears only on an event in a series**, and on Add event it appears as soon as a series is chosen.
+* **A scheduled event has one green button**, Schedule; Save changes beside it is the plain button.
+* **Organizers** is plural, like Categories, **Capacity says that 0 sends everybody to the waitlist**, and the guided tour no longer sends you to the Images screen to upload a picture.
+* **Removed code nothing used**: the old WordPress media box behind the picture picker, and the fundraising figures control, which no screen offered.
 
 = 3.116.0 =
 

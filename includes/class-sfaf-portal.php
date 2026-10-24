@@ -8293,7 +8293,7 @@ class SFAF_Portal {
             array( 'schedule', 'Schedule', 'Pick the date and the start and end times. For an event that repeats, choose how often and the plugin creates every date for you.' ),
             array( 'location', 'Location', 'Pick a venue from the list, or choose A different location and type an address. Tick online for a video event, or hybrid when people can come in person or join online.' ),
             array( 'registration', 'RSVP', 'Choose RSVP Here to take RSVPs on this calendar, or External RSVP and paste the link to the other site. Set a capacity if places are limited, leave it empty for no limit, or type 0 to send everyone to the waitlist. Add questions if you need to ask registrants something before the event.' ),
-            array( 'details', 'Event details', 'Write the description. Use Insert image to put a picture inside it. For the featured picture, choose one from the calendar folder; upload new pictures on the Images screen first.' ),
+            array( 'details', 'Event details', 'Write the description. Use Insert image to put a picture inside it. For the featured picture, choose one or use + Upload a picture for this event.' ),
             array( 'faqs', 'FAQs', 'Add questions and answers for this event, or apply a saved set and edit it. To make a set you can reuse, create it on the FAQ Sets screen.' ),
             array( 'classification', 'Classification', 'Add at least one category and one organizer. A category is the kind of event, such as a support group or a fundraiser, and drives the calendar filters. An organizer is the SFAF program or team hosting the event, and its events are listed together on the calendar.' ),
             array( 'notifications', 'Notifications', 'Choose who is told when people register or cancel, and who gets the reminder copies. Set the reply address for the reminder email.' ),
@@ -9013,7 +9013,7 @@ class SFAF_Portal {
      * @return string[]
      */
     private function manager_field_order() {
-        return array( 'image', 'description', 'category', 'organizer', 'fundraising_progress', 'private' );
+        return array( 'image', 'description', 'category', 'organizer', 'private' );
     }
 
     /**
@@ -9336,17 +9336,7 @@ class SFAF_Portal {
             'series_only'     => false,
         ), $args );
 
-        $inline = ! empty( $a['inline'] );
         ?>
-        <?php if ( ! $inline ) : ?>
-        <input type="hidden" name="<?php echo esc_attr( $a['id_name'] ); ?>"
-               id="uc-featured-image-id-<?php echo esc_attr( $a['uid'] ); ?>"
-               data-uc-image-id value="<?php echo (int) $a['id_value']; ?>" />
-        <div class="uc-image-preview" id="uc-image-preview-<?php echo esc_attr( $a['uid'] ); ?>"
-             data-uc-image-preview<?php echo $a['preview'] ? '' : ' style="display:none;"'; ?>>
-            <img src="<?php echo esc_url( $a['preview'] ); ?>" alt="" data-uc-image-preview-img />
-        </div>
-        <?php else : ?>
             <?php
             $labels = $a['pill_labels'];
             $own    = $a['show_remove'];
@@ -9370,15 +9360,13 @@ class SFAF_Portal {
                 <?php // Enabled by Remove and disabled again by a choice; the save then clears the thumbnail and any stored URL. ?>
                 <input type="hidden" name="reset_series_image" value="1" data-uc-image-reset disabled />
             <?php endif; ?>
-        <?php endif; ?>
 
         <?php if ( '' !== $a['locked_note'] ) : ?>
-            <?php if ( $inline ) : ?></div><?php endif; ?>
+        </div>
             <p class="uc-hint"><?php echo esc_html( $a['locked_note'] ); ?></p>
             <?php return; ?>
         <?php endif; ?>
 
-        <?php if ( $inline ) : ?>
             <?php
             /*
              * THE REQUEST FORM'S PICKER, NOT THE MEDIA MODAL (3.94.0).
@@ -9457,43 +9445,6 @@ class SFAF_Portal {
             ?>
             <p class="uc-hint uc-image-outside" data-uc-image-outside<?php echo $outside ? '' : ' hidden'; ?>>Not in this series. It stays chosen until you pick another.</p>
         </div>
-        <?php else : ?>
-
-        <div class="uc-image-buttons">
-            <button type="button" class="uc-btn uc-btn-sm uc-choose-image">Choose Image</button>
-            <?php
-            /*
-             * THE WAY OUT OF THE SERIES FILTER (3.74.0). Rendered always and
-             * hidden by portal.js when there is no series to be narrowed to,
-             * because the whole control is JavaScript: a button that only makes
-             * sense once a frame exists cannot usefully be decided by PHP, and
-             * with no script neither button does anything at all.
-             */
-            ?>
-            <?php
-            /*
-             * NOT `hidden` IN THE MARKUP ANY MORE (3.90.0), AND THAT ATTRIBUTE
-             * IS WHY THIS BUTTON HAS NEVER BEEN SEEN.
-             *
-             * The note above says it is "rendered always and hidden by
-             * portal.js when there is no series". Only the second half was
-             * true. It was rendered hidden HERE, and portal.js only ever sets
-             * `hidden = true` for the no-series case; nothing has ever removed
-             * it, and no stylesheet reveals it. So the way out of the series
-             * filter has been invisible since 3.74.0, which is the sixth
-             * control in this project found built and unreachable.
-             *
-             * Rendered VISIBLE now and hidden by the script when there is
-             * nothing to escape from, which is what the comment always claimed.
-             * With no script both buttons show; the second one then opens the
-             * same unfiltered library the first does, which is harmless and is
-             * the honest no-script behaviour.
-             */
-            ?>
-            <button type="button" class="uc-btn uc-btn-sm uc-choose-image" data-uc-media-all>All calendar images</button>
-            <button type="button" class="uc-btn uc-btn-sm uc-link-danger uc-remove-image"<?php echo $a['show_remove'] ? '' : ' style="display:none;"'; ?>>Remove</button>
-        </div>
-        <?php endif; ?>
         <?php echo $a['after_buttons']; // Already-built markup from the caller. ?>
         <?php if ( $a['show_url'] ) : ?>
         <label class="uc-field uc-image-url-field">
@@ -9521,25 +9472,7 @@ class SFAF_Portal {
          */
         ?>
         <p class="uc-hint uc-hint-spec"><strong><?php echo esc_html( SFAF_Uploads::RULE_MESSAGE ); ?></strong></p>
-        <?php
-        /*
-         * WHAT THE PICKER WILL SHOW, SAID BEFORE IT IS OPENED.
-         *
-         * A picker that opens on eleven pictures when the media library holds
-         * four hundred reads as broken unless somebody was told to expect it.
-         * One line, and it also says where an upload goes, which is the answer
-         * to the next question. The empty case gets a different line, because
-         * then the same screen means something else has gone wrong and the
-         * person needs to know it is not them.
-         */
-        ?>
-        <?php if ( $inline ) : ?>
-            <?php // The grouped picker says what each group holds, empty or not. ?>
-        <?php elseif ( $a['folder_has_any'] ) : ?>
-            <p class="uc-hint">Choose Image shows the calendar folder only, so everything in it is already the right shape. Anything you upload here goes into that folder.</p>
-        <?php else : ?>
-            <p class="uc-field-note uc-field-note-attention"><?php echo $this->icon_needs(); ?><span>The calendar folder has no images in it yet, so Choose Image will look empty. Uploading one here puts it in the folder. If you expected pictures to be there, check that the folder is still <code>uploads/<?php echo esc_html( SFAF_Media_Folder::FOLDER ); ?></code>.</span></p>
-        <?php endif; ?>
+        <?php // The grouped picker says what each group holds, empty or not. ?>
         <?php
     }
 
@@ -9812,7 +9745,7 @@ class SFAF_Portal {
                             <label class="uc-check" data-uc-chip-label="<?php echo esc_attr( $c->name ); ?>">
                                 <input type="checkbox" name="category[]" value="<?php echo (int) $c->term_id; ?>"
                                        data-uc-chip-color="<?php echo esc_attr( sfaf_category_color( $c->term_id ) ); ?>"
-                                       <?php checked( in_array( (int) $c->term_id, $current, true ) ); ?> />
+                                       <?php checked( in_array( (int) $c->term_id, $current, true ) ); ?><?php echo $this->field_disabled( $state ); ?> />
                                 <?php echo esc_html( $c->name ); ?>
                             </label>
                         <?php endforeach; endif; ?>
@@ -9856,7 +9789,7 @@ class SFAF_Portal {
                 ?>
                 <div class="uc-field uc-cat-field uc-org-field<?php echo esc_attr( $this->field_class( $state ) ); ?>"<?php echo $this->field_watch_attr( 'organizer', $state ); ?>
                      data-uc-chips>
-                    <span class="uc-field-label">Organizer<?php echo $this->publish_mark( 'organizer', $ctx['screen'] ); ?> <?php echo $this->field_badge( $state, $label ); ?></span>
+                    <span class="uc-field-label">Organizers<?php echo $this->publish_mark( 'organizer', $ctx['screen'] ); ?> <?php echo $this->field_badge( $state, $label ); ?></span>
 
                     <?php // The marker, for the reason every other multi-value
                           // control on this form has one: every box unticked
@@ -9919,40 +9852,6 @@ class SFAF_Portal {
                  * The save half is gone too; see save_event_from_post().
                  */
                 ?>
-                <?php
-                break;
-
-            case 'fundraising_progress':
-                $on     = ( '1' === (string) get_post_meta( $event_id, sfaf_fundraising_progress_meta_key(), true ) );
-                $goal   = (float) get_post_meta( $event_id, '_uc_gofundme_goal', true );
-                $raised = get_post_meta( $event_id, '_uc_gofundme_raised', true );
-                $has_r  = ( '' !== $raised && is_numeric( $raised ) );
-                ?>
-                <div class="uc-field uc-fund-field">
-                    <span class="uc-field-label">Fundraising progress</span>
-                    <?php // The hidden 0 is what makes an unticked box mean off
-                          // rather than "not submitted". Both screens post this
-                          // control on its own, so absent-means-unchanged would
-                          // make the toggle impossible to switch back off. ?>
-                    <input type="hidden" name="show_fund_progress" value="0" />
-                    <label class="uc-check">
-                        <input type="checkbox" name="show_fund_progress" value="1" <?php checked( $on ); ?> />
-                        Show the raised and goal figures on this event
-                    </label>
-                    <p class="uc-hint">
-                        Off by default. Nothing about the money appears anywhere until this is ticked, on this event.
-                        <?php if ( $goal > 0 && $has_r ) : ?>
-                            Currently $<?php echo esc_html( number_format( (float) $raised ) ); ?> raised of $<?php echo esc_html( number_format( $goal ) ); ?>.
-                        <?php elseif ( $goal > 0 ) : ?>
-                            There is a $<?php echo esc_html( number_format( $goal ) ); ?> goal but no raised figure yet, so ticking this shows nothing until one arrives. A goal on its own reads as zero raised.
-                        <?php else : ?>
-                            No goal has come from the campaign yet, so there is nothing to show.
-                        <?php endif; ?>
-                    </p>
-                    <?php if ( '' !== $ctx['prov']['source'] ) : ?>
-                        <p class="uc-hint">This choice is yours permanently. A fetch never changes it.</p>
-                    <?php endif; ?>
-                </div>
                 <?php
                 break;
 
@@ -10080,21 +9979,7 @@ class SFAF_Portal {
         }
 
         /*
-         * The fundraising toggle. Written only when the control was on the
-         * form, so a screen that does not offer it cannot silently switch it
-         * off. And because the control always posts a hidden 0 beside the
-         * checkbox, a screen that DOES offer it always says which way.
-         */
-        if ( isset( $_POST['show_fund_progress'] ) ) {
-            update_post_meta(
-                $event_id,
-                sfaf_fundraising_progress_meta_key(),
-                ( '1' === (string) wp_unslash( $_POST['show_fund_progress'] ) ) ? '1' : '0'
-            );
-        }
-
-        /*
-         * PRIVATE. Same marker discipline as the toggle above: written only
+         * PRIVATE. Written only
          * when the control was on the form, and the control always posts a
          * hidden 0 beside the checkbox so a screen that offers it always says
          * which way.
@@ -14725,9 +14610,13 @@ class SFAF_Portal {
                         $lock = ( 'show_calendar' === $f && $takes_rsvps )
                             || ( 'show_rsvp' === $f && $event_id && ( ! $accepts || $hybrid_show ) );
                         ?>
+                        <?php /* Follow the series only on an event in one (3.117.0); the
+                                 script follows the series dropdown. Hidden, the tick still
+                                 posts, so the stored choice is kept. */ ?>
                         <label class="uc-check<?php echo $lock ? ' uc-check-locked' : ''; ?>"<?php
                             echo 'show_calendar' === $f ? ' data-uc-calendar-check' : ''; ?><?php
-                            echo 'show_rsvp' === $f ? ' data-uc-rsvp-show-check' : ''; ?>>
+                            echo 'show_rsvp' === $f ? ' data-uc-rsvp-show-check' : ''; ?><?php
+                            echo 'show_reminders' === $f ? ' data-uc-follow-check' . ( (int) $cur_series ? '' : ' hidden' ) : ''; ?>>
                             <input type="checkbox" name="<?php echo esc_attr( $f ); ?>" value="1" <?php checked( $on ); ?><?php
                                 echo $lock ? ' disabled' : ''; ?> />
                             <?php echo esc_html( $lbl ); ?>
@@ -15281,6 +15170,11 @@ class SFAF_Portal {
                 if ( $can_decide ) {
                     $save_main = '';
                 }
+                /* A SCHEDULED EVENT (3.117.0): Schedule is the green main
+                   action, so Save changes is the plain button beside it. */
+                if ( $keep_status && 'future' === $live && $show_publish ) {
+                    $save_main = '';
+                }
                 ?>
                 <button type="submit" form="<?php echo esc_attr( $form_id ); ?>" name="save_mode" value="<?php echo $keep_status ? 'keep' : 'draft'; ?>" class="uc-btn<?php echo esc_attr( $save_main ); ?> uc-editor-save"><?php echo $keep_status ? 'Save changes' : 'Save draft'; ?></button>
                 <?php
@@ -15475,32 +15369,6 @@ class SFAF_Portal {
         $this->chrome_close();
     }
 
-    /**
-     * Delete, at the bottom of the editor and after the cancel card.
-     *
-     * WHY IT IS NOT IN THE ROW OF ACTIONS AT THE TOP (3.74.0). Because of what
-     * it is next to there. Save and Publish are pressed dozens of times a day
-     * and Delete cannot be undone from this screen; putting an irreversible
-     * control in the row somebody's hand already goes to is how an event gets
-     * deleted by muscle memory. The events list learned the same thing in
-     * 3.73.0, which is why Remove there is the third icon and carries its red
-     * at rest.
-     *
-     * AND WHY IT IS AFTER THE CANCEL CARD RATHER THAN BEFORE IT. The two read
-     * as a ladder in the order somebody should try them: cancelling keeps the
-     * registrations, closes new ones, and offers to tell everybody who signed
-     * up; deleting keeps nothing and tells nobody. The reversible answer to
-     * "this event is not happening" is the one somebody meets first, and the
-     * irreversible one is last on the page.
-     *
-     * IT IS THE SAME ROUTE THE LIST POSTS, so it inherits the same refusal:
-     * an event with registrations that has not been cancelled cannot be
-     * deleted, and says why here rather than offering a button that bounces.
-     * See the trash_event case in dispatch_post().
-     *
-     * @param WP_User $user
-     * @param int     $event_id
-     */
     /**
      * The Delete button, for the actions row (3.94.0).
      *
@@ -16462,7 +16330,6 @@ class SFAF_Portal {
                  * hybrid event has. sfaf_capacity_meta_key() is still the one
                  * place that decides, and nothing migrates.
                  */
-                $s_cap_on = $this->field_state( 'capacity', $ctx['owned'], array(), $event_id );
                 $at_src   = ( $event_id && SFAF_Sources::takes_rsvps_at_source( $event_id ) );
                 ?>
                 <div class="uc-field uc-capacity-row<?php echo esc_attr( $this->field_class( $s_cap ) ); ?>" data-uc-capacity-row>
@@ -16491,17 +16358,12 @@ class SFAF_Portal {
                                 <span class="uc-capacity-box-label">Online</span>
                                 <input type="number" name="capacity_online" min="0" placeholder="No limit"
                                        aria-label="Capacity, online"
-                                       value="<?php echo esc_attr( $g( '_uc_capacity_online' ) ); ?>"<?php echo $this->field_disabled( $s_cap_on ); ?> />
+                                       value="<?php echo esc_attr( $g( '_uc_capacity_online' ) ); ?>"<?php echo $this->field_disabled( $s_cap ); ?> />
                             </label>
                         <?php endif; ?>
                     </div>
-                    <?php
-                    /*
-                     * NO HINT FROM 3.107.0. An empty box is unlimited, which the
-                     * placeholder says, and 0 is no places: every registration
-                     * goes to the waitlist. See sfaf_capacity_limited().
-                     */
-                    ?>
+                    <?php // What 0 does, as the request forms say it (3.117.0). See sfaf_capacity_limited(). ?>
+                    <span class="uc-hint">Enter 0 to send everybody to the waitlist.</span>
                 </div>
                 <?php
                 break;
@@ -16591,19 +16453,26 @@ class SFAF_Portal {
                     // indistinguishable to the person reading them and to a
                     // screen reader.
                     ?>
+                    <?php
+                    /* THE EVENT'S OWN ADDRESS ONLY (3.117.0). The box was filled
+                       with the fallback, so a save stored it as the event's own
+                       and "Empty sends replies to" sat beside a box that never
+                       was. The fallback is the placeholder now. */
+                    ?>
                     <input type="email" name="event_replyto" id="uc-event-replyto"
-                           value="<?php echo esc_attr( '' !== $reply_current ? $reply_current : $reply_resolved ); ?>"
+                           value="<?php echo esc_attr( $reply_current ); ?>"
                            <?php echo $reply_rejected ? ' class="uc-invalid" aria-invalid="true" aria-describedby="uc-event-replyto-error"' : ''; ?>
-                           placeholder="events@sfaf.org" />
+                           placeholder="<?php echo esc_attr( '' !== (string) $reply_resolved ? $reply_resolved : 'events@sfaf.org' ); ?>" />
                     <?php if ( $reply_rejected ) : ?>
                         <p class="uc-field-error" id="uc-event-replyto-error" data-uc-for="uc-event-replyto" role="alert">
                             <?php echo esc_html( 'Not an email address, so it was not saved: ' . $reply_rejected ); ?>
                         </p>
                     <?php endif; ?>
-                    <?php if ( '' === $reply_current && 'setting' === $reply_source ) : ?>
-                        <span class="uc-hint">Empty sends replies to the site-wide default in Settings.</span>
-                    <?php elseif ( '' === $reply_current && 'author' !== $reply_source ) : ?>
-                        <span class="uc-hint">Empty sends replies to the address the mail comes from.</span>
+                    <?php if ( '' !== $reply_current ) : ?>
+                    <?php elseif ( '' !== (string) $reply_resolved ) : ?>
+                        <span class="uc-hint">Leave it empty to send replies to <?php echo esc_html( $reply_resolved ); ?>.</span>
+                    <?php else : ?>
+                        <span class="uc-hint">Leave it empty to send replies to the address the mail comes from.</span>
                     <?php endif; ?>
                 </label>
                 </div>

@@ -85,85 +85,59 @@ if ( count( $methods ) < 50 ) {
 
 /* ---------------------------------------------------------------------------
  * 1. WHAT THE SCRIPT REQUIRES, read out of the script.
+ *
+ * FROM 3.117.0 IT IS initImageBlock(). The wp.media binder, bindImageField(),
+ * went with the last screen that used it; every picker is the inline block,
+ * and the block's script returns before binding anything when a part is
+ * missing. Its guard is read, and each variable it names is mapped to the
+ * attribute it was found by.
  * ------------------------------------------------------------------------ */
-$bind_at = strpos( $js, 'function bindImageField' );
+$bind_at = strpos( $js, 'function initImageBlock' );
 if ( false === $bind_at ) {
-    echo "Cannot run: bindImageField() is not in portal.js. It was renamed.\n";
+    echo "Cannot run: initImageBlock() is not in portal.js. It was renamed.\n";
     exit( 1 );
 }
-$bind = substr( $js, $bind_at, 2200 );
+$bind = substr( $js, $bind_at, 1400 );
 
-/* Every data attribute the binder looks for, and whether it bails without it. */
-preg_match_all( "#querySelector\('\[(data-uc-image[a-z\-]*)\]'\)#", $bind, $m );
-$hooks = array_values( array_unique( $m[1] ) );
-
-/*
- * The ones inside an early return are the ones that stop it dead.
- *
- * ALL the guards, not the first. bindImageField() opens with `if (!chooseBtn)
- * return;` and the interesting one is further down, so preg_match() found the
- * button guard and stopped, and this file reported one required hook while
- * happily passing. That is the same shape as the fault it is written about.
- */
 $required = array();
-preg_match_all( '#if \(!([^)]*)\)\s*\{\s*return;#', $bind, $guards, PREG_SET_ORDER );
-foreach ( $guards as $guard ) {
-    foreach ( array(
-        'idInput'    => 'data-uc-image-id',
-        'previewImg' => 'data-uc-image-preview-img',
-        'preview'    => 'data-uc-image-preview',
-    ) as $var => $attr ) {
-        /* previewImg is checked before preview so the longer name wins its
-         * own attribute rather than matching as a prefix of it. */
-        if ( preg_match( '/\b' . preg_quote( $var, '/' ) . '\b/', $guard[1] ) && ! in_array( $attr, $required, true ) ) {
-            $required[] = $attr;
+if ( preg_match( '#if \(!([^)]*)\)\s*\{\s*return;\s*\}#', $bind, $guard ) ) {
+    foreach ( array_map( 'trim', explode( '|| !', $guard[1] ) ) as $var ) {
+        if ( preg_match( '#var ' . preg_quote( $var, '#' ) . " = block\.querySelector\('\[([a-z\-]+)\]'\)#", $bind, $mm ) ) {
+            $required[] = $mm[1];
         }
     }
 }
-/* The button is required too: no button, no listener, and it returns first.
- *
- * TWO TRIGGERS SINCE 3.74.0, so this reads querySelectorAll as well as
- * querySelector. The series filter added an "All calendar images" button beside
- * Choose Image, and both carry the same class; what the markup has to provide
- * is unchanged, which is why the answer this feeds is unchanged. */
-if ( preg_match( "#querySelectorAll?\('\.(uc-choose-image)'\)#", $bind ) ) {
-    $required[] = 'class:uc-choose-image';
-}
+/* The picker itself is SFAF_Media::picker()'s, so render_image_picker() owes
+   the rest. */
+$required = array_values( array_diff( $required, array( 'data-uc-image-picker' ) ) );
+$required[] = 'data-uc-image-block';
 
-if ( count( $required ) < 4 ) {
-    $fails[] = 'only ' . count( $required ) . ' required hook(s) were read out of bindImageField(); this file cannot check what it cannot see';
+if ( count( $required ) < 5 ) {
+    $fails[] = 'only ' . count( $required ) . ' required hook(s) were read out of initImageBlock(); this file cannot check what it cannot see';
 }
 
 /* ---------------------------------------------------------------------------
  * 2. ONE PLACE EMITS THEM.
  *
- * The hooks are what a picker IS. Counting the methods that emit them is
+ * The block is what a picker IS. Counting the methods that emit it is
  * counting the pickers, and there must be exactly one.
  * ------------------------------------------------------------------------ */
 $emitters = array();
 foreach ( $methods as $name => $body ) {
-    if ( false !== strpos( $body, 'data-uc-image-id' ) ) {
+    if ( false !== strpos( $body, 'data-uc-image-block' ) ) {
         $emitters[] = $name;
     }
 }
 if ( array( 'render_image_picker' ) !== $emitters ) {
-    $fails[] = 'the picker hooks are emitted by [' . implode( ', ', $emitters )
+    $fails[] = 'the picker block is emitted by [' . implode( ', ', $emitters )
         . '], and must be emitted by render_image_picker() alone; a second copy is how the series screen silently stopped working';
 }
 
 /*
- * AND THE PARTS A BROKEN COPY WOULD STILL HAVE.
- *
- * The check above counts copies that carry the data hooks, which is a second
- * WORKING picker. The fault this file exists for was a second BROKEN one: it
- * had the button, the preview and the hidden input under the old element ids
- * and none of the hooks, so counting hooks did not see it. Planting exactly
- * that is what showed the hole.
- *
- * These are the structural parts. Wherever one appears, the whole picker is
- * being written out by hand, whether or not that copy would work.
+ * AND THE PARTS A BROKEN COPY WOULD STILL HAVE: the preview, the reset and
+ * the URL box. Wherever one appears, the picker is being written out by hand.
  */
-foreach ( array( 'uc-choose-image', 'uc-image-preview', 'uc-remove-image', 'uc-image-url-field' ) as $part ) {
+foreach ( array( 'uc-image-preview', 'data-uc-image-reset', 'uc-image-url-field' ) as $part ) {
     $where = array();
     foreach ( $methods as $name => $body ) {
         if ( false !== strpos( $body, $part ) ) {
@@ -175,13 +149,12 @@ foreach ( array( 'uc-choose-image', 'uc-image-preview', 'uc-remove-image', 'uc-i
             . '], and belongs to render_image_picker() alone; anywhere else is a hand-written picker, which is what stopped working on the series screen';
     }
 }
-
 /* Everything the binder needs is in that one renderer. */
 $picker = isset( $methods['render_image_picker'] ) ? $methods['render_image_picker'] : '';
 foreach ( $required as $need ) {
     $needle = ( 0 === strpos( $need, 'class:' ) ) ? substr( $need, 6 ) : $need;
     if ( false === strpos( $picker, $needle ) ) {
-        $fails[] = "render_image_picker() does not emit $needle, which bindImageField() requires before it will bind the button";
+        $fails[] = "render_image_picker() does not emit $needle, which initImageBlock() requires before it will bind anything";
     }
 }
 
@@ -379,7 +352,7 @@ if ( $self ) {
  * ------------------------------------------------------------------------ */
 echo "Image pickers in caladmin\n";
 echo str_repeat( '=', 72 ) . "\n";
-printf( "required by bindImageField(): %s\n", implode( ', ', $required ) );
+printf( "required by initImageBlock(): %s\n", implode( ', ', $required ) );
 printf( "emitted by:                   %s\n", implode( ', ', $emitters ) );
 printf( "wrappers:                     %s\n", implode( ', ', $wrappers ) );
 printf( "screens loading the library:  %s\n", implode( ', ', $screens ) );
