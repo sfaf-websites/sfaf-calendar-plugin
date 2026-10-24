@@ -160,7 +160,7 @@ if ( in_array( '--run', array_slice( $argv, 1 ), true ) ) {
     $normal = array( '13x13', '13x16', '14x14', '15x15', '16x16', '18x18' );
 
     $s = isset( $got['series'] ) ? $got['series'] : array();
-    foreach ( array( 'category' => array( 'Default categories', array( '12' ) ), 'organizer' => array( 'Default organizers', array( '11' ) ) ) as $k => $want ) {
+    foreach ( array( 'category' => array( 'Categories', array( '12' ) ), 'organizer' => array( 'Organizers', array( '11' ) ) ) as $k => $want ) {
         $g = isset( $s[ $k ] ) ? $s[ $k ] : array();
         sl_check( ! empty( $g['seen'] ), "series: the $k defaults are not on the screen" );
         sl_check( isset( $g['label'] ) && $want[0] === $g['label'], "series: the $k group is labelled " . ( isset( $g['label'] ) ? $g['label'] : 'nothing' ) );

@@ -183,7 +183,7 @@ rt( '8: the preview shows the series picture', (bool) preg_match( '#data-uc-imag
 rt( '8: Remove is on it', (bool) preg_match( '#data-uc-image-remove>Remove#', $block ), true );
 rt( '8: a save with no row on keeps the stored picture', false !== strpos( $block, '<input type="hidden" name="series_image_id" value="8101" />' ), true );
 rt( '8: "+ Upload a picture", under the picture rule', (bool) preg_match( '#<span>\+ Upload a picture</span>\s*<input type="file" name="uc_series_picture"[^>]*data-uc-event-upload\s+data-uc-rule-width="1200"\s+data-uc-rule-height="675"\s+data-uc-rule-bytes="512000"#', $block ), true );
-rt( '8: the form can carry the file', (bool) preg_match( '#<form method="post" action="[^"]*series/edit/11"[^>]*enctype="multipart/form-data"#', $s ), true );
+rt( '8: the form can carry the file', (bool) preg_match( '#<form method="post"[^>]*action="[^"]*series/edit/11"[^>]*enctype="multipart/form-data"#', $s ), true );
 
 update_term_meta( 11, SFAF_Series::META_IMAGE_ID, 8102 );
 $s = rt8_screen( $portal, 11 );

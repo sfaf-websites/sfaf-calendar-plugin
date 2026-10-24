@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Series - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.115.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.115.0" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.115.0" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.116.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.116.0" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.116.0" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.115.0" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.116.0" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -148,17 +148,18 @@
             <h1>Alpha</h1>
             <a href="https://resources.sfaf.org/caladmin/series" class="uc-btn">&larr; Back</a>
         </div>
-                    <p class="uc-help">This event and all of its dates. The schedule is below the series details.</p>
         
-                <form method="post" action="https://resources.sfaf.org/caladmin/series/edit/11" class="uc-form" enctype="multipart/form-data">
+                <form method="post" id="uc-series-form" action="https://resources.sfaf.org/caladmin/series/edit/11" class="uc-form" enctype="multipart/form-data" data-uc-leave-warn>
             <input type="hidden" name="uc_action" value="save_series" />
             <input type="hidden" name="series_id" value="11" />
-            <input type="hidden" name="uc_nonce" value="nonce" />
-            <div class="uc-card">
-                <div class="uc-card-head"><h2>Series details</h2></div>
+            <input type="hidden" name="uc_nonce" value="nonce" />            <p class="uc-hint uc-required-note">Fields marked * are required.</p>
+
+                        <div class="uc-bento">
+            <div class="uc-bento-main">
+                <section class="uc-bento-card" data-uc-card="title">
+                    <h2 class="uc-bento-title" id="uc-series-title-heading">Title<span class="uc-req" aria-hidden="true">*</span></h2>
                 <label class="uc-field">
-                    <span class="uc-field-label">Series name</span>
-                    <input type="text" name="series_name" value="Alpha" required />
+                    <input type="text" name="series_name" value="Alpha" required aria-labelledby="uc-series-title-heading" />
                 </label>
                         <label class="uc-field uc-slug-field">
             <span class="uc-field-label">Slug</span>
@@ -166,9 +167,12 @@
                    maxlength="190" autocomplete="off" spellcheck="false" required />
             <span class="uc-hint">In its web address and in embed code. Change it and the old one keeps working.</span>
         </label>
-        
+                        </section>
+
+                <section class="uc-bento-card" data-uc-card="details">
+                    <h2 class="uc-bento-title">Series details</h2>
                                                 <div class="uc-field uc-image-field" data-uc-media-folder="calendar" data-uc-media-flag="uc_calendar_media" data-uc-media-series="11" data-uc-media-upload="1" data-uc-media-folder-empty="1">
-                    <span class="uc-field-label">Image</span>
+                    <span class="uc-field-label">Featured Image</span>
                                                 <div class="uc-image-block" data-uc-image-block
              data-uc-series-pictures="{}"
              data-uc-image-start="none"
@@ -243,7 +247,7 @@
 
                                 <div class="uc-field">
                     <span class="uc-field-label">Description</span>
-                    <textarea name="series_desc" id="uc-series-desc">&lt;p&gt;Coffee and conversation.&lt;/p&gt;</textarea>                    <span class="uc-hint">Shown on the series page, including while it has no dates scheduled.</span>
+                    <textarea name="series_desc" id="uc-series-desc">&lt;p&gt;Coffee and conversation.&lt;/p&gt;</textarea>                    <span class="uc-hint">Shown on the series page.</span>
                 </div>
 
                                 <label class="uc-field">
@@ -253,46 +257,15 @@
                            placeholder="https://www.youtube.com/watch?v=&hellip;"
                             />
                                         <span class="uc-hint">
-                        A YouTube or Vimeo link. Paste the address from the browser bar, not embed code.
+                        Paste a YouTube or Vimeo address from the browser bar, not embed code.
                         It plays on every event in this series unless that event has its own.
                     </span>
                 </label>
+                </section>
 
-                                                <label class="uc-field">
-                    <span class="uc-field-label">Default language</span>
-                    <select name="series_language">
-                                                    <option value="en"  selected="selected">English</option>
-                                                    <option value="es" >Spanish</option>
-                                            </select>
-                    <span class="uc-hint">Messages to registrants of events in this series go out in this language unless the event sets its own.</span>
-                </label>
-
-                <label class="uc-field">
-                    <span class="uc-field-label">Donation link</span>
-                    <input type="url" name="series_donate_url"
-                           value=""
-                           placeholder="https://donate.sfaf.org/&hellip;" />
-                    <span class="uc-hint">Goes in the confirmation and reminder emails of every event in this series set to Series link. Leave empty to use the SFAF default.</span>
-                </label>
-
-                                <div class="uc-field">
-                    <span class="uc-field-label" id="uc-series-agreement-label">Default registration agreement</span>
-                    <textarea name="series_agreement" id="uc-series-agreement"></textarea>                    <span class="uc-hint">Used by events in this series that ask registrants to agree and have no text of their own.</span>
-                </div>
-
-                                        <div class="uc-field uc-series-access" data-uc-series-access>
-            <input type="hidden" name="series_access_present" value="1" />
-            <span class="uc-field-label">Default team and access</span>
-            <p class="uc-hint">Events in this series get these teams and people until an event sets its own.</p>
-                                                            <label class="uc-check uc-series-access-apply">
-                <input type="checkbox" name="series_access_apply" value="1" data-uc-series-access-apply />
-                Apply to all upcoming events in this series
-            </label>
-            <span class="uc-hint">Events that set their own keep it and gain these teams and people.</span>
-        </div>
-        
+                <section class="uc-bento-card" data-uc-card="registration">
+                    <h2 class="uc-bento-title">RSVP</h2>
                                 <div class="uc-field" data-uc-series-rsvp>
-                    <span class="uc-field-label">RSVP</span>
                                             <div class="uc-reg-choice" data-uc-reg-choice>
                                     <fieldset class="uc-reg-where" data-uc-reg-where>
             <legend class="uc-visually-hidden">RSVP</legend>
@@ -326,9 +299,41 @@
                         <span class="uc-hint">New events in this series start on this.</span>
                                     </div>
 
+                                <div class="uc-field">
+                    <span class="uc-field-label" id="uc-series-agreement-label">Registration agreement</span>
+                    <textarea name="series_agreement" id="uc-series-agreement"></textarea>                    <span class="uc-hint">Used by events in this series that ask registrants to agree and have no text of their own.</span>
+                </div>
+                </section>
+
+                <section class="uc-bento-card" data-uc-card="faqs">
+                    <h2 class="uc-bento-title">FAQs</h2>
+                <label class="uc-field">
+                    <span class="uc-field-label">FAQ set</span>
+                    <select name="series_faq_set">
+                        <option value="">None</option>
+                                            </select>
+                    <span class="uc-hint">Its questions are added to an event that joins this series with no questions of its own.</span>
+                </label>
+                </section>
+
+            </div>            <div class="uc-bento-side">
+                <section class="uc-bento-card" data-uc-card="language">
+                    <h2 class="uc-bento-title">Language</h2>
+                                <label class="uc-field">
+                    <span class="uc-field-label">Language</span>
+                    <select name="series_language">
+                                                    <option value="en"  selected="selected">English</option>
+                                                    <option value="es" >Spanish</option>
+                                            </select>
+                    <span class="uc-hint">Emails to people who register for its events go out in this language, unless an event sets its own.</span>
+                </label>
+                </section>
+
+                <section class="uc-bento-card" data-uc-card="classification">
+                    <h2 class="uc-bento-title">Classification</h2>
                                 <input type="hidden" name="uc_series_defaults_present" value="1" />
                 <div class="uc-field uc-series-default" data-uc-series-default="category" role="group" aria-labelledby="uc-series-default-category">
-                    <span class="uc-field-label" id="uc-series-default-category">Default categories</span>
+                    <span class="uc-field-label" id="uc-series-default-category">Categories</span>
                                             <div class="uc-check-grid">
                                                             <label class="uc-check">
                                     <input type="checkbox" name="series_categories[]" value="11"
@@ -343,7 +348,7 @@
                 </div>
 
                 <div class="uc-field uc-series-default" data-uc-series-default="organizer" role="group" aria-labelledby="uc-series-default-organizer">
-                    <span class="uc-field-label" id="uc-series-default-organizer">Default organizers</span>
+                    <span class="uc-field-label" id="uc-series-default-organizer">Organizers</span>
                                             <div class="uc-check-grid">
                                                             <label class="uc-check">
                                     <input type="checkbox" name="series_organizers[]" value="11"
@@ -356,19 +361,33 @@
                                                     </div>
                                         <span class="uc-hint">Given to an event that joins this series with no organizer. Events already in it keep their own.</span>
                 </div>
+                </section>
 
-                <label class="uc-field">
-                    <span class="uc-field-label">Default FAQ set</span>
-                    <select name="series_faq_set">
-                        <option value="">None</option>
-                                            </select>
+                <section class="uc-bento-card" data-uc-card="links">
+                    <h2 class="uc-bento-title">Links</h2>
+                                <label class="uc-field">
+                    <span class="uc-field-label">Donation link in emails</span>
+                    <input type="url" name="series_donate_url"
+                           value=""
+                           placeholder="https://donate.sfaf.org/&hellip;" />
+                    <span class="uc-hint">Goes in the confirmation and reminder emails of every event in this series set to Series link. Leave empty to use the SFAF default.</span>
                 </label>
-            </div>
+                </section>
 
-            <div class="uc-form-actions">
-                <button type="submit" class="uc-btn uc-btn-primary">Save Series</button>
-            </div>
-        </form>
+                <section class="uc-bento-card" data-uc-card="access">
+                    <h2 class="uc-bento-title">Team and access</h2>
+                                        <div class="uc-field uc-series-access" data-uc-series-access>
+            <input type="hidden" name="series_access_present" value="1" />
+            <p class="uc-hint">Events in this series get these teams and people until an event sets its own.</p>
+                                                            <label class="uc-check uc-series-access-apply">
+                <input type="checkbox" name="series_access_apply" value="1" data-uc-series-access-apply />
+                Apply to all upcoming events in this series
+            </label>
+            <span class="uc-hint">Events that set their own keep it and gain these teams and people.</span>
+        </div>
+                        </section>
+
+            </div>            </div>        </form>
 
                             <div class="uc-card uc-schedule">
             <div class="uc-card-head">
@@ -383,8 +402,7 @@
                 <p class="uc-schedule-sentence">Friday, November 20, 2026, 10–11:30 am</p>
 
                                     <p class="uc-hint">
-                        These dates are not on a repeating pattern, so there is no pattern to change. Each one can still
-                        be edited on its own, and a date can be added below.
+                        These dates are not on a repeating pattern. Edit each one on its own, or add a date below.
                     </p>
                 
                 
@@ -417,9 +435,8 @@
                                                 <summary><span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="15px" height="15px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>Copy &ldquo;Coffee social&rdquo; onto another date</summary>
                         <p class="uc-hint">
                             Copies &ldquo;Coffee social&rdquo;                            onto a date you choose: same location, description, times, category,
-                            organizer and questions. It starts with nobody registered, because registrations belong to
-                            the date they were made for. A time change to the group reaches it; a change to the pattern
-                            leaves it where you put it.
+                            organizer and questions, with nobody registered. A time change to the group reaches it; a
+                            change to the pattern leaves it where you put it.
                         </p>
                         <form method="post" action="https://resources.sfaf.org/caladmin/series/edit/11" class="uc-form">
                             <input type="hidden" name="uc_action" value="schedule_add_date" />
@@ -427,11 +444,11 @@
                             <input type="hidden" name="uc_nonce" value="nonce" />
                             <div class="uc-field-row">
                                 <label class="uc-field">
-                                    <span class="uc-field-label">Date</span>
-                                                                        <input type="date" name="date" min="2026-10-23" required />
+                                    <span class="uc-field-label">Date<span class="uc-req" aria-hidden="true">*</span></span>
+                                                                        <input type="date" name="date" min="2026-10-24" required />
                                 </label>
                                 <label class="uc-field">
-                                    <span class="uc-field-label">Start time</span>
+                                    <span class="uc-field-label">Start</span>
                                         <span class="uc-timepick" role="group" aria-label="Start time">
         <select name="start_time_h"
                                 class="uc-timepick-h"
@@ -482,7 +499,7 @@
     </span>
                                     </label>
                                 <label class="uc-field">
-                                    <span class="uc-field-label">End time</span>
+                                    <span class="uc-field-label">End</span>
                                         <span class="uc-timepick" role="group" aria-label="End time">
         <select name="end_time_h"
                                 class="uc-timepick-h"
@@ -553,22 +570,22 @@
                             Create a new event in this series
                         </a>
                         <span class="uc-hint">For a date with different details: another location, another
-                            description. It joins the series for browsing and filtering, and is not tied to this
-                            schedule, so a change to the pattern or the times does not reach it.</span>
+                            description. A change to the pattern or the times does not reach it.</span>
                     </p>
                 </div>
                     </div>
         
-                        <div class="uc-series-remove-row">
-                <a class="uc-btn uc-btn-danger" href="https://resources.sfaf.org/caladmin/series/remove/11">Remove series</a>
-            </div>
-                                </main>
+                        <div class="uc-form-actions uc-form-actions-primary uc-editor-actions uc-editor-bar" data-uc-card="actions" data-uc-editor-bar data-uc-series-bar>
+                            <a class="uc-link-danger uc-editor-delete" href="https://resources.sfaf.org/caladmin/series/remove/11">Remove series</a>
+                        <button type="submit" form="uc-series-form" class="uc-btn uc-btn-go uc-editor-save-main uc-editor-save">Save changes</button>
+        </div>
+                        </main>
             </div>
         </div>
         <script type="application/json" id="uc-session-config">{"ajax":"https:\/\/resources.sfaf.org\/wp-admin\/admin-ajax.php","action":"sfaf_caladmin_session","signin":"https:\/\/resources.sfaf.org\/caladmin","screen":"dashboard","signedIn":true}</script>
-<script src="../public/js/caladmin-session.js?ver=3.115.0"></script>
-<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.115.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.115.0"></script>
-<script src="../public/js/portal.js?ver=3.115.0"></script>
+<script src="../public/js/caladmin-session.js?ver=3.116.0"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.116.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.116.0"></script>
+<script src="../public/js/portal.js?ver=3.116.0"></script>
 <script>window.CS_PAGE="caladmin-series-edit";(function () {
 var out = { page: window.CS_PAGE, errors: [], caps: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
