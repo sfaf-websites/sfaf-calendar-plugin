@@ -309,7 +309,10 @@ while ( have_posts() ) :
                              * never the meeting link; see
                              * sfaf_event_format_line().
                              */
-                            $format_line = '' !== sfaf_event_format_line( $post_id ) ? sfaf_page_label( $post_id, 'in_person_online' ) : '';
+                            $format_line = sfaf_event_format_line( $post_id );
+                            if ( '' !== $format_line ) {
+                                $format_line = sfaf_page_label( $post_id, 'in_person_online' );
+                            }
                             ?>
                             <?php if ( '' !== $format_line ) : ?>
                                 <li>

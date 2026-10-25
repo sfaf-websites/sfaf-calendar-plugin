@@ -60,7 +60,7 @@ $S = mk_term( SFAF_Series::TAXONOMY, 'Support group' );
 $A = wc_event( 'Support group', '+10', $S );
 $B = wc_event( 'Support group', '+12', $S );
 $past    = wc_event( 'Support group', '-7', $S );
-$begun   = wc_event( 'Support group', '+0', $S, array( '_uc_start_time' => date( 'H:i', strtotime( '-1 hour' ) ), '_uc_end_time' => '23:59' ) );
+$begun   = wc_event( 'Support group', '+0', $S, array( '_uc_start_time' => date( 'H:i', max( strtotime( 'today' ), strtotime( '-1 hour' ) ) ), '_uc_end_time' => '23:59' ) );
 $C       = wc_event( 'Support group', '+17', $S );
 $draft   = wc_event( 'Support group', '+20', $S, array(), 'draft' );
 $off     = wc_event( 'Support group', '+24', $S, array( SFAF_Cancellation::META => '1', SFAF_Cancellation::VISIBILITY_META => 'stay' ) );

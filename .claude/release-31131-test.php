@@ -160,7 +160,7 @@ update_post_meta( $c3, SFAF_Submit::META_CONTACT, 'Call the front desk' );
 rt( '5: a box with no address is text', sfaf_event_public_contact_html( $c3 ), 'Call the front desk' );
 rt( '5: no contact is nothing', sfaf_event_public_contact_html( rt_event() ), '' );
 $tpl = (string) file_get_contents( $GLOBALS['kit_root'] . '/templates/single-uc_event.php' );
-rt( '5: the event page prints it', false !== strpos( $tpl, '<span class="uc-fact-label">Contact</span> <?php echo sfaf_event_public_contact_html( $post_id ); ?>' ), true );
+rt( '5: the event page prints it', false !== strpos( $tpl, '<span class="uc-fact-label"><?php echo esc_html( sfaf_page_label( $post_id, \'contact\' ) ); ?></span> <?php echo sfaf_event_public_contact_html( $post_id ); ?>' ), true );
 
 /* ======================================================================== 6 */
 $src = (string) file_get_contents( $GLOBALS['kit_root'] . '/includes/class-sfaf-portal.php' );
