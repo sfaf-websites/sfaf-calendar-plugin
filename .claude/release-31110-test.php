@@ -342,7 +342,8 @@ rt( 0 === sfaf_migrate_other_details() && 'A later one' === get_post_meta( $m4, 
 rt( (int) SFAF_DB_VERSION >= 14, 'F.3: the schema is not 14 or later' );
 
 /* The page's three lines. */
-rt( false !== strpos( $single, '<span class="uc-fact-label">Cost</span>' ) && false !== strpos( $single, '<span class="uc-fact-label">Ages</span>' ) && false !== strpos( $single, '<span class="uc-fact-label">Contact</span>' ),
+// Drawn by sfaf_page_label() from 3.120.0, which reads both languages on a Spanish event.
+rt( false !== strpos( $single, '<span class="uc-fact-label"><?php echo esc_html( sfaf_page_label( $post_id, \'cost\' ) ); ?></span>' ) && false !== strpos( $single, '<span class="uc-fact-label"><?php echo esc_html( sfaf_page_label( $post_id, \'ages\' ) ); ?></span>' ) && false !== strpos( $single, '<span class="uc-fact-label"><?php echo esc_html( sfaf_page_label( $post_id, \'contact\' ) ); ?></span>' ),
     'F.2: the page does not label Cost, Ages and Contact' );
 
 /* =========================================================================
