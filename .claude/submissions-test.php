@@ -351,63 +351,51 @@ if ( ! isset( $out['errors']['end_time'] ) ) {
 }
 
 /* =========================================================================
- * 3b. UP TO FIVE ADDRESSES ON THE ABOUT YOU FIELD (3.67.0).
+ * 3b. YOUR EMAIL, AND ONE MORE FOR RSVP UPDATES (3.118.0).
  *
- * The submitter's own is the FIRST of the five rather than additional to them,
- * so nothing about who submitted a thing changes; what changes is how many
- * people the approval tick can put on the event's notification list. That list
- * is sent registrant names and email addresses, which is why every one of the
- * assertions below is about REFUSING rather than about accepting.
+ * Until 3.118.0 About you took up to five addresses. It is the submitter's own
+ * now, and "Who should get RSVP updates?" takes one more. That list is sent
+ * registrant names and email addresses, which is why these are about REFUSING.
  * ====================================================================== */
 $out = SFAF_Submit::validate( good( array(
     'submitter_email' => array( 'dana@example.org', 'lee@example.org', 'sam@example.org' ),
 ) ) );
-expect( 'three addresses are kept, in the order they were given',
-    $out['clean']['submitter_emails'],
-    array( 'dana@example.org', 'lee@example.org', 'sam@example.org' ) );
-expect( 'and the first of them is the submitter',
+expect( 'only the submitter\'s own address is taken from About you',
+    $out['clean']['submitter_emails'], array( 'dana@example.org' ) );
+expect( 'and it is the submitter',
     $out['clean']['submitter_email'], 'dana@example.org' );
+
+$out = SFAF_Submit::validate( good( array( 'rsvp_updates_extra' => 'Lee@Example.org' ) ) );
+expect( 'the one more address follows it',
+    $out['clean']['submitter_emails'], array( 'dana@example.org', 'lee@example.org' ) );
 if ( ! empty( $out['errors'] ) ) {
-    fail( 'a submission with three addresses was refused: ' . implode( ', ', array_keys( $out['errors'] ) ) );
+    fail( 'a submission with one more address was refused: ' . implode( ', ', array_keys( $out['errors'] ) ) );
 }
 
-/* ONE ADDRESS STILL POSTS AS A STRING, which is what a browser with no script
- * sends and what every existing caller passes. */
+/* ONE ADDRESS STILL POSTS AS A STRING, which is what every existing caller passes. */
 $out = SFAF_Submit::validate( good() );
 expect( 'a single address still arrives as a list of one',
     $out['clean']['submitter_emails'], array( 'dana@example.org' ) );
 
-/* THE CAP IS THE SERVER'S, not the button's. A sixth is a hand-built body. */
-$out = SFAF_Submit::validate( good( array( 'submitter_email' => array(
-    'a@example.org', 'b@example.org', 'c@example.org',
-    'd@example.org', 'e@example.org', 'f@example.org',
-) ) ) );
-expect( 'the sixth address is dropped', count( $out['clean']['submitter_emails'] ), SFAF_Submit::MAX_EMAILS );
-if ( in_array( 'f@example.org', $out['clean']['submitter_emails'], true ) ) {
-    fail( 'an address past the cap was stored' );
-}
-
-/* A BAD ONE IS AN ERROR, NOT A SILENT DROP. Dropping it would promote the next
- * address to first, and the first is who the submission is recorded as being
- * from and who gets the confirmation. */
+/* A BAD ONE IS AN ERROR, NOT A SILENT DROP. */
 $out = SFAF_Submit::validate( good( array(
     'submitter_email' => array( 'not-an-address', 'lee@example.org' ),
 ) ) );
 if ( ! isset( $out['errors']['submitter_email'] ) ) {
     fail( 'an address that is not one was dropped silently, promoting the next to submitter' );
 }
+$out = SFAF_Submit::validate( good( array( 'rsvp_updates_extra' => 'nope' ) ) );
+if ( ! isset( $out['errors']['rsvp_updates_extra'] ) ) {
+    fail( 'a one more address that is not one was dropped silently' );
+}
 
 expect( 'the same address twice is stored once',
-    SFAF_Submit::validate( good( array( 'submitter_email' => array(
-        'dana@example.org', 'DANA@example.org',
-    ) ) ) )['clean']['submitter_emails'],
+    SFAF_Submit::validate( good( array( 'rsvp_updates_extra' => 'DANA@example.org' ) ) )['clean']['submitter_emails'],
     array( 'dana@example.org' ) );
 
-expect( 'an empty box between two filled ones is skipped rather than stored',
-    SFAF_Submit::validate( good( array( 'submitter_email' => array(
-        'dana@example.org', '', 'lee@example.org',
-    ) ) ) )['clean']['submitter_emails'],
-    array( 'dana@example.org', 'lee@example.org' ) );
+expect( 'an empty one more box is nothing',
+    SFAF_Submit::validate( good( array( 'rsvp_updates_extra' => '   ' ) ) )['clean']['submitter_emails'],
+    array( 'dana@example.org' ) );
 
 /* ---------------------------------------------------------------------------
  * "USE MY DETAILS AS THE PUBLIC CONTACT" (3.74.0)
@@ -741,11 +729,12 @@ if ( false === strpos( $submit_src, 'SFAF_Submissions::trapped' ) ) {
 if ( false === strpos( $submit_src, 'name="submitter_email[]"' ) ) {
     fail( 'the About you email field does not post as an array, so only one address can ever arrive' );
 }
-if ( false === strpos( $submit_src, 'data-repeater-max="<?php echo (int) self::MAX_EMAILS; ?>"' ) ) {
-    fail( 'the email repeater does not carry the cap the validator enforces, so the two can disagree' );
+/* One address from 3.118.0, and the one more is the shared RSVP updates control. */
+if ( false !== strpos( $submit_src, '+ Add email' ) || false !== strpos( $submit_src, 'data-repeater-max' ) ) {
+    fail( 'the five-address repeater is back on About you' );
 }
-if ( false === strpos( $submit_src, 'if ( count( $emails ) < self::MAX_EMAILS ) :' ) ) {
-    fail( 'the Add email button is rendered unconditionally; at the cap it must not be drawn at all' );
+if ( false === strpos( $submit_src, 'SFAF_Submissions::render_rsvp_updates(' ) ) {
+    fail( 'the community form does not ask who should get RSVP updates with the shared control' );
 }
 if ( false !== strpos( $submit_src, 'name="submitter_email"' ) ) {
     fail( 'a single-value submitter_email control is still rendered somewhere on this form' );
