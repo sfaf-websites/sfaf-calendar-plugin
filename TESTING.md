@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 387 items.** Quick 316, needs real conditions 67, blocked on other
+**Outstanding: 388 items.** Quick 317, needs real conditions 67, blocked on other
 people 4.
 
 ---
@@ -4310,6 +4310,14 @@ description is as typed, and an English event's page reads as before.
 
 **Why it needs a person:** the real page under sfaf.org's theme, and whether
 the longer labels fit.
+
+### 1.319 The series page's Previously list (3.121.0)
+
+Open the public page of a series with many dates ahead (a weekly group
+scheduled a year or more out): "Previously in this series" lists only dates
+that have passed, the most recent first, and "Upcoming dates" starts today.
+
+**Why it needs a person:** a real series with real dates on the live site.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event

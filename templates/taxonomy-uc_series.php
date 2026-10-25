@@ -36,8 +36,13 @@ $upcoming = SFAF_Series::events( $term->term_id, array( 'upcoming' => true, 'lim
 // often the most useful thing on the page for a programme somebody is deciding
 // whether to join. Newest first, and capped, because it is context and not the
 // point of the page.
-$all  = SFAF_Series::events( $term->term_id, array( 'limit' => 200, 'public_only' => true ) );
-$past = array_slice( array_reverse( array_values( array_diff( $all, $upcoming ) ) ), 0, 10 );
+//
+// ASKED FOR AS PAST (3.121.0). This took the first 200 dates and removed the
+// first 100 upcoming ones, so a series with more than 100 upcoming dates showed
+// the 101st onward under Previously. events() answers 'past' on the same
+// boundary as 'upcoming', earliest first, so the last ten reversed are the
+// newest.
+$past = array_slice( array_reverse( SFAF_Series::events( $term->term_id, array( 'past' => true, 'limit' => -1, 'public_only' => true ) ) ), 0, 10 );
 
 $settings   = get_option( 'uc_settings', array() );
 $brand_logo = isset( $settings['brand_logo'] ) ? $settings['brand_logo'] : '';

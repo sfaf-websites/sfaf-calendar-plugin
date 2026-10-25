@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.120.0
+Stable tag: 3.121.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,12 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.121.0 =
+
+**The public series page lists only past dates under Previously. The embed is 3.120.0's.**
+
+* **"Previously in this series" shows the ten most recent past dates, newest first.** On a series with more than 100 dates ahead it was listing upcoming dates there too. Upcoming dates is unchanged.
 
 = 3.120.0 =
 

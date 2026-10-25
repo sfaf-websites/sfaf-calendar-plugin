@@ -6119,6 +6119,15 @@ message: tables, a plain-text part, one yellow button (Open your events).
 day is not rebuilt every fifteen minutes. Filters can only narrow what the gate
 allows; they never widen it.
 
+### The public series page's past dates (3.121.0)
+
+"Previously in this series" is `SFAF_Series::events()` asked for `'past'`, every
+one, the last ten reversed: the ten newest, newest first. It was the first 200
+dates less the first 100 upcoming, so a series with more than 100 upcoming
+dates listed upcoming ones as past. "Upcoming dates" is unchanged, the first
+100. `.claude/release-31210-test.php` renders the template with 120 upcoming
+dates.
+
 ### A Spanish event's page reads its labels in both languages (3.120.0)
 
 **When an event's language is Spanish (its own or its series'), the event page's
@@ -8436,6 +8445,55 @@ IIFE, a new function name is grepped for in the whole file before it is used.
 Decisions settled in conversation that have no code yet. They live here because
 a chat ends and this file does not. Move an entry into the body of this document
 when it ships, and delete it here.
+
+### Left to decide after the event-page alignment (2026-10-25)
+
+The 2026-10-23 audit was built as 3.114.0 to 3.121.0. Mark asked for the rest
+to be listed rather than built. None of it is agreed yet.
+
+- **The series page's own controls**: categories and organizers as ticks where
+  the editor has chips, the donation link as an address where the editor has a
+  dropdown, and Team and access drawn by its own markup rather than the shared
+  component.
+- **Series settings events follow live**: the agreement text, the language,
+  the video and the donation link can be changed by somebody who does not have
+  every event in the series. The RSVP choice was put behind that gate in
+  3.115.0; these were not, by request.
+- **The meeting link's delivery ticks** start ticked on Add event and unticked
+  on Edit event for an event that stored none. Making them match could start
+  sending a link somebody had turned off.
+- **Editing an Eventbrite event's description in caladmin**: it is locked; a
+  fetch now leaves a hand edit alone (3.114.0), so unlocking it is possible.
+- **The WordPress event editor, administrators only since 3.114.0**: the
+  per-event confirmation subject and body can be set only there; the Pardot
+  box saves a value nothing reads; Display Options keeps old names and skips the
+  hybrid rule; a mistyped Reply-To is erased silently; Repeat makes dates with
+  no series.
+- **A Spanish event's page** shows its dates and times in English (3.120.0 made
+  the labels bilingual, as asked).
+- **The public series page** shows no series video, no Follow, nothing about
+  how to register, and no categories or organizers; its back link goes to the
+  archive rather than the calendar; its empty state explains a process.
+- **Copy-rule lines still standing**: the review panel's "Said in words rather
+  than set as a schedule, because…" and "Their name and address are for
+  reaching them…"; the community form saying twice that somebody reviews it;
+  the cancel dialog's "an event that has simply vanished tells them nothing".
+- **The volunteer block** shows "8 spots remaining" when no number is known, and
+  a Galaxy need with a volunteer link shows two volunteer buttons.
+- **Edit event has no link to the RSVP list**, which CLAUDE.md 7 allows it.
+- **The event page and the series list pass a timestamp to `sfaf_ap_date()`**,
+  the trap in `DESIGN.md` 3; the day is right only while the formatter uses
+  `date_i18n`.
+- **Unused**: `sfaf_event_rsvp_url()`, `sfaf_ap_date_range()`,
+  `sfaf_series_dates_link()`, `sfaf_day_event_thumb()`, the `.uc-donate-block`
+  selector in calendar.js, and `render_image_picker()`'s `inline` argument.
+- **`.claude/plant-run.sh`** has five plants that no longer apply (nested form
+  twice, series order, the offer link on a cancelled event, Notifications
+  Edit-only). They were already stale at 3.113.8.
+- Smaller: the description's Insert image says "up to 10MB" beside the picture
+  rule's 500KB; Duplicate is only on the events list; a cancelled event that
+  stays listed has no marker in the series lists; the event page names no time
+  zone.
 
 ### Set aside with 3.112.x: built and released, then rolled back (3.113.0)
 
