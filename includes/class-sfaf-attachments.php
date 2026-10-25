@@ -229,7 +229,7 @@ class SFAF_Attachments {
                 . '</svg><span>Event flyer</span></div>';
         }
         $out .= sfaf_action_button( array(
-            'label'    => '' !== $typed ? $typed : 'View flyer (PDF)',
+            'label'    => '' !== $typed ? $typed : sfaf_page_label( $event_id, 'flyer' ),
             'href'     => $url,
             'variant'  => 'primary',
             'external' => true,

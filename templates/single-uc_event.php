@@ -10,6 +10,8 @@ get_header();
 
 while ( have_posts() ) :
     the_post();
+    // The page's own labels in both languages on a Spanish event (3.120.0).
+    sfaf_bilingual_page( get_the_ID() );
     $post_id = get_the_ID();
 
     $date       = get_post_meta( $post_id, '_uc_event_date', true );
@@ -64,13 +66,11 @@ while ( have_posts() ) :
                 $why = trim( (string) get_post_meta( $post_id, '_uc_cancelled_reason', true ) );
                 ?>
                 <div class="uc-single-cancelled" role="status">
-                    <p class="uc-cancelled-head">This event has been cancelled.</p>
+                    <p class="uc-cancelled-head"><?php echo esc_html( sfaf_page_label( $post_id, 'cancelled' ) ); ?></p>
                     <?php if ( '' !== $why ) : ?>
                         <p class="uc-cancelled-why"><?php echo esc_html( $why ); ?></p>
                     <?php endif; ?>
-                    <p class="uc-cancelled-note">
-                        It is not going ahead. If you RSVP'd, you do not need to do anything.
-                    </p>
+                    <p class="uc-cancelled-note"><?php echo esc_html( sfaf_page_label( $post_id, 'cancelled_note' ) ); ?></p>
                 </div>
             <?php endif; ?>
 
@@ -91,7 +91,7 @@ while ( have_posts() ) :
              * it is followed.
              */
             ?>
-            <a href="<?php echo esc_url( sfaf_calendar_return_url() ); ?>" class="uc-single-back">&larr; All Events</a>
+            <a href="<?php echo esc_url( sfaf_calendar_return_url() ); ?>" class="uc-single-back">&larr; <?php echo esc_html( sfaf_page_label( $post_id, 'all_events' ) ); ?></a>
 
             <header class="uc-single-header">
                 <div class="uc-single-badges">
@@ -104,7 +104,7 @@ while ( have_posts() ) :
                         <span class="uc-badge uc-badge-recurrence"><?php echo sfaf_icon( 'repeat' ); ?> <?php echo esc_html( $recurrence_label ); ?></span>
                     <?php endif; ?>
                     <?php if ( sfaf_is_galaxy_need( $post_id ) ) : ?>
-                        <span class="uc-badge uc-badge-volunteer"><?php echo sfaf_icon( 'handshake' ); ?> Volunteer</span>
+                        <span class="uc-badge uc-badge-volunteer"><?php echo sfaf_icon( 'handshake' ); ?> <?php echo esc_html( sfaf_page_label( $post_id, 'volunteer_badge' ) ); ?></span>
                     <?php endif; ?>
                 </div>
 
@@ -127,7 +127,7 @@ while ( have_posts() ) :
                 $organizer_phrase = SFAF_Organizers::phrase( $post_id );
                 if ( '' !== $organizer_phrase ) :
                 ?>
-                    <p class="uc-single-organizer">Hosted by <?php echo esc_html( $organizer_phrase ); ?></p>
+                    <p class="uc-single-organizer"><?php echo esc_html( sfaf_page_label( $post_id, 'hosted_by' ) ); ?> <?php echo esc_html( $organizer_phrase ); ?></p>
                 <?php endif; ?>
 
                 <?php
@@ -309,7 +309,7 @@ while ( have_posts() ) :
                              * never the meeting link; see
                              * sfaf_event_format_line().
                              */
-                            $format_line = sfaf_event_format_line( $post_id );
+                            $format_line = '' !== sfaf_event_format_line( $post_id ) ? sfaf_page_label( $post_id, 'in_person_online' ) : '';
                             ?>
                             <?php if ( '' !== $format_line ) : ?>
                                 <li>
@@ -320,15 +320,14 @@ while ( have_posts() ) :
                             <?php if ( SFAF_Online::is_online( $post_id ) ) : ?>
                                 <li>
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'video' ); ?></span>
-                                    <span><?php echo esc_html( SFAF_Online::LABEL ); ?></span>
+                                    <span><?php echo esc_html( sfaf_page_label( $post_id, 'online_event' ) ); ?></span>
                                 </li>
                             <?php elseif ( $location ) : ?>
                                 <li>
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'pin' ); ?></span>
-                                    <?php // A plain link to Google Maps, which costs a
-                                          // visitor nothing until they follow it. The map
-                                          // itself is further down, behind a button. ?>
-                                    <span><a class="uc-fact-maplink" href="<?php echo esc_url( sfaf_map_search_url( $location ) ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $location ); ?></a></span>
+                                    <?php // A plain link to Google Maps, showing the address
+                                          // under the place name (3.120.0). ?>
+                                    <span><a class="uc-fact-maplink" href="<?php echo esc_url( sfaf_map_search_url( $location ) ); ?>" target="_blank" rel="noopener noreferrer"><?php $addr_line = sfaf_event_address_line( $post_id ); echo esc_html( '' !== $addr_line ? $addr_line : $location ); ?></a></span>
                                 </li>
                             <?php endif; ?>
                             <?php
@@ -343,38 +342,30 @@ while ( have_posts() ) :
                              * on the page that nobody made.
                              *
                              * Every one of these came from a public form, so
-                             * every one is escaped as text. The registration link
-                             * is the single exception and it is the reason
-                             * sfaf_event_rsvp_url() re-checks the scheme on the
-                             * way out rather than trusting what was stored.
+                             * every one is escaped as text. The community form's
+                             * registration link is not shown here from 3.120.0:
+                             * it is the event's External RSVP since 3.111.0.
                              */
                             $cost    = sfaf_event_cost( $post_id );
                             $ages    = sfaf_event_age_restriction( $post_id );
                             $contact = sfaf_event_public_contact( $post_id );
-                            $signup  = sfaf_event_rsvp_url( $post_id );
                             ?>
                             <?php if ( '' !== $cost ) : ?>
                                 <li>
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'ticket' ); ?></span>
-                                    <span data-uc-fact="cost"><span class="uc-fact-label">Cost</span> <?php echo esc_html( $cost ); ?></span>
+                                    <span data-uc-fact="cost"><span class="uc-fact-label"><?php echo esc_html( sfaf_page_label( $post_id, 'cost' ) ); ?></span> <?php echo esc_html( $cost ); ?></span>
                                 </li>
                             <?php endif; ?>
                             <?php if ( '' !== $ages ) : ?>
                                 <li>
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'users' ); ?></span>
-                                    <span data-uc-fact="ages"><span class="uc-fact-label">Ages</span> <?php echo esc_html( $ages ); ?></span>
+                                    <span data-uc-fact="ages"><span class="uc-fact-label"><?php echo esc_html( sfaf_page_label( $post_id, 'ages' ) ); ?></span> <?php echo esc_html( $ages ); ?></span>
                                 </li>
                             <?php endif; ?>
                             <?php if ( '' !== $contact ) : ?>
                                 <li>
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'mail' ); ?></span>
-                                    <span data-uc-fact="contact"><span class="uc-fact-label">Contact</span> <?php echo sfaf_event_public_contact_html( $post_id ); ?></span>
-                                </li>
-                            <?php endif; ?>
-                            <?php if ( '' !== $signup ) : ?>
-                                <li>
-                                    <span class="uc-fact-icon"><?php echo sfaf_icon( 'link' ); ?></span>
-                                    <span><a href="<?php echo esc_url( $signup ); ?>" target="_blank" rel="noopener noreferrer nofollow ugc">Register for this event</a></span>
+                                    <span data-uc-fact="contact"><span class="uc-fact-label"><?php echo esc_html( sfaf_page_label( $post_id, 'contact' ) ); ?></span> <?php echo sfaf_event_public_contact_html( $post_id ); ?></span>
                                 </li>
                             <?php endif; ?>
                             <?php
@@ -392,7 +383,7 @@ while ( have_posts() ) :
                             if ( '' !== $venue_site ) : ?>
                                 <li>
                                     <span class="uc-fact-icon"><?php echo sfaf_icon( 'home' ); ?></span>
-                                    <span><a href="<?php echo esc_url( $venue_site ); ?>" target="_blank" rel="noopener noreferrer nofollow ugc">Venue website</a></span>
+                                    <span><a href="<?php echo esc_url( $venue_site ); ?>" target="_blank" rel="noopener noreferrer nofollow ugc"><?php echo esc_html( sfaf_page_label( $post_id, 'venue_site' ) ); ?></a></span>
                                 </li>
                             <?php endif; ?>                        </ul>
 
@@ -420,6 +411,7 @@ while ( have_posts() ) :
         </div>
     </div>
     <?php
+    sfaf_bilingual_page( 0 );
 endwhile;
 
 get_footer();

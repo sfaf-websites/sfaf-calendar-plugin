@@ -942,7 +942,7 @@ function sfaf_social_share_buttons( $post_id, $compact = false ) {
     ob_start();
     ?>
     <div class="uc-share<?php echo $compact ? ' uc-share-compact' : ''; ?>">
-        <span class="uc-share-label">Share:</span>
+        <span class="uc-share-label"><?php echo esc_html( sfaf_page_label( $post_id, 'share' ) ); ?></span>
         <?php foreach ( $links as $key => $l ) : ?>
             <a class="uc-share-btn uc-share-<?php echo esc_attr( $key ); ?>"
                href="<?php echo esc_url( $l['url'] ); ?>"
@@ -1093,7 +1093,7 @@ function sfaf_add_to_calendar( $post_id ) {
     ob_start();
     ?>
     <div class="uc-addcal">
-        <button type="button" class="uc-addcal-toggle"><?php echo sfaf_icon( 'calendar' ); ?> Add to Calendar</button>
+        <button type="button" class="uc-addcal-toggle"><?php echo sfaf_icon( 'calendar' ); ?> <?php echo esc_html( sfaf_page_label( $post_id, 'add_calendar' ) ); ?></button>
         <div class="uc-addcal-menu">
             <?php if ( $google ) : ?>
                 <a href="<?php echo esc_url( $google ); ?>" target="_blank" rel="noopener noreferrer">Google Calendar</a>
@@ -1169,14 +1169,14 @@ function sfaf_follow_series_button( $post_id ) {
      */
     if ( sfaf_is_embed_context() ) {
         return '<a class="uc-follow-btn uc-embed-link" href="' . esc_url( get_permalink( $post_id ) ) . '">'
-            . sfaf_icon( 'bell' ) . ' Follow this series</a>';
+            . sfaf_icon( 'bell' ) . ' ' . esc_html( sfaf_page_label( $post_id, 'follow' ) ) . '</a>';
     }
 
     ob_start();
     ?>
     <button type="button" class="uc-follow-btn"
             data-series-id="<?php echo (int) $term_id; ?>"
-            data-series-name="<?php echo esc_attr( SFAF_Series::name_for_event( $post_id ) ); ?>"><?php echo sfaf_icon( 'bell' ); ?> Follow this series</button>
+            data-series-name="<?php echo esc_attr( SFAF_Series::name_for_event( $post_id ) ); ?>"><?php echo sfaf_icon( 'bell' ); ?> <?php echo esc_html( sfaf_page_label( $post_id, 'follow' ) ); ?></button>
     <?php
     return ob_get_clean();
 }
@@ -1220,7 +1220,7 @@ function sfaf_rsvp_block( $post_id ) {
         $prov = SFAF_Sources::provenance( $post_id );
         return '<div class="uc-card-rsvp uc-card-rsvp-source">'
             . sfaf_action_button( array(
-                'label'   => 'Register on ' . $prov['label'],
+                'label'   => sfaf_page_label( $post_id, 'register_on', $prov['label'] ),
                 'href'    => $at_source,
                 'variant' => 'primary',
                 /*
@@ -1278,7 +1278,7 @@ function sfaf_rsvp_block( $post_id ) {
      * with one format still open the button stays RSVP, and the form offers
      * the waitlist for the full one when it is picked.
      */
-    $rsvp_label = sfaf_event_full( $post_id ) ? 'Join the waitlist' : 'Register';
+    $rsvp_label = sfaf_page_label( $post_id, sfaf_event_full( $post_id ) ? 'waitlist' : 'register' );
     $button = sfaf_is_embed_context()
         ? sfaf_action_button( array(
             'label'   => $rsvp_label,
@@ -1406,7 +1406,7 @@ function sfaf_volunteer_block( $post_id ) {
         return '';
     }
     return '<div class="uc-volunteer">' . sfaf_action_button( array(
-        'label'    => 'Volunteer for this event',
+        'label'    => sfaf_page_label( $post_id, 'volunteer' ),
         'href'     => $url,
         'variant'  => 'volunteer',
         'external' => true,
@@ -1580,7 +1580,7 @@ function sfaf_series_link( $post_id ) {
     }
 
     return '<a class="uc-series-link" href="' . esc_url( $url ) . '">'
-        . sfaf_icon( 'repeat' ) . ' Part of series: ' . esc_html( $term->name ) . '</a>';
+        . sfaf_icon( 'repeat' ) . ' ' . esc_html( sfaf_page_label( $post_id, 'part_of_series' ) ) . ' ' . esc_html( $term->name ) . '</a>';
 }
 
 /**
@@ -1605,7 +1605,7 @@ function sfaf_series_list_html( $post_id ) {
     ob_start();
     ?>
     <div class="uc-series-box" data-series>
-        <h3 class="uc-series-heading">Upcoming in this series</h3>
+        <h3 class="uc-series-heading"><?php echo esc_html( sfaf_page_label( $post_id, 'upcoming' ) ); ?></h3>
         <ul class="uc-series-list">
             <?php foreach ( $events as $eid ) :
                 $d  = get_post_meta( $eid, '_uc_event_date', true );
@@ -1662,7 +1662,7 @@ function sfaf_galaxy_block( $post_id ) {
         <span class="uc-galaxy-spots"><?php echo sfaf_icon( 'hand' ); ?> <?php echo esc_html( sfaf_volunteer_spots_text( $post_id ) ); ?></span>
         <?php if ( $signup ) : ?>
             <?php echo sfaf_action_button( array(
-                'label'    => 'Sign Up to Volunteer',
+                'label'    => sfaf_page_label( $post_id, 'sign_up_volunteer' ),
                 'href'     => $signup,
                 'variant'  => 'primary',
                 'external' => true,
@@ -1769,7 +1769,7 @@ function sfaf_faq_accordion_html( $post_id ) {
     ob_start();
     ?>
     <div class="uc-faq">
-        <h3 class="uc-faq-heading">Frequently Asked Questions</h3>
+        <h3 class="uc-faq-heading"><?php echo esc_html( sfaf_page_label( $post_id, 'faq' ) ); ?></h3>
         <div class="uc-faq-list">
             <?php foreach ( $faqs as $f ) : ?>
                 <div class="uc-faq-item">
@@ -3788,6 +3788,99 @@ function sfaf_ap_restate( $kind, $text, $lang ) {
  * @param int $event_id
  * @return string 'en' or 'es'
  */
+/**
+ * THE EVENT PAGE'S OWN LABELS (3.120.0), in both languages on a Spanish
+ * event's page: "Cost / Costo". English events are unchanged. Only the page's
+ * labels; what the organizer typed prints as typed, and the dates and times
+ * are as they were.
+ *
+ * ONLY ON THE EVENT PAGE. The template names its event with
+ * sfaf_bilingual_page( $id ) and clears it at the end, so a card, the embed or
+ * an email drawing the same helper gets English as before.
+ *
+ * @return array<string,string[]> key => array( English, Spanish )
+ */
+function sfaf_page_words() {
+    return array(
+        'all_events'        => array( 'All Events', 'Todos los eventos' ),
+        'cancelled'         => array( 'This event has been cancelled.', 'Este evento fue cancelado.' ),
+        'cancelled_note'    => array( "It is not going ahead. If you RSVP'd, you do not need to do anything.", 'No se llevará a cabo. Si se inscribió, no tiene que hacer nada.' ),
+        'hosted_by'         => array( 'Hosted by', 'Organizado por' ),
+        'part_of_series'    => array( 'Part of series:', 'Parte de la serie:' ),
+        'cost'              => array( 'Cost', 'Costo' ),
+        'ages'              => array( 'Ages', 'Edades' ),
+        'contact'           => array( 'Contact', 'Contacto' ),
+        'venue_site'        => array( 'Venue website', 'Sitio web del lugar' ),
+        'online_event'      => array( 'Online Event', 'Evento en línea' ),
+        'in_person_online'  => array( 'In person and online', 'En persona y en línea' ),
+        'faq'               => array( 'Frequently Asked Questions', 'Preguntas frecuentes' ),
+        'upcoming'          => array( 'Upcoming in this series', 'Próximas fechas de esta serie' ),
+        'getting_there'     => array( 'Getting there', 'Cómo llegar' ),
+        'flyer'             => array( 'View flyer (PDF)', 'Ver folleto (PDF)' ),
+        'register'          => array( 'Register', 'Inscribirse' ),
+        'waitlist'          => array( 'Join the waitlist', 'Únase a la lista de espera' ),
+        'register_on'       => array( 'Register on %s', 'Inscribirse en %s' ),
+        'add_calendar'      => array( 'Add to Calendar', 'Agregar al calendario' ),
+        'share'             => array( 'Share:', 'Compartir:' ),
+        'follow'            => array( 'Follow this series', 'Seguir esta serie' ),
+        'volunteer'         => array( 'Volunteer for this event', 'Ser voluntario en este evento' ),
+        'volunteer_badge'   => array( 'Volunteer', 'Voluntariado' ),
+        'sign_up_volunteer' => array( 'Sign Up to Volunteer', 'Inscribirse como voluntario' ),
+    );
+}
+
+/**
+ * The event whose page is being drawn, or 0. Pass an id to set it, 0 to clear.
+ *
+ * @param int|null $post_id
+ * @return int
+ */
+function sfaf_bilingual_page( $post_id = null ) {
+    static $id = 0;
+    if ( null !== $post_id ) {
+        $id = (int) $post_id;
+    }
+    return $id;
+}
+
+/**
+ * A page label: English, or "English / Español" on a Spanish event's own page.
+ *
+ * @param int    $post_id
+ * @param string $key A sfaf_page_words() key.
+ * @param string $arg Fills a %s in both languages.
+ * @return string Plain text; escape it where it is printed.
+ */
+function sfaf_page_label( $post_id, $key, $arg = '' ) {
+    $words = sfaf_page_words();
+    if ( ! isset( $words[ $key ] ) ) {
+        return (string) $key;
+    }
+    $en = sprintf( $words[ $key ][0], $arg );
+    $es = sprintf( $words[ $key ][1], $arg );
+    $post_id = (int) $post_id;
+    if ( $post_id && $post_id === sfaf_bilingual_page() && 'es' === sfaf_event_language( $post_id ) && $en !== $es ) {
+        return $en . ' / ' . $es;
+    }
+    return $en;
+}
+
+/**
+ * The event's address without its place name (3.120.0), for the lines under
+ * the place name on the event page: the venue's address, or the typed address
+ * line. '' when there is none.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_event_address_line( $post_id ) {
+    $post_id = (int) $post_id;
+    $venue   = SFAF_Venues::id_for_event( $post_id );
+    if ( $venue ) {
+        return trim( SFAF_Venues::address( $venue ) );
+    }
+    return trim( (string) get_post_meta( $post_id, '_uc_location', true ) );
+}
 function sfaf_event_language( $event_id ) {
     $own = (string) get_post_meta( (int) $event_id, '_uc_language', true );
     if ( in_array( $own, array( 'en', 'es' ), true ) ) {
@@ -4191,11 +4284,12 @@ function sfaf_event_map_html( $post_id ) {
     ob_start();
     ?>
     <section class="uc-map" aria-labelledby="uc-map-heading-<?php echo (int) $post_id; ?>">
-        <h2 class="uc-map-heading" id="uc-map-heading-<?php echo (int) $post_id; ?>">Getting there</h2>
+        <h2 class="uc-map-heading" id="uc-map-heading-<?php echo (int) $post_id; ?>"><?php echo esc_html( sfaf_page_label( $post_id, 'getting_there' ) ); ?></h2>
 
         <p class="uc-map-address">
             <?php echo sfaf_icon( 'pin', array( 'size' => '16px' ) ); ?>
-            <a href="<?php echo esc_url( $link ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $location ); ?></a>
+            <?php $addr_line = sfaf_event_address_line( $post_id ); ?>
+            <a href="<?php echo esc_url( $link ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( '' !== $addr_line ? $addr_line : $location ); ?></a>
         </p>
 
         <?php if ( '' !== $src ) : ?>

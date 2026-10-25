@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 386 items.** Quick 315, needs real conditions 67, blocked on other
+**Outstanding: 387 items.** Quick 316, needs real conditions 67, blocked on other
 people 4.
 
 ---
@@ -4297,6 +4297,19 @@ series' cost, age range and contact, and its Notifications include the series'
 team and address beside the requester.
 
 **Why it needs a person:** the real forms, teams and people on the site.
+
+### 1.318 The public event page: one place name, and a Spanish event's labels (3.120.0)
+
+Open the event page of an event at a typed place with a name (not a venue): the
+name shows once, the address under it, and the map link and Getting there show
+the address. Open a community submission that had a registration link: there
+is one Register button and no second "Register for this event" link. Set an
+event's language to Spanish and open its page: Cost / Costo, Getting there /
+Cómo llegar, the RSVP button and the other labels read in both languages, the
+description is as typed, and an English event's page reads as before.
+
+**Why it needs a person:** the real page under sfaf.org's theme, and whether
+the longer labels fit.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event

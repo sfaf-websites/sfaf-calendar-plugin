@@ -19,7 +19,8 @@
  *      except embed.js's EMBED_JS_VERSION line, and the caladmin files in
  *      CALADMIN_ONLY, which no public calendar page loads.
  *
- * BASE is the release compared against: 3.118.0's released commit from 3.119.0
+ * BASE is the release compared against: 3.119.0's released commit from 3.120.0
+ * (3.118.0's, 0c3eb0f, for 3.119.0)
  * (3.117.0's, ada5d08, for 3.118.0)
  * (3.116.0's, 6e61ab0, for 3.117.0)
  * (3.115.0's, 3379948, for 3.116.0)
@@ -35,14 +36,17 @@
  * name, in ALLOWED or ALLOWED_FILES.
  */
 
-const BASE      = '0c3eb0f';
-const BASE_NAME = '3.118.0';
+const BASE      = '91ff032';
+const BASE_NAME = '3.119.0';
 
 /* Files under public/ and templates/ a release means to change, as path =>
    why. Probe A still compares every embed answer, so none of these can reach
    the embed unseen. */
 const ALLOWED_FILES = array(
-    // None in 3.119.0.
+    // 3.120.0: the event page names a typed place once, drops the second
+    // register link and reads a Spanish event's labels in both languages.
+    // The embed draws none of it; probe A holds its answers unchanged.
+    'templates/single-uc_event.php' => 'the event page: one place name, no second register link, both languages on a Spanish event (3.120.0)',
 );
 
 /* Loaded by caladmin and the two public forms, never by the calendar, an event

@@ -6119,6 +6119,31 @@ message: tables, a plain-text part, one yellow button (Open your events).
 day is not rebuilt every fifteen minutes. Filters can only narrow what the gate
 allows; they never widen it.
 
+### A Spanish event's page reads its labels in both languages (3.120.0)
+
+**When an event's language is Spanish (its own or its series'), the event page's
+own labels read "English / Español"**: "Cost / Costo", "Getting there / Cómo
+llegar", the RSVP button, Add to Calendar, Share, Follow this series, the FAQ
+and series headings, the cancelled banner, All Events and the rest.
+`sfaf_page_words()` holds the pairs, apart from the email labels in
+`SFAF_Messages` (whose list `EMAILS.md` reviews); `sfaf_page_label( $post_id,
+$key )` answers. English events are unchanged. **What the organizer typed
+prints as typed, and the dates and times are as they were.**
+
+**Only on the event page.** The template names its event with
+`sfaf_bilingual_page( get_the_ID() )` and clears it with `0` at the end, and
+`sfaf_page_label()` gives both languages only for that event. A card, the
+embed or an email drawing the same helpers (the series link, the RSVP button)
+says English as before, which is why the embed is unchanged.
+
+**The place is named once (3.120.0).** The sidebar's place line names it; the
+map link under it and the address under Getting there show the address alone
+(`sfaf_event_address_line()`: the venue's address, or the typed line), while
+both still search the map for the name and the address. **The community form's
+registration address is no longer a second "Register for this event" link**:
+it has been the event's External RSVP since 3.111.0, which the Register button
+already uses; `sfaf_event_rsvp_url()` has no caller left.
+
 ### Register on another site (3.110.1)
 
 **The RSVP card asks first** (3.113.3, one control with No RSVP and RSVP Here;

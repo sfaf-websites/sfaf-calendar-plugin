@@ -233,6 +233,7 @@ for f in .claude/*.php; do
     release-31180-live.php) continue ;;  # run below with --run
     plant-31190.php) continue ;;       # a fault planter for the 3.119.0 checks, not a check
     release-31190-live.php) continue ;;  # run below with --run
+    plant-31200.php) continue ;;       # a fault planter for the 3.120.0 checks, not a check
     release-31138-live.php) continue ;;  # run below with --run
     release-31138-pages-live.php) continue ;;  # run below with --run
     series-picture-live.php) continue ;;  # run below with --run

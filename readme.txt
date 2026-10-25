@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.119.0
+Stable tag: 3.120.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,14 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.120.0 =
+
+**Public event page fixes. The embed is 3.119.0's.**
+
+* **A typed place is named once.** The place name shows on its own line, and the map link under it and the Getting there section show the address, rather than the name again in front of it.
+* **No second "Register for this event" link** on events that came from the community form. Their registration link is the Register button.
+* **A Spanish event's page shows its labels in English and Spanish**, for example "Cost / Costo", "Getting there / Cómo llegar" and the Register button, when the event (or its series) is set to Spanish. The description and everything else the organizer typed are as typed, and English events are unchanged.
 
 = 3.119.0 =
 
