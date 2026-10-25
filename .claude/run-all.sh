@@ -231,6 +231,8 @@ for f in .claude/*.php; do
     release-31170-live.php) continue ;;  # run below with --run
     plant-31180.php) continue ;;       # a fault planter for the 3.118.0 checks, not a check
     release-31180-live.php) continue ;;  # run below with --run
+    plant-31190.php) continue ;;       # a fault planter for the 3.119.0 checks, not a check
+    release-31190-live.php) continue ;;  # run below with --run
     release-31138-live.php) continue ;;  # run below with --run
     release-31138-pages-live.php) continue ;;  # run below with --run
     series-picture-live.php) continue ;;  # run below with --run
@@ -537,6 +539,8 @@ run "release-31160-live --run" php .claude/release-31160-live.php --run
 run "release-31170-live --run" php .claude/release-31170-live.php --run
 # The community form's RSVP updates box and online tick (3.118.0).
 run "release-31180-live --run" php .claude/release-31180-live.php --run
+# Series defaults through Fill these in on Add event (3.119.0).
+run "release-31190-live --run" php .claude/release-31190-live.php --run
 # The embed in its shadow root under a hostile host stylesheet, and the combined
 # sidebar ending at its content (3.111.0 J and K), at 1280px and 390px.
 run "embed-isolation-live --run" php .claude/embed-isolation-live.php --run

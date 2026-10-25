@@ -120,6 +120,12 @@ class SFAF_Series {
      */
     const META_LEGACY_ID = '_sfaf_legacy_parent_id';
 
+    /** What new events in the series start with (3.119.0). See event_defaults(). */
+    const META_EVENT_DEFAULTS = '_sfaf_series_event_defaults';
+
+    /** The display ticks a series can set, as the event's meta keys. */
+    const DISPLAY_KEYS = array( 'show_rsvp', 'show_calendar', 'show_social', 'show_reminders' );
+
     /* =====================================================================
      * Registration
      * ================================================================== */
@@ -1298,6 +1304,168 @@ class SFAF_Series {
      * @param int $term_id
      */
     /**
+     * WHAT NEW EVENTS IN THE SERIES START WITH (3.119.0).
+     *
+     * Cost, age range, contact, start and end time, venue, the notification
+     * list and its emails, and the display ticks. Stored on the series as one
+     * array; an empty value is no default. 'notify_off' is null until the
+     * series has said which emails go out, and 'display' holds only the ticks
+     * the series has said anything about.
+     *
+     * Add event offers them in "Fill this event in from"; the request forms
+     * write them into what a new event leaves empty (apply_event_defaults()).
+     * An event moved into the series later takes none of them.
+     *
+     * @param int $term_id
+     * @return array
+     */
+    public static function event_defaults( $term_id ) {
+        $out = array(
+            'cost' => '', 'age' => '', 'contact_name' => '', 'contact_email' => '', 'contact_phone' => '',
+            'start' => '', 'end' => '', 'venue' => 0,
+            'notify_users' => array(), 'notify_teams' => array(), 'notify_emails' => array(),
+            'notify_off' => null, 'display' => array(),
+        );
+        $stored = (int) $term_id ? get_term_meta( (int) $term_id, self::META_EVENT_DEFAULTS, true ) : array();
+        if ( ! is_array( $stored ) ) {
+            return $out;
+        }
+        foreach ( array( 'cost', 'age', 'contact_name', 'contact_email', 'contact_phone', 'start', 'end' ) as $k ) {
+            if ( isset( $stored[ $k ] ) && is_scalar( $stored[ $k ] ) ) {
+                $out[ $k ] = (string) $stored[ $k ];
+            }
+        }
+        if ( ! empty( $stored['venue'] ) && class_exists( 'SFAF_Venues' ) && SFAF_Venues::exists( (int) $stored['venue'] ) ) {
+            $out['venue'] = (int) $stored['venue'];
+        }
+        $out['notify_users']  = array_values( array_filter( array_map( 'intval', (array) ( isset( $stored['notify_users'] ) ? $stored['notify_users'] : array() ) ) ) );
+        $teams = class_exists( 'SFAF_Teams' ) ? SFAF_Teams::all() : array();
+        foreach ( (array) ( isset( $stored['notify_teams'] ) ? $stored['notify_teams'] : array() ) as $tid ) {
+            if ( isset( $teams[ (string) $tid ] ) ) {
+                $out['notify_teams'][] = (string) $tid;
+            }
+        }
+        foreach ( (array) ( isset( $stored['notify_emails'] ) ? $stored['notify_emails'] : array() ) as $e ) {
+            if ( is_scalar( $e ) && is_email( (string) $e ) ) {
+                $out['notify_emails'][] = strtolower( (string) $e );
+            }
+        }
+        if ( isset( $stored['notify_off'] ) && is_array( $stored['notify_off'] ) ) {
+            $out['notify_off'] = array_values( array_intersect( SFAF_Notifications::choosable(), array_map( 'strval', $stored['notify_off'] ) ) );
+        }
+        foreach ( self::DISPLAY_KEYS as $k ) {
+            if ( isset( $stored['display'][ $k ] ) ) {
+                $out['display'][ $k ] = ( '1' === (string) $stored['display'][ $k ] ) ? '1' : '0';
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Save the defaults from the series form, under its own marker
+     * (uc_series_event_defaults_present), so a form that does not draw them
+     * cannot clear them.
+     *
+     * @param int   $term_id
+     * @param array $post $_POST.
+     */
+    public static function save_event_defaults( $term_id, $post ) {
+        if ( ! (int) $term_id || empty( $post['uc_series_event_defaults_present'] ) ) {
+            return;
+        }
+        $txt = function ( $k, $max ) use ( $post ) {
+            $v = isset( $post[ $k ] ) && is_scalar( $post[ $k ] ) ? trim( sanitize_text_field( wp_unslash( (string) $post[ $k ] ) ) ) : '';
+            return function_exists( 'mb_substr' ) ? mb_substr( $v, 0, $max ) : substr( $v, 0, $max );
+        };
+        $age   = $txt( 'series_def_age', 20 );
+        $email = sanitize_email( $txt( 'series_def_contact_email', 200 ) );
+        $venue = isset( $post['series_def_venue'] ) ? (int) $post['series_def_venue'] : 0;
+        $d = array(
+            'cost'          => $txt( 'series_def_cost', 80 ),
+            'age'           => in_array( $age, SFAF_Submit::age_ranges(), true ) ? $age : '',
+            'contact_name'  => $txt( 'series_def_contact_name', 120 ),
+            'contact_email' => ( $email && is_email( $email ) ) ? $email : '',
+            'contact_phone' => $txt( 'series_def_contact_phone', 60 ),
+            'start'         => SFAF_Request::clean_time( isset( $post['series_def_start'] ) ? (string) $post['series_def_start'] : '' ),
+            'end'           => SFAF_Request::clean_time( isset( $post['series_def_end'] ) ? (string) $post['series_def_end'] : '' ),
+            'venue'         => ( $venue && SFAF_Venues::exists( $venue ) ) ? $venue : 0,
+            'notify_users'  => array_values( array_unique( array_filter( array_map( 'intval', (array) ( isset( $post['series_def_notify_users'] ) ? wp_unslash( $post['series_def_notify_users'] ) : array() ) ) ) ) ),
+            'notify_teams'  => array_values( array_unique( array_map( 'sanitize_key', array_map( 'strval', (array) ( isset( $post['series_def_notify_teams'] ) ? wp_unslash( $post['series_def_notify_teams'] ) : array() ) ) ) ) ),
+            'notify_emails' => array(),
+            'notify_off'    => array_values( array_diff( SFAF_Notifications::choosable(), array_map( 'strval', (array) ( isset( $post['series_def_notify_kinds'] ) ? wp_unslash( $post['series_def_notify_kinds'] ) : array() ) ) ) ),
+            'display'       => array(),
+        );
+        foreach ( preg_split( '/[\r\n,;]+/', isset( $post['series_def_notify_emails'] ) ? (string) wp_unslash( $post['series_def_notify_emails'] ) : '' ) as $line ) {
+            $one = strtolower( sanitize_email( trim( $line ) ) );
+            if ( $one && is_email( $one ) && ! in_array( $one, $d['notify_emails'], true ) ) {
+                $d['notify_emails'][] = $one;
+            }
+        }
+        foreach ( self::DISPLAY_KEYS as $k ) {
+            $d['display'][ $k ] = empty( $post[ 'series_def_' . $k ] ) ? '0' : '1';
+        }
+        update_term_meta( (int) $term_id, self::META_EVENT_DEFAULTS, $d );
+    }
+
+    /**
+     * Write the series' defaults into what a NEW event left empty (3.119.0).
+     *
+     * For the request forms, which have no "Fill this event in from". Each
+     * field only when the event has nothing: the contact only when all three
+     * are empty, the venue only when there is no venue, no address and the
+     * event is not online. The notification list gains the series' people,
+     * teams and addresses beside what the event already has; its emails and
+     * each display tick only when the event has stored no choice of its own.
+     *
+     * @param int $event_id
+     * @param int $term_id
+     */
+    public static function apply_event_defaults( $event_id, $term_id ) {
+        $event_id = (int) $event_id;
+        if ( ! $event_id || ! (int) $term_id ) {
+            return;
+        }
+        $d     = self::event_defaults( (int) $term_id );
+        $empty = function ( $key ) use ( $event_id ) {
+            return '' === trim( (string) get_post_meta( $event_id, $key, true ) );
+        };
+        foreach ( array( SFAF_Submit::META_COST => 'cost', SFAF_Submit::META_AGE => 'age', '_uc_start_time' => 'start', '_uc_end_time' => 'end' ) as $key => $k ) {
+            if ( '' !== $d[ $k ] && $empty( $key ) ) {
+                update_post_meta( $event_id, $key, $d[ $k ] );
+            }
+        }
+        if ( ( '' !== $d['contact_name'] || '' !== $d['contact_email'] || '' !== $d['contact_phone'] )
+            && $empty( SFAF_Submit::META_CONTACT_NAME ) && $empty( SFAF_Submit::META_CONTACT_EMAIL ) && $empty( SFAF_Submit::META_CONTACT_PHONE ) ) {
+            foreach ( array( SFAF_Submit::META_CONTACT_NAME => 'contact_name', SFAF_Submit::META_CONTACT_EMAIL => 'contact_email', SFAF_Submit::META_CONTACT_PHONE => 'contact_phone' ) as $key => $k ) {
+                if ( '' !== $d[ $k ] ) {
+                    update_post_meta( $event_id, $key, $d[ $k ] );
+                }
+            }
+        }
+        if ( $d['venue'] && ! SFAF_Venues::id_for_event( $event_id ) && $empty( '_uc_location' )
+            && ! ( class_exists( 'SFAF_Online' ) && SFAF_Online::is_online( $event_id ) ) ) {
+            SFAF_Venues::set_for_event( $event_id, $d['venue'] );
+        }
+        if ( $d['notify_users'] ) {
+            $users = array_map( 'intval', (array) get_post_meta( $event_id, SFAF_Reminders::NOTIFY_USERS_META, true ) );
+            update_post_meta( $event_id, SFAF_Reminders::NOTIFY_USERS_META, array_values( array_unique( array_filter( array_merge( $users, $d['notify_users'] ) ) ) ) );
+        }
+        if ( $d['notify_teams'] ) {
+            SFAF_Teams::set_for_event( $event_id, array_merge( SFAF_Teams::for_event( $event_id ), $d['notify_teams'] ) );
+        }
+        foreach ( $d['notify_emails'] as $one ) {
+            SFAF_Submissions::add_to_notify_list( $event_id, $one );
+        }
+        if ( null !== $d['notify_off'] && '' === get_post_meta( $event_id, SFAF_Notifications::OFF_META, true ) ) {
+            SFAF_Notifications::set_off( $event_id, $d['notify_off'] );
+        }
+        foreach ( $d['display'] as $k => $v ) {
+            if ( '' === (string) get_post_meta( $event_id, '_uc_' . $k, true ) ) {
+                update_post_meta( $event_id, '_uc_' . $k, $v );
+            }
+        }
+    }
+    /**
      * What this series can lend a new event, for the creation prefill.
      *
      * WHERE EACH VALUE COMES FROM, because it is two different places and the
@@ -1340,11 +1508,36 @@ class SFAF_Series {
             'faq_set'       => '',
             'faq_set_name'  => '',
             'from_event'    => 0,
+            /* What the series itself says new events start with (3.119.0). */
+            'cost'          => '',
+            'age'           => '',
+            'contact'       => array( 'name' => '', 'email' => '', 'phone' => '' ),
+            'notify'        => array( 'users' => array(), 'teams' => array(), 'emails' => array() ),
+            'notify_off'    => null,
+            'display'       => array(),
         );
 
         $term = self::get( $term_id );
         if ( ! $term ) {
             return $out;
+        }
+
+        /* ---- The series' own defaults for new events (3.119.0). Its times
+         * and venue win over the most recent event's, below. ---- */
+        $defs = self::event_defaults( $term_id );
+        $out['cost']       = $defs['cost'];
+        $out['age']        = $defs['age'];
+        $out['contact']    = array( 'name' => $defs['contact_name'], 'email' => $defs['contact_email'], 'phone' => $defs['contact_phone'] );
+        $out['notify']     = array( 'users' => $defs['notify_users'], 'teams' => $defs['notify_teams'], 'emails' => $defs['notify_emails'] );
+        $out['notify_off'] = $defs['notify_off'];
+        $out['display']    = $defs['display'];
+        $out['start_time'] = $defs['start'];
+        $out['end_time']   = $defs['end'];
+        if ( $defs['venue'] ) {
+            $out['location_mode'] = 'venue';
+            $out['venue']         = $defs['venue'];
+            $vt = get_term( $defs['venue'], 'uc_venue' );
+            $out['venue_name'] = ( $vt && ! is_wp_error( $vt ) ) ? $vt->name : '';
         }
 
         /* ---- From the series term itself. --------------------------- */
@@ -1403,11 +1596,15 @@ class SFAF_Series {
         $id = (int) end( $events );
         $out['from_event'] = $id;
 
-        $out['start_time'] = (string) get_post_meta( $id, '_uc_start_time', true );
-        $out['end_time']   = (string) get_post_meta( $id, '_uc_end_time', true );
+        if ( '' === $out['start_time'] && '' === $out['end_time'] ) {
+            $out['start_time'] = (string) get_post_meta( $id, '_uc_start_time', true );
+            $out['end_time']   = (string) get_post_meta( $id, '_uc_end_time', true );
+        }
 
         $venue = SFAF_Venues::id_for_event( $id );
-        if ( $venue ) {
+        if ( 'venue' === $out['location_mode'] ) {
+            // The series names a venue (3.119.0): the most recent event's place is not read.
+        } elseif ( $venue ) {
             $out['location_mode'] = 'venue';
             $out['venue']         = (int) $venue;
             $v = get_term( $venue, 'uc_venue' );

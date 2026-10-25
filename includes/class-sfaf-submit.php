@@ -1108,6 +1108,9 @@ class SFAF_Submit {
             update_post_meta( $event_id, SFAF_Request::META_NOTES, $c['notes'] );
         }
 
+        // The series' defaults for new events, into what is still empty (3.119.0).
+        SFAF_Series::apply_event_defaults( $event_id, (int) $series->term_id );
+
         return $event_id;
     }
 

@@ -3703,6 +3703,32 @@ A series carries name, description, image, video, a default FAQ set, and from
 3.103.0 default categories and default organizers. **A series with no events is
 valid** and is not cleaned up.
 
+### What new events in a series start with (3.119.0)
+
+**The series page sets them**: start and end time, venue, cost, age range and
+contact (New events), the notification list (teams, people, other addresses)
+and which emails go out (Notifications), and the display ticks (Display), with
+the RSVP choice from 3.115.0. Not private, the PDF attachment or registrant
+questions, on Mark's decision. Stored as one array,
+`_sfaf_series_event_defaults`, read by `SFAF_Series::event_defaults()`, saved by
+`save_event_defaults()` under `uc_series_event_defaults_present`.
+
+**How a new event takes them, and only a new event:**
+
+- **Add event**: through "Fill this event in from" (`prefill_data()` and the
+  panel's descriptors in portal.js), so the person sees each and chooses.
+  The series' own times and venue win over the most recent event's, which are
+  still the fallback.
+- **The two request forms**: `apply_event_defaults()` at the end of each
+  `create_event()`, into what the request left empty. The contact only when all
+  three are empty; the venue only with no venue, no address and not online;
+  the list gains the series' people, teams and addresses beside the
+  requester; the emails and each display tick only when the event stored no
+  choice of its own (so the staff form's two emails stand).
+- **An event moved into the series later takes none of them**, unlike the
+  categories and organizers below, because the list would start sending an
+  existing event's registrants to new people.
+
 ### Series defaults: copied once, into what is empty (3.103.0)
 
 **An event that joins a series with no category receives the series' default

@@ -10104,6 +10104,8 @@ class SFAF_Portal {
             }
             $this->tag_series_image( $term_id, (int) $args['image_id'] );
             $this->series_picture_refused = $this->save_series_upload( $user, $term_id );
+            sfaf_normalize_time_post( array( 'series_def_start', 'series_def_end' ) );
+            SFAF_Series::save_event_defaults( $term_id, $_POST );
             $this->save_series_agreement( $term_id );
             $this->save_series_access( $user, $term_id );
             return $term_id;
@@ -10115,6 +10117,8 @@ class SFAF_Portal {
         }
         $this->tag_series_image( (int) $created, (int) $args['image_id'] );
         $this->series_picture_refused = $this->save_series_upload( $user, (int) $created );
+        sfaf_normalize_time_post( array( 'series_def_start', 'series_def_end' ) );
+        SFAF_Series::save_event_defaults( (int) $created, $_POST );
         $this->save_series_agreement( (int) $created );
         $this->save_series_access( $user, (int) $created );
         return (int) $created;
@@ -10125,6 +10129,129 @@ class SFAF_Portal {
      * presence check. Events in the series that have no text of their own
      * use it. See SFAF_Agreement.
      */
+    /**
+     * WHAT NEW EVENTS IN THE SERIES START WITH, ON THE SERIES PAGE (3.119.0).
+     * 'main' draws New events and Notifications, 'side' Display. Stored by
+     * SFAF_Series::save_event_defaults(); see SFAF_Series::event_defaults().
+     *
+     * @param WP_User $user
+     * @param int     $term_id
+     * @param string  $part 'main' or 'side'.
+     */
+    private function render_series_event_defaults( $user, $term_id, $part ) {
+        $d = SFAF_Series::event_defaults( (int) $term_id );
+        if ( 'side' === $part ) {
+            $labels = array( 'show_rsvp' => 'RSVP', 'show_calendar' => 'Add to calendar', 'show_social' => 'Social share', 'show_reminders' => 'Follow the series' );
+            ?>
+            <section class="uc-bento-card" data-uc-card="display">
+                <h2 class="uc-bento-title">Display</h2>
+                <?php foreach ( $labels as $k => $label ) : ?>
+                    <label class="uc-check">
+                        <input type="checkbox" name="series_def_<?php echo esc_attr( $k ); ?>" value="1" <?php checked( ! isset( $d['display'][ $k ] ) || '1' === $d['display'][ $k ] ); ?> />
+                        <?php echo esc_html( $label ); ?>
+                    </label>
+                <?php endforeach; ?>
+                <span class="uc-hint">New events in this series start with these.</span>
+            </section>
+            <?php
+            return;
+        }
+        $venues = SFAF_Venues::all();
+        $teams  = SFAF_Teams::all();
+        $people = $this->access_people_choices();
+        $off    = null === $d['notify_off'] ? array() : $d['notify_off'];
+        ?>
+        <input type="hidden" name="uc_series_event_defaults_present" value="1" />
+        <section class="uc-bento-card" data-uc-card="new-events">
+            <h2 class="uc-bento-title">New events</h2>
+            <p class="uc-hint">New events in this series start with these. Leave one empty to start it empty.</p>
+            <div class="uc-field-row">
+                <div class="uc-field">
+                    <span class="uc-field-label">Start</span>
+                    <?php echo sfaf_time_field( 'series_def_start', $d['start'], array( 'label' => 'Start' ) ); ?>
+                </div>
+                <div class="uc-field">
+                    <span class="uc-field-label">End</span>
+                    <?php echo sfaf_time_field( 'series_def_end', $d['end'], array( 'label' => 'End' ) ); ?>
+                </div>
+            </div>
+            <label class="uc-field">
+                <span class="uc-field-label">Venue</span>
+                <select name="series_def_venue">
+                    <option value="0">No venue</option>
+                    <?php foreach ( (array) $venues as $v ) : ?>
+                        <option value="<?php echo (int) $v->term_id; ?>" <?php selected( (int) $d['venue'], (int) $v->term_id ); ?>><?php echo esc_html( $v->name ); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <label class="uc-field">
+                <span class="uc-field-label">Cost</span>
+                <input type="text" name="series_def_cost" maxlength="80" value="<?php echo esc_attr( $d['cost'] ); ?>" />
+            </label>
+            <div class="uc-field">
+                <span class="uc-field-label">Age range</span>
+                <?php SFAF_Submit::age_select( 'series_def_age', $d['age'] ); ?>
+            </div>
+            <fieldset class="uc-field uc-contact-fields">
+                <legend class="uc-field-label">Contact</legend>
+                <label class="uc-field">
+                    <span class="uc-field-label">Name</span>
+                    <input type="text" name="series_def_contact_name" maxlength="120" value="<?php echo esc_attr( $d['contact_name'] ); ?>" />
+                </label>
+                <label class="uc-field">
+                    <span class="uc-field-label">Email</span>
+                    <input type="email" name="series_def_contact_email" maxlength="200" value="<?php echo esc_attr( $d['contact_email'] ); ?>" />
+                </label>
+                <label class="uc-field">
+                    <span class="uc-field-label">Phone</span>
+                    <input type="text" name="series_def_contact_phone" maxlength="60" value="<?php echo esc_attr( $d['contact_phone'] ); ?>" />
+                </label>
+            </fieldset>
+        </section>
+
+        <section class="uc-bento-card" data-uc-card="notifications">
+            <h2 class="uc-bento-title">Notifications</h2>
+            <p class="uc-hint">New events in this series start with these, beside whoever creates them.</p>
+            <?php if ( $teams ) : ?>
+                <fieldset class="uc-field">
+                    <legend class="uc-field-label">Teams</legend>
+                    <?php foreach ( $teams as $team ) : ?>
+                        <label class="uc-check">
+                            <input type="checkbox" name="series_def_notify_teams[]" value="<?php echo esc_attr( $team['id'] ); ?>" <?php checked( in_array( (string) $team['id'], $d['notify_teams'], true ) ); ?> />
+                            <?php echo esc_html( $team['name'] ); ?>
+                        </label>
+                    <?php endforeach; ?>
+                </fieldset>
+            <?php endif; ?>
+            <?php if ( $people ) : ?>
+                <fieldset class="uc-field">
+                    <legend class="uc-field-label">People</legend>
+                    <?php foreach ( $people as $pid => $pname ) : ?>
+                        <label class="uc-check">
+                            <input type="checkbox" name="series_def_notify_users[]" value="<?php echo (int) $pid; ?>" <?php checked( in_array( (int) $pid, $d['notify_users'], true ) ); ?> />
+                            <?php echo esc_html( $pname ); ?>
+                        </label>
+                    <?php endforeach; ?>
+                </fieldset>
+            <?php endif; ?>
+            <label class="uc-field">
+                <span class="uc-field-label">Anyone else</span>
+                <textarea name="series_def_notify_emails" rows="3"><?php echo esc_textarea( implode( "\n", $d['notify_emails'] ) ); ?></textarea>
+                <span class="uc-hint">One email address per line.</span>
+            </label>
+            <fieldset class="uc-field">
+                <legend class="uc-field-label">Emails for new events</legend>
+                <?php foreach ( SFAF_Notifications::kinds() as $key => $kind ) : ?>
+                    <?php if ( ! in_array( $key, SFAF_Notifications::choosable(), true ) ) { continue; } ?>
+                    <label class="uc-check">
+                        <input type="checkbox" name="series_def_notify_kinds[]" value="<?php echo esc_attr( $key ); ?>" <?php checked( ! in_array( $key, $off, true ) ); ?> />
+                        <?php echo esc_html( $kind['label'] ); ?>
+                    </label>
+                <?php endforeach; ?>
+            </fieldset>
+        </section>
+        <?php
+    }
     /**
      * The series' default Team and access (3.110.1). Only somebody who has
      * every event in the series may change it, since it gives them away.
@@ -10863,6 +10990,8 @@ class SFAF_Portal {
                 </div>
                 </section>
 
+                <?php $this->render_series_event_defaults( $user, (int) $term_id, 'main' ); ?>
+
                 <section class="uc-bento-card" data-uc-card="faqs">
                     <h2 class="uc-bento-title">FAQs</h2>
                 <label class="uc-field">
@@ -10951,6 +11080,8 @@ class SFAF_Portal {
                     <span class="uc-hint">Given to an event that joins this series with no organizer. Events already in it keep their own.</span>
                 </div>
                 </section>
+
+                <?php $this->render_series_event_defaults( $user, (int) $term_id, 'side' ); ?>
 
                 <section class="uc-bento-card" data-uc-card="links">
                     <h2 class="uc-bento-title">Links</h2>

@@ -6165,6 +6165,93 @@ function ucDismissOnBackdrop(dialog) {
                         btn.click();
                     }
                 }
+            },
+            /* THE SERIES' OWN DEFAULTS FOR NEW EVENTS (3.119.0). Each fills
+               the editor's own control, as the rows above do. */
+            {
+                key: 'cost', label: 'Cost',
+                has: function (d) { return !!d.cost; },
+                preview: function (d) { return d.cost; },
+                filled: function () { var b = form.querySelector('[name="listing_cost"]'); return !!(b && b.value.trim() !== ''); },
+                write: function (d) { var b = form.querySelector('[name="listing_cost"]'); if (b) { b.value = d.cost; b.dispatchEvent(new Event('input', { bubbles: true })); } }
+            },
+            {
+                key: 'age', label: 'Age range',
+                has: function (d) { return !!d.age; },
+                preview: function (d) { return d.age; },
+                filled: function () { var b = form.querySelector('[name="listing_age"]'); return !!(b && b.value !== ''); },
+                write: function (d) { var b = form.querySelector('[name="listing_age"]'); if (b) { b.value = d.age; b.dispatchEvent(new Event('change', { bubbles: true })); } }
+            },
+            {
+                key: 'contact', label: 'Contact',
+                has: function (d) { return !!(d.contact && (d.contact.name || d.contact.email || d.contact.phone)); },
+                preview: function (d) { return [d.contact.name, d.contact.email, d.contact.phone].filter(Boolean).join(', '); },
+                filled: function () {
+                    return ['contact_name', 'contact_email', 'contact_phone'].some(function (n) {
+                        var b = form.querySelector('[name="' + n + '"]'); return !!(b && b.value.trim() !== '');
+                    });
+                },
+                write: function (d) {
+                    [['contact_name', d.contact.name], ['contact_email', d.contact.email], ['contact_phone', d.contact.phone]].forEach(function (p) {
+                        var b = form.querySelector('[name="' + p[0] + '"]');
+                        if (b) { b.value = p[1] || ''; b.dispatchEvent(new Event('input', { bubbles: true })); }
+                    });
+                }
+            },
+            {
+                key: 'notify', label: 'Who hears about it',
+                has: function (d) { return !!(d.notify && (d.notify.users.length || d.notify.teams.length || d.notify.emails.length)); },
+                preview: function (d) {
+                    var n = d.notify.users.length + d.notify.teams.length + d.notify.emails.length;
+                    return n + (n === 1 ? ' person or team' : ' people and teams');
+                },
+                filled: function () { return !!form.querySelector('[name="notify_users[]"]:checked, [name="notify_teams[]"]:checked, [name="notify_emails[]"]:checked'); },
+                write: function (d) {
+                    d.notify.users.forEach(function (id) {
+                        var b = form.querySelector('[name="notify_users[]"][value="' + id + '"]');
+                        if (b && !b.checked) { b.checked = true; b.dispatchEvent(new Event('change', { bubbles: true })); }
+                    });
+                    d.notify.teams.forEach(function (id) {
+                        var b = form.querySelector('[name="notify_teams[]"][value="' + id + '"]');
+                        if (b && !b.checked) { b.checked = true; b.dispatchEvent(new Event('change', { bubbles: true })); }
+                    });
+                    var root = form.querySelector('[data-uc-emails]');
+                    var input = root ? root.querySelector('[data-uc-email-input]') : null;
+                    var add = root ? root.querySelector('[data-uc-email-add]') : null;
+                    d.notify.emails.forEach(function (e) {
+                        if (!input || !add || form.querySelector('[name="notify_emails[]"][value="' + e + '"]')) { return; }
+                        input.value = e;
+                        add.click();
+                    });
+                }
+            },
+            {
+                key: 'emails', label: 'Emails for this event',
+                has: function (d) { return d.notify_off !== null && d.notify_off !== undefined; },
+                preview: function (d) { return d.notify_off.length ? d.notify_off.length + ' off' : 'All on'; },
+                filled: function () { return false; },
+                write: function (d) {
+                    form.querySelectorAll('[name="notify_kinds[]"]').forEach(function (b) {
+                        var want = d.notify_off.indexOf(b.value) === -1;
+                        if (b.checked !== want && !b.disabled) { b.checked = want; b.dispatchEvent(new Event('change', { bubbles: true })); }
+                    });
+                }
+            },
+            {
+                key: 'display', label: 'Display',
+                has: function (d) { return !!d.display && Object.keys(d.display).length > 0; },
+                preview: function (d) {
+                    var off = Object.keys(d.display).filter(function (k) { return d.display[k] === '0'; }).length;
+                    return off ? off + ' off' : 'All on';
+                },
+                filled: function () { return false; },
+                write: function (d) {
+                    Object.keys(d.display).forEach(function (k) {
+                        var b = form.querySelector('input[type="checkbox"][name="' + k + '"]');
+                        var want = d.display[k] === '1';
+                        if (b && !b.disabled && b.checked !== want) { b.checked = want; b.dispatchEvent(new Event('change', { bubbles: true })); }
+                    });
+                }
             }
         ];
 

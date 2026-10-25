@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 385 items.** Quick 314, needs real conditions 67, blocked on other
+**Outstanding: 386 items.** Quick 315, needs real conditions 67, blocked on other
 people 4.
 
 ---
@@ -4285,6 +4285,18 @@ though the event does not take RSVPs, and the event is online with no address.
 
 **Why it needs a person:** the real forms, the token sign-in and the real
 approval.
+
+### 1.317 Series defaults reach a new event (3.119.0)
+
+Open a series, fill in New events (a start and end time, a venue, a cost, an
+age range, a contact), Notifications (a team, an address, one email unticked)
+and Display (Add to calendar unticked), and save. Open Add event, choose that
+series, and press Fill these in: every one of them is filled in on the form.
+Then send a staff request in that series without a cost: in caladmin it has the
+series' cost, age range and contact, and its Notifications include the series'
+team and address beside the requester.
+
+**Why it needs a person:** the real forms, teams and people on the site.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
