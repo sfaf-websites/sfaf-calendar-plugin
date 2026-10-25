@@ -196,6 +196,7 @@ function ucDismissOnBackdrop(dialog) {
         run('access', initAccessSection);
         run('reg-where', initRegisterWhere);
         run('follow-check', initFollowCheck);
+        run('rsvp-updates', initRsvpUpdates);
         run('users-table', initUsersTable);
         run('table-cards', initTableCards);
         run('registrantMail', initRegistrantMail);
@@ -500,6 +501,16 @@ function ucDismissOnBackdrop(dialog) {
     }
     /* "Follow the series" only on an event in one (3.117.0): it follows the
      * series dropdown. Hidden, the tick still posts what it holds. */
+    /* "Who should get RSVP updates?" on the community form (3.118.0): its
+     * first box shows the address typed in Your email. */
+    function initRsvpUpdates() {
+        var source = document.querySelector('[data-uc-rsvp-updates-source]');
+        var you = document.querySelector('[data-uc-rsvp-updates-you]');
+        if (!source || !you) { return; }
+        function apply() { you.value = source.value.trim(); }
+        source.addEventListener('input', apply);
+        apply();
+    }
     function initFollowCheck() {
         var label = document.querySelector('[data-uc-follow-check]');
         var select = document.querySelector('[data-uc-series-select]');

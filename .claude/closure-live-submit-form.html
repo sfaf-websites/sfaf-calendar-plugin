@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, nofollow" />
 <title>Submit</title>
-<link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.117.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.117.0" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.117.0" />
-<link rel="stylesheet" href="../public/css/portal.css?ver=3.117.0" />
+<link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.118.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.118.0" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.118.0" />
+<link rel="stylesheet" href="../public/css/portal.css?ver=3.118.0" />
 </head>
 <body class="uc-portal uc-request-page">
 <div class="uc-request-wrap">
@@ -19,10 +19,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, nofollow" />
 <title>Submit an event: Cycle to Zero</title>
-<link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.117.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.117.0" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.117.0" />
-<link rel="stylesheet" href="../public/css/portal.css?ver=3.117.0" />
+<link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.118.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.118.0" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.118.0" />
+<link rel="stylesheet" href="../public/css/portal.css?ver=3.118.0" />
 </head>
 <body class="uc-portal uc-request-page uc-submit-page">
 <div class="uc-request-wrap">
@@ -38,7 +38,7 @@
                         <div class="uc-hp" aria-hidden="true">
             <label>Website<input type="text" name="uc_website" value="" tabindex="-1" autocomplete="off" /></label>
         </div>
-                        <p class="uc-hint uc-required-note">Fields marked * are required.</p>                <script type="application/json" data-uc-required>[{"key":"street","inputs":["street"],"when":{"venue":""},"carry":"required"},{"key":"cost_other","inputs":["cost_other"],"when":{"cost":"other"},"carry":"required"},{"key":"contact_name","inputs":["contact_name"],"when":{"contact_same":""},"carry":"required"},{"key":"contact_email","inputs":["contact_email","contact_phone"],"when":{"contact_same":""},"carry":"aria"}]</script>
+                        <p class="uc-hint uc-required-note">Fields marked * are required.</p>                <script type="application/json" data-uc-required>[{"key":"street","inputs":["street"],"when":{"venue":"","online":""},"carry":"required"},{"key":"cost_other","inputs":["cost_other"],"when":{"cost":"other"},"carry":"required"},{"key":"contact_name","inputs":["contact_name"],"when":{"contact_same":""},"carry":"required"},{"key":"contact_email","inputs":["contact_email","contact_phone"],"when":{"contact_same":""},"carry":"aria"}]</script>
                 <fieldset class="uc-form-section-group">
                     <legend class="uc-field-group-title">About you</legend>
                     <p class="uc-hint">Give your own details here; they are not shown on the calendar.</p>
@@ -46,27 +46,11 @@
                         <span class="uc-field-label">Your name<span class="uc-req" data-uc-req-mark="submitter_name" aria-hidden="true">*</span></span>
                         <input type="text" name="submitter_name" required maxlength="120" value="" />
                                             </label>
-                                        <div class="uc-field">
-                        <span class="uc-field-label">Your email, and anybody else who should get RSVPs<span class="uc-req" data-uc-req-mark="submitter_email" aria-hidden="true">*</span></span>
-                        <span class="uc-hint">Put your own address first, because your copy of this submission goes there.</span>
-                        <div class="uc-repeater uc-email-repeat" data-repeater
-                             data-repeater-max="5">
-                            <div class="uc-repeater-rows">
-                                                                    <label class="uc-repeater-row">
-                                        <span class="uc-visually-hidden">Your email</span>
-                                        <input type="email" name="submitter_email[]" maxlength="200"
-                                               required autocomplete="email"                                               value="" />
-                                    </label>
-                                                            </div>
-                                                            <button type="button" class="uc-btn uc-btn-sm uc-repeater-add">+ Add email</button>
-                                                        <template class="uc-repeater-tpl">
-                                <label class="uc-repeater-row">
-                                    <span class="uc-visually-hidden">Another email address</span>
-                                    <input type="email" name="submitter_email[]" maxlength="200" autocomplete="off" value="" />
-                                </label>
-                            </template>
-                        </div>
-                                            </div>
+                                        <label class="uc-field">
+                        <span class="uc-field-label">Your email<span class="uc-req" data-uc-req-mark="submitter_email" aria-hidden="true">*</span></span>
+                        <input type="email" name="submitter_email[]" maxlength="200" required autocomplete="email"
+                               value="" data-uc-rsvp-updates-source />
+                                            </label>
                 </fieldset>
 
                 <fieldset class="uc-form-section-group">
@@ -199,6 +183,11 @@
 
                 <fieldset class="uc-form-section-group">
                     <legend class="uc-field-group-title">Where it happens</legend>
+                    <label class="uc-check">
+                        <input type="checkbox" name="online" value="1" data-uc-reveal="uc-where-place" data-uc-reveal-when="unchecked"  />
+                        This is an online event
+                    </label>
+                    <div class="uc-reveal-target" id="uc-where-place">
                                                                 <label class="uc-field">
                             <span class="uc-field-label">Venue</span>
                             <select name="venue" data-uc-reveal="uc-address" data-uc-reveal-when="0">
@@ -237,6 +226,7 @@
                                 <input type="text" name="zip" maxlength="20" value="" placeholder="94114" />
                             </label>
                         </div>
+                    </div>
                     </div>
 
                     <label class="uc-field">
@@ -293,7 +283,15 @@
                            placeholder="https://" />
                     <span class="uc-hint">If people sign up somewhere else, put that address here.</span>
                                     </label>
-                </fieldset>
+                        <div class="uc-field uc-rsvp-updates" data-uc-rsvp-updates>
+            <span class="uc-field-label" id="uc-rsvp-updates-label">Who should get RSVP updates?</span>
+            <input type="email" value="" readonly tabindex="-1"
+                   aria-labelledby="uc-rsvp-updates-label" data-uc-rsvp-updates-you placeholder="Your email, from above" />
+            <input type="email" name="rsvp_updates_extra" maxlength="200" value=""
+                   placeholder="Another address (optional)" aria-label="Another address for RSVP updates" autocomplete="off" />
+            <span class="uc-hint">Once the event is published, these addresses get RSVP updates by email.</span>
+                    </div>
+                        </fieldset>
 
                                 <fieldset class="uc-form-section-group">
                     <legend class="uc-field-group-title">Contact for the event</legend>
@@ -382,7 +380,7 @@
             </form>
         </div>
         </div>
-<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.117.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/portal.js?ver=3.117.0"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.118.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/portal.js?ver=3.118.0"></script>
 <script>window.CL_PAGE="submit-form";window.CL_CASE={"set":{"date":"2026-11-27"},"press":"","answer":""};window.CL_SERIES="11";(function () {
 var P = window.CL_PAGE, C = window.CL_CASE || {}, out = { page: P, errors: [], posted: null, dialogs: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
@@ -559,5 +557,5 @@ window.addEventListener('load', function () { setTimeout(function () {
   setTimeout(function () { answer(function () { setTimeout(finish, 900); }); }, 300);
 }, 400); });
 })();</script></body></html></div>
-<script src="../public/js/portal.js?ver=3.117.0"></script>
+<script src="../public/js/portal.js?ver=3.118.0"></script>
 </body></html>
