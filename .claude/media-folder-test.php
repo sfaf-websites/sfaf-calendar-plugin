@@ -227,13 +227,9 @@ $portal = file_get_contents( $root . '/includes/class-sfaf-portal.php' );
 if ( false === strpos( $portal, 'data-uc-media-flag' ) ) {
     $fails[] = 'the image field does not carry the flag attribute, so the script has nothing to send';
 }
-$js = file_get_contents( $root . '/public/js/portal.js' );
-if ( false === strpos( $js, 'library[flag]' ) ) {
-    $fails[] = 'portal.js does not put the flag on the media query, so the picker would show the whole library';
-}
-if ( false === strpos( $js, 'multipart_params' ) ) {
-    $fails[] = 'portal.js does not put the flag on the uploader, so an upload would land in the month folder';
-}
+/* THE wp.media HALF WENT IN 3.117.0. No caladmin screen opens the media
+ * library: the inline picker reads the folder on the server, and its uploads
+ * go through the event's or the series' own save into the folder. */
 
 
 /* ---------------------------------------------------------------------------

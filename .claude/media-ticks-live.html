@@ -105,7 +105,6 @@ function ucDismissOnBackdrop(dialog) {
         run('rsvpDetails', initRsvpDetails);
         run('notifyPicker', initNotifyPicker);
         run('notifyKinds', initNotifyKinds);
-        run('imagePicker', initImagePicker);
         // ORDER MATTERS between these three. Both the scope confirmation and
         // the completeness confirmation bind a click listener to the same save
         // buttons, and listeners on one element fire in the order they were
@@ -169,6 +168,7 @@ function ucDismissOnBackdrop(dialog) {
         run('agreement', initAgreementSection);
         run('access', initAccessSection);
         run('reg-where', initRegisterWhere);
+        run('follow-check', initFollowCheck);
         run('users-table', initUsersTable);
         run('table-cards', initTableCards);
         run('registrantMail', initRegistrantMail);
@@ -470,6 +470,16 @@ function ucDismissOnBackdrop(dialog) {
         }
         var tick = document.querySelector('input[name="rsvp_enabled"]');
         return !!(tick && tick.checked);
+    }
+    /* "Follow the series" only on an event in one (3.117.0): it follows the
+     * series dropdown. Hidden, the tick still posts what it holds. */
+    function initFollowCheck() {
+        var label = document.querySelector('[data-uc-follow-check]');
+        var select = document.querySelector('[data-uc-series-select]');
+        if (!label || !select) { return; }
+        function apply() { label.hidden = !(select.value && select.value !== '0'); }
+        select.addEventListener('change', apply);
+        apply();
     }
     function initRegisterWhere() {
         document.querySelectorAll('[data-uc-reg-choice]').forEach(function (box) {
@@ -3023,65 +3033,6 @@ function ucDismissOnBackdrop(dialog) {
     }
 
     /* ---------------------------------------------------------------------
-     * Featured image picker (wp.media) + URL fallback.
-     *
-     * ONE PICKER PER FIELD, NOT ONE PER PAGE. This used to bind to
-     * document.getElementById('uc-featured-image-id') and friends, which was
-     * fine while the event editor was the only screen that carried the
-     * control. The pending queue now renders the same manager-owned panel, one
-     * per queued event, so those ids appear several times on a page and
-     * getElementById would have wired every Choose Image button on the screen
-     * to the first event's hidden input: choosing a picture for the third
-     * campaign would have set it on the first.
-     *
-     * So the fields are found by data attribute, WITHIN each .uc-image-field,
-     * and each one gets its own media frame. The ids are still unique per
-     * event in the markup; nothing here depends on them.
-     * ------------------------------------------------------------------ */
-    function initImagePicker() {
-        var fields = document.querySelectorAll('.uc-image-field');
-        for (var i = 0; i < fields.length; i++) {
-            bindImageField(fields[i]);
-        }
-    }
-
-    /* ---------------------------------------------------------------------
-     * SHOWING AND HIDING THE PREVIEW, IN ONE PLACE (3.64.2).
-     *
-     * These were closures inside bindImageField(), which is where they were
-     * needed while Choose Image and the URL box were the only two things that
-     * could put a picture on an event. The series prefill is a third: it writes
-     * the hidden id and the URL directly, and until this release it left the
-     * preview empty, so the button said it had filled six things in and the
-     * picture was the one nobody could see.
-     *
-     * A field is a `.uc-image-field`, and every part of the preview is found
-     * within it, so this works for the pending queue's several fields on one
-     * page exactly as the binding does.
-     * ------------------------------------------------------------------ */
-    function showImagePreview(field, src) {
-        if (!field || !src) { return; }
-        var preview    = field.querySelector('[data-uc-image-preview]');
-        var previewImg = field.querySelector('[data-uc-image-preview-img]');
-        var removeBtn  = field.querySelector('.uc-remove-image');
-        if (!preview || !previewImg) { return; }
-        previewImg.src = src;
-        preview.style.display = '';
-        if (removeBtn) { removeBtn.style.display = ''; }
-    }
-
-    function hideImagePreview(field) {
-        if (!field) { return; }
-        var preview    = field.querySelector('[data-uc-image-preview]');
-        var previewImg = field.querySelector('[data-uc-image-preview-img]');
-        var removeBtn  = field.querySelector('.uc-remove-image');
-        if (!preview || !previewImg) { return; }
-        preview.style.display = 'none';
-        previewImg.src = '';
-        if (removeBtn) { removeBtn.style.display = 'none'; }
-    }
-
-    /* ---------------------------------------------------------------------
      * THE FEATURED IMAGE, ONE BLOCK AND ONE STATE (3.108.1)
      *
      * The event editor's picture is a preview with a pill on it saying where
@@ -3271,219 +3222,6 @@ function ucDismissOnBackdrop(dialog) {
             block.setAttribute('data-uc-image-state', start);
             if (known) { render(); }
         });
-    }
-
-    function bindImageField(field) {
-        /* TWO TRIGGERS SINCE 3.74.0: the one that opens on this event's series
-         * and the one that opens on everything. Each keeps its own frame,
-         * because a frame remembers the library it was built with and reusing
-         * one would make the second button show the first one's list. */
-        var triggers = field.querySelectorAll('.uc-choose-image');
-        if (!triggers.length) {
-            return;
-        }
-        var idInput    = field.querySelector('[data-uc-image-id]');
-        var urlInput   = field.querySelector('[data-uc-image-url]');
-        var preview    = field.querySelector('[data-uc-image-preview]');
-        var previewImg = field.querySelector('[data-uc-image-preview-img]');
-        var removeBtn  = field.querySelector('.uc-remove-image');
-
-        if (!idInput || !preview || !previewImg) {
-            return;
-        }
-
-        function show(src) { showImagePreview(field, src); }
-        function hide() { hideImagePreview(field); }
-
-        /* THE ESCAPE IS ONLY WORTH OFFERING WHEN SOMETHING IS BEING NARROWED.
-         * On an event with no series the first button already shows the whole
-         * folder, and a second one beside it saying "all" would be two buttons
-         * that do the same thing. */
-        var hasSeries = field.getAttribute('data-uc-media-series');
-        hasSeries = !!(hasSeries && hasSeries !== '0');
-        /* The server already answered "is there anything in the folder at all",
-           which is a different question from "did this query match": the first
-           sends somebody to the Images screen, the second to a wider filter. */
-        var folderEmpty = field.hasAttribute('data-uc-media-folder-empty');
-
-        Array.prototype.forEach.call(triggers, function (chooseBtn) {
-        var frame;
-        var isAll = chooseBtn.hasAttribute('data-uc-media-all');
-        if (isAll && !hasSeries) {
-            chooseBtn.hidden = true;
-            return;
-        }
-
-        chooseBtn.addEventListener('click', function (e) {
-            e.preventDefault();
-            if (typeof wp === 'undefined' || !wp.media) {
-                window.alert('Media library is unavailable here. Paste an image URL instead.');
-                return;
-            }
-            if (frame) { frame.open(); return; }
-
-            /*
-             * THE CALENDAR FOLDER ONLY, AND UPLOADS INTO IT (3.42.1).
-             *
-             * The flag goes on the frame's library, which wp.media sends to
-             * the server as part of the attachment query, and on the uploader's
-             * multipart params, which ride the upload request. One key does
-             * both, and SFAF_Media_Folder reads it on either route: the query
-             * side narrows to files whose path starts with the folder, the
-             * upload side puts new files there.
-             *
-             * NOTHING HERE FILTERS ANYTHING ON ITS OWN. If the server-side
-             * filter were removed this would quietly show the whole library
-             * again, which is the failure worth knowing about: the flag is a
-             * request, not the rule. The rule is in PHP, where it also applies
-             * to anything else that asks.
-             */
-            var flag = field.getAttribute('data-uc-media-flag');
-            var library = { type: 'image' };
-            if (flag) { library[flag] = '1'; }
-
-            /*
-             * OPEN ON THIS EVENT'S SERIES (3.74.0), when it has one and this
-             * trigger is not the "everything" one. The term id rides the
-             * library query the same way the folder flag does, and
-             * SFAF_Media_Folder reads both off the request: one key narrows to
-             * the folder, the other to the series tagged on the picture.
-             *
-             * THE WAY OUT IS A SECOND TRIGGER, NOT A CONTROL INSIDE THE MODAL.
-             * wp.media's own chrome is WordPress's, and adding a dropdown to it
-             * is a thing that breaks quietly on a core update. Two buttons that
-             * open the same frame with different arguments cannot.
-             */
-            var series = field.getAttribute('data-uc-media-series');
-            if (series && series !== '0' && !isAll) {
-                library.uc_series = series;
-            }
-
-            frame = wp.media({
-                title: 'Select Featured Image',
-                button: { text: 'Use this image' },
-                multiple: false,
-                library: library
-            });
-
-            /*
-             * UPLOADING IS ADMINS ONLY (3.74.0), and the tab goes for everybody
-             * else. THIS IS NOT WHAT REFUSES THE UPLOAD: SFAF_Media_Folder does
-             * that when the file arrives, because a hidden tab is a hidden tab
-             * and not a permission. What this stops is offering somebody a
-             * control that is going to fail.
-             */
-            if ('0' === field.getAttribute('data-uc-media-upload')) {
-                frame.on('ready', function () {
-                    var tab = frame.$el && frame.$el[0]
-                        ? frame.$el[0].querySelector('#menu-item-upload')
-                        : null;
-                    if (tab) { tab.hidden = true; }
-                });
-            }
-
-            /*
-             * A BLANK GRID SAYS WHY IT IS BLANK (3.90.0).
-             *
-             * wp.media's own empty state is "No media items found", which is
-             * true and useless: it cannot know the library was narrowed to one
-             * folder and possibly one series, so an empty grid looked exactly
-             * like a broken picker. That is what cost a whole investigation.
-             *
-             * The public forms' picker has had this sentence since 3.80.0. This
-             * is the caladmin equivalent, in the one place a wp.media frame will
-             * let a sentence be put without replacing its views.
-             *
-             * WRITTEN ON EVERY OPEN rather than once, because the frame is
-             * reused and the answer changes: uploading a picture into an empty
-             * folder makes it wrong to still say the folder is empty.
-             */
-            frame.on('open', function () {
-                setTimeout(function () {
-                    var el = frame.$el && frame.$el[0];
-                    if (!el) { return; }
-                    var box = el.querySelector('.uc-media-empty-note');
-                    if (!box) {
-                        box = document.createElement('p');
-                        box.className = 'uc-media-empty-note';
-                        var host = el.querySelector('.media-frame-content');
-                        if (!host) { return; }
-                        host.appendChild(box);
-                    }
-                    var shown = el.querySelectorAll('.attachments .attachment').length;
-                    if (shown) { box.hidden = true; return; }
-                    box.hidden = false;
-                    box.textContent = folderEmpty
-                        ? 'There are no pictures in the calendar folder yet. Add one on the Images screen, or ask MarCom for an event image.'
-                        : (isAll || !hasSeries
-                            ? 'No pictures in the calendar folder match. Add one on the Images screen.'
-                            : 'No pictures are tagged to this series yet. Press "All calendar images" to choose from the whole folder.');
-                }, 400);
-            });
-
-            /* The uploader is built with the frame, so its params are set once
-             * the frame exists rather than on every open. */
-            if (flag && wp.Uploader && wp.Uploader.defaults) {
-                wp.Uploader.defaults.multipart_params = wp.Uploader.defaults.multipart_params || {};
-                wp.Uploader.defaults.multipart_params[flag] = '1';
-
-                /*
-                 * THE SERIES RIDES THE UPLOAD TOO (3.87.0), AND THIS IS WHY AN
-                 * UPLOAD FROM HERE USED TO DISAPPEAR.
-                 *
-                 * The file was never lost: the flag above put it in the calendar
-                 * folder correctly, and it has always been on the Images screen.
-                 * But wp.media refreshes its library the instant an upload
-                 * finishes, using THIS frame's arguments, and for an event in a
-                 * series those include uc_series. A picture uploaded two seconds
-                 * ago carries no series term, so the refreshed picker could not
-                 * return the thing it had just uploaded.
-                 *
-                 * Sending the series lets the server tag it as it arrives, so
-                 * the refresh finds it. See tag_upload_with_series().
-                 *
-                 * CLEARED WHEN THERE IS NO SERIES, because these defaults are
-                 * GLOBAL and outlive the frame: a stale id left here would file
-                 * the next upload, from any picker on the page, into a series
-                 * nobody chose.
-                 */
-                if (library.uc_series) {
-                    wp.Uploader.defaults.multipart_params.uc_series = String(library.uc_series);
-                } else {
-                    delete wp.Uploader.defaults.multipart_params.uc_series;
-                }
-            }
-            frame.on('select', function () {
-                var att = frame.state().get('selection').first().toJSON();
-                idInput.value = att.id;
-                var src = (att.sizes && att.sizes.medium) ? att.sizes.medium.url : att.url;
-                show(src);
-                // Setting .value in script fires neither input nor change, so
-                // the live completeness check has to be told by hand. Without
-                // this, choosing an image left the field amber.
-                if (window.sfafRefreshCompleteness) { window.sfafRefreshCompleteness(); }
-            });
-            frame.open();
-        });
-        });
-
-        if (urlInput) {
-            urlInput.addEventListener('input', function () {
-                // Only drive the preview from the URL when no media image is chosen.
-                if (idInput.value) { return; }
-                if (urlInput.value) { show(urlInput.value); } else { hide(); }
-            });
-        }
-
-        if (removeBtn) {
-            removeBtn.addEventListener('click', function (e) {
-                e.preventDefault();
-                idInput.value = '';
-                if (urlInput) { urlInput.value = ''; }
-                hide();
-                if (window.sfafRefreshCompleteness) { window.sfafRefreshCompleteness(); }
-            });
-        }
     }
 
     /* Mobile sidebar toggle */
@@ -4699,10 +4437,7 @@ function ucDismissOnBackdrop(dialog) {
             }
         }
 
-        /* input covers typing, change covers the selects, the checkbox groups
-         * and the media picker (which sets the hidden field's value and fires
-         * nothing on its own, hence the explicit refresh from
-         * initImagePicker). */
+        /* input covers typing, change covers the selects and the checkbox groups. */
         form.addEventListener('input', refresh);
         form.addEventListener('change', refresh);
         window.sfafRefreshCompleteness = refresh;

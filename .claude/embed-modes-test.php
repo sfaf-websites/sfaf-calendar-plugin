@@ -1516,7 +1516,7 @@ check(
 
 /* --- C. THE EVENT EDITOR USES THE REQUEST FORM'S PICKER. ---------------- */
 check(
-    (bool) preg_match( '/if \( \$inline \) :.*?SFAF_Media::picker\( array\(/s', $code_portal ),
+    (bool) preg_match( '/private function render_image_picker.*?SFAF_Media::picker\( array\(/s', $code_portal ),
     'the event editor no longer calls the shared picker, so it is back on the media modal or on a second implementation'
 );
 check(

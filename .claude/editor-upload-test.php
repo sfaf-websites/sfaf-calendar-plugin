@@ -167,15 +167,9 @@ $php = file_get_contents( $root . '/includes/class-sfaf-media-folder.php' );
 /* THE ASSIGNMENT, NOT THE IDENTIFIER. The first draft matched the name alone,
  * so deleting the line that SETS it still passed: the `delete` statement two
  * lines below mentions the same property. Caught by planting it. */
-if ( ! preg_match( '#multipart_params(?:\.uc_series|\[\s*[\x27"]uc_series[\x27"]\s*\])\s*=#', $js ) ) {
-    $fails[] = 'the uploader does not send the series, so an upload cannot be tagged with it';
-}
-/* AND IT IS CLEARED WHEN THERE IS NO SERIES. These defaults are global and
- * outlive the frame, so a stale id would file the next upload from any picker
- * on the page into a series nobody chose. */
-if ( ! preg_match( '#delete\s+wp\.Uploader\.defaults\.multipart_params\.uc_series#', $js ) ) {
-    $fails[] = 'the series is never cleared from the global uploader defaults, so a later upload can inherit it';
-}
+/* THE wp.media UPLOADER WENT IN 3.117.0, so nothing in portal.js sends the
+ * series on an upload any more; the series screen's upload tags its picture
+ * on the server (save_series_upload()). The server half below stays. */
 if ( false === strpos( $php, 'add_attachment' ) ) {
     $fails[] = 'nothing hooks the upload to tag it, so a picture uploaded for an event in a series is still invisible to that picker';
 }
