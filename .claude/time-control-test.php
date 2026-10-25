@@ -214,8 +214,9 @@ check( '14:45' === $_POST['start_time'],
  * 6. ALL TWELVE CONTROLS WERE REPLACED.
  * ------------------------------------------------------------------------ */
 $files = array(
-    // 3.110.0: and the time beside "Schedule for a later date".
-    'includes/class-sfaf-portal.php'      => 7,
+    // 3.110.0: and the time beside "Schedule for a later date". 3.119.0: the
+    // series page's default start and end for new events.
+    'includes/class-sfaf-portal.php'      => 9,
     'includes/class-sfaf-post-types.php'  => 2,
     'includes/class-sfaf-request.php'     => 2,
     'includes/class-sfaf-submit.php'      => 2,
@@ -238,7 +239,7 @@ foreach ( $files as $rel => $want ) {
     check( false === strpos( $code, 'type="time"' ),
         $rel . ' still renders a browser time input' );
 }
-check( 13 === $total, 'there are ' . $total . ' time controls, not thirteen' );
+check( 15 === $total, 'there are ' . $total . ' time controls, not fifteen' );
 
 /* AND THE FOLD RUNS BEFORE ANY OF THEM IS READ. */
 $main = file_get_contents( $root . '/sfaf-calendar.php' );

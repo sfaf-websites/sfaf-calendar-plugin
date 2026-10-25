@@ -49,8 +49,8 @@ function rt_in_card( $xp, $card, $name ) {
 }
 
 /* ======================================================================== A */
-rt( 'A: the main column\'s cards', rt_cards( $xp, 'uc-bento-main' ), array( 'title', 'details', 'registration', 'faqs' ) );
-rt( 'A: the side column\'s cards', rt_cards( $xp, 'uc-bento-side' ), array( 'language', 'classification', 'links', 'access' ) );
+rt( 'A: the main column\'s cards', rt_cards( $xp, 'uc-bento-main' ), array( 'title', 'details', 'registration', 'new-events', 'notifications', 'faqs' ) );
+rt( 'A: the side column\'s cards', rt_cards( $xp, 'uc-bento-side' ), array( 'language', 'classification', 'display', 'links', 'access' ) );
 foreach ( array(
     'title' => array( 'series_name', 'series_slug' ),
     'details' => array( 'series_image_id', 'series_desc', 'series_video', 'uc_series_picture' ),

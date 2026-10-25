@@ -1851,6 +1851,9 @@ class SFAF_Request {
                         $prefill = array();
                         foreach ( $all_series as $s ) {
                             $prefill[ (string) $s->term_id ] = SFAF_Series::prefill_data( (int) $s->term_id );
+                            /* Not the series' notification people and addresses (3.119.0): this
+                               form does not offer them, and the page is no place to list them. */
+                            unset( $prefill[ (string) $s->term_id ]['notify'], $prefill[ (string) $s->term_id ]['notify_off'] );
                         }
                         ?>
                         <div class="uc-prefill" data-uc-request-prefill hidden>

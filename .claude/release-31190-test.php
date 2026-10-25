@@ -115,6 +115,10 @@ foreach ( array( 'includes/class-sfaf-request.php' => "SFAF_Series::apply_event_
     rt( "D: $rel applies them", false !== strpos( file_get_contents( $root . '/' . $rel ), $call ), true );
 }
 
+$rq = file_get_contents( $root . '/includes/class-sfaf-request.php' );
+rt( "D: the staff form's copy of the fill-in data leaves out the notification people and addresses",
+    false !== strpos( $rq, "unset( \$prefill[ (string) \$s->term_id ]['notify'], \$prefill[ (string) \$s->term_id ]['notify_off'] );" ), true );
+
 /* ======================================================================== E */
 rt( 'E: no private, attachment or questions among them', array_intersect( array_keys( SFAF_Series::event_defaults( 11 ) ), array( 'private', 'attachment', 'questions' ) ), array() );
 

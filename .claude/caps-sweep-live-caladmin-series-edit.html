@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Series - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.118.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.118.0" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.118.0" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.119.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.119.0" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.119.0" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.118.0" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.119.0" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -305,6 +305,177 @@
                 </div>
                 </section>
 
+                        <input type="hidden" name="uc_series_event_defaults_present" value="1" />
+        <section class="uc-bento-card" data-uc-card="new-events">
+            <h2 class="uc-bento-title">New events</h2>
+            <p class="uc-hint">New events in this series start with these. Leave one empty to start it empty.</p>
+            <div class="uc-field-row">
+                <div class="uc-field">
+                    <span class="uc-field-label">Start</span>
+                        <span class="uc-timepick" role="group" aria-label="Start">
+        <select name="series_def_start_h"
+                                class="uc-timepick-h"
+                aria-label="Start, hour">
+            <option value="" selected="selected">Hour</option>
+                            <option value="00">12 am</option>
+                            <option value="01">1 am</option>
+                            <option value="02">2 am</option>
+                            <option value="03">3 am</option>
+                            <option value="04">4 am</option>
+                            <option value="05">5 am</option>
+                            <option value="06">6 am</option>
+                            <option value="07">7 am</option>
+                            <option value="08">8 am</option>
+                            <option value="09">9 am</option>
+                            <option value="10">10 am</option>
+                            <option value="11">11 am</option>
+                            <option value="12">12 pm</option>
+                            <option value="13">1 pm</option>
+                            <option value="14">2 pm</option>
+                            <option value="15">3 pm</option>
+                            <option value="16">4 pm</option>
+                            <option value="17">5 pm</option>
+                            <option value="18">6 pm</option>
+                            <option value="19">7 pm</option>
+                            <option value="20">8 pm</option>
+                            <option value="21">9 pm</option>
+                            <option value="22">10 pm</option>
+                            <option value="23">11 pm</option>
+                    </select>
+        <select name="series_def_start_m"
+                class="uc-timepick-m"
+                aria-label="Start, minute">
+            <option value="" selected="selected">Min</option>
+                            <option value="00">:00</option>
+                            <option value="05">:05</option>
+                            <option value="10">:10</option>
+                            <option value="15">:15</option>
+                            <option value="20">:20</option>
+                            <option value="25">:25</option>
+                            <option value="30">:30</option>
+                            <option value="35">:35</option>
+                            <option value="40">:40</option>
+                            <option value="45">:45</option>
+                            <option value="50">:50</option>
+                            <option value="55">:55</option>
+                    </select>
+    </span>
+                    </div>
+                <div class="uc-field">
+                    <span class="uc-field-label">End</span>
+                        <span class="uc-timepick" role="group" aria-label="End">
+        <select name="series_def_end_h"
+                                class="uc-timepick-h"
+                aria-label="End, hour">
+            <option value="" selected="selected">Hour</option>
+                            <option value="00">12 am</option>
+                            <option value="01">1 am</option>
+                            <option value="02">2 am</option>
+                            <option value="03">3 am</option>
+                            <option value="04">4 am</option>
+                            <option value="05">5 am</option>
+                            <option value="06">6 am</option>
+                            <option value="07">7 am</option>
+                            <option value="08">8 am</option>
+                            <option value="09">9 am</option>
+                            <option value="10">10 am</option>
+                            <option value="11">11 am</option>
+                            <option value="12">12 pm</option>
+                            <option value="13">1 pm</option>
+                            <option value="14">2 pm</option>
+                            <option value="15">3 pm</option>
+                            <option value="16">4 pm</option>
+                            <option value="17">5 pm</option>
+                            <option value="18">6 pm</option>
+                            <option value="19">7 pm</option>
+                            <option value="20">8 pm</option>
+                            <option value="21">9 pm</option>
+                            <option value="22">10 pm</option>
+                            <option value="23">11 pm</option>
+                    </select>
+        <select name="series_def_end_m"
+                class="uc-timepick-m"
+                aria-label="End, minute">
+            <option value="" selected="selected">Min</option>
+                            <option value="00">:00</option>
+                            <option value="05">:05</option>
+                            <option value="10">:10</option>
+                            <option value="15">:15</option>
+                            <option value="20">:20</option>
+                            <option value="25">:25</option>
+                            <option value="30">:30</option>
+                            <option value="35">:35</option>
+                            <option value="40">:40</option>
+                            <option value="45">:45</option>
+                            <option value="50">:50</option>
+                            <option value="55">:55</option>
+                    </select>
+    </span>
+                    </div>
+            </div>
+            <label class="uc-field">
+                <span class="uc-field-label">Venue</span>
+                <select name="series_def_venue">
+                    <option value="0">No venue</option>
+                                            <option value="11" >Alpha</option>
+                                            <option value="12" >Beta</option>
+                                    </select>
+            </label>
+            <label class="uc-field">
+                <span class="uc-field-label">Cost</span>
+                <input type="text" name="series_def_cost" maxlength="80" value="" />
+            </label>
+            <div class="uc-field">
+                <span class="uc-field-label">Age range</span>
+                        <select name="series_def_age">
+            <option value="" selected="selected">No age range</option>
+                            <option value="All ages">All ages</option>
+                            <option value="18+">18+</option>
+                            <option value="21+">21+</option>
+                    </select>
+                    </div>
+            <fieldset class="uc-field uc-contact-fields">
+                <legend class="uc-field-label">Contact</legend>
+                <label class="uc-field">
+                    <span class="uc-field-label">Name</span>
+                    <input type="text" name="series_def_contact_name" maxlength="120" value="" />
+                </label>
+                <label class="uc-field">
+                    <span class="uc-field-label">Email</span>
+                    <input type="email" name="series_def_contact_email" maxlength="200" value="" />
+                </label>
+                <label class="uc-field">
+                    <span class="uc-field-label">Phone</span>
+                    <input type="text" name="series_def_contact_phone" maxlength="60" value="" />
+                </label>
+            </fieldset>
+        </section>
+
+        <section class="uc-bento-card" data-uc-card="notifications">
+            <h2 class="uc-bento-title">Notifications</h2>
+            <p class="uc-hint">New events in this series start with these, beside whoever creates them.</p>
+                                    <label class="uc-field">
+                <span class="uc-field-label">Anyone else</span>
+                <textarea name="series_def_notify_emails" rows="3"></textarea>
+                <span class="uc-hint">One email address per line.</span>
+            </label>
+            <fieldset class="uc-field">
+                <legend class="uc-field-label">Emails for new events</legend>
+                                                                            <label class="uc-check">
+                        <input type="checkbox" name="series_def_notify_kinds[]" value="alert"  checked="checked" />
+                        Email when someone RSVPs                    </label>
+                                                        <label class="uc-check">
+                        <input type="checkbox" name="series_def_notify_kinds[]" value="day_before"  checked="checked" />
+                        RSVP count, the day before                    </label>
+                                                                            <label class="uc-check">
+                        <input type="checkbox" name="series_def_notify_kinds[]" value="summary"  checked="checked" />
+                        Who&#039;s coming, two hours before                    </label>
+                                                        <label class="uc-check">
+                        <input type="checkbox" name="series_def_notify_kinds[]" value="cancel_alert"  checked="checked" />
+                        Email when someone cancels                    </label>
+                            </fieldset>
+        </section>
+        
                 <section class="uc-bento-card" data-uc-card="faqs">
                     <h2 class="uc-bento-title">FAQs</h2>
                 <label class="uc-field">
@@ -363,6 +534,23 @@
                 </div>
                 </section>
 
+                            <section class="uc-bento-card" data-uc-card="display">
+                <h2 class="uc-bento-title">Display</h2>
+                                    <label class="uc-check">
+                        <input type="checkbox" name="series_def_show_rsvp" value="1"  checked="checked" />
+                        RSVP                    </label>
+                                    <label class="uc-check">
+                        <input type="checkbox" name="series_def_show_calendar" value="1"  checked="checked" />
+                        Add to calendar                    </label>
+                                    <label class="uc-check">
+                        <input type="checkbox" name="series_def_show_social" value="1"  checked="checked" />
+                        Social share                    </label>
+                                    <label class="uc-check">
+                        <input type="checkbox" name="series_def_show_reminders" value="1"  checked="checked" />
+                        Follow the series                    </label>
+                                <span class="uc-hint">New events in this series start with these.</span>
+            </section>
+            
                 <section class="uc-bento-card" data-uc-card="links">
                     <h2 class="uc-bento-title">Links</h2>
                                 <label class="uc-field">
@@ -583,9 +771,9 @@
             </div>
         </div>
         <script type="application/json" id="uc-session-config">{"ajax":"https:\/\/resources.sfaf.org\/wp-admin\/admin-ajax.php","action":"sfaf_caladmin_session","signin":"https:\/\/resources.sfaf.org\/caladmin","screen":"dashboard","signedIn":true}</script>
-<script src="../public/js/caladmin-session.js?ver=3.118.0"></script>
-<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.118.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.118.0"></script>
-<script src="../public/js/portal.js?ver=3.118.0"></script>
+<script src="../public/js/caladmin-session.js?ver=3.119.0"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.119.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.119.0"></script>
+<script src="../public/js/portal.js?ver=3.119.0"></script>
 <script>window.CS_PAGE="caladmin-series-edit";(function () {
 var out = { page: window.CS_PAGE, errors: [], caps: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
