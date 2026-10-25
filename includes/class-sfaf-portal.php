@@ -1796,11 +1796,12 @@ class SFAF_Portal {
                      * message from here at all.
                      */
                     $listed = false;
-                    // Offered only when the event takes RSVPs (3.113.1).
-                    if ( ! empty( $_POST['notify_submitter'] ) && sfaf_event_takes_rsvps( $event_id ) ) {
-                        foreach ( SFAF_Submissions::notify_addresses( $event_id ) as $n => $addr ) {
+                    // What the dialog offered, asked again (3.118.0): approval_offers().
+                    if ( ! empty( $_POST['notify_submitter'] ) ) {
+                        $first = strtolower( (string) SFAF_Submissions::submitter( $event_id )['email'] );
+                        foreach ( SFAF_Submissions::approval_offers( $event_id ) as $addr ) {
                             $added = SFAF_Submissions::add_to_notify_list( $event_id, $addr );
-                            if ( 0 === $n ) {
+                            if ( $addr === $first ) {
                                 $listed = $added;
                             }
                         }
@@ -19435,30 +19436,30 @@ class SFAF_Portal {
                  * addresses. Every one of them is printed here, because the
                  * person deciding cannot decide about a set they cannot see.
                  */
-                $addresses = SFAF_Submissions::notify_addresses( $event_id );
-                $others    = array_slice( $addresses, 1 );
-                /* ONLY WHEN THE EVENT TAKES RSVPS (3.113.1). With RSVP off
-                 * there are no registrations to send, and Approve approves.
-                 * Not when they are on the list already (3.113.2): a staff
-                 * request that wanted RSVPs put them there, and unticking
-                 * would not take them off. */
-                $listed_now = in_array(
-                    strtolower( (string) $who['email'] ),
-                    array_map( 'strtolower', array_map( 'strval', (array) get_post_meta( $event_id, SFAF_Reminders::NOTIFY_EMAILS_META, true ) ) ),
-                    true
-                );
-                if ( sfaf_event_takes_rsvps( $event_id ) && ! $listed_now ) :
+                /*
+                 * WHAT IS OFFERED IS approval_offers() (3.118.0): the request's
+                 * addresses not on the list yet, when the event takes RSVPs or
+                 * the requester named somebody besides themselves. A staff
+                 * request that wanted RSVPs put the requester on the list
+                 * already, so only the one more address is offered then.
+                 */
+                $offers   = SFAF_Submissions::approval_offers( $event_id );
+                $self_off = in_array( strtolower( (string) $who['email'] ), $offers, true );
+                $others   = array_values( array_diff( $offers, array( strtolower( (string) $who['email'] ) ) ) );
+                if ( ! empty( $offers ) ) :
                 ?>
                 <label class="uc-check">
                     <input type="checkbox" name="notify_submitter" value="1" checked form="<?php echo esc_attr( $form ); ?>" />
-                    <?php if ( empty( $others ) ) : ?>
+                    <?php if ( $self_off && empty( $others ) ) : ?>
                         Send <?php echo esc_html( $who['name'] ); ?> registrations for this event
-                    <?php else : ?>
+                    <?php elseif ( $self_off ) : ?>
                         Send registrations for this event to <?php echo esc_html( $who['name'] ); ?>
                         and <?php echo (int) count( $others ); ?> more
+                    <?php else : ?>
+                        Send registrations for this event to <?php echo esc_html( implode( ', ', $others ) ); ?> as well
                     <?php endif; ?>
                 </label>
-                <?php if ( ! empty( $others ) ) : ?>
+                <?php if ( $self_off && ! empty( $others ) ) : ?>
                     <p class="uc-hint uc-approve-others">
                         <?php echo esc_html( implode( ', ', $others ) ); ?>
                     </p>

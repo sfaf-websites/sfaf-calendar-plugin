@@ -826,6 +826,16 @@ class SFAF_Request {
             }
         }
 
+        /* WHO SHOULD GET RSVP UPDATES (3.118.0): the requester, and one more
+         * address, read only with a yes. */
+        $clean['rsvp_extra'] = '';
+        if ( $clean['rsvp'] ) {
+            list( $clean['rsvp_extra'], $extra_error ) = SFAF_Submissions::clean_rsvp_extra( $post );
+            if ( '' !== $extra_error ) {
+                $errors['rsvp_updates_extra'] = $extra_error;
+            }
+        }
+
         /* ---- FAQs: a set, questions of their own, or both. ----
          *
          * NEITHER IS REQUIRED AND NEITHER VALIDATES. A set id naming nothing is
@@ -1194,6 +1204,11 @@ class SFAF_Request {
         if ( $c['rsvp'] ) {
             SFAF_Submissions::add_to_notify_list( $event_id, $email );
             SFAF_Notifications::set_off( $event_id, array_diff( SFAF_Notifications::choosable(), self::RSVP_EMAILS ) );
+            /* The one more address (3.118.0) waits for Approve, which lists it
+               and offers to add it, as the community form's addresses do. */
+            if ( ! empty( $c['rsvp_extra'] ) && strtolower( $c['rsvp_extra'] ) !== strtolower( (string) $email ) ) {
+                update_post_meta( $event_id, SFAF_Submit::META_NOTIFY_EMAILS, array( strtolower( (string) $email ), $c['rsvp_extra'] ) );
+            }
         }
 
         // Validated in clean(), so a value here has already parsed.
@@ -2050,7 +2065,6 @@ class SFAF_Request {
                         <input type="radio" name="rsvp" value="0" <?php checked( ! (bool) $v( 'rsvp', false ) ); ?> />
                         No
                     </label>
-                    <span class="uc-hint">With yes, you get two emails once it is published: the count of who is coming, the day before, and who is coming, two hours before.</span>
                 </div>
                 <label class="uc-field">
                     <span class="uc-field-label">With yes, how many places, if there is a limit</span>
@@ -2058,6 +2072,14 @@ class SFAF_Request {
                     <span class="uc-hint">Leave it empty for no limit, or enter 0 to send everybody to the waitlist.</span>
                     <?php self::field_error( $err( 'capacity' ) ); ?>
                 </label>
+                <?php
+                SFAF_Submissions::render_rsvp_updates(
+                    (string) $email,
+                    (string) $v( 'rsvp_extra' ),
+                    'With yes, once it is published, these addresses get the count of who is coming the day before, and who is coming two hours before.',
+                    $err( 'rsvp_updates_extra' )
+                );
+                ?>
                 </fieldset>
 
                 <?php

@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.117.0
+Stable tag: 3.118.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,15 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.118.0 =
+
+**The request and submission forms ask who should get RSVP updates, and the community form takes online events. The embed is 3.117.0's.**
+
+* **"Who should get RSVP updates?" on both forms**: your own address, and room for one more. There are no email switches on either form, because those apply to the whole event.
+* **Staff request form**: with Yes for RSVPs you still get the count of who is coming the day before and who is coming two hours before. The other address you give is shown to whoever approves the request, and goes on the event's list when they approve it.
+* **Community form**: Your email is one address again, and the extra address is asked in the same way. Approving now offers these addresses even when the event does not take RSVPs yet, so they are no longer lost.
+* **Community form, online events**: tick "This is an online event" and the form stops asking for a place and a street address. The event is saved as online; add its meeting link in caladmin.
 
 = 3.117.0 =
 

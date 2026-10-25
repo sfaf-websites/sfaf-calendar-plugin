@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html >
+<head>
+<meta charset="" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Submit an event: Alpha</title>
+<link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.118.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.118.0" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.118.0" />
+<link rel="stylesheet" href="../public/css/portal.css?ver=3.118.0" />
+</head>
+<body class="uc-portal uc-request-page uc-submit-page">
+<div class="uc-request-wrap">
+                <div class="uc-request-card">
+                        <h1>Submit an event to Alpha</h1>
+            <p class="uc-hint">
+                Tell us about your event, and somebody will review it before it goes on the calendar.
+            </p>
+
+            
+            <form method="post" action="https://resources.sfaf.org/?uc_event_submit=alpha" class="uc-form" enctype="multipart/form-data">
+                <input type="hidden" name="uc_submit_action" value="submit_event" />
+                        <div class="uc-hp" aria-hidden="true">
+            <label>Website<input type="text" name="uc_website" value="" tabindex="-1" autocomplete="off" /></label>
+        </div>
+                        <p class="uc-hint uc-required-note">Fields marked * are required.</p>                <script type="application/json" data-uc-required>[{"key":"street","inputs":["street"],"when":{"venue":"","online":""},"carry":"required"},{"key":"cost_other","inputs":["cost_other"],"when":{"cost":"other"},"carry":"required"},{"key":"contact_name","inputs":["contact_name"],"when":{"contact_same":""},"carry":"required"},{"key":"contact_email","inputs":["contact_email","contact_phone"],"when":{"contact_same":""},"carry":"aria"}]</script>
+                <fieldset class="uc-form-section-group">
+                    <legend class="uc-field-group-title">About you</legend>
+                    <p class="uc-hint">Give your own details here; they are not shown on the calendar.</p>
+                    <label class="uc-field">
+                        <span class="uc-field-label">Your name<span class="uc-req" data-uc-req-mark="submitter_name" aria-hidden="true">*</span></span>
+                        <input type="text" name="submitter_name" required maxlength="120" value="" />
+                                            </label>
+                                        <label class="uc-field">
+                        <span class="uc-field-label">Your email<span class="uc-req" data-uc-req-mark="submitter_email" aria-hidden="true">*</span></span>
+                        <input type="email" name="submitter_email[]" maxlength="200" required autocomplete="email"
+                               value="" data-uc-rsvp-updates-source />
+                                            </label>
+                </fieldset>
+
+                <fieldset class="uc-form-section-group">
+                <legend class="uc-field-group-title">The event</legend>
+
+                <label class="uc-field">
+                    <span class="uc-field-label">Event name<span class="uc-req" data-uc-req-mark="title" aria-hidden="true">*</span></span>
+                    <input type="text" name="title" required maxlength="200" value="" />
+                                    </label>
+
+                <div class="uc-field">
+                    <span class="uc-field-label">Description<span class="uc-req" data-uc-req-mark="description" aria-hidden="true">*</span></span>
+                    <textarea aria-required="true" name="description" id="uc-submit-description"></textarea>                    <span class="uc-hint">Say what it is, who it is for, and what somebody should expect.</span>
+                                    </div>
+                </fieldset>
+
+                <fieldset class="uc-form-section-group">
+                <legend class="uc-field-group-title">When</legend>
+
+                <label class="uc-field">
+                    <span class="uc-field-label">Date<span class="uc-req" data-uc-req-mark="date" aria-hidden="true">*</span></span>
+                    <input type="date" name="date" required value="" />
+                                                                            </label>
+
+                <div class="uc-field-row">
+                    <label class="uc-field">
+                        <span class="uc-field-label">Start<span class="uc-req" data-uc-req-mark="start_time" aria-hidden="true">*</span></span>
+                            <span class="uc-timepick" role="group" aria-label="Start time">
+        <select name="start_time_h"
+                                class="uc-timepick-h"
+                aria-label="Start time, hour" required>
+            <option value="" selected="selected">Hour</option>
+                            <option value="00">12 am</option>
+                            <option value="01">1 am</option>
+                            <option value="02">2 am</option>
+                            <option value="03">3 am</option>
+                            <option value="04">4 am</option>
+                            <option value="05">5 am</option>
+                            <option value="06">6 am</option>
+                            <option value="07">7 am</option>
+                            <option value="08">8 am</option>
+                            <option value="09">9 am</option>
+                            <option value="10">10 am</option>
+                            <option value="11">11 am</option>
+                            <option value="12">12 pm</option>
+                            <option value="13">1 pm</option>
+                            <option value="14">2 pm</option>
+                            <option value="15">3 pm</option>
+                            <option value="16">4 pm</option>
+                            <option value="17">5 pm</option>
+                            <option value="18">6 pm</option>
+                            <option value="19">7 pm</option>
+                            <option value="20">8 pm</option>
+                            <option value="21">9 pm</option>
+                            <option value="22">10 pm</option>
+                            <option value="23">11 pm</option>
+                    </select>
+        <select name="start_time_m"
+                class="uc-timepick-m"
+                aria-label="Start time, minute" required>
+            <option value="" selected="selected">Min</option>
+                            <option value="00">:00</option>
+                            <option value="05">:05</option>
+                            <option value="10">:10</option>
+                            <option value="15">:15</option>
+                            <option value="20">:20</option>
+                            <option value="25">:25</option>
+                            <option value="30">:30</option>
+                            <option value="35">:35</option>
+                            <option value="40">:40</option>
+                            <option value="45">:45</option>
+                            <option value="50">:50</option>
+                            <option value="55">:55</option>
+                    </select>
+    </span>
+                                                </label>
+                    <label class="uc-field">
+                        <span class="uc-field-label">End<span class="uc-req" data-uc-req-mark="end_time" aria-hidden="true">*</span></span>
+                            <span class="uc-timepick" role="group" aria-label="End time">
+        <select name="end_time_h"
+                                class="uc-timepick-h"
+                aria-label="End time, hour" required>
+            <option value="" selected="selected">Hour</option>
+                            <option value="00">12 am</option>
+                            <option value="01">1 am</option>
+                            <option value="02">2 am</option>
+                            <option value="03">3 am</option>
+                            <option value="04">4 am</option>
+                            <option value="05">5 am</option>
+                            <option value="06">6 am</option>
+                            <option value="07">7 am</option>
+                            <option value="08">8 am</option>
+                            <option value="09">9 am</option>
+                            <option value="10">10 am</option>
+                            <option value="11">11 am</option>
+                            <option value="12">12 pm</option>
+                            <option value="13">1 pm</option>
+                            <option value="14">2 pm</option>
+                            <option value="15">3 pm</option>
+                            <option value="16">4 pm</option>
+                            <option value="17">5 pm</option>
+                            <option value="18">6 pm</option>
+                            <option value="19">7 pm</option>
+                            <option value="20">8 pm</option>
+                            <option value="21">9 pm</option>
+                            <option value="22">10 pm</option>
+                            <option value="23">11 pm</option>
+                    </select>
+        <select name="end_time_m"
+                class="uc-timepick-m"
+                aria-label="End time, minute" required>
+            <option value="" selected="selected">Min</option>
+                            <option value="00">:00</option>
+                            <option value="05">:05</option>
+                            <option value="10">:10</option>
+                            <option value="15">:15</option>
+                            <option value="20">:20</option>
+                            <option value="25">:25</option>
+                            <option value="30">:30</option>
+                            <option value="35">:35</option>
+                            <option value="40">:40</option>
+                            <option value="45">:45</option>
+                            <option value="50">:50</option>
+                            <option value="55">:55</option>
+                    </select>
+    </span>
+                                                </label>
+                </div>
+                </fieldset>
+
+                <fieldset class="uc-form-section-group">
+                    <legend class="uc-field-group-title">Where it happens</legend>
+                    <label class="uc-check">
+                        <input type="checkbox" name="online" value="1" data-uc-reveal="uc-where-place" data-uc-reveal-when="unchecked"  />
+                        This is an online event
+                    </label>
+                    <div class="uc-reveal-target" id="uc-where-place">
+                                                                <label class="uc-field">
+                            <span class="uc-field-label">Venue</span>
+                            <select name="venue" data-uc-reveal="uc-address" data-uc-reveal-when="0">
+                                <option value="0">Enter location manually</option>
+                                                                    <option value="11" >
+                                        Alpha                                    </option>
+                                                                    <option value="12" >
+                                        Beta                                    </option>
+                                                            </select>
+                            <span class="uc-hint">Pick one of these, or enter the location manually and give the address below.</span>
+                        </label>
+                    
+                    <div class="uc-address-parts uc-reveal-target" id="uc-address">
+                                                <label class="uc-field">
+                            <span class="uc-field-label">Place name</span>
+                            <input type="text" name="venue_name" maxlength="120" value=""
+                                   placeholder="Strut" />
+                            <span class="uc-hint">Name the place as it should appear above the address, or leave it blank.</span>
+                        </label>
+                        <label class="uc-field">
+                            <span class="uc-field-label">Street address<span class="uc-req" data-uc-req-mark="street" aria-hidden="true">*</span></span>
+                            <input type="text" name="street" required maxlength="200" value=""
+                                   placeholder="470 Castro St" />
+                                                    </label>
+                        <div class="uc-field-row">
+                            <label class="uc-field">
+                                <span class="uc-field-label">City</span>
+                                <input type="text" name="city" maxlength="100" value="" placeholder="San Francisco" />
+                            </label>
+                            <label class="uc-field uc-field-narrow">
+                                <span class="uc-field-label">State</span>
+                                <input type="text" name="state" maxlength="40" value="" placeholder="CA" />
+                            </label>
+                            <label class="uc-field uc-field-narrow">
+                                <span class="uc-field-label">ZIP</span>
+                                <input type="text" name="zip" maxlength="20" value="" placeholder="94114" />
+                            </label>
+                        </div>
+                    </div>
+                    </div>
+
+                    <label class="uc-field">
+                        <span class="uc-field-label">Venue website</span>
+                        <input type="url" name="venue_url" maxlength="500" value="" placeholder="https://" />
+                        <span class="uc-hint">Add the place's website to show it beside the address.</span>
+                                            </label>
+                </fieldset>
+
+                <fieldset class="uc-form-section-group">
+                <legend class="uc-field-group-title">Cost and who can come</legend>
+
+                <div class="uc-field">
+                    <span class="uc-field-label">Cost<span class="uc-req" data-uc-req-mark="cost" aria-hidden="true">*</span></span>
+                                        <select name="cost" required data-uc-reveal="uc-cost-other">
+                        <option value="" disabled  selected="selected">Choose one</option>
+                                                    <option value="free" >
+                                Free                            </option>
+                                                    <option value="donation" >
+                                Donation                            </option>
+                                                    <option value="other" >
+                                Something else                            </option>
+                                            </select>
+                                        <label class="uc-field uc-reveal-target" id="uc-cost-other">
+                        <span class="uc-field-label">What it costs<span class="uc-req" data-uc-req-mark="cost_other" aria-hidden="true" hidden>*</span></span>
+                        <input type="text" name="cost_other" maxlength="40" value=""
+                               placeholder="$15 at the door" />
+                                            </label>
+                </div>
+
+                <div class="uc-field">
+                    <span class="uc-field-label">Age restriction</span>
+                            <select name="age_restriction">
+            <option value="" selected="selected">No age range</option>
+                            <option value="All ages">All ages</option>
+                            <option value="18+">18+</option>
+                            <option value="21+">21+</option>
+                    </select>
+                        </div>
+                </fieldset>
+
+                                <fieldset class="uc-form-section-group">
+                <legend class="uc-field-group-title">Signing up</legend>
+
+                <label class="uc-field">
+                    <span class="uc-field-label">Capacity</span>
+                    <input type="number" name="capacity" min="0" max="100000" placeholder="No limit" value="" />
+                    <span class="uc-hint">Leave it blank for no limit, or enter 0 to send everybody to the waitlist.</span>
+                                    </label>
+
+                <label class="uc-field">
+                    <span class="uc-field-label">Registration link</span>
+                    <input type="url" name="rsvp_url" maxlength="500" value=""
+                           placeholder="https://" />
+                    <span class="uc-hint">If people sign up somewhere else, put that address here.</span>
+                                    </label>
+                        <div class="uc-field uc-rsvp-updates" data-uc-rsvp-updates>
+            <span class="uc-field-label" id="uc-rsvp-updates-label">Who should get RSVP updates?</span>
+            <input type="email" value="" readonly tabindex="-1"
+                   aria-labelledby="uc-rsvp-updates-label" data-uc-rsvp-updates-you placeholder="Your email, from above" />
+            <input type="email" name="rsvp_updates_extra" maxlength="200" value=""
+                   placeholder="Another address (optional)" aria-label="Another address for RSVP updates" autocomplete="off" />
+            <span class="uc-hint">Once the event is published, these addresses get RSVP updates by email.</span>
+                    </div>
+                        </fieldset>
+
+                                <fieldset class="uc-form-section-group">
+                    <legend class="uc-field-group-title">Contact for the event</legend>
+                    <p class="uc-hint"><strong>Give a contact you are happy to see on the public listing.</strong></p>
+                                        <label class="uc-check">
+                        <input type="checkbox" name="contact_same" value="1"
+                               data-uc-reveal="uc-contact-own" data-uc-reveal-when="unchecked"
+                                />
+                        Use my name and email as the contact on the event page
+                    </label>
+                    <div class="uc-reveal-target" id="uc-contact-own">
+                        <p class="uc-hint">
+                            Give the details people should use to ask about the event, which may not be yours.
+                        </p>
+                        <label class="uc-field">
+                            <span class="uc-field-label">Name<span class="uc-req" data-uc-req-mark="contact_name" aria-hidden="true">*</span></span>
+                            <input type="text" name="contact_name" required maxlength="120" value="" />
+                                                    </label>
+                        <div class="uc-field-row">
+                            <label class="uc-field">
+                                <span class="uc-field-label">Email<span class="uc-req" data-uc-req-mark="contact_email" aria-hidden="true">*</span></span>
+                                <input type="email" name="contact_email" aria-required="true" maxlength="200" value="" />
+                                                            </label>
+                            <label class="uc-field">
+                                <span class="uc-field-label">Phone<span class="uc-req" data-uc-req-mark="contact_email" aria-hidden="true">*</span></span>
+                                <input type="tel" name="contact_phone" aria-required="true" maxlength="40" value="" />
+                            </label>
+                        </div>
+                        <span class="uc-hint">Give an email address, a phone number or both to show on the listing.</span>
+                    </div>
+                </fieldset>
+
+                <fieldset class="uc-form-section-group uc-request-images">
+                    <legend class="uc-field-group-title">Event Image</legend>
+                                        <div class="uc-request-upload">
+                                        <label class="uc-field uc-field-upload">
+            <span class="uc-field-label">Or upload one</span>
+            <input type="file" name="uc_image" accept="image/jpeg,image/png,image/webp" />
+            <span class="uc-hint">
+                Upload a JPEG, PNG or WebP that is 1200 by 675 pixels and under 500KB, or leave this empty.
+            </span>
+                    </label>
+                            </div>
+                </fieldset>
+
+                                <fieldset class="uc-form-section-group">
+                    <legend class="uc-field-group-title">Questions people often ask</legend>
+                    <p class="uc-hint">Add parking, what to bring or whether to book, or leave it empty.</p>
+                    <div class="uc-repeater" data-repeater>
+                        <div class="uc-repeater-rows">
+                                                                <div class="uc-repeater-row uc-faq-row">
+        <input type="text" name="faq[0][question]" maxlength="300"               value=""
+               placeholder="Question" aria-label="Question" />
+        <textarea name="faq[0][answer]" rows="8" placeholder="Answer" data-uc-rich></textarea>        <div class="uc-faq-row-actions">
+            <button type="button" class="uc-btn uc-btn-sm uc-repeater-remove uc-faq-remove">Remove this question</button>
+        </div>
+    </div>
+                                                        </div>
+                        <button type="button" class="uc-btn uc-btn-sm uc-repeater-add">+ Add a question</button>
+                        <template class="uc-repeater-tpl">
+                                <div class="uc-repeater-row uc-faq-row">
+        <input type="text" name="faq[__I__][question]" maxlength="300"               value=""
+               placeholder="Question" aria-label="Question" />
+        <textarea name="faq[__I__][answer]" rows="8" placeholder="Answer" data-uc-rich></textarea>        <div class="uc-faq-row-actions">
+            <button type="button" class="uc-btn uc-btn-sm uc-repeater-remove uc-faq-remove">Remove this question</button>
+        </div>
+    </div>
+                            </template>
+                    </div>
+                </fieldset>
+
+                <fieldset class="uc-form-section-group">
+                    <legend class="uc-field-group-title">Anything else we should know</legend>
+                    <label class="uc-field">
+                        <span class="uc-visually-hidden">Anything else we should know</span>
+                        <textarea name="notes" rows="3" maxlength="2000"></textarea>
+                        <span class="uc-hint">Write anything for the reviewer here; it is not shown on the listing.</span>
+                    </label>
+                </fieldset>
+
+                
+                <div class="uc-form-actions uc-form-actions-primary">
+                    <p class="uc-form-actions-note">Somebody reviews every submission before it goes on the calendar. You will get a copy by email.</p>
+                    <button type="submit" class="uc-btn uc-btn-primary">Submit this event</button>
+                </div>
+            </form>
+        </div>
+        </div>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.118.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/portal.js?ver=3.118.0"></script>
+<script>(function () {
+var out = { errors: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function seen(el) { return !!el && el.getBoundingClientRect().height > 0 && !el.closest('[hidden]'); }
+window.addEventListener('load', function () { setTimeout(function () {
+  var mail = document.querySelector('[data-uc-rsvp-updates-source]');
+  var you = document.querySelector('[data-uc-rsvp-updates-you]');
+  if (mail) { mail.value = 'me@example.org'; mail.dispatchEvent(new Event('input', { bubbles: true })); }
+  out.you = you ? you.value : null;
+  var tick = document.querySelector('input[name="online"]');
+  var street = document.querySelector('input[name="street"]');
+  out.atLoad = { street: seen(street), required: street ? street.required || street.getAttribute('aria-required') === 'true' : null };
+  if (tick) { tick.checked = true; tick.dispatchEvent(new Event('change', { bubbles: true })); }
+  out.online = { street: seen(street), disabled: street ? street.disabled : null, required: street ? street.required || street.getAttribute('aria-required') === 'true' : null };
+  if (tick) { tick.checked = false; tick.dispatchEvent(new Event('change', { bubbles: true })); }
+  out.back = { street: seen(street), disabled: street ? street.disabled : null };
+  var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+}, 400); });
+})();</script></body></html>

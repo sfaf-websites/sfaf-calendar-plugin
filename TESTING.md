@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 384 items.** Quick 313, needs real conditions 67, blocked on other
+**Outstanding: 385 items.** Quick 314, needs real conditions 67, blocked on other
 people 4.
 
 ---
@@ -4271,6 +4271,20 @@ series page.
 
 **Why it needs a person:** the real editor on the real site, after the old
 media-box code was removed.
+
+### 1.316 Who should get RSVP updates, and an online community event (3.118.0)
+
+On the staff request form, choose Yes for RSVPs: your address shows under "Who
+should get RSVP updates?" and you can add one more. Send it. In caladmin's
+Pending, Approve shows "Send registrations for this event to [the other
+address] as well"; approve with it ticked and both addresses are on the event's
+Notifications. On a community form, type your email: it appears in the RSVP
+updates box. Add one more and tick "This is an online event": the place fields
+disappear and the form sends with no street. Approve offers both addresses even
+though the event does not take RSVPs, and the event is online with no address.
+
+**Why it needs a person:** the real forms, the token sign-in and the real
+approval.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event

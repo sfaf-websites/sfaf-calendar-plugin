@@ -419,7 +419,8 @@ class SFAF_Submit {
             'street'          => array(
                 'message' => 'Say where it happens, so people can get there. Pick a venue above, or give the street address.',
                 'inputs'  => array( 'street' ),
-                'when'    => array( 'venue' => '' ),
+                // Not for an online event (3.118.0), which has no place.
+                'when'    => array( 'venue' => '', 'online' => '' ),
             ),
             'cost'            => array( 'message' => 'Say what it costs to come. Choose Free if there is no charge.', 'inputs' => array( 'cost' ) ),
             'cost_other'      => array(
@@ -464,6 +465,7 @@ class SFAF_Submit {
             // 0 is the select's "enter it by hand", which is no venue.
             'venue'             => empty( $c['venue'] ) ? '' : $g( 'venue' ),
             'street'            => $g( 'street' ),
+            'online'            => empty( $c['online'] ) ? '' : '1',
             'cost'              => $g( 'cost' ),
             'cost_other'        => $g( 'cost_other' ),
             'age_restriction'   => $g( 'age' ),
@@ -545,9 +547,18 @@ class SFAF_Submit {
             }
         }
 
+        $clean['submitter_emails'] = array_slice( $clean['submitter_emails'], 0, 1 );
         $clean['submitter_email'] = isset( $clean['submitter_emails'][0] ) ? $clean['submitter_emails'][0] : '';
-        if ( '' !== $clean['submitter_email'] && $bad_email ) {
-            $errors['submitter_email'] = 'One of those is not an email address. Check them and send again.';
+        if ( $bad_email ) {
+            $errors['submitter_email'] = 'That is not an email address. Check it and send again.';
+        }
+        /* WHO SHOULD GET RSVP UPDATES (3.118.0): the submitter, and one more,
+         * the staff form's control. Approve lists both and offers to add them. */
+        list( $clean['rsvp_extra'], $extra_error ) = SFAF_Submissions::clean_rsvp_extra( $post );
+        if ( '' !== $extra_error ) {
+            $errors['rsvp_updates_extra'] = $extra_error;
+        } elseif ( '' !== $clean['rsvp_extra'] && $clean['rsvp_extra'] !== $clean['submitter_email'] ) {
+            $clean['submitter_emails'][] = $clean['rsvp_extra'];
         }
 
         /* ---- The event. ---- */
@@ -582,8 +593,11 @@ class SFAF_Submit {
          * decision taken at approval, on the screen built for it, once somebody
          * knows it will be used again.
          */
+        /* AN ONLINE EVENT (3.118.0): no place, so no street to ask for. */
+        $clean['online'] = ! empty( $post['online'] );
+
         $clean['venue'] = 0;
-        if ( ! empty( $post['venue'] ) ) {
+        if ( ! $clean['online'] && ! empty( $post['venue'] ) ) {
             $id = (int) $post['venue'];
             if ( $id && SFAF_Venues::exists( $id ) ) {
                 $clean['venue'] = $id;
@@ -970,6 +984,12 @@ class SFAF_Submit {
             if ( '' !== $value ) {
                 update_post_meta( $event_id, $key, $value );
             }
+        }
+
+        /* An online event's format, which clears the place (3.118.0). The
+           meeting link is added in caladmin. */
+        if ( ! empty( $c['online'] ) ) {
+            SFAF_Online::set( $event_id, true );
         }
 
         /* THE REGISTRATION LINK IS REGISTER ON ANOTHER SITE (3.111.0), the
@@ -1422,65 +1442,16 @@ class SFAF_Submit {
                         <?php SFAF_Submissions::field_error( $err( 'submitter_name' ) ); ?>
                     </label>
                     <?php
-                    /*
-                     * UP TO FIVE ADDRESSES, THE FIRST OF WHICH IS THE
-                     * SUBMITTER'S OWN.
-                     *
-                     * THE SAME REPEATER THE FAQ ROWS USE, so this is a control
-                     * on a screen rather than a second control: `data-repeater`,
-                     * a rows container, an add button and a template. What is
-                     * new is `data-repeater-max`, which is read by
-                     * initRepeaters() in portal.js and by nothing else.
-                     *
-                     * THE BUTTON GOES AT THE CAP RATHER THAN GREYING OUT. A
-                     * disabled control is a thing to read and wonder about; a
-                     * control that is not there is answered. It is not rendered
-                     * at all when the form comes back already holding five.
-                     *
-                     * NO REMOVE CONTROL, AND NONE IS NEEDED. An empty box is
-                     * dropped by validate(), so clearing one is how a row goes,
-                     * and there is nothing to confirm and nothing to undo.
-                     *
-                     * WITH NO SCRIPT THIS IS ONE BOX AND STILL A COMPLETE
-                     * FORM. The button does nothing without portal.js, the
-                     * field posts as an array either way, and one address is
-                     * what this asked for until this release.
-                     */
-                    $emails = array_values( array_filter( (array) $v( 'submitter_emails', array() ) ) );
-                    if ( empty( $emails ) ) {
-                        $emails = array( '' );
-                    }
-                    $emails = array_slice( $emails, 0, self::MAX_EMAILS );
+                    /* ONE ADDRESS FROM 3.118.0: the submitter's own. Who else gets
+                       RSVP updates is asked under Signing up. */
+                    $you = (string) $v( 'submitter_email' );
                     ?>
-                    <div class="uc-field">
-                        <span class="uc-field-label">Your email, and anybody else who should get RSVPs<?php echo $mark( 'submitter_email' ); ?></span>
-                        <span class="uc-hint">Put your own address first, because your copy of this submission goes there.</span>
-                        <div class="uc-repeater uc-email-repeat" data-repeater
-                             data-repeater-max="<?php echo (int) self::MAX_EMAILS; ?>">
-                            <div class="uc-repeater-rows">
-                                <?php foreach ( $emails as $i => $one ) : ?>
-                                    <label class="uc-repeater-row">
-                                        <span class="uc-visually-hidden"><?php
-                                            echo esc_html( 0 === (int) $i ? 'Your email' : 'Another email address' );
-                                        ?></span>
-                                        <input type="email" name="submitter_email[]" maxlength="200"
-                                               <?php echo ( 0 === (int) $i ) ? ltrim( $attr( 'submitter_email' ) . ' autocomplete="email"' ) : 'autocomplete="off"'; ?>
-                                               value="<?php echo esc_attr( $one ); ?>" />
-                                    </label>
-                                <?php endforeach; ?>
-                            </div>
-                            <?php if ( count( $emails ) < self::MAX_EMAILS ) : ?>
-                                <button type="button" class="uc-btn uc-btn-sm uc-repeater-add">+ Add email</button>
-                            <?php endif; ?>
-                            <template class="uc-repeater-tpl">
-                                <label class="uc-repeater-row">
-                                    <span class="uc-visually-hidden">Another email address</span>
-                                    <input type="email" name="submitter_email[]" maxlength="200" autocomplete="off" value="" />
-                                </label>
-                            </template>
-                        </div>
+                    <label class="uc-field">
+                        <span class="uc-field-label">Your email<?php echo $mark( 'submitter_email' ); ?></span>
+                        <input type="email" name="submitter_email[]" maxlength="200"<?php echo $attr( 'submitter_email' ); ?> autocomplete="email"
+                               value="<?php echo esc_attr( $you ); ?>" data-uc-rsvp-updates-source />
                         <?php SFAF_Submissions::field_error( $err( 'submitter_email' ) ); ?>
-                    </div>
+                    </label>
                 </fieldset>
 
                 <fieldset class="uc-form-section-group">
@@ -1534,6 +1505,11 @@ class SFAF_Submit {
 
                 <fieldset class="uc-form-section-group">
                     <legend class="uc-field-group-title">Where it happens</legend>
+                    <label class="uc-check">
+                        <input type="checkbox" name="online" value="1" data-uc-reveal="uc-where-place" data-uc-reveal-when="unchecked" <?php checked( (bool) $v( 'online', false ) ); ?> />
+                        This is an online event
+                    </label>
+                    <div class="uc-reveal-target" id="uc-where-place">
                     <?php $venues = SFAF_Venues::all(); ?>
                     <?php if ( ! empty( $venues ) ) : ?>
                         <label class="uc-field">
@@ -1588,6 +1564,7 @@ class SFAF_Submit {
                                 <input type="text" name="zip" maxlength="20" value="<?php echo esc_attr( $v( 'zip' ) ); ?>" placeholder="94114" />
                             </label>
                         </div>
+                    </div>
                     </div>
 
                     <label class="uc-field">
@@ -1666,6 +1643,15 @@ class SFAF_Submit {
                     <span class="uc-hint">If people sign up somewhere else, put that address here.</span>
                     <?php SFAF_Submissions::field_error( $err( 'rsvp_url' ) ); ?>
                 </label>
+                <?php
+                SFAF_Submissions::render_rsvp_updates(
+                    (string) $v( 'submitter_email' ),
+                    (string) $v( 'rsvp_extra' ),
+                    'Once the event is published, these addresses get RSVP updates by email.',
+                    $err( 'rsvp_updates_extra' ),
+                    true
+                );
+                ?>
                 </fieldset>
 
                 <?php

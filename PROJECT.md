@@ -648,27 +648,32 @@ place to put the picture is a second place for it to be wrong.
 - **The picture chooser is on this form too, from 3.74.0**, filtered to the
   series the URL already names. See "One picture chooser". A chosen folder image
   becomes the event's thumbnail; an upload still does not.
-- **The About you email takes up to five addresses, and the submitter's own is
-  the FIRST of them rather than additional to them.** An external organizer
-  wanting colleagues told when somebody RSVPs says so here. The first address
-  is stored where every reader already looks, `SFAF_Request::META_EMAIL`, so
-  `kind()`, `submitter()`, the confirmation and the pending queue are untouched
-  by the field taking more than one; the whole list goes to
-  `SFAF_Submit::META_NOTIFY_EMAILS`, and only when there is more than the
-  submitter. `SFAF_Submissions::notify_addresses()` is the one reader, and the
-  approval tick adds every one of them. **The confirmation goes to the first
-  address only**, because that is the person who filled the form in, and the
-  others get no message from the form at all.
-- **The cap is `SFAF_Submit::MAX_EMAILS`, read by the control and the
-  validator.** The Add button is not rendered at the cap, and portal.js removes
-  it there: `data-repeater-max` on the standard repeater. **Gone rather than
-  disabled**, because a disabled control is still a thing to read and wonder
-  about. An address past the cap is dropped; an address that is not an address
-  is an ERROR, because dropping it would promote the next one to first and the
-  first is who the submission is recorded as being from.
-- **Five addresses are not five allowances.** The rate limiter counts POSTS,
-  keyed on the client and on the campaign, and neither key has ever been an
-  address.
+- **Who should get RSVP updates? (3.118.0), the same control on both request
+  forms**, `SFAF_Submissions::render_rsvp_updates()`: the requester's address,
+  read-only (on the community form it follows the Your email box above it), and
+  one more address, `rsvp_updates_extra`, read by `clean_rsvp_extra()`. No email
+  switches on either form: they belong to the whole event's list. About you's
+  email is one address again, the submitter's own, stored where every reader
+  looks (`SFAF_Request::META_EMAIL`); with one more address the pair goes to
+  `SFAF_Submit::META_NOTIFY_EMAILS`, which `notify_addresses()` reads, capped at
+  `MAX_EMAILS` for submissions from before 3.118.0. **The confirmation goes to
+  the submitter only.**
+- **The staff form keeps 3.113.2's rule for the requester**: a yes puts them on
+  the list with only the day-before count and the two-hour list on. The one
+  more address **waits for Approve** in `META_NOTIFY_EMAILS`, as the community
+  form's do, because the list is sent registrant names and addresses.
+- **Approve offers `SFAF_Submissions::approval_offers()`**: the request's
+  addresses not on the list yet, when the event takes RSVPs or the requester
+  named somebody besides themselves, so an extra address is never lost because
+  RSVPs are switched on after approval. The dialog and the save ask the same
+  method. Until 3.118.0 the tick needed RSVPs on, which a community submission
+  never has, and it checked only the first address, so a staff request's
+  second address would have been neither shown nor added.
+- **An online event on the community form (3.118.0)**: "This is an online
+  event" hides the place (its fields post nothing) and lifts the street's
+  requirement (`'when' => venue and online empty`); the save calls
+  `SFAF_Online::set( $event_id, true )`, which clears the place. The meeting
+  link is added in caladmin.
 - **A submitted address does not create a venue.** The venue list is offered
   first; the parts are stored as the submitter's answer, and promoting one is a
   decision taken at approval by somebody who knows it will be used again.
@@ -778,7 +783,7 @@ is shown, or it comes off the form.** Audited field by field in 3.111.0.
 | FAQs | set and rows | rows | FAQs | event page |
 | Repeat | yes | no | the series screen's schedule; read-only on the request panel (the staff request line) | event page, once generated |
 | Notes | yes | yes | read-only on the request panel | caladmin only |
-| Who sent it | name, email | name, up to five emails | read-only on the request panel; the approval dialog | caladmin only |
+| Who sent it | name, email, one more for RSVP updates | name, email, one more for RSVP updates | read-only on the request panel; the approval dialog | caladmin only |
 
 **Kept different, on purpose:** notes, the sender and the repeat are messages
 to whoever approves, not facts about the event, so the editor shows them
@@ -8896,24 +8901,6 @@ other    Something else, and I will say what
 Renaming these is one array, `SFAF_Submit::age_options()`, read by the control
 and the validator alike, so the stored values do not move and no event changes.
 It is a copy decision and not a build.
-
-### Naming the community form's two email fields, still open
-
-**Both do unrelated jobs and neither label says which.** This was raised in
-3.66.0 and half of what it blocked has since shipped: five addresses on the
-About you field, in 3.67.0, and the pending row showing what was submitted.
-**What is still undecided is what the two fields are CALLED.**
-
-| Field | Meta | What it actually does |
-|---|---|---|
-| **About you → Your email** | `_uc_request_email`, plus `_uc_submitted_notify_emails` for the rest | The submitter's identity, and now up to five addresses. `SFAF_Submissions::submitter()` reads the first, the confirmation goes to it, and these are **the only addresses that reach the notification list**, at approval, when a manager ticks the prompt. |
-| **Contact for the event → Email** | `_uc_contact_email` | Printed on the **public event page** through `sfaf_event_public_contact()`. It reaches no list and no message. |
-
-3.67.0 ships **"Your email, and anybody else who should get RSVPs"** on the
-first, which says what the field does and is longer than a label wants to be.
-The second is still **"Email"** under a legend that carries the whole of its
-meaning. Renaming either is a decision rather than a build, and it wants taking
-with the pair in front of you rather than one at a time.
 
 ### Announcing new dates to followers, agreed 2026-08-24
 

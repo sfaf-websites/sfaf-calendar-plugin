@@ -896,6 +896,67 @@ if ( $args['editor'] ) {
         return ! empty( $_POST['uc_website'] );
     }
 
+    /**
+     * "Who should get RSVP updates?" (3.118.0), the one control on both
+     * request forms: the requester's own address, read-only, then one more.
+     * The extra address posts as rsvp_updates_extra; clean_rsvp_extra() reads
+     * it. On the community form the first box shows the address typed above
+     * (data-uc-rsvp-updates-you), which portal.js keeps in step.
+     *
+     * @param string $requester The requester's address, or '' while not yet typed.
+     * @param string $extra     The one more address, as posted.
+     * @param string $hint      What the addresses get.
+     * @param string $error     A refusal of the extra address.
+     * @param bool   $mirror    Follow the "Your email" box on the page.
+     */
+    public static function render_rsvp_updates( $requester, $extra, $hint, $error = '', $mirror = false ) {
+        ?>
+        <div class="uc-field uc-rsvp-updates" data-uc-rsvp-updates>
+            <span class="uc-field-label" id="uc-rsvp-updates-label">Who should get RSVP updates?</span>
+            <input type="email" value="<?php echo esc_attr( $requester ); ?>" readonly tabindex="-1"
+                   aria-labelledby="uc-rsvp-updates-label"<?php echo $mirror ? ' data-uc-rsvp-updates-you placeholder="Your email, from above"' : ''; ?> />
+            <input type="email" name="rsvp_updates_extra" maxlength="200" value="<?php echo esc_attr( $extra ); ?>"
+                   placeholder="Another address (optional)" aria-label="Another address for RSVP updates" autocomplete="off" />
+            <span class="uc-hint"><?php echo esc_html( $hint ); ?></span>
+            <?php self::field_error( $error ); ?>
+        </div>
+        <?php
+    }
+
+    /**
+     * The extra address from render_rsvp_updates(), lower-cased.
+     *
+     * @param array $post
+     * @return array{0:string,1:string} The address, and a refusal or ''.
+     */
+    public static function clean_rsvp_extra( $post ) {
+        $raw = isset( $post['rsvp_updates_extra'] ) && is_scalar( $post['rsvp_updates_extra'] ) ? trim( (string) wp_unslash( $post['rsvp_updates_extra'] ) ) : '';
+        if ( '' === $raw ) {
+            return array( '', '' );
+        }
+        $one = strtolower( sanitize_text_field( $raw ) );
+        return is_email( $one ) ? array( $one, '' ) : array( '', 'That is not an email address. Check it and send again.' );
+    }
+
+    /**
+     * The addresses Approve offers to put on the notification list (3.118.0):
+     * those from the request that are not on it yet. Offered when the event
+     * takes RSVPs, or when the requester named somebody besides themselves,
+     * so an extra address is never dropped because RSVPs are switched on
+     * later.
+     *
+     * @param int $event_id
+     * @return string[]
+     */
+    public static function approval_offers( $event_id ) {
+        $addresses = self::notify_addresses( (int) $event_id );
+        if ( ! $addresses || ( ! sfaf_event_takes_rsvps( (int) $event_id ) && count( $addresses ) < 2 ) ) {
+            return array();
+        }
+        $listed = array_map( 'strtolower', array_map( 'strval', (array) get_post_meta( (int) $event_id, SFAF_Reminders::NOTIFY_EMAILS_META, true ) ) );
+        return array_values( array_diff( $addresses, $listed ) );
+    }
+
     /** One error line under a field. */
     public static function field_error( $message ) {
         if ( '' === (string) $message ) {
