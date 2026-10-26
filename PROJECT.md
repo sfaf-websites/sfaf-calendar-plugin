@@ -2894,7 +2894,7 @@ stable name for a later guided tour; `DESIGN.md` 4 lists them.
   never starts itself. While it runs every other child of `<body>` is `inert`,
   and Tab is trapped by hand as well. **A card added to either editor fails
   `.claude/release-31220-test.php` until it has a step**: every `.uc-card`,
-  `.uc-bento-card` and `data-uc-card` on Add event and on Edit event in ten
+  `.uc-bento-card` and `data-uc-card` on Add event, and on Edit event in ten
   states must be, or sit inside, a card the tour captions, and each caption must
   name the buttons its card draws and none it does not.
 - **FAQs are folded on the editors** (3.108.1): `faq_repeater()` takes `$fold`,

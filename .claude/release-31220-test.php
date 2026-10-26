@@ -15,7 +15,7 @@
  *      carries the saved-action mark CLAUDE.md 7 allows
  *   B  the RSVP list beside them, only for an event that takes RSVPs here and
  *      only for somebody the list's route lets in
- *   C  THE TOUR: on Add event and on Edit event in nine states, every card on
+ *   C  THE TOUR: on Add event and on Edit event in ten states, every card on
  *      the page (a .uc-card, a .uc-bento-card, anything named data-uc-card,
  *      and the action bar) is or sits in a card the tour has a caption for;
  *      every caption names the buttons its card draws and no button it does
@@ -89,7 +89,14 @@ $ev = array(
     'imported'  => rt_event( 'publish', array( SFAF_Sources::META_SOURCE => 'eventbrite', SFAF_Sources::META_EXTERNAL_ID => '991', SFAF_Sources::META_SOURCE_URL => 'https://www.eventbrite.com/e/991', '_uc_rsvp_enabled' => '0' ) ),
     'cancelled' => rt_event( 'publish', array( '_uc_cancelled' => '1' ) ),
     'one-off'   => rt_event( 'draft', array(), 0 ),
+    'registered' => rt_event( 'publish' ),
 );
+/* Three confirmed registrations on one event, so its bar has no Delete. Every
+   other count the page asks for is the kit's empty answer. */
+$GLOBALS['kit_db'] = function ( $method, $sql ) use ( $ev ) {
+    if ( 'get_var' === $method && false !== strpos( $sql, 'uc_rsvps' ) && false !== strpos( $sql, 'event_id = ' . $ev['registered'] ) ) { return 3; }
+    return 'get_results' === $method ? array() : null;
+};
 $pages = array( 'add' => rt_cap( function () use ( $portal, $admin ) { $_GET = array(); kit_call( 'SFAF_Portal', 'render_event_form', $portal, array( $admin, 0 ) ); } ) );
 foreach ( $ev as $name => $id ) {
     $pages[ $name ] = rt_cap( function () use ( $portal, $admin, $id ) { $_GET = array(); kit_call( 'SFAF_Portal', 'render_event_form', $portal, array( $admin, $id ) ); } );
@@ -230,6 +237,7 @@ rt( 'C: setup: the imported event draws its panel', false !== strpos( $pages['im
 rt( 'C: setup: the public submission draws its panel', false !== strpos( $pages['submitted'], 'data-uc-card="submitted"' ), true );
 rt( 'C: setup: the private event draws its link row', false !== strpos( $pages['private'], 'data-uc-private-link-row' ), true );
 rt( 'C: setup: the one-off draft draws Repeats', false !== strpos( $pages['one-off'], '<span class="uc-field-label">Repeats' ), true );
+rt( 'C: setup: the event with registrations has no Delete', false === strpos( $pages['registered'], 'data-uc-saved-action="delete"' ) && SFAF_Announce::has_registrations( $ev['registered'] ), true );
 rt( 'C: setup: the submission draws Approve', false !== strpos( $pages['submitted'], '>Approve</button>' ), true );
 foreach ( array( 'Moving the event to another series' => 'published', 'Choose the series first' => 'add' ) as $want => $name ) {
     $x = rt_dom( $pages[ $name ] );
@@ -328,5 +336,5 @@ rt( 'F: and it is the only hint there', substr_count( $field, 'class="uc-hint"' 
 
 echo "\n3.122.0: View event page, the RSVP list, the tour, one volunteer button, the staff form's line\n" . str_repeat( '=', 72 ) . "\n";
 if ( $fails ) { echo count( $fails ) . " of $ran failed:\n  - " . implode( "\n  - ", $fails ) . "\n"; exit( 1 ); }
-echo "$ran assertions passed. Edit event opens the event page or its preview and copies its link, links the RSVP list where\nthere is one, and every card on Add event and Edit event in ten states has a caption that names what it draws; the\npreview is only for staff who can edit the event; the event page has one volunteer button and no count.\n";
+echo "$ran assertions passed. Edit event opens the event page or its preview and copies its link, links the RSVP list where\nthere is one, and every card on Add event and Edit event in eleven states has a caption that names what it draws; the\npreview is only for staff who can edit the event; the event page has one volunteer button and no count.\n";
 exit( 0 );
