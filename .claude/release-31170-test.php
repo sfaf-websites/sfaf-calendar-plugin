@@ -78,7 +78,7 @@ rt( 'C: a published one keeps its green Save changes', (bool) preg_match( '#clas
 /* ======================================================================== D */
 rt( 'D: Organizers', (bool) preg_match( '#<span class="uc-field-label">Organizers<#', $h ), true );
 rt( 'D: what 0 does', false !== strpos( $h, '<span class="uc-hint">Enter 0 to send everybody to the waitlist.</span>' ), true );
-rt( 'D: the tour no longer sends pictures to the Images screen', false === strpos( $src, 'upload new pictures on the Images screen first' ) && false !== strpos( $src, 'choose one or use + Upload a picture for this event' ), true );
+rt( 'D: the tour no longer sends pictures to the Images screen', false === strpos( $src, 'upload new pictures on the Images screen first' ) && false !== strpos( $src, 'Choose the featured picture, or use + Upload a picture for this event' ), true );
 rt( 'D: category ticks take the disabled state as organizer ticks do', false !== strpos( $src, "<?php checked( in_array( (int) \$c->term_id, \$current, true ) ); ?><?php echo \$this->field_disabled( \$state ); ?> />" ), true );
 
 /* ======================================================================== E */

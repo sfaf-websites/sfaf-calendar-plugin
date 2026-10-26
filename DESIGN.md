@@ -1155,6 +1155,8 @@ Built from components already on the page; nothing here is a new colour.
 **The copy glyph is a clipboard, not two sheets**, which the icon set keeps for
 Duplicate. The order is Take the tour, RSVP list, View event page or Preview,
 the copy icon, Back.
+On a phone the group wraps as one piece, so the head's actions take three
+lines: Take the tour, the group, Back.
 
 **The Preview band** is the first thing on an event page a member of staff
 opens before it is public: the cancelled notice's shape, 16px 20px, 12px

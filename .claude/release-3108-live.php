@@ -333,7 +333,11 @@ foreach ( array( 'add-desktop', 'add-phone', 'edit-desktop', 'edit-phone' ) as $
         "PLANT B.1: $t: the tour link reads " . json_encode( $l ) );
     if ( $l && $bk && $h1 ) {
         $lc = ( $l['box']['top'] + $l['box']['bottom'] ) / 2; $bc = ( $bk['top'] + $bk['bottom'] ) / 2;
-        rt_check( $l['box']['right'] <= $bk['left'] && abs( $lc - $bc ) <= 4 && ( $phone || $l['box']['left'] > $h1['right'] ),
+        /* On a phone Edit event's links (3.122.0) wrap between the two, so there
+           the link only has to come before Back in reading order. */
+        $same_row = $l['box']['right'] <= $bk['left'] && abs( $lc - $bc ) <= 4;
+        $before   = $phone && ! $is_add && $l['box']['bottom'] <= $bk['top'];
+        rt_check( ( $same_row || $before ) && ( $phone || $l['box']['left'] > $h1['right'] ),
             "PLANT B.1: $t: the link is not between the title and Back: " . json_encode( array( 'h1' => $h1, 'link' => $l['box'], 'back' => $bk ) ) );
     }
     rt_check( false === $v( $t, 'startedAlone' ), "PLANT B.1: $t: the tour started on its own" );

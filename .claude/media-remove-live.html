@@ -702,6 +702,43 @@ function ucDismissOnBackdrop(dialog) {
                 try { if (document.execCommand('copy')) { done(); } } catch (e) { /* the text stays selected */ }
             });
         });
+
+        /* THE COPY ICON (3.122.0), beside View event page: it copies the link
+           it carries, and "Copied" shows beside it for two seconds. With no
+           clipboard API the link goes through a box that is never seen. */
+        document.querySelectorAll('[data-uc-copy-text]').forEach(function (btn) {
+            var text = btn.getAttribute('data-uc-copy-text');
+            var said = btn.parentNode ? btn.parentNode.querySelector('[data-uc-copy-said]') : null;
+            var timer = 0;
+            function done() {
+                btn.setAttribute('data-uc-copied', '');
+                if (said) { said.textContent = 'Copied'; }
+                if (timer) { window.clearTimeout(timer); }
+                timer = window.setTimeout(function () {
+                    btn.removeAttribute('data-uc-copied');
+                    if (said) { said.textContent = ''; }
+                }, 2000);
+            }
+            function byHand() {
+                var box = document.createElement('textarea');
+                box.value = text;
+                box.setAttribute('readonly', '');
+                box.style.position = 'fixed';
+                box.style.top = '-1000px';
+                document.body.appendChild(box);
+                box.select();
+                try { if (document.execCommand('copy')) { done(); } } catch (e) { /* nothing copied */ }
+                document.body.removeChild(box);
+                btn.focus();
+            }
+            btn.addEventListener('click', function () {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(done, byHand);
+                    return;
+                }
+                byHand();
+            });
+        });
     }
 
     /* =====================================================================
