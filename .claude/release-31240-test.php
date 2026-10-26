@@ -255,8 +255,8 @@ $B = $saved2['id'];
 rt( 'C: several connected organizers, several boxes, in the order added', wp_list_pluck( SFAF_Mailchimp::form_lists( $both ), 'name' ), array( 'Aging Services', 'Black Health' ) );
 
 /* ======================================================================== D */
-$GLOBALS['kit_trans'][ 'sfaf_mc_meta_' . $A ] = array( 'audiences' => array( array( 'id' => 'aud1', 'name' => 'Aging Services list' ), array( 'id' => 'aud2', 'name' => 'Aging Services volunteers' ) ), 'tags' => array( 'Lunch club', 'Seniors' ), 'at' => time(), 'error' => '' );
-$GLOBALS['kit_trans'][ 'sfaf_mc_meta_' . $B ] = array( 'audiences' => array( array( 'id' => 'aud9', 'name' => 'Black Health list' ) ), 'tags' => array(), 'at' => time(), 'error' => '' );
+update_option( 'sfaf_mc_meta_' . $A, array( 'audiences' => array( array( 'id' => 'aud1', 'name' => 'Aging Services list' ), array( 'id' => 'aud2', 'name' => 'Aging Services volunteers' ) ), 'tags' => array( 'Lunch club', 'Seniors' ), 'at' => time(), 'error' => '' ) );
+update_option( 'sfaf_mc_meta_' . $B, array( 'audiences' => array( array( 'id' => 'aud9', 'name' => 'Black Health list' ) ), 'tags' => array(), 'at' => time(), 'error' => '' ) );
 function rt_dom( $html ) { $d = new DOMDocument(); libxml_use_internal_errors( true ); $d->loadHTML( '<?xml encoding="utf-8"?>' . $html ); libxml_clear_errors(); return new DOMXPath( $d ); }
 $h = rt_form( $alpha_event );
 $x = rt_dom( $h );
@@ -282,6 +282,19 @@ rt( 'D: Add event has the card too, hidden until an organizer is ticked', (bool)
 $none = rt_event( array() );
 rt( 'D: hidden on an event with no connected organizer', (bool) preg_match( '#data-uc-card="mailchimp" data-uc-mailchimp="organizer\[\]" hidden>#', rt_form( $none ) ), true );
 rt( 'D: the tour has a caption for it', false !== strpos( html_entity_decode( $h, ENT_QUOTES ), '"card":"mailchimp"' ), true );
+
+/* Drawing the card never asks Mailchimp; an old copy is read again in the background. */
+$GLOBALS['mc']['calls'] = array();
+$GLOBALS['rt_cron']     = array();
+$old = get_option( 'sfaf_mc_meta_' . $A );
+update_option( 'sfaf_mc_meta_' . $A, array( 'at' => time() - 2 * SFAF_Mailchimp::META_TTL ) + $old );
+$h3 = rt_form( $alpha_event );
+rt( 'D: drawing the card makes no request to Mailchimp', $GLOBALS['mc']['calls'], array() );
+rt( 'D: and still draws the stored audiences', false !== strpos( $h3, 'Aging Services volunteers' ), true );
+rt( 'D: an old copy is read again by a background run', isset( $GLOBALS['rt_cron'][ SFAF_Mailchimp::REFRESH_HOOK ] ), true );
+$fresh = SFAF_Mailchimp::refresh( $A );
+rt( 'D: which stores what Mailchimp has now', array( count( $fresh['audiences'] ), get_option( 'sfaf_mc_meta_' . $A )['at'] >= time() - 5, get_option( 'sfaf_mc_meta_' . $A )['tags'] ), array( 2, true, array( 'Lunch club', 'Seniors', 'Volunteers' ) ) );
+update_option( 'sfaf_mc_meta_' . $A, $old );
 
 /* The series page. */
 update_term_meta( 11, SFAF_Series::META_ORGANIZERS, array( 11 ) );

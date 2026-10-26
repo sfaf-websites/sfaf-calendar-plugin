@@ -1479,6 +1479,30 @@ so a line is as tall as the longer of the two. Measured by
 English form on a phone is the Spanish one's height, up to 60px taller than in
 3.113.7.
 
+### Stay in touch, and the Newsletter sign-up card (3.124.0)
+
+**On the RSVP form** the sign-up boxes are a `fieldset.uc-rsvp-stay` at the end,
+after Phone and before Register Now: no border, 2px above it, the legend "Stay
+in touch" in the other labels' 13px/600 `--uc-text` at 1.4, and each box the
+`.uc-rsvp-optin` the SFAF box always was (13px, 16px teal-accented box, 44px tall
+on a phone). Its style is injected by `calendar.js` with the toggle's, never in
+`calendar.css`. Measured by `.claude/release-31240-live.php` against 3.123.0's
+form on the same button: with no team box **18px taller at 1280px, 390px and
+320px** (the legend; the SFAF line no longer wraps); each team box adds its row,
+**41 to 42px at 1280px and 63 to 64px on a phone**, because a row holds the room
+of its longer language and "Quiero recibir las novedades por correo de ..."
+wraps where the English does not. English and Spanish stay one height.
+
+**On the editors and the series page** the card is `Newsletter sign-up`, a
+standard bento card after Notifications (FAQs on the series page). One block
+per connection, its team's name a `.uc-subhead`, a 1px `--p-border` rule
+between two. The tick is `.uc-check`; the audience a standard select; the tags
+the categories' chips with "+ Add tag" opening a 320px search box over a
+scrolling `.uc-check-grid` (220px at most) and a New tag field with Add.
+"Also added:" names the connection's and the series' tags in `.uc-hint`.
+Pictures: `.claude/screens/rsvp-stay-*.png` (3.123.0's beside it as
+`rsvp-stay-3123-*.png`) and `editor-mailchimp-desktop.png`, `-phone.png`.
+
 ### The rest of caladmin on a phone, the users table and Send (3.110.2)
 
 Measured in Chrome by `.claude/release-31102-live.php` at 390px and 430px (and

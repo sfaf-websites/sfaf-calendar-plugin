@@ -531,6 +531,23 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.124.0 =
+
+**Mailchimp sign-up for a team's own list, and Stay in touch on the RSVP form. The embed is 3.123.0's.**
+
+**WHAT CHANGES ON PUBLIC PAGES** (the event page and any page with a calendar block, where the RSVP form opens):
+
+* **The line under the email field** reads: We use your email for this event, and only add it to a list if you tick a box below.
+* **A "Stay in touch" group at the end of the form** holds the SFAF box, now "Sign me up for SFAF Newsletter and Updates", and, on an event whose organizer has a Mailchimp connection, "Sign me up for [team] email updates", one per team. Every box starts unticked. All of it in English and Spanish, following the form's toggle.
+
+**Everything else is for staff:**
+
+* **Mailchimp connections** on WP admin Settings, for administrators: a name, the API key (stored encrypted and never shown, only its last four characters), a default audience loaded from the account, the organizers it applies to and optional tags on every sign-up, with Test connection. Nothing about Mailchimp appears anywhere until a connection has an organizer.
+* **Newsletter sign-up** on Add event, Edit event and the series page, for an event whose organizer has a connection: whether the form shows the team's box (on by default), the audience when the account has more than one, and tags. The series sets them; an event adds its own tags and may choose another audience. Left alone, sign-ups go to the usual audience with the usual tags.
+* **The sign-up is sent in the background** once the registration is confirmed, a waitlisted one included when its place is confirmed: new people subscribed with their names and the tags, people already in the audience given the tags only, unsubscribed or cleaned people left alone. Failures are retried and then listed on the connection screen with Retry.
+* **Email Opt-ins** has List and Language columns, on screen and in the CSV, for every box ticked. SFAF Newsletter sign-ups are still sent nowhere until Pardot is connected. Until now a waitlist join's SFAF tick was not kept; it is now, once the place is confirmed.
+* **Schema 17**: the registration keeps the boxes it ticked, an opt-in its list and language, and a new table holds the Mailchimp sends.
+
 = 3.123.0 =
 
 **Edit event's header. The embed is 3.122.0's.**

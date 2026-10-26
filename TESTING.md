@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 392 items.** Quick 321, needs real conditions 67, blocked on other
+**Outstanding: 394 items.** Quick 322, needs real conditions 68, blocked on other
 people 4.
 
 ---
@@ -4377,6 +4377,27 @@ RSVPs (n) and Preview share the second row.
 
 **Why it needs a person:** a real phone's fonts and touch, and a real event's
 registrations; the check measures headless Chrome with a made-up count.
+
+### 1.324 Stay in touch on the RSVP form, and Email Opt-ins (3.124.0)
+
+Before any Mailchimp connection exists, open the RSVP form on any event, on a
+phone and on a desktop:
+
+- Under the email field: "We use your email for this event, and only add it to
+  a list if you tick a box below."
+- At the end, above Register Now: "Stay in touch", with one box, "Sign me up for
+  SFAF Newsletter and Updates", unticked. Press Español: all three switch to
+  Spanish and the form does not move.
+- Open Edit event and the series page: no Newsletter sign-up card, and Take the
+  tour has no step for one.
+
+Register a test person with the SFAF box ticked, once in English and once in
+Spanish. In caladmin, Email Opt-ins lists both under List "SFAF Newsletter",
+with the event, the time and the Language, and Export CSV has the same columns.
+Delete the test registrations afterwards.
+
+**Why it needs a person:** the real form under sfaf.org's theme and the real
+opt-ins table on the site.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -5298,6 +5319,47 @@ The fetch report should not say that any full description could not be read.
 **Why it needs a person:** Eventbrite's real API, and whether its structured
 content answers this account's token the way its documentation says.
 
+### 2.70 A real Mailchimp sign-up (3.124.0)
+
+**Set up, in Mailchimp** (Aging Services' account, by someone who can log in to
+it): Profile (the account icon, top right) > Extras > API keys > Create A Key,
+name it "SFAF Calendar", and copy it; it is shown once. It ends in a dash and
+the data centre, such as -us21. The audience the sign-ups go to must already
+exist (Audience > All contacts); nothing here creates one. Any tags the team
+wants are created in Mailchimp or typed on the editor.
+
+**Set up, on the site:** WP admin > Events > Settings > Mailchimp > Add a
+connection. Name "Aging Services", paste the key, Test connection: it says
+Connected with the number of audiences and tags. Choose the Default audience,
+tick the Aging Services organizer(s), optionally a tag for every sign-up, Save.
+The key column then says only "Saved, ending" and four characters.
+
+**Then:**
+
+1. Open Edit event on an Aging Services event that takes RSVPs here: the
+   Newsletter sign-up card is there with "Show Aging Services newsletter sign-up
+   on the RSVP form" ticked. Add a tag, Save.
+2. On its public page, the RSVP form has a second box, "Sign me up for Aging
+   Services email updates", unticked. Register with an address you control that
+   is not in the audience, both boxes ticked, a first and last name.
+3. Within a few minutes the address is in the audience in Mailchimp, subscribed,
+   with the first and last name and the tags: the connection's, the series' if
+   it has any, and the one added in step 1. Not the event's name.
+4. Register again on another Aging Services event with the same address and a
+   different first name: in Mailchimp only the new tags are added, and the name
+   is unchanged.
+5. In Mailchimp, unsubscribe that address. Register once more with the box
+   ticked: it stays unsubscribed, with no new tags.
+6. On an event whose organizer has no connection, the form has only the SFAF box.
+7. Settings > Mailchimp: "Sign-ups that did not go through" says None, and the
+   connection's row counts what was sent.
+
+Delete the test registrations and the test contact afterwards.
+
+**Why it needs a person:** a real Mailchimp account and its API key, real
+scheduled events firing on the site, and Mailchimp's own record of a contact;
+the build has a fake of Mailchimp's API, not the service.
+
 ## 3. Blocked on other people
 
 Nothing here can move until somebody outside the build answers.
@@ -5306,7 +5368,7 @@ Nothing here can move until somebody outside the build answers.
 |---|---|---|
 | **Aaron** | DNS records for `calendar.sfaf.org` so `events@calendar.sfaf.org` can send | Asked. From stays `websites@sfaf.org` meanwhile. It is a setting, so nothing needs deploying when the mailbox exists. |
 | **Val** | Remove the tracker's duplicates: **the 2027 Saturdays under two runs of UUIDs**, and **the coffee social under two names** ("50-Plus Saturday AM Coffee Social" and "Saturday AM Coffee Social") | Before Auto-Import goes on. The import copies what the tracker holds and de-duplicates nothing. `PROJECT.md` 3. |
-| **A Spanish-speaking reviewer**, chosen by Mark | Read `EMAILS.md`: every registrant message in English and Spanish side by side, in formal usted, including **Event cancelled, waitlist** (3.106.1), **Offer link, event off** and the three form labels under Additional information (3.106.2); from 3.112.0 also "Qué incluye" for What's included and the date range "del 21 al 23 de mayo de 2027". Corrections go into the Email Templates screen or `class-sfaf-messages.php`, never into `EMAILS.md` | Not asked. The Spanish was written without a native reader. |
+| **A Spanish-speaking reviewer**, chosen by Mark | Read `EMAILS.md`: every registrant message in English and Spanish side by side, in formal usted, including **Event cancelled, waitlist** (3.106.1), **Offer link, event off** and the three form labels under Additional information (3.106.2); from 3.112.0 also "Qué incluye" for What's included and the date range "del 21 al 23 de mayo de 2027"; from 3.124.0 also the RSVP form's email line, "Sigamos en contacto" and its two sign-up boxes. Corrections go into the Email Templates screen or `class-sfaf-messages.php`, never into `EMAILS.md` | Not asked. The Spanish was written without a native reader. |
 | **Salesforce admin** | Pardot connected app: client ID and secret, Business Unit ID, service user, OAuth flow | Asked. Campaign IDs store; nothing talks to Pardot. |
 
 ---

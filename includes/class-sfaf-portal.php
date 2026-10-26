@@ -17688,7 +17688,7 @@ class SFAF_Portal {
             <h2 class="uc-bento-title">Newsletter sign-up</h2>
             <?php foreach ( $conns as $c ) :
                 $id     = $c['id'];
-                $meta   = SFAF_Mailchimp::meta( $id );
+                $meta   = SFAF_Mailchimp::stored( $id );
                 $mine   = $series ? SFAF_Mailchimp::series_choice( $term_id, $id ) : SFAF_Mailchimp::event_choice( $event_id, $id );
                 $from_s = $series ? array( 'audience' => '', 'tags' => array() ) : SFAF_Mailchimp::series_choice( $term_id, $id );
                 $aud    = array();

@@ -167,8 +167,8 @@ update_option( SFAF_Mailchimp::OPTION, array(
     'ca1' => array( 'name' => 'Aging Services', 'audience' => 'aud1', 'audience_name' => 'Aging Services list', 'organizers' => array( 11 ), 'tags' => array( 'Seniors' ) ),
     'cb2' => array( 'name' => 'Black Health Initiative', 'audience' => 'aud9', 'audience_name' => 'Black Health list', 'organizers' => array( 12 ), 'tags' => array() ),
 ) );
-$GLOBALS['kit_trans']['sfaf_mc_meta_ca1'] = array( 'audiences' => array( array( 'id' => 'aud1', 'name' => 'Aging Services list' ), array( 'id' => 'aud2', 'name' => 'Aging Services volunteers' ) ), 'tags' => array( 'Lunch club', 'Seniors', 'Volunteers' ), 'at' => time(), 'error' => '' );
-$GLOBALS['kit_trans']['sfaf_mc_meta_cb2'] = array( 'audiences' => array( array( 'id' => 'aud9', 'name' => 'Black Health list' ) ), 'tags' => array( 'Health fair' ), 'at' => time(), 'error' => '' );
+update_option( 'sfaf_mc_meta_ca1', array( 'audiences' => array( array( 'id' => 'aud1', 'name' => 'Aging Services list' ), array( 'id' => 'aud2', 'name' => 'Aging Services volunteers' ) ), 'tags' => array( 'Lunch club', 'Seniors', 'Volunteers' ), 'at' => time(), 'error' => '' ) );
+update_option( 'sfaf_mc_meta_cb2', array( 'audiences' => array( array( 'id' => 'aud9', 'name' => 'Black Health list' ) ), 'tags' => array( 'Health fair' ), 'at' => time(), 'error' => '' ) );
 $eid = kit_write_post( array( 'post_type' => 'uc_event', 'post_status' => 'publish', 'post_title' => 'Lunch and learn', 'post_author' => 1 ) );
 foreach ( array( '_uc_event_date' => '2027-01-14', '_uc_start_time' => '12:00', '_uc_end_time' => '13:00', '_uc_rsvp_enabled' => '1' ) as $k => $v ) { update_post_meta( $eid, $k, $v ); }
 $GLOBALS['kit_terms'][ $eid ]['uc_organizer'] = array( 11 );

@@ -60,11 +60,15 @@ class SFAF_Mailchimp {
     /** Seconds to wait after each failed attempt; after the last, the row has failed. */
     const RETRY_AFTER = array( 300, 1800, 7200, 43200 );
 
-    /** How long a connection's audiences and tags are kept before being read again. */
+    /** How old a connection's stored audiences and tags may be before a background run reads them again. */
     const META_TTL = 43200;
+
+    /** The single event that reads a connection's audiences and tags again. */
+    const REFRESH_HOOK = 'sfaf_mailchimp_refresh';
 
     public static function register() {
         add_action( self::CRON_HOOK, array( __CLASS__, 'process_queue' ) );
+        add_action( self::REFRESH_HOOK, array( __CLASS__, 'refresh' ) );
         add_action( 'wp_ajax_sfaf_mailchimp_test', array( __CLASS__, 'ajax_test' ) );
         add_action( 'admin_post_sfaf_mailchimp_save', array( __CLASS__, 'handle_save' ) );
         add_action( 'admin_post_sfaf_mailchimp_delete', array( __CLASS__, 'handle_delete' ) );
@@ -199,7 +203,7 @@ class SFAF_Mailchimp {
 
         $audience      = sanitize_text_field( isset( $fields['audience'] ) ? (string) $fields['audience'] : '' );
         $audience_name = '';
-        $meta          = self::meta( $id, false, '' !== $key ? $key : null );
+        $meta          = '' !== $key ? self::meta( $id, $key ) : self::stored( $id );
         foreach ( $meta['audiences'] as $a ) {
             if ( $a['id'] === $audience ) {
                 $audience_name = $a['name'];
@@ -225,8 +229,8 @@ class SFAF_Mailchimp {
             'tags'          => self::clean_tags( isset( $fields['tags'] ) ? $fields['tags'] : array() ),
         );
         update_option( self::OPTION, $all, false );
-        if ( '' !== $key ) {
-            delete_transient( 'sfaf_mc_meta_' . $id );
+        if ( '' !== $key && $meta['at'] ) {
+            update_option( 'sfaf_mc_meta_' . $id, $meta, false );
         }
         return array( 'ok' => true, 'id' => $id, 'message' => $new ? 'Connection added.' : 'Connection saved.' );
     }
@@ -245,7 +249,7 @@ class SFAF_Mailchimp {
         unset( $all[ $id ] );
         update_option( self::OPTION, $all, false );
         SFAF_Credentials::remove( self::key_name( $id ) );
-        delete_transient( 'sfaf_mc_meta_' . $id );
+        delete_option( 'sfaf_mc_meta_' . $id );
         return true;
     }
 
@@ -392,24 +396,49 @@ class SFAF_Mailchimp {
     }
 
     /**
-     * A connection's audiences and every tag name in them, read from Mailchimp
-     * and kept for self::META_TTL.
+     * A connection's audiences and tags AS LAST READ, for a page being drawn.
      *
-     * @param string      $id
-     * @param bool        $refresh Read again now.
-     * @param string|null $key     A key not saved yet (Test connection).
+     * NEVER A REQUEST TO MAILCHIMP WHILE A PAGE RENDERS: a slow answer would
+     * hold up Edit event. What is stored is used whatever its age, and when it
+     * is older than self::META_TTL (or there is none yet) a single background
+     * run reads it again for next time. Test connection and saving a new key
+     * read it at once.
+     *
      * @return array( 'audiences' => array( array( id, name ) ), 'tags' => string[], 'at' => int, 'error' => string )
      */
-    public static function meta( $id, $refresh = false, $key = null ) {
+    public static function stored( $id ) {
+        $id    = sanitize_key( (string) $id );
+        $empty = array( 'audiences' => array(), 'tags' => array(), 'at' => 0, 'error' => '' );
+        $have  = get_option( 'sfaf_mc_meta_' . $id, array() );
+        $have  = is_array( $have ) ? $have + $empty : $empty;
+        if ( self::get( $id ) && $have['at'] < time() - self::META_TTL && ! wp_next_scheduled( self::REFRESH_HOOK, array( $id ) ) ) {
+            wp_schedule_single_event( time() + 5, self::REFRESH_HOOK, array( $id ) );
+        }
+        return $have;
+    }
+
+    /** The background run stored() asks for: read and keep, when it reads. */
+    public static function refresh( $id ) {
+        $meta = self::meta( $id );
+        if ( $meta['at'] ) {
+            update_option( 'sfaf_mc_meta_' . sanitize_key( (string) $id ), $meta, false );
+        }
+        return $meta;
+    }
+
+    /**
+     * A connection's audiences and every tag name in them, read from
+     * Mailchimp now. Only from Test connection, a save with a new key, and
+     * the background refresh; a page being drawn asks stored().
+     *
+     * @param string      $id
+     * @param string|null $key A key not saved yet (Test connection).
+     * @return array( 'audiences' => array( array( id, name ) ), 'tags' => string[], 'at' => int, 'error' => string )
+     */
+    public static function meta( $id, $key = null ) {
         $id    = sanitize_key( (string) $id );
         $empty = array( 'audiences' => array(), 'tags' => array(), 'at' => 0, 'error' => '' );
         if ( null === $key ) {
-            if ( ! $refresh ) {
-                $cached = get_transient( 'sfaf_mc_meta_' . $id );
-                if ( is_array( $cached ) && isset( $cached['audiences'] ) ) {
-                    return $cached + $empty;
-                }
-            }
             $key = self::key( $id );
         }
         if ( '' === (string) $key ) {
@@ -438,9 +467,6 @@ class SFAF_Mailchimp {
         natcasesort( $out['tags'] );
         $out['tags'] = array_values( $out['tags'] );
         $out['at']   = time();
-        if ( '' !== $id && self::get( $id ) ) {
-            set_transient( 'sfaf_mc_meta_' . $id, $out, self::META_TTL );
-        }
         return $out;
     }
 
@@ -465,7 +491,10 @@ class SFAF_Mailchimp {
         if ( ! $ping['ok'] ) {
             wp_send_json_error( array( 'message' => 'Mailchimp said no. ' . $ping['error'] ) );
         }
-        $meta = self::meta( $id, true, $key );
+        $meta = self::meta( $id, $key );
+        if ( '' === $meta['error'] && self::get( $id ) ) {
+            update_option( 'sfaf_mc_meta_' . $id, $meta, false );
+        }
         if ( '' !== $meta['error'] ) {
             wp_send_json_error( array( 'message' => 'Connected, but the audiences could not be read. ' . $meta['error'] ) );
         }
@@ -980,7 +1009,7 @@ class SFAF_Mailchimp {
                 <?php else :
                     $c     = ( 'new' !== $edit ) ? self::get( $edit ) : null;
                     $c     = $c ? $c : array( 'id' => '', 'name' => '', 'audience' => '', 'audience_name' => '', 'organizers' => array(), 'tags' => array() );
-                    $meta  = '' !== $c['id'] ? self::meta( $c['id'] ) : array( 'audiences' => array() );
+                    $meta  = '' !== $c['id'] ? self::stored( $c['id'] ) : array( 'audiences' => array() );
                     $taken = array();
                     foreach ( $conns as $other ) {
                         if ( $other['id'] !== $c['id'] ) {

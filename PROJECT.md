@@ -5467,6 +5467,86 @@ to.
 
 This is **blocked on Salesforce credentials**, not on code.
 
+### Mailchimp: a team's own list, from the RSVP form (3.124.0)
+
+Aging Services, and later Black Health, keep their own Mailchimp accounts.
+Somebody registering for one of their events can tick "Sign me up for [team]
+email updates" and is added to that team's audience once the registration is
+confirmed. `SFAF_Mailchimp` is the whole of it.
+
+**Nothing appears anywhere without a connection that has an organizer**
+(`SFAF_Mailchimp::active()`): no card on the editors, no step in the tour, no
+box on the form, no data on the Register button. A team with no connection is
+untouched.
+
+**A connection** is a name (the team), an API key, a default audience, the
+organizers it applies to and optional fixed tags, in the option
+`sfaf_mailchimp_connections`, kept on WP admin Settings under `manage_options`,
+below the settings form and outside it, because that form rebuilds
+`uc_settings` on every save. **An organizer has one connection at most**, so an
+event's boxes are one per team, and several connected organizers on an event
+mean several boxes.
+
+**The key** is in `sfaf_credentials` as `mailchimp_key_` plus the connection's
+id (`SFAF_Credentials::type()` names that family; there can be any number), and
+it is **encrypted** with keys derived from the site's own `wp_salt('auth')`:
+HMAC-SHA256 in counter mode, then an HMAC over nonce and ciphertext, built from
+`hash_hmac()` so it depends on no extension. A database copy alone does not give
+it away; **if the site's secret keys change, the stored key no longer opens**
+and the panel says to paste it again. The panel shows its last four characters
+only. Every message that leaves the class is scrubbed of the key and of anything
+shaped like one, so the failures table, the log and the AJAX answers cannot
+carry it.
+
+**Where a sign-up goes** (`destination()`): the event's audience if it chose
+one, else the series', else the connection's; the connection's fixed tags, then
+the series', then the event's. **The event's name is never a tag.** Decided at
+the moment of consent and stored on the queue row, so a later edit to the event
+does not reroute a sign-up already made. The editors' card (Add event, Edit
+event, the series page) offers the audience only when the account has more than
+one, the tags as chips over the account's tags with a search and a box for a new
+one, and on an event "Show [team] newsletter sign-up on the RSVP form", on by
+default. It saves under the `$offered` rule: only the blocks it drew
+(`mc_present[]`). **Drawing a page never asks Mailchimp**: the account's audiences
+and tags are stored (`stored()`, the option `sfaf_mc_meta_` plus the id) and used
+whatever their age; once they are 12 hours old a single background run
+(`sfaf_mailchimp_refresh`) reads them again for next time. Test connection and a
+save with a new key read them at once.
+
+**One record of consent.** A tick is a row in `uc_optins`, as the SFAF box's
+always was, with `list_key` (`sfaf`, or `mc:` and the connection's id),
+`list_name`, `lang` and `rsvp_id` (schema 17); Email Opt-ins shows the List and
+Language columns. The send is a separate thing: a row in `uc_mailchimp_queue`
+naming the consent, sent by a **single** scheduled event (`sfaf_mailchimp_send`,
+not one of `SFAF_Cron`'s tasks), so the RSVP form never waits on Mailchimp.
+
+**What is sent** (Mark, 2026-10-26): someone **new** to the audience is
+subscribed at once, with first name, last name (only if given) and the tags; no
+confirmation email from Mailchimp. Someone **already subscribed or pending** gets
+the tags only, so a name they gave Mailchimp is never overwritten. **Archived**,
+or a contact the account only ever emailed (**transactional**), is subscribed
+again with the tags, because they ticked the box. **Unsubscribed or cleaned:
+nothing, not even a tag**, and the row says so. An address Mailchimp refuses
+(a fake one, or one erased at the person's request) is skipped, not retried.
+Anything else that fails is tried again after 5 minutes, 30 minutes, 2 hours and
+12 hours, then marked failed and listed on the panel with **Retry**. Every
+attempt is in the row's log, key-free.
+
+**When a sign-up counts: once the registration is confirmed.** A registration
+records its ticks as it is written; a waitlist join keeps them on its row
+(`uc_rsvps.lists`, schema 17) and `SFAF_Waitlist::admit()` records them when the
+place is confirmed. No email address, nothing recorded or sent. A registration
+made before 3.124.0 has no `lists`, so nothing is ever sent for one. Until
+3.124.0 a waitlist join's SFAF box was not kept at all.
+
+**The SFAF box** is the same box, renamed "Sign me up for SFAF Newsletter and
+Updates", recorded the same way with its list and language, and still sent
+nowhere until Pardot is connected.
+
+Tested by `.claude/release-31240-test.php` (the fake API's five member states,
+the retries, the encryption) and `.claude/release-31240-live.php` (the form and
+the card in Chrome); faults in `.claude/plant-31240.php`.
+
 ### Where credentials live
 
 Every platform credential is in the **`sfaf_credentials`** option, never in
@@ -6741,7 +6821,8 @@ somebody holding a place: they get the confirmation, the morning-of reminder and
 the two announcements. **Following a series** is somebody who wants to know when
 new dates are added to it, and that is the only thing they ever receive. The
 **SFAF newsletter** is marketing consent, recorded in `uc_optins`, destined for
-Pardot and blocked on Salesforce credentials.
+Pardot and blocked on Salesforce credentials; a team's Mailchimp box is the same
+kind of consent, recorded there too and sent to that team's audience (3.124.0).
 
 `SFAF_Follow` is lane 2, and its table is `uc_series_followers`. Added 3.53.0,
 which is also when the button on the public event page stopped being lane 1
