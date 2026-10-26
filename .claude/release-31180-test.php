@@ -45,7 +45,8 @@ foreach ( array( 'staff' => $staff, 'community' => $comm ) as $w => $h ) {
     rt( "A: and no email switches on the $w form", false === strpos( $h, 'notify_off' ) && false === strpos( $h, 'Emails for this event' ), true );
 }
 rt( 'A: the staff form shows the requester read-only', (bool) preg_match( '#<input type="email" value="pat@sfaf.org" readonly tabindex="-1"\s+aria-labelledby="uc-rsvp-updates-label" />#', $staff ), true );
-rt( 'A: and says what they get', false !== strpos( $staff, 'these addresses get the count of who is coming the day before, and who is coming two hours before.' ), true );
+// The line Mark gave in 3.122.0 replaces the 3.118.0 hint.
+rt( 'A: and says what they get', false !== strpos( $staff, 'They&#039;ll get the RSVP count the day before and the list of who&#039;s coming two hours before.' ), true );
 rt( 'A: the old yes line is gone', false === strpos( $staff, 'With yes, you get two emails once it is published' ), true );
 rt( 'A: the community form shows the address typed above', false !== strpos( $comm, 'data-uc-rsvp-updates-you placeholder="Your email, from above"' ) && false !== strpos( $comm, 'data-uc-rsvp-updates-source' ), true );
 rt( 'A: one "Your email", no repeater', 1 === substr_count( $comm, 'name="submitter_email[]"' ) && false === strpos( $comm, '+ Add email' ) && false === strpos( $comm, 'anybody else who should get RSVPs' ), true );

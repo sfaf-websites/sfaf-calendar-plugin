@@ -340,6 +340,9 @@ function sfaf_icon_paths() {
          */
         'duplicate' => '<rect x="8.5" y="8.5" width="12" height="12" rx="2.5"/><path d="M15.5 5.5H6A2.5 2.5 0 0 0 3.5 8v9.5"/>',
 
+        // A CLIPBOARD (3.122.0): copy the event page's link, on Edit event.
+        'copy'      => '<rect x="8" y="2.5" width="8" height="4" rx="1"/><path d="M16 4.5h2a2 2 0 0 1 2 2V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2h2"/>',
+
         /*
          * THE BELL, STRUCK THROUGH (3.73.0). "Cancel this event", on a row
          * whose event has registrations and therefore cannot be removed.
@@ -1637,40 +1640,33 @@ function sfaf_is_galaxy_need( $post_id ) {
 }
 
 /**
- * Volunteer signup block for imported Galaxy Digital needs:
- * spots remaining (mocked from shifts[].slots) + a "Sign Up" link.
+ * The Sign Up button for an imported Galaxy Digital need, or nothing.
+ *
+ * ONE VOLUNTEER BUTTON AND NO COUNT ON THE EVENT PAGE (3.122.0). An event with
+ * a volunteer link of its own shows sfaf_volunteer_block() and nothing here.
+ * The spots line is gone: it said "8 spots remaining" whenever no number was
+ * known. The calendar card still quotes sfaf_volunteer_spots_text(), because
+ * the embed is not changed in this release.
  */
 function sfaf_galaxy_block( $post_id ) {
     $need_id = get_post_meta( $post_id, '_uc_galaxy_need_id', true );
-    if ( ! $need_id ) {
+    if ( ! $need_id || '' !== sfaf_volunteer_url( $post_id ) ) {
         return '';
     }
 
     $settings = get_option( 'uc_settings', array() );
     $portal   = isset( $settings['galaxy_portal_url'] ) ? $settings['galaxy_portal_url'] : '';
+    if ( ! $portal ) {
+        return '';
+    }
+    $signup = trailingslashit( $portal ) . 'need/detail/?need_id=' . rawurlencode( $need_id );
 
-    $signup = $portal
-        ? trailingslashit( $portal ) . 'need/detail/?need_id=' . rawurlencode( $need_id )
-        : '';
-
-    ob_start();
-    ?>
-    <div class="uc-galaxy-block">
-        <?php // Spots remaining come from shifts[].slots in production; the
-              // sentence is built in one place so the card and this block can
-              // never quote different numbers. ?>
-        <span class="uc-galaxy-spots"><?php echo sfaf_icon( 'hand' ); ?> <?php echo esc_html( sfaf_volunteer_spots_text( $post_id ) ); ?></span>
-        <?php if ( $signup ) : ?>
-            <?php echo sfaf_action_button( array(
-                'label'    => sfaf_page_label( $post_id, 'sign_up_volunteer' ),
-                'href'     => $signup,
-                'variant'  => 'primary',
-                'external' => true,
-            ) ); ?>
-        <?php endif; ?>
-    </div>
-    <?php
-    return ob_get_clean();
+    return '<div class="uc-galaxy-block">' . sfaf_action_button( array(
+        'label'    => sfaf_page_label( $post_id, 'sign_up_volunteer' ),
+        'href'     => $signup,
+        'variant'  => 'primary',
+        'external' => true,
+    ) ) . '</div>';
 }
 
 /* -------------------------------------------------------------------------

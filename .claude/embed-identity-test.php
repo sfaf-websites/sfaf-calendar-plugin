@@ -19,7 +19,8 @@
  *      except embed.js's EMBED_JS_VERSION line, and the caladmin files in
  *      CALADMIN_ONLY, which no public calendar page loads.
  *
- * BASE is the release compared against: 3.120.0's released commit from 3.121.0
+ * BASE is the release compared against: 3.121.0's released commit from 3.122.0
+ * (3.120.0's, ca4ae5d, for 3.121.0)
  * (3.119.0's, 91ff032, for 3.120.0)
  * (3.118.0's, 0c3eb0f, for 3.119.0)
  * (3.117.0's, ada5d08, for 3.118.0)
@@ -37,16 +38,17 @@
  * name, in ALLOWED or ALLOWED_FILES.
  */
 
-const BASE      = 'ca4ae5d';
-const BASE_NAME = '3.120.0';
+const BASE      = '367a707';
+const BASE_NAME = '3.121.0';
 
 /* Files under public/ and templates/ a release means to change, as path =>
    why. Probe A still compares every embed answer, so none of these can reach
    the embed unseen. */
 const ALLOWED_FILES = array(
-    // 3.121.0: the public series page asks for its past dates as past. The
-    // embed draws no series page; probe A holds its answers unchanged.
-    'templates/taxonomy-uc_series.php' => 'the series page: Previously lists only past dates (3.121.0)',
+    // 3.122.0: the event page marks a staff preview and draws one volunteer
+    // button and no count. The embed draws no event page; probe A holds its
+    // answers unchanged.
+    'templates/single-uc_event.php' => 'the event page: the Preview band for staff (3.122.0)',
 );
 
 /* Loaded by caladmin and the two public forms, never by the calendar, an event

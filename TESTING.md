@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 388 items.** Quick 317, needs real conditions 67, blocked on other
+**Outstanding: 391 items.** Quick 320, needs real conditions 67, blocked on other
 people 4.
 
 ---
@@ -4318,6 +4318,52 @@ scheduled a year or more out): "Previously in this series" lists only dates
 that have passed, the most recent first, and "Upcoming dates" starts today.
 
 **Why it needs a person:** a real series with real dates on the live site.
+
+### 1.320 View event page, the copy icon and Preview (3.122.0)
+
+In caladmin, open Edit event on each of these and use the links at the top:
+
+- **A published event**: View event page opens its page in a new tab. Press
+  the copy icon: "Copied" shows beside it, and pasting gives the same address.
+- **A private event**: the copy icon copies the private link, the same one
+  "Who can find this event" shows, and View event page opens it.
+- **A scheduled event**: View event page opens it marked Preview, with the date
+  it goes live. Open the copied link in a private window, signed out: page not
+  found until that date.
+- **A draft, and a pending submission**: Preview opens the page marked Preview,
+  with no copy icon. Copy the Preview address into a private window, signed
+  out: page not found. Signed in as an editor who does not have that event:
+  page not found too.
+- **An event taking RSVPs here**: RSVP list opens its list. An event with No
+  RSVP or External RSVP has no RSVP list link.
+
+Then open a draft's Preview, sign out in that tab, and reload: page not found,
+not the cached preview.
+
+**Why it needs a person:** WordPress's own query, the site's permalinks, the
+clipboard over https and LiteSpeed Cache on resources.sfaf.org; none of them is
+in the build environment.
+
+### 1.321 The tour, read against the screen (3.122.0)
+
+Take the tour on Add event, then on Edit event for a published event in a
+series, a draft, a private event, and a public submission. Each caption should
+describe what that card shows on that screen, and the action bar's should name
+only the buttons that are on the bar. Note any caption that reads wrong.
+
+**Why it needs a person:** whether the words read right is a judgment, and the
+check proves only that each card has a caption naming its buttons.
+
+### 1.322 One volunteer button on the event page (3.122.0)
+
+Open the public page of an event with a volunteer link: one green "Volunteer
+for this event" button under the share buttons, no other volunteer button and
+no count of spots. If any event imported as a Galaxy Digital need is still
+published, open it too: one Sign Up button and no count. Then open the staff
+request form: under "Who should get RSVP updates?" the line reads "They'll get
+the RSVP count the day before and the list of who's coming two hours before."
+
+**Why it needs a person:** real events on the live site under sfaf.org's theme.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event

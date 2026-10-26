@@ -108,7 +108,8 @@ nc( (string) get_post_meta( $new, '_uc_email_replyto', true ), 'events@example.o
  * required instead. Both events are in a series and FAQ sets exist, so every
  * conditional control that the page can draw is drawn.
  * ======================================================================== */
-$SAVED_ACTIONS = array( 'manage-series', 'edit-schedule', 'cancel', 'delete', 'faq-form', 'rsvp-list', 'private-link' );
+// View event page, its copy icon and Preview, at the top of Edit event (3.122.0).
+$SAVED_ACTIONS = array( 'manage-series', 'edit-schedule', 'cancel', 'delete', 'faq-form', 'rsvp-list', 'private-link', 'view-page', 'copy-link', 'preview' );
 $ADD_ONLY      = array( 'series-prefill' );
 
 function nc_controls( $html, $skip_attr, $skip_saves = false ) {

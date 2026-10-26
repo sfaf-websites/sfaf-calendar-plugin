@@ -1127,15 +1127,41 @@ of the phone's top bar; the action bar is not scrolled, being stuck to the
 window's foot already, so its panel goes above it.
 
 **Steps.** One per `data-uc-card` in the 3.107.1 order (table above) that is
-on the page and drawn, then the action bar: 14 on Add event and on Edit event
-since 3.110.1, with Who can find this event and Team and access on both. The catch-all, Other details, has no step. The bar's
-step is named **Action bar**, the name the brief gave it.
+on the page and drawn, then the action bar: 14 on Add event. Edit event from
+3.122.0 starts with **Event page** (or **Event page and RSVP list**, or **RSVP
+list**), the links beside Take the tour, and an imported event or a public
+submission adds **Imported event** or **Submitted by a member of the public**,
+the panel above the form, so a published event in a series has 15. The bar's
+step is named **Action bar**, the name the brief gave it. Every caption reads
+the event, so the same card can say different things on two events.
 
 **While it runs** every child of `<body>` but the tour is `inert`, and Tab and
 Shift+Tab cycle Back, Next and Done by hand (a disabled button drops out).
 Arrow Right and Down go forward, Left and Up back, Esc and Done close and focus
 returns to Take the tour. Nothing is stored. Focus opens on Next.
 
+### Edit event's links and the Preview band (3.122.0)
+
+Built from components already on the page; nothing here is a new colour.
+
+| Part | What it is | Values |
+|---|---|---|
+| RSVP list | an `<a>` drawn as the tour link, after Take the tour | `.uc-head-link`, the tour link's rule: 14px/600 `--uc-accent-text` (5.35:1), underlined at 3px offset, 2px on hover, the 2px accent focus ring |
+| View event page, Preview | `.uc-btn`, Back's button, with a ↗ for the new tab | the standard secondary button |
+| The copy icon | the questions' icon button with the `copy` glyph, a clipboard, 18px | `.uc-icon-btn`: 32px square, 6px radius, `--p-muted`, `--p-text` on `--p-border` on hover, the 2px accent focus ring; 44px square on a phone |
+| Copied | beside the icon for two seconds, and the status a screen reader hears | 13px/600 `--uc-accent-text` |
+| The group | `.uc-page-links`, in the head's action row | inline flex, 8px gap, wraps |
+
+**The copy glyph is a clipboard, not two sheets**, which the icon set keeps for
+Duplicate. The order is Take the tour, RSVP list, View event page or Preview,
+the copy icon, Back.
+
+**The Preview band** is the first thing on an event page a member of staff
+opens before it is public: the cancelled notice's shape, 16px 20px, 12px
+radius, 24px below, a 1px `--uc-teal-text` edge on `--uc-band`. "Preview" is
+18px/800 `--uc-teal-text` (4.94:1 on the band); the line under it 14px/400
+`--uc-text` at 1.6 (15.59:1), at most 70ch. Its style is printed with it, not
+in `calendar.css`, which the embed loads.
 ### The editors' picture, FAQs, notices and emails row (3.108.1)
 
 Measured in Chrome by `.claude/release-31081-live.php` at 1280px and 390px.

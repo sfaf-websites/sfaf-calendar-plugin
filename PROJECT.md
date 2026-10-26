@@ -2768,6 +2768,37 @@ Tags are set aside, §8.)
   editor says why, and the route refuses a constructed post. The ladder still
   holds in what each dialog says: cancelling keeps the registrations and offers
   to tell everybody; deleting keeps nothing and cannot be undone.
+### Edit event's links, and the event page before it is public (3.122.0)
+
+**At the top of Edit event**, between Take the tour and Back, drawn by
+`render_event_page_links()`: the RSVP list, for an event that takes RSVPs here
+(`sfaf_event_takes_rsvps()`) and a person `can_edit_event()` lets into the
+list; then the event page in a new tab. `SFAF_Preview::link()` decides which:
+
+- **Published**: View event page and a copy icon, both carrying
+  `get_permalink()`. A private event is published, so this is its private link,
+  the one "Who can find this event" shows.
+- **Scheduled**: the same, carrying the address the event will have. WordPress
+  gives a scheduled post the `?p=` form, so the post is asked as published.
+- **Draft and pending**: Preview, at `?uc_preview=ID` on the home URL, and no
+  copy icon. A draft has no address of its own yet; `?p=` was not used because
+  `redirect_canonical()` rewrites it.
+- **Add event**: nothing, as it has no page yet.
+
+**Who sees a page that is not public yet.** WP_Query finds the event and then
+drops it for anybody without WordPress's own edit capability, which calendar
+staff do not have. `SFAF_Preview` holds the event in `posts_results`, before the
+drop, and puts it back in `the_posts` when the request is signed in, the person
+has a calendar role, and `SFAF_Portal::user_can_edit_event()` says yes, for a
+draft, pending or scheduled event only. Anybody else gets the 404 they always
+got: nothing is widened for a visitor. The page carries a **Preview** band
+(`SFAF_Preview::banner()`, above everything, the cancelled notice's shape in the
+accent), is `noindex, nofollow`, and is sent with no-cache headers,
+`DONOTCACHEPAGE` and LiteSpeed's `no-cache`, because resources.sfaf.org runs
+LiteSpeed Cache and a cached preview would reach the next visitor. The band's
+style is printed with it, not in `calendar.css`, which is the embed's stylesheet
+too. **A registration posted from a preview is refused** by the RSVP handler,
+which takes registrations for published events only.
 ### The series page is built like the editor (3.116.0)
 
 **The same layout, the same bar.** One form (`#uc-series-form`) holding the
@@ -2851,13 +2882,21 @@ stable name for a later guided tour; `DESIGN.md` 4 lists them.
   The request forms have their own venue select and are not affected.
 - **The tour** (3.108.0). "Take the tour" beside the page title, a button.
   `editor_tour_steps()` is the one list of steps, in page order, each a
-  `data-uc-card` name, the name shown and Mark's caption; it lists Who can edit
-  this on both screens and the action bar's caption by screen.
-  `initEditorTour()` drops any step whose card is not on the page and drawn,
-  which is the whole skip rule. It stores nothing and never starts itself.
-  While it runs every other child of `<body>` is `inert`, and Tab is trapped by
-  hand as well. A card added to the editor gets a step only when it is added to
-  that list.
+  `data-uc-card` name, the name shown and the caption. **From 3.122.0 a caption
+  follows the event**, read from the same facts its card is drawn from: the
+  series card on Add and on Edit, Repeats and Edit the schedule, a private
+  event's link, an imported event's RSVP and Notifications, and the buttons the
+  action bar has (`editor_tour_bar_text()`, the same tests the bar makes). The
+  links at the top of Edit event (`page-links`) and the two panels above the
+  form, an imported event's (`imported`) and a public submission's
+  (`submitted`), are steps too. `initEditorTour()` drops any step whose card is
+  not on the page and drawn, which is the whole skip rule. It stores nothing and
+  never starts itself. While it runs every other child of `<body>` is `inert`,
+  and Tab is trapped by hand as well. **A card added to either editor fails
+  `.claude/release-31220-test.php` until it has a step**: every `.uc-card`,
+  `.uc-bento-card` and `data-uc-card` on Add event and on Edit event in ten
+  states must be, or sit inside, a card the tour captions, and each caption must
+  name the buttons its card draws and none it does not.
 - **FAQs are folded on the editors** (3.108.1): `faq_repeater()` takes `$fold`,
   which only the editors pass, and `sfaf_faq_row_folded()` draws a head (the
   question or "New question", Edit, the remove icon) over the same fields, so
@@ -2876,9 +2915,10 @@ on a saved event may be Edit-only, and each carries `data-uc-saved-action` in
 the markup naming which: `cancel` (the Cancel event disclosure, and the card a
 cancelled event shows), `delete`, `access` (Who can edit this),
 `manage-series` (the series banner's link), `edit-schedule`, `faq-form` (the
-no-JavaScript FAQ set form, which posts to the saved event) and `rsvp-list`,
-which nothing carries because no editor has an RSVP list link. The series
-prefill carries `data-uc-add-only="series-prefill"`.
+no-JavaScript FAQ set form, which posts to the saved event), `private-link`,
+and from 3.122.0 the links at the top of Edit event: `rsvp-list`,
+`view-page`, `copy-link` and `preview`. The series prefill carries
+`data-uc-add-only="series-prefill"`.
 
 `.claude/notifications-card-test.php` renders Add event, an existing draft and
 a published event, in a series, with FAQ sets: every control outside a marked
@@ -4214,6 +4254,13 @@ address draws nothing at all, not an empty row.
   `apply_to_group`), because the dates of one programme share a volunteer page.
 - **It is never taken from the series.** A series has no volunteer link, and a
   new event in a series starts with none.
+- **One volunteer button on the event page, and no count** (3.122.0). An event
+  with a volunteer link draws only this button. `sfaf_galaxy_block()`, for an
+  event imported as a Galaxy Digital need (nothing imports these now, see 3),
+  draws only its Sign Up button, and only when the event has no volunteer link
+  of its own. The spots line is gone from the page: it said "8 spots
+  remaining" whenever no number was known. The calendar card still shows
+  `sfaf_volunteer_spots_text()`, because that is the embed.
 
 ### FAQ sets are made in one place and copied, never linked
 
@@ -8478,9 +8525,6 @@ to be listed rather than built. None of it is agreed yet.
   than set as a schedule, because…" and "Their name and address are for
   reaching them…"; the community form saying twice that somebody reviews it;
   the cancel dialog's "an event that has simply vanished tells them nothing".
-- **The volunteer block** shows "8 spots remaining" when no number is known, and
-  a Galaxy need with a volunteer link shows two volunteer buttons.
-- **Edit event has no link to the RSVP list**, which CLAUDE.md 7 allows it.
 - **The event page and the series list pass a timestamp to `sfaf_ap_date()`**,
   the trap in `DESIGN.md` 3; the day is right only while the formatter uses
   `date_i18n`.

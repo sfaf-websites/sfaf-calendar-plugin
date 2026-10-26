@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.121.0
+Stable tag: 3.122.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,17 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.122.0 =
+
+**View event page and the RSVP list on Edit event, the tour brought up to date, one volunteer button. The embed is 3.121.0's.**
+
+* **View event page** at the top of Edit event, beside Take the tour and Back, opens the event's page in a new tab. The copy icon beside it copies the link and says "Copied". A private event's link is its private link. A scheduled event's is the address it will have; until it goes live only signed-in staff can open it.
+* **Preview** on a draft or a pending event opens the event page as visitors will see it once it is published, marked Preview. Only signed-in staff who can edit the event can open it; anybody else gets the page not found. No copy icon.
+* **RSVP list** beside them, for an event that takes RSVPs here.
+* **The tour's captions** say what each card holds now, and change with the event: the series card on Add and on Edit, Repeats and Edit the schedule, a private event's link, an imported event, a public submission, and the buttons the action bar actually has. The two panels above the form, an imported event's and a public submission's, and the new links at the top are steps of their own.
+* **The event page shows one volunteer button and no count.** An event with a volunteer link shows only "Volunteer for this event"; an imported Galaxy need with no volunteer link shows only Sign Up. The "8 volunteer spots remaining" line is gone from the event page.
+* **The staff request form** says under "Who should get RSVP updates?": They'll get the RSVP count the day before and the list of who's coming two hours before.
 
 = 3.121.0 =
 

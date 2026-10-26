@@ -62,8 +62,11 @@ while ( have_posts() ) :
              * it to be discovered in reading order, and the word is in the text
              * rather than carried by the red alone.
              */
+            // A draft, pending or scheduled event, shown to staff who can edit it (3.122.0).
+            echo SFAF_Preview::banner( $post_id );
+
             if ( SFAF_Cancellation::is_cancelled( $post_id ) ) :
-                $why = trim( (string) get_post_meta( $post_id, '_uc_cancelled_reason', true ) );
+                $why =trim( (string) get_post_meta( $post_id, '_uc_cancelled_reason', true ) );
                 ?>
                 <div class="uc-single-cancelled" role="status">
                     <p class="uc-cancelled-head"><?php echo esc_html( sfaf_page_label( $post_id, 'cancelled' ) ); ?></p>

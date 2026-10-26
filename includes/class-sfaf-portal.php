@@ -8276,42 +8276,219 @@ class SFAF_Portal {
     }
 
     /**
-     * The event editor's tour, in page order (3.108.0).
+     * Edit event's links at the top (3.122.0), beside Take the tour and Back.
+     *
+     * The RSVP list, for an event that takes RSVPs here and a person the list's
+     * own route lets in. Then the event page in a new tab: View event page and
+     * a copy icon for a published or scheduled event, whose link is its public
+     * address and, for a private event, the private link "Who can find this
+     * event" shows; Preview for a draft or a pending event, shown only to
+     * signed-in staff (SFAF_Preview), with no copy icon. Nothing on Add event,
+     * which has no page yet. data-uc-card makes it a step of the tour.
+     *
+     * @param WP_User $user
+     * @param int     $event_id
+     */
+    private function render_event_page_links( $user, $event_id ) {
+        $event_id = (int) $event_id;
+        if ( ! $event_id ) {
+            return;
+        }
+        $page  = SFAF_Preview::link( $event_id );
+        $rsvps = sfaf_event_takes_rsvps( $event_id ) && $this->can_edit_event( $user, $event_id );
+        if ( ! $page && ! $rsvps ) {
+            return;
+        }
+        ?>
+        <span class="uc-page-links" data-uc-card="page-links">
+            <?php if ( $rsvps ) : ?>
+                <a class="uc-head-link" href="<?php echo esc_url( add_query_arg( 'event_id', $event_id, $this->url( 'rsvps' ) ) ); ?>" data-uc-saved-action="rsvp-list">RSVP list</a>
+            <?php endif; ?>
+            <?php if ( $page && 'view' === $page['mode'] ) : ?>
+                <a class="uc-btn" href="<?php echo esc_url( $page['url'] ); ?>" target="_blank" rel="noopener" data-uc-saved-action="view-page">View event page <span aria-hidden="true">&nearr;</span><span class="uc-visually-hidden"> (opens in a new tab)</span></a>
+                <button type="button" class="uc-icon-btn" data-uc-copy-text="<?php echo esc_attr( $page['url'] ); ?>" data-uc-saved-action="copy-link"
+                        aria-label="Copy the event page link" title="Copy link"><?php echo sfaf_icon( 'copy', array( 'size' => '18px' ) ); ?></button>
+                <span class="uc-copy-said" role="status" data-uc-copy-said></span>
+            <?php elseif ( $page ) : ?>
+                <a class="uc-btn" href="<?php echo esc_url( $page['url'] ); ?>" target="_blank" rel="noopener" data-uc-saved-action="preview">Preview <span aria-hidden="true">&nearr;</span><span class="uc-visually-hidden"> (opens in a new tab)</span></a>
+            <?php endif; ?>
+        </span>
+        <?php
+    }
+
+    /**
+     * The event editor's tour, in page order (3.108.0; every caption checked
+     * against the editor in 3.122.0).
      *
      * One entry per data-uc-card name, with the name the panel shows and the
-     * caption Mark wrote, word for word. The script skips any step whose card
-     * is not on the page, which
-     * is the rule that also drops Notifications from an imported event. The
-     * action bar is the one step whose caption depends on the screen.
+     * caption. The script skips any step whose card is not on the page, which
+     * is the rule that drops Event page from Add event and the two panels
+     * above the form from an event that has neither. A caption that depends on
+     * the event reads the same facts its card does, so it says what the card
+     * shows: the series card on Add and on Edit, the repeat control, a private
+     * event's link, an imported event's RSVP and Notifications cards, and the
+     * action bar's buttons. .claude/release-31220-test.php fails when a card on
+     * either screen has no caption.
      *
-     * @param bool $is_edit
+     * @param WP_User $user
+     * @param int     $event_id 0 on Add event.
      * @return array[] Each array( 'card' => ..., 'name' => ..., 'text' => ... ).
      */
-    private function editor_tour_steps( $is_edit ) {
-        $steps = array(
-            array( 'series', 'Series and language', 'Choose the series first. The event takes its description, picture and defaults from it, and the picture list narrows to that series. Choose Spanish if registrants should receive their emails in Spanish.' ),
+    private function editor_tour_steps( $user, $event_id ) {
+        $event_id   = (int) $event_id;
+        $is_edit    = (bool) $event_id;
+        $source     = $is_edit ? (string) get_post_meta( $event_id, SFAF_Sources::META_SOURCE, true ) : '';
+        $label      = '' !== $source ? (string) SFAF_Sources::provenance( $event_id )['label'] : '';
+        $at_source  = $is_edit && SFAF_Sources::takes_rsvps_at_source( $event_id );
+        $has_series = ! empty( SFAF_Series::all() );
+        $series     = $is_edit ? (int) SFAF_Series::id_for_event( $event_id ) : 0;
+        $in_group   = $is_edit && '' !== (string) SFAF_Recurrence::group_of( $event_id );
+        $private    = $is_edit && SFAF_Privacy::is_private( $event_id );
+        $page       = $is_edit ? SFAF_Preview::link( $event_id ) : array();
+        $rsvp_list  = $is_edit && sfaf_event_takes_rsvps( $event_id ) && $this->can_edit_event( $user, $event_id );
+
+        // ---- Event page, Edit event only. ----------------------------------
+        $page_name = '';
+        $page_text = array();
+        if ( $rsvp_list ) {
+            $page_name   = 'RSVP list';
+            $page_text[] = 'RSVP list opens everybody registered for this event.';
+        }
+        if ( $page && 'view' === $page['mode'] ) {
+            $page_name   = $rsvp_list ? 'Event page and RSVP list' : 'Event page';
+            $page_text[] = 'View event page opens the event page in a new tab, and the copy icon copies its link.';
+            if ( $private ) {
+                $page_text[] = 'For this private event that is its private link, the one under Who can find this event.';
+            }
+            if ( 'future' === get_post_status( $event_id ) ) {
+                $page_text[] = 'Until it goes live, only signed-in staff can open it, marked Preview.';
+            }
+        } elseif ( $page ) {
+            $page_name   = $rsvp_list ? 'Event page and RSVP list' : 'Event page';
+            $page_text[] = 'Preview opens the event page in a new tab as visitors will see it once it is published. Only signed-in staff can open it.';
+        }
+
+        // ---- Series and language. ------------------------------------------
+        $lang_text = 'Choose Spanish if people who register should get their emails in Spanish.';
+        if ( ! $has_series ) {
+            $series_step = array( 'series', 'Language', $lang_text );
+        } elseif ( $is_edit ) {
+            $series_step = array( 'series', 'Series and language', 'Moving the event to another series changes only which series it is listed under. ' . $lang_text );
+        } else {
+            $series_step = array( 'series', 'Series and language', 'Choose the series first. You are offered its details to fill in, all but the date, and the picture list narrows to that series. ' . $lang_text );
+        }
+
+        // ---- Schedule. -----------------------------------------------------
+        $sched = array( 'Set the date and the start and end times.' );
+        if ( '' !== $source ) {
+            $sched[] = 'Repeating is decided at ' . ( '' !== $label ? $label : 'the source' ) . '.';
+        } elseif ( ! $in_group ) {
+            $sched[] = 'To repeat the event, choose how often under Repeats; every date is created when you save.';
+        }
+        if ( $series && $is_edit ) {
+            $sched[] = 'Edit the schedule adds and removes dates in the series.';
+        }
+
+        // ---- RSVP. ---------------------------------------------------------
+        $rsvp_text = $at_source
+            ? 'People register on ' . ( '' !== $label ? $label : 'the source' ) . ', so RSVPs are not taken here.'
+            : 'Choose No RSVP, RSVP Here to take RSVPs on this calendar, or External RSVP and paste the other site\'s registration link. '
+                . 'With RSVP Here, set a capacity (leave it empty for no limit, or enter 0 to send everyone to the waitlist), choose whether an email address is required, '
+                . 'and add questions or an agreement registrants must accept. Leave Cost empty to show no cost.';
+
+        // ---- Notifications. ------------------------------------------------
+        $notify_text = '' !== $source
+            ? 'Registrations are taken on another site, so no registration emails are sent.'
+            : 'Choose who hears about this event: the person who created it, people and teams under Choose people, and anyone else by email address. '
+                . 'Choose emails lists every email this event sends; untick one to stop it for this event only. Replies go to is where answers arrive. '
+                . 'With External RSVP, no registration emails are sent.';
+
+        // ---- Who can find this event. --------------------------------------
+        if ( ! $is_edit ) {
+            $privacy_text = 'Tick Make this event private to keep it off the calendar; only people you send the link to can open it. Once it is saved, its link is here to copy.';
+        } elseif ( $private ) {
+            $privacy_text = 'This event is private: only people you send the link to can open it. Copy the link here'
+                . ( ( $page && 'view' === $page['mode'] ) ? ' or with the copy icon at the top of the page' : '' ) . '.';
+        } else {
+            $privacy_text = 'Tick Make this event private to keep it off the calendar; only people you send the link to can open it. Turning it on gives the event a new link, so any link already shared stops working.';
+        }
+
+        $steps = array_filter( array(
+            $page_text ? array( 'page-links', $page_name, implode( ' ', $page_text ) ) : null,
+            // The two panels above the form, on an event that has one.
+            array( 'imported', 'Imported event', 'Refresh from source pulls this event\'s fields from ' . ( '' !== $label ? $label : 'the source' ) . ' again. Your category, organizer, series and any picture you chose are kept.' ),
+            array( 'submitted', 'Submitted by a member of the public', 'Who sent this event and what they told us. Use their address to reach them about it; neither is shown on the listing.' ),
+            $series_step,
             array( 'title', 'Title', 'Give the event the name people will see on the calendar. Keep it short; the description carries the detail.' ),
-            array( 'schedule', 'Schedule', 'Pick the date and the start and end times. For an event that repeats, choose how often and the plugin creates every date for you.' ),
-            array( 'location', 'Location', 'Pick a venue from the list, or choose A different location and type an address. Tick online for a video event, or hybrid when people can come in person or join online.' ),
-            array( 'registration', 'RSVP', 'Choose RSVP Here to take RSVPs on this calendar, or External RSVP and paste the link to the other site. Set a capacity if places are limited, leave it empty for no limit, or type 0 to send everyone to the waitlist. Add questions if you need to ask registrants something before the event.' ),
-            array( 'details', 'Event details', 'Write the description. Use Insert image to put a picture inside it. For the featured picture, choose one or use + Upload a picture for this event.' ),
-            array( 'faqs', 'FAQs', 'Add questions and answers for this event, or apply a saved set and edit it. To make a set you can reuse, create it on the FAQ Sets screen.' ),
+            array( 'schedule', 'Schedule', implode( ' ', $sched ) ),
+            array( 'location', 'Location', 'Pick a venue from the list, or choose A different location and type the address. For an event held online, tick This is an online event and add the meeting link; tick This is a hybrid event when people can come in person or join online. Add the venue\'s website if it has one.' ),
+            array( 'registration', 'RSVP', $rsvp_text ),
+            array( 'details', 'Event details', 'Write the description, and use Insert image to put a picture inside it. Choose the featured picture, or use + Upload a picture for this event. Add a video, the age range, a contact for the event page, and a PDF such as a flyer.' ),
+            array( 'faqs', 'FAQs', 'Add questions and answers, or apply a saved FAQ set and edit it. Tick No FAQs for this event if it has none. To make a set you can reuse, create it on the FAQ Sets screen.' ),
             array( 'classification', 'Classification', 'Add at least one category and one organizer. A category is the kind of event, such as a support group or a fundraiser, and drives the calendar filters. An organizer is the SFAF program or team hosting the event, and its events are listed together on the calendar.' ),
-            array( 'notifications', 'Notifications', 'Choose who is told when people register or cancel, and who gets the reminder copies. Set the reply address for the reminder email.' ),
+            array( 'notifications', 'Notifications', $notify_text ),
             // After Notifications, by the 3.110.2 brief, though the card is in the side column.
-            array( 'access', 'Team and access', 'Choose the team and any individuals who should have access to this event. What they can do depends on their level.' ),
-            array( 'links', 'Links', 'Choose which donation link goes in the emails, and paste a volunteer page if there is one.' ),
-            array( 'display', 'Display', 'Choose which buttons appear on the public event page.' ),
-            array( 'privacy', 'Who can find this event', 'Tick Make this event private to keep it off the calendar. Only people you send the link to can open it. Copy the link here once the event is saved.' ),
-            array( 'actions', 'Action bar', $is_edit
-                ? 'Save changes updates the event. Cancel event keeps it on the calendar marked cancelled and tells registrants. Delete removes it for good.'
-                : 'Save draft keeps the event private until you are ready. Publish puts it on the calendar.' ),
-        );
+            array( 'access', 'Team and access', 'Tick the teams and the people who should have this event; what each can do depends on their level. Calendar admins have every event.' ),
+            array( 'links', 'Links', 'Choose the donation link that goes in this event\'s emails, or Custom to paste one. A volunteer link adds a Volunteer for this event button to the event page.' ),
+            array( 'display', 'Display', 'Choose which buttons appear on the public event page: RSVP, Add to calendar, Social share, and Follow the series for an event in a series.' ),
+            array( 'privacy', 'Who can find this event', $privacy_text ),
+            array( 'actions', 'Action bar', $this->editor_tour_bar_text( $user, $event_id ) ),
+        ) );
         $out = array();
         foreach ( $steps as $s ) {
             $out[] = array( 'card' => $s[0], 'name' => $s[1], 'text' => $s[2] );
         }
         return $out;
+    }
+
+    /**
+     * The action bar's caption: the buttons the bar draws for this event, from
+     * the same tests render_event_form() makes for them.
+     *
+     * @param WP_User $user
+     * @param int     $event_id
+     * @return string
+     */
+    private function editor_tour_bar_text( $user, $event_id ) {
+        $event_id    = (int) $event_id;
+        $live        = $event_id ? get_post_status( $event_id ) : '';
+        $keep_status = in_array( $live, array( 'publish', 'pending', 'future' ), true );
+        $is_pending  = ( 'pending' === $live );
+        $is_sub      = $is_pending && ! empty( SFAF_Submissions::submitter( $event_id )['is_submission'] );
+        $reviewer    = $user && 'contributor' === self::get_role( $user->ID ) && 'pending' === $this->contributor_status( $user );
+        $out         = array();
+
+        if ( $is_sub && $this->is_admin_role( $user ) ) {
+            $out[] = 'Approve puts this event on the public calendar. Reject removes it and can tell whoever sent it. Save changes keeps your edits and leaves it waiting.';
+        } elseif ( $is_sub ) {
+            $out[] = 'A calendar admin approves or rejects this event. Save changes keeps your edits and leaves it waiting.';
+        } elseif ( ! $keep_status ) {
+            $out[] = $reviewer
+                ? 'Save draft keeps the event off the calendar. Submit for Review sends it to a calendar admin.'
+                : 'Save draft keeps the event off the calendar until you are ready. Publish puts it on the calendar, or tick Schedule for a later date to choose when it goes live.';
+        } elseif ( 'future' === $live ) {
+            $out[] = 'Save changes updates the event. Schedule sets when it goes live.';
+        } elseif ( $is_pending ) {
+            $out[] = $reviewer
+                ? 'Save changes keeps your edits and leaves it waiting. Submit for Review sends it to a calendar admin.'
+                : 'Save changes keeps your edits and leaves it waiting. Publish puts it on the calendar.';
+        } else {
+            $out[] = 'Save changes updates the event.';
+        }
+
+        if ( $event_id && ! $is_sub ) {
+            $cancelled = SFAF_Cancellation::is_cancelled( $event_id );
+            $imported  = '' !== (string) get_post_meta( $event_id, SFAF_Sources::META_SOURCE, true );
+            if ( ! $imported && ! $cancelled ) {
+                $out[] = 'Cancel event marks it cancelled and keeps its registrations; you choose whether to tell everybody who signed up.';
+            }
+            if ( $cancelled || ! SFAF_Announce::has_registrations( $event_id ) ) {
+                $out[] = 'Delete removes it for good.';
+            } else {
+                $out[] = 'An event with registrations can be deleted only once it is cancelled.';
+            }
+        }
+        return implode( ' ', $out );
     }
 
     /**
@@ -14363,7 +14540,8 @@ class SFAF_Portal {
                  */
                 ?>
                 <button type="button" class="uc-tour-link" data-uc-tour-start
-                        data-uc-tour-steps="<?php echo esc_attr( wp_json_encode( $this->editor_tour_steps( (bool) $event_id ) ) ); ?>">Take the tour</button>
+                        data-uc-tour-steps="<?php echo esc_attr( wp_json_encode( $this->editor_tour_steps( $user, (int) $event_id ) ) ); ?>">Take the tour</button>
+                <?php $this->render_event_page_links( $user, (int) $event_id ); ?>
                 <a href="<?php echo esc_url( $this->url( 'events' ) ); ?>" class="uc-btn">&larr; Back</a>
             </div>
         </div>
@@ -21277,7 +21455,7 @@ class SFAF_Portal {
         $also_tell = array_slice( SFAF_Submissions::notify_addresses( $event_id ), 1 );
         ?>
         <?php if ( $community ) : ?>
-        <div class="uc-card uc-request-panel">
+        <div class="uc-card uc-request-panel" data-uc-card="submitted">
             <div class="uc-card-head"><h2>Submitted by a member of the public</h2></div>
             <p class="uc-hint">Their name and address are for reaching them about this event. Neither is shown on the listing.</p>
             <p class="uc-request-who">
@@ -21382,7 +21560,7 @@ class SFAF_Portal {
             delete_transient( $key );
         }
         ?>
-        <div class="uc-card uc-refresh-panel">
+        <div class="uc-card uc-refresh-panel" data-uc-card="imported">
             <div class="uc-card-head"><h2>Imported event</h2></div>
             <form method="post" action="<?php echo esc_url( $this->url( 'events/edit/' . (int) $event_id ) ); ?>" class="uc-inline-form">
                 <input type="hidden" name="uc_action" value="refresh_source_event" />

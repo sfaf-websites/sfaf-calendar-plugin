@@ -2084,7 +2084,7 @@ class SFAF_Request {
                 SFAF_Submissions::render_rsvp_updates(
                     (string) $email,
                     (string) $v( 'rsvp_extra' ),
-                    'With yes, once it is published, these addresses get the count of who is coming the day before, and who is coming two hours before.',
+                    "They'll get the RSVP count the day before and the list of who's coming two hours before.",
                     $err( 'rsvp_updates_extra' )
                 );
                 ?>

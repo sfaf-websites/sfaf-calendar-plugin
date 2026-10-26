@@ -4990,13 +4990,16 @@ body.uc-modal-open { overflow: hidden; }
    and on a narrow one wrapped under it at the right-hand end. */
 .uc-questions .uc-q-option-tail { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
 .uc-questions .uc-q-option.is-dragging { background: var(--p-border); }
-.uc-questions .uc-icon-btn {
+.uc-questions .uc-icon-btn,
+.uc-page-head .uc-icon-btn {
     display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
     width: 32px; height: 32px; padding: 0; margin: 0;
     border: 0; border-radius: 6px; background-color: transparent; color: var(--p-muted); cursor: pointer;
 }
-.uc-questions .uc-icon-btn:hover { background-color: var(--p-border); color: var(--p-text); }
+.uc-questions .uc-icon-btn:hover,
+.uc-page-head .uc-icon-btn:hover { background-color: var(--p-border); color: var(--p-text); }
 .uc-questions .uc-icon-btn:focus-visible,
+.uc-page-head .uc-icon-btn:focus-visible,
 .uc-questions .uc-o-add:focus-visible,
 .uc-questions .uc-q-add:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; }
 .uc-questions .uc-q-grip { cursor: grab; }
@@ -5048,13 +5051,23 @@ body.uc-modal-open { overflow: hidden; }
    EVERY SELECTOR HERE IS TWO CLASSES, because `.uc-portal h2` and
    `.uc-portal p` are a class and a type and outrank one class.
    ------------------------------------------------------------------------ */
-.uc-page-head .uc-tour-link {
+.uc-page-head .uc-tour-link,
+.uc-page-head .uc-head-link {
     margin: 0 8px 0 0; padding: 4px 0; border: 0; background-color: transparent; cursor: pointer;
     font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1.4; color: var(--uc-accent-text);
     text-decoration: underline; text-underline-offset: 3px;
 }
-.uc-page-head .uc-tour-link:hover { text-decoration-thickness: 2px; }
-.uc-page-head .uc-tour-link:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; border-radius: 4px; }
+.uc-page-head .uc-tour-link:hover,
+.uc-page-head .uc-head-link:hover { text-decoration-thickness: 2px; }
+.uc-page-head .uc-tour-link:focus-visible,
+.uc-page-head .uc-head-link:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; border-radius: 4px; }
+
+/* EDIT EVENT'S LINKS (3.122.0): RSVP list as the tour link draws it, View
+   event page or Preview as Back draws it, and the copy icon as the questions'
+   icon button, 32px, --p-muted, --p-text on --p-border on hover. "Copied" is
+   13px/600 --uc-accent-text beside it for two seconds. */
+.uc-page-head .uc-page-links { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.uc-page-head .uc-copy-said { font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--uc-accent-text); }
 
 .uc-tour .uc-tour-shield { position: fixed; inset: 0; z-index: 100000; }
 .uc-tour .uc-tour-ring {
@@ -5317,9 +5330,9 @@ body.uc-modal-open { overflow: hidden; }
     .uc-portal select { min-height: 44px; }
     .uc-portal .uc-btn, .uc-portal .uc-picker-tab, .uc-portal .uc-tpl-token,
     .uc-portal .uc-link-danger, .uc-portal .uc-link-btn, .uc-portal .uc-outline-btn,
-    .uc-page-head .uc-tour-link,
+    .uc-page-head .uc-tour-link, .uc-page-head .uc-head-link, .uc-page-head .uc-icon-btn,
     .uc-questions .uc-icon-btn, .uc-questions .uc-o-add, .uc-questions .uc-q-add { min-height: 44px; }
-    .uc-questions .uc-icon-btn { min-width: 44px; }
+    .uc-questions .uc-icon-btn, .uc-page-head .uc-icon-btn { min-width: 44px; }
     /* + Add option lines up with the option boxes, which the 44px handle moved 12px right. */
     .uc-questions .uc-o-add { margin-left: 52px; }
     /* Required, In person only and the 44px remove stay on one line in 390px. */

@@ -19,8 +19,8 @@
  *        caption; Tab and Shift+Tab cycle inside it; everything behind it is
  *        inert and cannot take focus; arrows move; Esc and Done close and
  *        hand focus back to the button; it runs again
- *   B.3  one step per card present, in page order, Who can edit this only on
- *        Edit; every caption word for word as Mark wrote it
+ *   B.3  one step per card present, in page order, Event page only on Edit;
+ *        every caption word for word as typed below (rewritten in 3.122.0)
  *   B.5  the ring sits 6px outside the card on every step, and the panel is
  *        inside the window on every step: beside the card at 1280px, below
  *        it at 390px (or held at the window's foot when the card is taller)
@@ -40,24 +40,37 @@ function rt_capture( $fn ) {
     return $h;
 }
 
-/* The captions, typed from the brief, not read from the plugin. */
+/* The captions, typed here, not read from the plugin: Mark's from the brief,
+   rewritten against the editor in 3.122.0. Each is array( name, Add event's
+   caption, Edit event's ) where the two screens differ. The Edit pages are a
+   published event in Alpha at an address, taking RSVPs, nobody registered. */
 $CAPTIONS = array(
-    'series'         => array( 'Series and language', 'Choose the series first. The event takes its description, picture and defaults from it, and the picture list narrows to that series. Choose Spanish if registrants should receive their emails in Spanish.' ),
+    'page-links'     => array( 'Event page and RSVP list', '', 'RSVP list opens everybody registered for this event. View event page opens the event page in a new tab, and the copy icon copies its link.' ),
+    'series'         => array( 'Series and language', 'Choose the series first. You are offered its details to fill in, all but the date, and the picture list narrows to that series. Choose Spanish if people who register should get their emails in Spanish.',
+                                'Moving the event to another series changes only which series it is listed under. Choose Spanish if people who register should get their emails in Spanish.' ),
     'title'          => array( 'Title', 'Give the event the name people will see on the calendar. Keep it short; the description carries the detail.' ),
-    'schedule'       => array( 'Schedule', 'Pick the date and the start and end times. For an event that repeats, choose how often and the plugin creates every date for you.' ),
-    'location'       => array( 'Location', 'Pick a venue from the list, or choose A different location and type an address. Tick online for a video event, or hybrid when people can come in person or join online.' ),
-    'registration'   => array( 'RSVP', 'Choose RSVP Here to take RSVPs on this calendar, or External RSVP and paste the link to the other site. Set a capacity if places are limited, leave it empty for no limit, or type 0 to send everyone to the waitlist. Add questions if you need to ask registrants something before the event.' ),
-    'details'        => array( 'Event details', 'Write the description. Use Insert image to put a picture inside it. For the featured picture, choose one or use + Upload a picture for this event.' ),
-    'faqs'           => array( 'FAQs', 'Add questions and answers for this event, or apply a saved set and edit it. To make a set you can reuse, create it on the FAQ Sets screen.' ),
+    'schedule'       => array( 'Schedule', 'Set the date and the start and end times. To repeat the event, choose how often under Repeats; every date is created when you save.',
+                                'Set the date and the start and end times. To repeat the event, choose how often under Repeats; every date is created when you save. Edit the schedule adds and removes dates in the series.' ),
+    'location'       => array( 'Location', 'Pick a venue from the list, or choose A different location and type the address. For an event held online, tick This is an online event and add the meeting link; tick This is a hybrid event when people can come in person or join online. Add the venue\'s website if it has one.' ),
+    'registration'   => array( 'RSVP', 'Choose No RSVP, RSVP Here to take RSVPs on this calendar, or External RSVP and paste the other site\'s registration link. With RSVP Here, set a capacity (leave it empty for no limit, or enter 0 to send everyone to the waitlist), choose whether an email address is required, and add questions or an agreement registrants must accept. Leave Cost empty to show no cost.' ),
+    'details'        => array( 'Event details', 'Write the description, and use Insert image to put a picture inside it. Choose the featured picture, or use + Upload a picture for this event. Add a video, the age range, a contact for the event page, and a PDF such as a flyer.' ),
+    'faqs'           => array( 'FAQs', 'Add questions and answers, or apply a saved FAQ set and edit it. Tick No FAQs for this event if it has none. To make a set you can reuse, create it on the FAQ Sets screen.' ),
     'classification' => array( 'Classification', 'Add at least one category and one organizer. A category is the kind of event, such as a support group or a fundraiser, and drives the calendar filters. An organizer is the SFAF program or team hosting the event, and its events are listed together on the calendar.' ),
-    'notifications'  => array( 'Notifications', 'Choose who is told when people register or cancel, and who gets the reminder copies. Set the reply address for the reminder email.' ),
-    'links'          => array( 'Links', 'Choose which donation link goes in the emails, and paste a volunteer page if there is one.' ),
-    'display'        => array( 'Display', 'Choose which buttons appear on the public event page.' ),
-    'privacy'        => array( 'Who can find this event', 'Tick Make this event private to keep it off the calendar. Only people you send the link to can open it. Copy the link here once the event is saved.' ),
-    'access'         => array( 'Team and access', 'Choose the team and any individuals who should have access to this event. What they can do depends on their level.' ),
+    'notifications'  => array( 'Notifications', 'Choose who hears about this event: the person who created it, people and teams under Choose people, and anyone else by email address. Choose emails lists every email this event sends; untick one to stop it for this event only. Replies go to is where answers arrive. With External RSVP, no registration emails are sent.' ),
+    'links'          => array( 'Links', 'Choose the donation link that goes in this event\'s emails, or Custom to paste one. A volunteer link adds a Volunteer for this event button to the event page.' ),
+    'display'        => array( 'Display', 'Choose which buttons appear on the public event page: RSVP, Add to calendar, Social share, and Follow the series for an event in a series.' ),
+    'privacy'        => array( 'Who can find this event', 'Tick Make this event private to keep it off the calendar; only people you send the link to can open it. Once it is saved, its link is here to copy.',
+                                'Tick Make this event private to keep it off the calendar; only people you send the link to can open it. Turning it on gives the event a new link, so any link already shared stops working.' ),
+    'access'         => array( 'Team and access', 'Tick the teams and the people who should have this event; what each can do depends on their level. Calendar admins have every event.' ),
 );
-$BAR_ADD  = 'Save draft keeps the event private until you are ready. Publish puts it on the calendar.';
-$BAR_EDIT = 'Save changes updates the event. Cancel event keeps it on the calendar marked cancelled and tells registrants. Delete removes it for good.';
+$BAR_ADD  = 'Save draft keeps the event off the calendar until you are ready. Publish puts it on the calendar, or tick Schedule for a later date to choose when it goes live.';
+$BAR_EDIT = 'Save changes updates the event. Cancel event marks it cancelled and keeps its registrations; you choose whether to tell everybody who signed up. Delete removes it for good.';
+/** A card's caption on one screen. */
+function rt_caption( $card, $is_add ) {
+    $c = $GLOBALS['CAPTIONS'][ $card ] ?? null;
+    if ( ! $c ) { return '?'; }
+    return ( ! $is_add && isset( $c[2] ) ) ? $c[2] : $c[1];
+}
 
 /* Three pictures that decode, one per series and one untagged. */
 $pic = 'data:image/svg+xml;base64,' . base64_encode( '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675"><rect width="1200" height="675" fill="#0E818C"/></svg>' );
@@ -170,11 +183,13 @@ window.addEventListener('load', function () { setTimeout(function () {
   var link = q('[data-uc-tour-start]');
   out.link = link ? { tag: link.tagName, text: text(link), box: rect(link), color: getComputedStyle(link).color, deco: getComputedStyle(link).textDecorationLine } : null;
   out.h1 = rect(q('.uc-page-head h1'));
-  out.back = rect(q('.uc-page-head a.uc-btn'));
+  /* Back is the last button: Edit event has View event page before it (3.122.0). */
+  var backs = qa('.uc-page-head-actions > a.uc-btn');
+  out.back = rect(backs[backs.length - 1]);
   out.startedAlone = !!q('[data-uc-tour]');
   if (!link) { finish(); return; }
 
-  var TOUR = ['series', 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications', 'access', 'links', 'display', 'privacy', 'actions'];
+  var TOUR = ['page-links', 'series', 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications', 'access', 'links', 'display', 'privacy', 'actions'];
   out.present = TOUR.filter(function (c) { var e = q('[data-uc-card="' + c + '"]'); return !!e && e.getClientRects().length > 0; });
 
   link.focus(); link.click();
@@ -327,7 +342,7 @@ foreach ( array( 'add-desktop', 'add-phone', 'edit-desktop', 'edit-phone' ) as $
 
     /* B.2 */
     $d = (array) $v( $t, 'dialog' );
-    rt_check( 'dialog' === ( $d['role'] ?? '' ) && 'true' === ( $d['modal'] ?? '' ) && 'Series and language' === ( $d['label'] ?? '' ) && $CAPTIONS['series'][1] === ( $d['desc'] ?? '' ),
+    rt_check( 'dialog' === ( $d['role'] ?? '' ) && 'true' === ( $d['modal'] ?? '' ) && $CAPTIONS[ $is_add ? 'series' : 'page-links' ][0] === ( $d['label'] ?? '' ) && rt_caption( $is_add ? 'series' : 'page-links', $is_add ) === ( $d['desc'] ?? '' ),
         "PLANT B.2: $t: the panel is not announced as a dialog named by the card: " . json_encode( $d ) );
     rt_check( 'next' === $v( $t, 'focusAtOpen' ), "PLANT B.2: $t: focus at opening is on " . $v( $t, 'focusAtOpen' ) );
     rt_check( (int) $v( $t, 'bgCount' ) > 20 && array() === $v( $t, 'bgNotInert' ) && 0 === $v( $t, 'bgTookFocus' ),
@@ -339,7 +354,7 @@ foreach ( array( 'add-desktop', 'add-phone', 'edit-desktop', 'edit-phone' ) as $
     /* B.3 */
     $want = $is_add
         ? array( 'series', 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications', 'access', 'links', 'display', 'privacy', 'actions' )
-        : array( 'series', 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications', 'access', 'links', 'display', 'privacy', 'actions' );
+        : array( 'page-links', 'series', 'title', 'schedule', 'location', 'registration', 'details', 'faqs', 'classification', 'notifications', 'access', 'links', 'display', 'privacy', 'actions' );
     rt_check( $want === $v( $t, 'present' ), "$t: the cards on the page are " . json_encode( $v( $t, 'present' ) ) );
     $steps = (array) $v( $t, 'steps' );
     $n     = count( $want );
@@ -347,7 +362,7 @@ foreach ( array( 'add-desktop', 'add-phone', 'edit-desktop', 'edit-phone' ) as $
     foreach ( $steps as $i => $s ) {
         $card = isset( $want[ $i ] ) ? $want[ $i ] : '?';
         $wn   = 'actions' === $card ? 'Action bar' : ( $CAPTIONS[ $card ][0] ?? '?' );
-        $wt   = 'actions' === $card ? ( $is_add ? $BAR_ADD : $BAR_EDIT ) : ( $CAPTIONS[ $card ][1] ?? '?' );
+        $wt   = 'actions' === $card ? ( $is_add ? $BAR_ADD : $BAR_EDIT ) : rt_caption( $card, $is_add );
         rt_check( ( $i + 1 ) . " of $n" === $s['count'], "PLANT B.3: $t: step " . ( $i + 1 ) . ' counts ' . json_encode( $s['count'] ) );
         rt_check( $wn === $s['name'] && $wt === $s['text'], "PLANT B.3: $t: step " . ( $i + 1 ) . ' is ' . json_encode( array( $s['name'], $s['text'] ) ) . ", not $card" );
 
