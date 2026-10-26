@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 391 items.** Quick 320, needs real conditions 67, blocked on other
+**Outstanding: 392 items.** Quick 321, needs real conditions 67, blocked on other
 people 4.
 
 ---
@@ -4364,6 +4364,19 @@ request form: under "Who should get RSVP updates?" the line reads "They'll get
 the RSVP count the day before and the list of who's coming two hours before."
 
 **Why it needs a person:** real events on the live site under sfaf.org's theme.
+
+### 1.323 Edit event's header on a phone, and the RSVP count (3.123.0)
+
+On a phone, open Edit event for a published event that takes RSVPs here. The
+header is two rows: Edit Event, Take the tour and Back with its chevron; then
+View RSVPs (n), View event page and the copy icon across the width. Tap each:
+none is hard to hit, and "Copied" appears under the copy icon without moving
+anything. The n in View RSVPs should match the number of registered people the
+RSVP list shows (waitlisted and cancelled not counted). Open a draft too: View
+RSVPs (n) and Preview share the second row.
+
+**Why it needs a person:** a real phone's fonts and touch, and a real event's
+registrations; the check measures headless Chrome with a made-up count.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event

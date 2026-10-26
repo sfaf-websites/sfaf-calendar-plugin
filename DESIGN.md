@@ -1146,17 +1146,23 @@ Built from components already on the page; nothing here is a new colour.
 
 | Part | What it is | Values |
 |---|---|---|
-| RSVP list | an `<a>` drawn as the tour link, after Take the tour | `.uc-head-link`, the tour link's rule: 14px/600 `--uc-accent-text` (5.35:1), underlined at 3px offset, 2px on hover, the 2px accent focus ring |
+| View RSVPs (n) | `.uc-btn`, drawn as View event page, before it (3.123.0) | the standard secondary button; n is the confirmed registrations |
 | View event page, Preview | `.uc-btn`, Back's button, with a ↗ for the new tab | the standard secondary button |
 | The copy icon | the questions' icon button with the `copy` glyph, a clipboard, 18px | `.uc-icon-btn`: 32px square, 6px radius, `--p-muted`, `--p-text` on `--p-border` on hover, the 2px accent focus ring; 44px square on a phone |
-| Copied | beside the icon for two seconds, and the status a screen reader hears | 13px/600 `--uc-accent-text` |
+| Copied | under the icon for two seconds, out of the row so it moves nothing (3.123.0), and the status a screen reader hears | 13px/600 `--uc-accent-text` |
+| Back | `.uc-btn.uc-back-btn`: the `chevron-left` icon, 16px at the set's stroke 2, then "Back" (3.123.0) | the standard secondary button, 4px gap, 12px left padding |
 | The group | `.uc-page-links`, in the head's action row | inline flex, 8px gap, wraps |
 
 **The copy glyph is a clipboard, not two sheets**, which the icon set keeps for
-Duplicate. The order is Take the tour, RSVP list, View event page or Preview,
+Duplicate. The order is Take the tour, View RSVPs, View event page or Preview,
 the copy icon, Back.
-On a phone the group wraps as one piece, so the head's actions take three
-lines: Take the tour, the group, Back.
+**Below 600px the head is two rows** (3.123.0, `.uc-editor-head`, a grid with
+the actions as `display: contents`): the title, Take the tour and Back; then
+the group across the full width, its buttons sharing it, never wrapping, every
+target 44px. Measured at 390px and 430px by `.claude/release-31230-live.php`;
+pictures in `.claude/screens/editor-head-*.png`. The reading order is the
+source's, Take the tour, the group, Back; on a phone Back is drawn on the
+first row, which changes no meaning.
 
 **The Preview band** is the first thing on an event page a member of staff
 opens before it is public: the cancelled notice's shape, 16px 20px, 12px

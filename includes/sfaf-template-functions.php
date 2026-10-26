@@ -386,6 +386,8 @@ function sfaf_icon_paths() {
         // use it rotate it rather than swapping the glyph, so the movement is
         // what says "this opened".
         'chevron'   => '<path d="m9 5 7 7-7 7"/>',
+        // Back on Edit event (3.123.0): the chevron turned round.
+        'chevron-left' => '<path d="m15 5-7 7 7 7"/>',
 
         // The field marker, and the counterpart to the one above: a search box
         // carries this and a dropdown carries the chevron, which is what tells

@@ -2771,7 +2771,9 @@ Tags are set aside, §8.)
 ### Edit event's links, and the event page before it is public (3.122.0)
 
 **At the top of Edit event**, between Take the tour and Back, drawn by
-`render_event_page_links()`: the RSVP list, for an event that takes RSVPs here
+`render_event_page_links()`: View RSVPs (n), the RSVP list with
+`sfaf_get_rsvp_count()`, the confirmed registrations (3.123.0; a text link
+reading RSVP list before), for an event that takes RSVPs here
 (`sfaf_event_takes_rsvps()`) and a person `can_edit_event()` lets into the
 list; then the event page in a new tab. `SFAF_Preview::link()` decides which:
 

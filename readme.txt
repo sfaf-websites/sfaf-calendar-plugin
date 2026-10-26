@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.122.0
+Stable tag: 3.123.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,14 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.123.0 =
+
+**Edit event's header. The embed is 3.122.0's.**
+
+* **Back** leads with a chevron icon, drawn at the weight of caladmin's other icons, in place of the text arrow.
+* **View RSVPs (12)** replaces the RSVP list link: a button beside View event page, with the number of confirmed registrations. It is there on the same events, for the same people, as before.
+* **On a phone** the header is two rows: the title with Take the tour and Back, then View RSVPs, View event page or Preview, and the copy icon across the width. Every button is at least 44px. "Copied" shows under the copy icon without moving anything.
 
 = 3.122.0 =
 

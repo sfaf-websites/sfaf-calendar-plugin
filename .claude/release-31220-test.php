@@ -118,7 +118,7 @@ function rt_top( $html ) {
         $out['order'][] = '' !== $t ? $t : $n->getAttribute( 'aria-label' );
         if ( 0 === strpos( $t, 'View event page' ) ) { $out['view'] = $n; }
         if ( 0 === strpos( $t, 'Preview' ) ) { $out['preview'] = $n; }
-        if ( 'RSVP list' === $t ) { $out['rsvps'] = $n; }
+        if ( 0 === strpos( $t, 'View RSVPs' ) ) { $out['rsvps'] = $n; }   // RSVP list until 3.123.0
         if ( $n->hasAttribute( 'data-uc-copy-text' ) ) { $out['copy'] = $n; }
     }
     return $out;
@@ -151,7 +151,7 @@ foreach ( array( 'draft', 'submitted', 'one-off' ) as $name ) {
     rt( "A: $name: no copy icon and no View event page", array( $t['copy'], $t['view'] ), array( null, null ) );
 }
 // libxml's HTML parser knows no HTML5 entities, so &nearr; stays as written; a browser draws the arrow.
-rt( 'A: the order is Take the tour, RSVP list, View event page, the copy icon, Back', $top['published']['order'], array( 'Take the tour', 'RSVP list', 'View event page &nearr; (opens in a new tab)', 'Copy the event page link', '← Back' ) );
+rt( 'A: the order is Take the tour, View RSVPs, View event page, the copy icon, Back', $top['published']['order'], array( 'Take the tour', 'View RSVPs (0)', 'View event page &nearr; (opens in a new tab)', 'Copy the event page link', 'Back' ) );
 rt( 'A: link() for a scheduled event is its address, as published', SFAF_Preview::link( $ev['scheduled'] ), array( 'mode' => 'view', 'url' => get_permalink( $ev['scheduled'] ) ) );
 rt( 'A: link() for a trashed event is nothing', SFAF_Preview::link( kit_write_post( array( 'post_type' => 'uc_event', 'post_status' => 'trash' ) ) ), array() );
 
@@ -174,7 +174,7 @@ $GLOBALS['kit_umeta'][41]['_uc_calendar_role'] = 'editor';
 $stranger = get_userdata( 41 );
 rt( 'B: setup: the editor cannot open the event', kit_call( 'SFAF_Portal', 'can_edit_event', $portal, array( $stranger, $ev['published'] ) ), false );
 $links = rt_cap( function () use ( $portal, $stranger, $ev ) { kit_call( 'SFAF_Portal', 'render_event_page_links', $portal, array( $stranger, $ev['published'] ) ); } );
-rt( 'B: and is not given the RSVP list link', false === strpos( $links, 'RSVP list' ), true );
+rt( 'B: and is not given the RSVP list link', false === strpos( $links, 'View RSVPs' ), true );
 
 /* ======================================================================== C */
 $CARD = '//*[contains(concat(" ", normalize-space(@class), " "), " uc-card ") or contains(concat(" ", normalize-space(@class), " "), " uc-bento-card ") or @data-uc-card]';
@@ -219,7 +219,7 @@ foreach ( $pages as $name => $html ) {
     rt( "C: $name: View event page is captioned exactly when it is drawn", null !== $t['view'], false !== strpos( $pls, 'View event page' ) );
     rt( "C: $name: the copy icon is captioned exactly when it is drawn", null !== $t['copy'], false !== strpos( $pls, 'copy icon' ) );
     rt( "C: $name: Preview is captioned exactly when it is drawn", null !== $t['preview'], false !== strpos( $pls, 'Preview opens' ) );
-    rt( "C: $name: RSVP list is captioned exactly when it is drawn", null !== $t['rsvps'], false !== strpos( $pls, 'RSVP list' ) );
+    rt( "C: $name: RSVP list is captioned exactly when it is drawn", null !== $t['rsvps'], false !== strpos( $pls, 'View RSVPs' ) );
     $sched = isset( $by['schedule'] ) ? $by['schedule']['text'] : '';
     rt( "C: $name: Repeats is captioned exactly when it is drawn", false !== strpos( $html, '<span class="uc-field-label">Repeats' ), false !== strpos( $sched, 'Repeats' ) );
     rt( "C: $name: Edit the schedule is captioned exactly when it is drawn", false !== strpos( $html, '<span>Edit the schedule</span>' ), false !== strpos( $sched, 'Edit the schedule' ) );

@@ -45,7 +45,7 @@ function rt_capture( $fn ) {
    caption, Edit event's ) where the two screens differ. The Edit pages are a
    published event in Alpha at an address, taking RSVPs, nobody registered. */
 $CAPTIONS = array(
-    'page-links'     => array( 'Event page and RSVP list', '', 'RSVP list opens everybody registered for this event. View event page opens the event page in a new tab, and the copy icon copies its link.' ),
+    'page-links'     => array( 'Event page and RSVP list', '', 'View RSVPs opens everybody registered for this event; the number is how many are confirmed. View event page opens the event page in a new tab, and the copy icon copies its link.' ),
     'series'         => array( 'Series and language', 'Choose the series first. You are offered its details to fill in, all but the date, and the picture list narrows to that series. Choose Spanish if people who register should get their emails in Spanish.',
                                 'Moving the event to another series changes only which series it is listed under. Choose Spanish if people who register should get their emails in Spanish.' ),
     'title'          => array( 'Title', 'Give the event the name people will see on the calendar. Keep it short; the description carries the detail.' ),

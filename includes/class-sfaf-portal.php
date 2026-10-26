@@ -8278,7 +8278,8 @@ class SFAF_Portal {
     /**
      * Edit event's links at the top (3.122.0), beside Take the tour and Back.
      *
-     * The RSVP list, for an event that takes RSVPs here and a person the list's
+     * View RSVPs (n), the RSVP list with its count of confirmed registrations
+     * (3.123.0), for an event that takes RSVPs here and a person the list's
      * own route lets in. Then the event page in a new tab: View event page and
      * a copy icon for a published or scheduled event, whose link is its public
      * address and, for a private event, the private link "Who can find this
@@ -8302,7 +8303,7 @@ class SFAF_Portal {
         ?>
         <span class="uc-page-links" data-uc-card="page-links">
             <?php if ( $rsvps ) : ?>
-                <a class="uc-head-link" href="<?php echo esc_url( add_query_arg( 'event_id', $event_id, $this->url( 'rsvps' ) ) ); ?>" data-uc-saved-action="rsvp-list">RSVP list</a>
+                <a class="uc-btn" href="<?php echo esc_url( add_query_arg( 'event_id', $event_id, $this->url( 'rsvps' ) ) ); ?>" data-uc-saved-action="rsvp-list">View RSVPs (<?php echo (int) sfaf_get_rsvp_count( $event_id ); ?>)</a>
             <?php endif; ?>
             <?php if ( $page && 'view' === $page['mode'] ) : ?>
                 <a class="uc-btn" href="<?php echo esc_url( $page['url'] ); ?>" target="_blank" rel="noopener" data-uc-saved-action="view-page">View event page <span aria-hidden="true">&nearr;</span><span class="uc-visually-hidden"> (opens in a new tab)</span></a>
@@ -8352,7 +8353,7 @@ class SFAF_Portal {
         $page_text = array();
         if ( $rsvp_list ) {
             $page_name   = 'RSVP list';
-            $page_text[] = 'RSVP list opens everybody registered for this event.';
+            $page_text[] = 'View RSVPs opens everybody registered for this event; the number is how many are confirmed.';
         }
         if ( $page && 'view' === $page['mode'] ) {
             $page_name   = $rsvp_list ? 'Event page and RSVP list' : 'Event page';
@@ -14527,7 +14528,7 @@ class SFAF_Portal {
 
         $this->chrome_open( $user, 'events' );
         ?>
-        <div class="uc-page-head">
+        <div class="uc-page-head uc-editor-head">
             <h1><?php echo $event_id ? 'Edit Event' : 'New Event'; ?></h1>
             <div class="uc-page-head-actions">
                 <?php
@@ -14542,7 +14543,7 @@ class SFAF_Portal {
                 <button type="button" class="uc-tour-link" data-uc-tour-start
                         data-uc-tour-steps="<?php echo esc_attr( wp_json_encode( $this->editor_tour_steps( $user, (int) $event_id ) ) ); ?>">Take the tour</button>
                 <?php $this->render_event_page_links( $user, (int) $event_id ); ?>
-                <a href="<?php echo esc_url( $this->url( 'events' ) ); ?>" class="uc-btn">&larr; Back</a>
+                <a href="<?php echo esc_url( $this->url( 'events' ) ); ?>" class="uc-btn uc-back-btn"><?php echo sfaf_icon( 'chevron-left', array( 'size' => '16px' ) ); ?>Back</a>
             </div>
         </div>
 

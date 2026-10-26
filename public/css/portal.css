@@ -5051,23 +5051,37 @@ body.uc-modal-open { overflow: hidden; }
    EVERY SELECTOR HERE IS TWO CLASSES, because `.uc-portal h2` and
    `.uc-portal p` are a class and a type and outrank one class.
    ------------------------------------------------------------------------ */
-.uc-page-head .uc-tour-link,
-.uc-page-head .uc-head-link {
+.uc-page-head .uc-tour-link {
     margin: 0 8px 0 0; padding: 4px 0; border: 0; background-color: transparent; cursor: pointer;
     font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1.4; color: var(--uc-accent-text);
     text-decoration: underline; text-underline-offset: 3px;
 }
-.uc-page-head .uc-tour-link:hover,
-.uc-page-head .uc-head-link:hover { text-decoration-thickness: 2px; }
-.uc-page-head .uc-tour-link:focus-visible,
-.uc-page-head .uc-head-link:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; border-radius: 4px; }
+.uc-page-head .uc-tour-link:hover { text-decoration-thickness: 2px; }
+.uc-page-head .uc-tour-link:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; border-radius: 4px; }
 
-/* EDIT EVENT'S LINKS (3.122.0): RSVP list as the tour link draws it, View
+/* EDIT EVENT'S LINKS (3.122.0): View RSVPs (3.123.0), View
    event page or Preview as Back draws it, and the copy icon as the questions'
    icon button, 32px, --p-muted, --p-text on --p-border on hover. "Copied" is
-   13px/600 --uc-accent-text beside it for two seconds. */
-.uc-page-head .uc-page-links { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+   13px/600 --uc-accent-text for two seconds. */
+.uc-page-head .uc-page-links { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; position: relative; }
 .uc-page-head .uc-copy-said { font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--uc-accent-text); }
+
+/* THE EDITOR'S HEADER (3.123.0). View RSVPs (n) is a secondary button like
+   View event page; Back leads with the 16px chevron at the icons' stroke 2.
+   "Copied" sits under the copy icon, out of the row, so showing it moves
+   nothing. Below 600px the header is two rows: the title, Take the tour and
+   Back; then the page's buttons across the full width, sharing it. */
+.uc-page-head .uc-back-btn { gap: 4px; padding-left: 12px; }
+.uc-page-head .uc-page-links .uc-copy-said { position: absolute; top: 100%; right: 0; margin-top: 2px; white-space: nowrap; }
+@media (max-width: 600px) {
+    .uc-page-head.uc-editor-head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px 12px; }
+    .uc-editor-head .uc-page-head-actions { display: contents; }
+    .uc-editor-head h1 { grid-row: 1; grid-column: 1; }
+    .uc-editor-head .uc-tour-link { grid-row: 1; grid-column: 2; margin: 0; }
+    .uc-editor-head .uc-back-btn { grid-row: 1; grid-column: 3; }
+    .uc-editor-head .uc-page-links { grid-row: 2; grid-column: 1 / -1; display: flex; flex-wrap: nowrap; }
+    .uc-editor-head .uc-page-links .uc-btn { flex: 1 1 auto; justify-content: center; min-width: 0; padding-left: 10px; padding-right: 10px; white-space: nowrap; }
+}
 
 .uc-tour .uc-tour-shield { position: fixed; inset: 0; z-index: 100000; }
 .uc-tour .uc-tour-ring {
@@ -5330,7 +5344,7 @@ body.uc-modal-open { overflow: hidden; }
     .uc-portal select { min-height: 44px; }
     .uc-portal .uc-btn, .uc-portal .uc-picker-tab, .uc-portal .uc-tpl-token,
     .uc-portal .uc-link-danger, .uc-portal .uc-link-btn, .uc-portal .uc-outline-btn,
-    .uc-page-head .uc-tour-link, .uc-page-head .uc-head-link, .uc-page-head .uc-icon-btn,
+    .uc-page-head .uc-tour-link, .uc-page-head .uc-icon-btn,
     .uc-questions .uc-icon-btn, .uc-questions .uc-o-add, .uc-questions .uc-q-add { min-height: 44px; }
     .uc-questions .uc-icon-btn, .uc-page-head .uc-icon-btn { min-width: 44px; }
     /* + Add option lines up with the option boxes, which the 44px handle moved 12px right. */
