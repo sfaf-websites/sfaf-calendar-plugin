@@ -363,6 +363,8 @@ rt_submit( $alpha_event, 'ben@example.org', false, '' );
 rt( 'F: nothing ticked, nothing recorded', array( count( $db->t['wp_uc_optins'] ), count( $db->t['wp_uc_mailchimp_queue'] ) ), array( 0, 0 ) );
 rt_submit( $alpha_event, '', true, $A );
 rt( 'F: no email, nothing recorded or queued', array( count( $db->t['wp_uc_optins'] ), count( $db->t['wp_uc_mailchimp_queue'] ) ), array( 0, 0 ) );
+SFAF_Optins::record_ticks( array( 'event_id' => $alpha_event, 'email' => ' ', 'first_name' => 'Al' ), 'sfaf,mc:' . $A );
+rt( 'F: no email, nothing recorded or queued, whoever asks record_ticks()', array( count( $db->t['wp_uc_optins'] ), count( $db->t['wp_uc_mailchimp_queue'] ) ), array( 0, 0 ) );
 rt_submit( $beta_event, 'cy@example.org', false, $A );
 rt( 'F: a team the event does not offer is not signed up for', count( $db->t['wp_uc_optins'] ), 0 );
 
