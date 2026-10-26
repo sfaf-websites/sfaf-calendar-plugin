@@ -36,7 +36,7 @@
              data-filter-pin=""
              data-pagination="load_more"
              data-page="1"
-                                       data-month="2026-10-26 20:52:37"
+                                       data-month="2026-10-26 23:02:50"
              data-max-pages="1">
 
                                                 <form class="uc-filter-form" method="get" action="" data-uc-filter-form>
@@ -79,12 +79,12 @@
                 <span class="uc-who-label" data-uc-who-label>Organizers and groups</span>
                 <svg class="sfaf-icon sfaf-icon-chevron uc-who-chevron" width="1em" height="1em" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg>            </summary>
 
-            <div class="uc-who-panel" id="uc-who-9364" data-uc-who-panel>
+            <div class="uc-who-panel" id="uc-who-4924" data-uc-who-panel>
                                 <button type="button" class="uc-who-clear" data-uc-who-clear>Clear all</button>
                                 <div class="uc-who-cols">
                                             <section class="uc-who-col uc-who-col-org">
-                            <p class="uc-who-heading" id="uc-who-9364-org">Organizers</p>
-                            <div class="uc-who-list" role="group" aria-labelledby="uc-who-9364-org">
+                            <p class="uc-who-heading" id="uc-who-4924-org">Organizers</p>
+                            <div class="uc-who-list" role="group" aria-labelledby="uc-who-4924-org">
                                                                     <label class="uc-who-opt">
                                         <input type="checkbox" name="uc_org[]"
                                                value="sfaf"
@@ -1726,8 +1726,9 @@ jQuery.ajax = function () {
                         '<div><label for="uc-rsvp-email" data-uc-w="email">Email *</label>' +
                             '<input type="email" id="uc-rsvp-email" placeholder="your@email.com" data-uc-w-ph="email_ph" />' +
                             // WHAT THE ADDRESS IS USED FOR, on every form and
-                            // whether or not the box below is ticked (3.102.0).
-                            '<p class="uc-rsvp-note" data-uc-w="email_use">We use your email only for this event: your confirmation, a reminder, and any changes. It is never shared or added to a list.</p>' +
+                            // whether or not a box below is ticked (3.102.0;
+                            // Mark's words since the boxes, 3.124.0).
+                            '<p class="uc-rsvp-note" data-uc-w="email_use">We use your email for this event, and only add it to a list if you tick a box below.</p>' +
                             // REGISTERING WITHOUT ONE (3.102.0). The field stays
                             // required; this box is the only way past it. It is
                             // not offered to somebody joining online, and the
@@ -1755,13 +1756,20 @@ jQuery.ajax = function () {
                                 '<input type="checkbox" id="uc-rsvp-text" value="1" />' +
                                 '<span id="uc-rsvp-text-label">Text me about this event</span>' +
                             '</label></div>' +
-                        // SEPARATE FROM THE RSVP, AND NEVER PRE-TICKED.
-                        // Registering for an event is not consent to a mailing
-                        // list, so this is its own decision and it starts off.
-                        '<label class="uc-rsvp-optin">' +
-                            '<input type="checkbox" id="uc-rsvp-optin" value="1" />' +
-                            '<span data-uc-w="optin">Receive monthly email updates from SFAF with events, news, and updates.</span>' +
-                        '</label>' +
+                        // STAY IN TOUCH (3.124.0): the SFAF box, then one per
+                        // team whose Mailchimp sign-up this event shows, drawn
+                        // by renderLists() from the button. SEPARATE FROM THE
+                        // RSVP, AND NEVER PRE-TICKED: registering for an event
+                        // is not consent to a mailing list, so each is its own
+                        // decision and starts off.
+                        '<fieldset class="uc-rsvp-stay" id="uc-rsvp-stay">' +
+                            '<legend data-uc-w="stay">Stay in touch</legend>' +
+                            '<label class="uc-rsvp-optin">' +
+                                '<input type="checkbox" id="uc-rsvp-optin" value="1" />' +
+                                '<span data-uc-w="optin">Sign me up for SFAF Newsletter and Updates</span>' +
+                            '</label>' +
+                            '<div id="uc-rsvp-lists"></div>' +
+                        '</fieldset>' +
                         '<div class="uc-rsvp-error" id="uc-rsvp-error" style="display:none;"></div>' +
                         '<button class="uc-rsvp-submit" id="uc-rsvp-submit-btn">Register Now</button>' +
                         '<button class="uc-rsvp-cancel" id="uc-rsvp-cancel-btn" data-uc-w="cancel">Cancel</button>' +
@@ -1837,6 +1845,7 @@ jQuery.ajax = function () {
             // radios too and no previous event's choice survives into this one.
             renderFormatChoice(this);
             renderQuestions(this);
+            renderLists(this);
             currentFormats = ($(this).attr('data-uc-formats') || '');
             currentEmailRequired = ($(this).attr('data-uc-email-required') === '1');
             currentFull = ($(this).attr('data-uc-full') || '').split(',').filter(Boolean);
@@ -2139,8 +2148,28 @@ jQuery.ajax = function () {
             $('#uc-rsvp-questions .uc-rsvp-q-more-label').html(WW('q_more', currentQuestions.more));
         }
         $('#uc-rsvp-text-label').html(WW('text_opt_in', $('#uc-rsvp-text-label').data('ucEn') || 'Text me about this event'));
+        $('#uc-rsvp-lists [data-uc-team]').each(function () {
+            var name = $(this).attr('data-uc-team'), en = 'Sign me up for %s email updates';
+            $(this).html(twin(W('team_optin', en).replace('%s', name), Wl(otherLang(), 'team_optin', en).replace('%s', name)));
+        });
         if (!$('#uc-rsvp-submit-btn').prop('disabled')) { syncWaitlist(); } else { $('#uc-rsvp-heading').html(waitlistChosen() ? WW('wait_heading', 'Join the waitlist') : WW('heading', 'Register for this Event')); }
         $('#uc-rsvp-error').hide();
+    }
+    /* A TEAM'S BOX PER MAILCHIMP CONNECTION (3.124.0), from the button the
+       server stamped: [{id, name}], or nothing. Drawn unticked every time the
+       form opens, so no previous visitor's tick survives. The words are the
+       form's language, the team's name as the admin typed it. */
+    function renderLists(btn) {
+        var box = $('#uc-rsvp-lists').empty(), lists = [];
+        try { lists = JSON.parse($(btn).attr('data-uc-lists') || '[]') || []; } catch (err) { lists = []; }
+        lists.forEach(function (l) {
+            if (!l || !l.id) { return; }
+            box.append(
+                '<label class="uc-rsvp-optin">' +
+                    '<input type="checkbox" name="uc_rsvp_list" value="' + esc(l.id) + '" />' +
+                    '<span data-uc-team="' + esc(l.name || '') + '">' + esc(W('team_optin', 'Sign me up for %s email updates').replace('%s', l.name || '')) + '</span>' +
+                '</label>');
+        });
     }
     function addLangStyle() {
         if (document.getElementById('uc-rsvp-lang-css')) { return; }
@@ -2159,6 +2188,12 @@ jQuery.ajax = function () {
             '.uc-rsvp-modal-overlay .uc-w2{display:inline-grid;max-width:100%}' +
             '.uc-rsvp-modal-overlay .uc-w2>span{grid-area:1/1;min-width:0}' +
             '.uc-rsvp-modal-overlay .uc-w2-off{visibility:hidden;-webkit-user-select:none;user-select:none}' +
+            /* Stay in touch (3.124.0): a fieldset with no box, its legend the
+               other field labels' 13px/600, the boxes .uc-rsvp-optin as the SFAF
+               one always was. Here, not in calendar.css, for the reason above. */
+            '.uc-rsvp-modal-overlay .uc-rsvp-stay{border:0;padding:0;margin:2px 0 0;min-width:0}' +
+            '.uc-rsvp-modal-overlay .uc-rsvp-stay>legend{padding:0;margin:0;font-size:13px;font-weight:600;line-height:1.4;color:var(--uc-text)}' +
+            '.uc-rsvp-modal-overlay .uc-rsvp-stay>.uc-rsvp-optin{margin-top:2px}' +
             '@media (max-width:600px){' +
                 '.uc-rsvp-modal-overlay .uc-rsvp-lang{position:static;justify-content:flex-end;margin:-28px -12px 0 0}' +
                 '.uc-rsvp-modal-overlay .uc-rsvp-lang button{padding:14px 8px}' +
@@ -2317,6 +2352,8 @@ jQuery.ajax = function () {
         var email = $('#uc-rsvp-email').val().trim();
         var phone = $('#uc-rsvp-phone').val().trim();
         var optin = $('#uc-rsvp-optin').is(':checked') ? '1' : '';
+        // The teams' boxes ticked (3.124.0); the server keeps only this event's.
+        var lists = $('#uc-rsvp-lists input:checked').map(function () { return this.value; }).get().join(',');
         var noEmail = $('#uc-rsvp-noemail').is(':checked') && !$('#uc-rsvp-noemail-wrap').attr('hidden');
 
         /*
@@ -2395,6 +2432,7 @@ jQuery.ajax = function () {
                 no_email:   noEmail ? '1' : '',
                 phone:      phone,
                 optin:      optin,
+                lists:      lists,
                 // '' on every event that did not ask. submit() validates it
                 // against the event's own formats rather than trusting it.
                 format:     format,

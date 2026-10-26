@@ -162,7 +162,7 @@ if ( in_array( '--run', array_slice( $argv, 1 ), true ) ) {
      * the online case on the hybrid line when the box was offered online. */
     $has = function ( $line, $why ) use ( $report ) { rn_check( (bool) preg_match( '/^' . preg_quote( $line, '/' ) . '/m', $report ), $why ); };
     $has( 'script errors    none', 'the calendar script threw while the form was driven' );
-    $has( 'privacy line: We use your email only for this event: your confirmation, a reminder, and any changes. It is never shared or added to a list.',
+    $has( 'privacy line: We use your email for this event, and only add it to a list if you tick a box below.',
         'the line under the email field is not the one agreed' );
     $has( 'box label: I do not use email, or prefer not to share it.', 'the box does not say what the brief says' );
     $has( 'in person, opened: box shown, online line hidden, ticked false, email enabled, consequence hidden', 'the box is not offered on an in-person registration' );

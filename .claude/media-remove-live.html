@@ -182,6 +182,7 @@ function ucDismissOnBackdrop(dialog) {
         run('access', initAccessSection);
         run('reg-where', initRegisterWhere);
         run('follow-check', initFollowCheck);
+        run('mailchimp-card', initMailchimpCard);
         run('rsvp-updates', initRsvpUpdates);
         run('users-table', initUsersTable);
         run('table-cards', initTableCards);
@@ -496,6 +497,114 @@ function ucDismissOnBackdrop(dialog) {
         function apply() { you.value = source.value.trim(); }
         source.addEventListener('input', apply);
         apply();
+    }
+    /* NEWSLETTER SIGN-UP (3.124.0). A team's block shows while one of its
+     * organizers is ticked (or, on the series page, while an event in the
+     * series has one), and the card while any block does. Hidden, a block
+     * still posts what it holds. Its tags are chips over the checkboxes, with
+     * a search box and a box for a new tag that becomes a ticked checkbox;
+     * with no script the checkboxes and the box post as they are. */
+    function initMailchimpCard() {
+        document.querySelectorAll('[data-uc-mailchimp]').forEach(function (card) {
+            var field = card.getAttribute('data-uc-mailchimp');
+            var form = card.closest('form') || document;
+            var blocks = Array.prototype.slice.call(card.querySelectorAll('[data-uc-mc-conn]'));
+            function ticked() {
+                return Array.prototype.map.call(form.querySelectorAll('input[name="' + field + '"]:checked'), function (b) { return b.value; });
+            }
+            function apply() {
+                var on = ticked(), any = false;
+                blocks.forEach(function (b) {
+                    var orgs = (b.getAttribute('data-uc-mc-orgs') || '').split(',');
+                    var show = b.hasAttribute('data-uc-mc-always') || orgs.some(function (o) { return on.indexOf(o) !== -1; });
+                    b.hidden = !show;
+                    if (show) { any = true; }
+                });
+                card.hidden = !any;
+            }
+            form.addEventListener('change', function (e) {
+                if (e.target && e.target.name === field) { apply(); }
+            });
+            apply();
+            card.querySelectorAll('[data-uc-mc-tags]').forEach(initMailchimpTags);
+        });
+    }
+    function initMailchimpTags(root) {
+        var chips = root.querySelector('[data-uc-mc-chips]');
+        var add = root.querySelector('[data-uc-mc-add]');
+        var toggle = root.querySelector('[data-uc-mc-toggle]');
+        var source = root.querySelector('[data-uc-mc-source]');
+        var boxes = root.querySelector('[data-uc-mc-boxes]');
+        var search = root.querySelector('[data-uc-mc-search]');
+        var input = root.querySelector('[data-uc-mc-new]');
+        var addBtn = root.querySelector('[data-uc-mc-new-add]');
+        if (!chips || !add || !toggle || !source || !boxes || !input || !addBtn) { return; }
+        var name = (input.getAttribute('name') || '').replace(/\[new_tags\]$/, '[tags][]');
+        function all() { return Array.prototype.slice.call(boxes.querySelectorAll('input[type="checkbox"]')); }
+        function draw() {
+            chips.innerHTML = '';
+            all().forEach(function (box) {
+                if (!box.checked) { return; }
+                var chip = document.createElement('span');
+                chip.className = 'uc-chip';
+                var text = document.createElement('span');
+                text.className = 'uc-chip-text';
+                text.textContent = box.value;
+                chip.appendChild(text);
+                var kill = document.createElement('button');
+                kill.type = 'button';
+                kill.className = 'uc-chip-remove';
+                kill.setAttribute('aria-label', 'Remove ' + box.value);
+                kill.innerHTML = '&times;';
+                kill.addEventListener('click', function () { box.checked = false; draw(); toggle.focus(); });
+                chip.appendChild(kill);
+                chips.appendChild(chip);
+            });
+            chips.hidden = !chips.children.length;
+        }
+        function addTag() {
+            var t = input.value.replace(/\s+/g, ' ').trim().slice(0, 100);
+            if (!t) { return; }
+            var hit = all().filter(function (b) { return b.value.toLowerCase() === t.toLowerCase(); })[0];
+            if (!hit) {
+                var label = document.createElement('label');
+                label.className = 'uc-check';
+                label.setAttribute('data-uc-chip-label', t);
+                hit = document.createElement('input');
+                hit.type = 'checkbox';
+                hit.name = name;
+                hit.value = t;
+                label.appendChild(hit);
+                label.appendChild(document.createTextNode(' ' + t));
+                boxes.appendChild(label);
+            }
+            hit.checked = true;
+            input.value = '';
+            draw();
+            input.focus();
+        }
+        boxes.addEventListener('change', draw);
+        addBtn.addEventListener('click', addTag);
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); addTag(); }
+        });
+        if (search) {
+            search.addEventListener('input', function () {
+                var q = search.value.trim().toLowerCase();
+                all().forEach(function (b) { b.closest('label').hidden = q !== '' && b.value.toLowerCase().indexOf(q) === -1; });
+            });
+            search.hidden = false;
+        }
+        toggle.addEventListener('click', function () {
+            var open = source.hidden;
+            source.hidden = !open;
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (open && search) { search.focus(); }
+        });
+        addBtn.hidden = false;
+        add.hidden = false;
+        source.hidden = true;
+        draw();
     }
     function initFollowCheck() {
         var label = document.querySelector('[data-uc-follow-check]');

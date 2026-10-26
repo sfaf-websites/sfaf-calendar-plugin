@@ -92,7 +92,7 @@ $rec = get_option( 'sfaf_location_name_migration' );
 rt( 'A: and it lists them', isset( $rec['ids'] ) ? $rec['ids'] : null, array( $d1, $d2 ) );
 update_post_meta( $d1, '_uc_location', 'Strut, 1 Other St' );
 rt( 'A: it runs once', sfaf_migrate_location_name_repeat(), 0 );
-rt( 'A: schema 16', SFAF_DB_VERSION, '16' );
+rt( 'A: schema 16 or later', (int) SFAF_DB_VERSION >= 16, true );   // 17 from 3.124.0
 $main = file_get_contents( $root . '/sfaf-calendar.php' );
 rt( 'A: the installer runs the pass', false !== strpos( $main, "    sfaf_migrate_location_name_repeat();\n\n    update_option( 'sfaf_db_version', SFAF_DB_VERSION );" ), true );
 
