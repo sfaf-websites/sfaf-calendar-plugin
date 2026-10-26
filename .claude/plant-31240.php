@@ -44,7 +44,7 @@ $plants = array(
         array( $M, "        foreach ( \$offered as \$id ) {\n            if ( ! self::get( \$id ) ) {", "        foreach ( array_keys( \$given ) as \$id ) {\n            if ( false ) {" ),
     ) ),
     'D: drawing the card asks Mailchimp' => array( $T, 'D: drawing the card makes no request to Mailchimp', array(
-        array( $M, "        \  = get_option( 'sfaf_mc_meta_' . \, array() );", "        \  = self::meta( \ );" ),
+        array( $M, "        \$have  = get_option( 'sfaf_mc_meta_' . \$id, array() );", "        \$have  = self::meta( \$id );" ),
     ) ),
     'D: the event name becomes a tag' => array( $T, 'D: the event\'s name is never a tag', array(
         array( $M, "        return array( 'audience' => \$audience, 'tags' => self::clean_tags( array_merge( \$c['tags'], \$s['tags'], \$e['tags'] ) ) );", "        return array( 'audience' => \$audience, 'tags' => self::clean_tags( array_merge( \$c['tags'], \$s['tags'], \$e['tags'], array( get_the_title( \$event_id ) ) ) ) );" ),
