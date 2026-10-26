@@ -5066,6 +5066,17 @@ body.uc-modal-open { overflow: hidden; }
 .uc-page-head .uc-page-links { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; position: relative; }
 .uc-page-head .uc-copy-said { font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--uc-accent-text); }
 
+/* NEWSLETTER SIGN-UP (3.124.0): one block per team, a rule between two, the
+   team's name the card's .uc-subhead. Tags are the categories' chips; the
+   search box and New tag are standard fields at the picker's 320px. .uc-check
+   sets display, which beats the user agent's [hidden]. */
+.uc-mc-conn + .uc-mc-conn { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--p-border); }
+.uc-mc-source .uc-check[hidden], .uc-mc-source[hidden], .uc-mc-source .uc-mc-search[hidden], .uc-mc-new-row .uc-btn[hidden] { display: none; }
+.uc-mc-source .uc-mc-search { display: block; width: 100%; max-width: 320px; margin: 0 0 8px; }
+.uc-mc-source .uc-check-grid { max-height: 220px; overflow-y: auto; margin-bottom: 8px; }
+.uc-mc-new-row { display: flex; align-items: center; gap: 8px; max-width: 320px; }
+.uc-mc-new-row input { flex: 1 1 auto; min-width: 0; }
+
 /* THE EDITOR'S HEADER (3.123.0). View RSVPs (n) is a secondary button like
    View event page; Back leads with the 16px chevron at the icons' stroke 2.
    "Copied" sits under the copy icon, out of the row, so showing it moves

@@ -131,10 +131,26 @@ class SFAF_Credentials {
         );
     }
 
+    /**
+     * A key's type, or '' when it is not a credential.
+     *
+     * Besides the fixed list, one family is named by pattern: a Mailchimp
+     * connection's API key, 'mailchimp_key_' and the connection's id (3.124.0).
+     * There can be any number of connections, so they cannot be listed above;
+     * they are secrets, and never in the settings form, so absorb() never
+     * meets one. SFAF_Mailchimp encrypts the value before it arrives here.
+     */
+    public static function type( $key ) {
+        $keys = self::keys();
+        if ( isset( $keys[ $key ] ) ) {
+            return $keys[ $key ];
+        }
+        return preg_match( '/^mailchimp_key_[a-z0-9]+$/', (string) $key ) ? 'secret' : '';
+    }
+
     /** True for keys that must never be rendered back into their form field. */
     public static function is_secret( $key ) {
-        $keys = self::keys();
-        return isset( $keys[ $key ] ) && in_array( $keys[ $key ], array( 'secret', 'password' ), true );
+        return in_array( self::type( $key ), array( 'secret', 'password' ), true );
     }
 
     /**
@@ -195,8 +211,7 @@ class SFAF_Credentials {
      * @return bool Whether anything changed.
      */
     public static function set( $key, $value ) {
-        $keys = self::keys();
-        if ( ! isset( $keys[ $key ] ) ) {
+        if ( '' === self::type( $key ) ) {
             return false;
         }
 
@@ -209,6 +224,22 @@ class SFAF_Credentials {
         }
 
         $all[ $key ] = $value;
+        update_option( self::OPTION, $all, true );
+        return true;
+    }
+
+    /**
+     * Take one credential out of the store altogether: a Mailchimp connection
+     * that was removed (3.124.0). Read-modify-write like set().
+     *
+     * @return bool Whether it was there.
+     */
+    public static function remove( $key ) {
+        $all = self::all();
+        if ( '' === self::type( $key ) || ! array_key_exists( $key, $all ) ) {
+            return false;
+        }
+        unset( $all[ $key ] );
         update_option( self::OPTION, $all, true );
         return true;
     }

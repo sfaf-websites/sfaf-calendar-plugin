@@ -241,6 +241,8 @@ class SFAF_Waitlist {
             'format'     => $data['format'],
             // The form's language (3.113.6), as a registration keeps it.
             'lang'       => isset( $data['lang'] ) ? (string) $data['lang'] : '',
+            // The sign-up boxes (3.124.0), recorded by admit() once confirmed.
+            'lists'      => isset( $data['lists'] ) ? (string) $data['lists'] : '',
         );
         // The agreement and the text opt-in travel with a waitlist join (3.110.0).
         foreach ( array( 'agreed_at', 'text_opt_in' ) as $k ) {
@@ -447,6 +449,8 @@ class SFAF_Waitlist {
             // The language they joined in (3.113.6).
             'lang' => isset( $row->lang ) ? (string) $row->lang : '',
         );
+        // The sign-up boxes they ticked when they joined count now (3.124.0).
+        SFAF_Optins::record_ticks( array( 'event_id' => (int) $row->event_id ) + (array) $person, isset( $row->lists ) ? (string) $row->lists : '' );
         if ( '' !== $person->email && SFAF_RSVP::confirmations_enabled() && SFAF_Notifications::on( (int) $row->event_id, 'confirmation' ) ) {
             SFAF_Notifications::send_confirmation( (int) $row->event_id, $person );
         } elseif ( $opened && '' === trim( $person->email ) ) {

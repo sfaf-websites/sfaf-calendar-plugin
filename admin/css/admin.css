@@ -713,3 +713,12 @@
 .uc-everyaction-log td, .uc-everyaction-log th { white-space: nowrap; }
 /* The title wraps, so the outcome beside it stays in view at 782px. */
 .uc-everyaction-log td:nth-child(2) { white-space: normal; min-width: 14em; }
+
+/* MAILCHIMP (3.124.0): the connections table, the form and the failures. */
+.uc-mailchimp-panel .uc-mc-table, .uc-mailchimp-panel .uc-mc-problems { margin-bottom: 16px; }
+.uc-mailchimp-panel .uc-mc-actions { white-space: nowrap; }
+.uc-mailchimp-panel .uc-mc-inline { display: inline; margin-left: 8px; }
+.uc-mailchimp-panel .uc-mc-orgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px 16px; }
+.uc-mailchimp-panel .uc-mc-org { display: block; font-size: 13px; }
+.uc-mailchimp-panel .uc-mc-form { margin: 8px 0 24px; padding-top: 8px; border-top: 1px solid var(--uc-border); }
+.uc-mailchimp-panel .uc-mc-buttons { display: flex; gap: 8px; }

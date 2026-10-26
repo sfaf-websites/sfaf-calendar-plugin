@@ -4606,13 +4606,15 @@ class SFAF_Portal {
         // The two evidence columns are deliberately next to the address: an
         // export that loses "when" and "from which form" is not evidence of
         // consent, it is just a mailing list.
-        fputcsv( $out, array( 'Email', 'Name', 'Consented At', 'Consented At (GMT)', 'Source Form', 'Event' ) );
+        fputcsv( $out, array( 'Email', 'Name', 'List', 'Consented At', 'Consented At (GMT)', 'Language', 'Source Form', 'Event' ) );
         foreach ( $rows as $r ) {
             fputcsv( $out, array(
                 $this->csv( $r->email ),
                 $this->csv( $r->name ),
+                $this->csv( SFAF_Optins::list_label( $r ) ),
                 $this->csv( $r->consented_at ),
                 $this->csv( $r->created_gmt ),
+                $this->csv( SFAF_Optins::lang_label( $r ) ),
                 $this->csv( $r->source_form ),
                 $this->csv( $r->event_title ),
             ) );
@@ -8428,6 +8430,9 @@ class SFAF_Portal {
             array( 'faqs', 'FAQs', 'Add questions and answers, or apply a saved FAQ set and edit it. Tick No FAQs for this event if it has none. To make a set you can reuse, create it on the FAQ Sets screen.' ),
             array( 'classification', 'Classification', 'Add at least one category and one organizer. A category is the kind of event, such as a support group or a fundraiser, and drives the calendar filters. An organizer is the SFAF program or team hosting the event, and its events are listed together on the calendar.' ),
             array( 'notifications', 'Notifications', $notify_text ),
+            // Only while a ticked organizer has a Mailchimp connection (3.124.0),
+            // and not even named without one.
+            ! SFAF_Mailchimp::active() ? null : array( 'mailchimp', 'Newsletter sign-up', 'Untick a team to leave its newsletter sign-up off this event\'s RSVP form. Choose an audience or add tags only to change where sign-ups go; left alone, they go to the team\'s usual audience with its usual tags.' ),
             // After Notifications, by the 3.110.2 brief, though the card is in the side column.
             array( 'access', 'Team and access', 'Tick the teams and the people who should have this event; what each can do depends on their level. Calendar admins have every event.' ),
             array( 'links', 'Links', 'Choose the donation link that goes in this event\'s emails, or Custom to paste one. A volunteer link adds a Volunteer for this event button to the event page.' ),
@@ -10157,6 +10162,11 @@ class SFAF_Portal {
             wp_set_object_terms( $event_id, $orgs, 'uc_organizer' );
         }
 
+        // The Newsletter sign-up card (3.124.0), for the connections it drew.
+        if ( isset( $_POST['mc_present'] ) ) {
+            update_post_meta( $event_id, SFAF_Mailchimp::META_EVENT, SFAF_Mailchimp::from_post( wp_unslash( $_POST ), get_post_meta( $event_id, SFAF_Mailchimp::META_EVENT, true ), true ) );
+        }
+
         /*
          * PRIVATE. Written only
          * when the control was on the form, and the control always posts a
@@ -10286,6 +10296,7 @@ class SFAF_Portal {
             SFAF_Series::save_event_defaults( $term_id, $_POST );
             $this->save_series_agreement( $term_id );
             $this->save_series_access( $user, $term_id );
+            $this->save_series_mailchimp( $term_id );
             return $term_id;
         }
 
@@ -10299,7 +10310,15 @@ class SFAF_Portal {
         SFAF_Series::save_event_defaults( (int) $created, $_POST );
         $this->save_series_agreement( (int) $created );
         $this->save_series_access( $user, (int) $created );
+        $this->save_series_mailchimp( (int) $created );
         return (int) $created;
+    }
+
+    /** The series' Newsletter sign-up card (3.124.0), for the connections it drew. */
+    private function save_series_mailchimp( $term_id ) {
+        if ( isset( $_POST['mc_present'] ) ) {
+            update_term_meta( (int) $term_id, SFAF_Mailchimp::META_SERIES, SFAF_Mailchimp::from_post( wp_unslash( $_POST ), get_term_meta( (int) $term_id, SFAF_Mailchimp::META_SERIES, true ), false ) );
+        }
     }
 
     /**
@@ -11185,6 +11204,9 @@ class SFAF_Portal {
                     <span class="uc-hint">Its questions are added to an event that joins this series with no questions of its own.</span>
                 </label>
                 </section>
+
+                <?php // A team's Mailchimp list for the series' events (3.124.0). ?>
+                <?php $this->render_mailchimp_card( 0, (int) $term_id, true ); ?>
 
             </div><?php // .uc-bento-main ?>
             <div class="uc-bento-side">
@@ -15250,6 +15272,8 @@ class SFAF_Portal {
                     </section>
                 <?php endif; ?>
 
+                <?php // A team's Mailchimp list (3.124.0); nothing without a connection. ?>
+                <?php $this->render_mailchimp_card( (int) $event_id, $event_id ? SFAF_Series::id_for_event( (int) $event_id ) : 0, false ); ?>
 
             </div><?php // .uc-bento-main ?>
 
@@ -17611,6 +17635,137 @@ class SFAF_Portal {
     }
 
     /**
+     * NEWSLETTER SIGN-UP (3.124.0): a team's Mailchimp list, on Add event, Edit
+     * event and the series page.
+     *
+     * NOTHING IS DRAWN WITHOUT A CONNECTION THAT HAS ORGANIZERS
+     * (SFAF_Mailchimp::active()), so no screen shows Mailchimp to anybody until
+     * an administrator has set one up. Then one block per connection, shown
+     * while an organizer it applies to is ticked (initMailchimpCard() follows
+     * the ticks; on the series page also while an event in the series has
+     * one), and the card is hidden while no block shows. A hidden block still
+     * posts what it holds, so unticking an organizer by mistake loses nothing.
+     *
+     * Each block: on an event, "Show [team] newsletter sign-up on the RSVP
+     * form", ticked unless the event says otherwise; the audience, only when
+     * the account has more than one, first option the one used when nothing is
+     * chosen; and the tags, chips over the account's tags with a search box
+     * and a box for a new one. Leaving all of it alone sends sign-ups to the
+     * series' audience or the connection's, with the connection's and the
+     * series' tags. mc_present[] names the blocks drawn, which is all the save
+     * writes (SFAF_Mailchimp::from_post()).
+     *
+     * @param int $event_id 0 on Add event and on the series page.
+     * @param int $term_id  The series: the event's, or the one being edited.
+     * @param bool $series  True on the series page.
+     */
+    private function render_mailchimp_card( $event_id, $term_id, $series ) {
+        if ( ! SFAF_Mailchimp::active() ) {
+            return;
+        }
+        $event_id = (int) $event_id;
+        $term_id  = (int) $term_id;
+
+        // Which organizers are ticked now, so the first paint matches the script.
+        if ( $series ) {
+            $ticked = $term_id ? SFAF_Series::default_organizers( $term_id ) : array();
+            $always = array();
+            if ( $term_id ) {
+                $ids = get_posts( array( 'post_type' => 'uc_event', 'post_status' => 'any', 'numberposts' => -1, 'fields' => 'ids',
+                    'tax_query' => array( array( 'taxonomy' => 'uc_series', 'field' => 'term_id', 'terms' => $term_id ) ) ) );
+                $used = $ids ? wp_get_object_terms( array_map( 'intval', (array) $ids ), SFAF_Organizers::TAXONOMY, array( 'fields' => 'ids' ) ) : array();
+                $always = SFAF_Mailchimp::for_organizers( is_wp_error( $used ) ? array() : (array) $used );
+            }
+        } else {
+            $ticked = $event_id ? wp_get_object_terms( $event_id, SFAF_Organizers::TAXONOMY, array( 'fields' => 'ids' ) ) : array();
+            $ticked = is_wp_error( $ticked ) ? array() : array_map( 'intval', (array) $ticked );
+            $always = array();
+        }
+        $shown = array_unique( array_merge( SFAF_Mailchimp::for_organizers( $ticked ), $always ) );
+        $conns = array_filter( SFAF_Mailchimp::connections(), function ( $c ) { return (bool) $c['organizers']; } );
+        ?>
+        <section class="uc-bento-card" data-uc-card="mailchimp" data-uc-mailchimp="<?php echo $series ? 'series_organizers[]' : 'organizer[]'; ?>"<?php echo $shown ? '' : ' hidden'; ?>>
+            <h2 class="uc-bento-title">Newsletter sign-up</h2>
+            <?php foreach ( $conns as $c ) :
+                $id     = $c['id'];
+                $meta   = SFAF_Mailchimp::meta( $id );
+                $mine   = $series ? SFAF_Mailchimp::series_choice( $term_id, $id ) : SFAF_Mailchimp::event_choice( $event_id, $id );
+                $from_s = $series ? array( 'audience' => '', 'tags' => array() ) : SFAF_Mailchimp::series_choice( $term_id, $id );
+                $aud    = array();
+                foreach ( $meta['audiences'] as $a ) { $aud[ $a['id'] ] = $a['name']; }
+                $name_of = function ( $aid ) use ( $aud, $c ) {
+                    if ( isset( $aud[ $aid ] ) ) { return $aud[ $aid ]; }
+                    return ( $aid === $c['audience'] && '' !== $c['audience_name'] ) ? $c['audience_name'] : $aid;
+                };
+                $default_label = '' !== $from_s['audience']
+                    ? 'The series\' audience (' . $name_of( $from_s['audience'] ) . ')'
+                    : 'The usual audience (' . ( '' !== $c['audience'] ? $name_of( $c['audience'] ) : 'none chosen' ) . ')';
+                $tag_names = array_values( array_unique( array_merge( $meta['tags'], $mine['tags'] ) ) );
+                natcasesort( $tag_names );
+                $also = array();
+                if ( $c['tags'] ) { $also[] = implode( ', ', $c['tags'] ) . ' (every sign-up)'; }
+                if ( $from_s['tags'] ) { $also[] = implode( ', ', $from_s['tags'] ) . ' (the series)'; }
+                $base = 'mc[' . $id . ']';
+                ?>
+                <div class="uc-mc-conn" data-uc-mc-conn="<?php echo esc_attr( $id ); ?>"
+                     data-uc-mc-orgs="<?php echo esc_attr( implode( ',', $c['organizers'] ) ); ?>"<?php echo in_array( $id, $always, true ) ? ' data-uc-mc-always' : ''; ?><?php echo in_array( $id, $shown, true ) ? '' : ' hidden'; ?>>
+                    <h3 class="uc-subhead"><?php echo esc_html( $c['name'] ); ?></h3>
+                    <input type="hidden" name="mc_present[]" value="<?php echo esc_attr( $id ); ?>" />
+                    <?php if ( ! $series ) : ?>
+                        <label class="uc-check">
+                            <input type="checkbox" name="<?php echo esc_attr( $base ); ?>[show]" value="1"<?php checked( $mine['show'] ); ?> />
+                            Show <?php echo esc_html( $c['name'] ); ?> newsletter sign-up on the RSVP form
+                        </label>
+                    <?php endif; ?>
+                    <?php if ( count( $aud ) > 1 ) : ?>
+                        <label class="uc-field">
+                            <span class="uc-field-label">Audience</span>
+                            <select name="<?php echo esc_attr( $base ); ?>[audience]">
+                                <option value=""><?php echo esc_html( $default_label ); ?></option>
+                                <?php foreach ( $aud as $aid => $aname ) : ?>
+                                    <option value="<?php echo esc_attr( $aid ); ?>"<?php selected( $mine['audience'], $aid ); ?>><?php echo esc_html( $aname ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                    <?php elseif ( '' !== $mine['audience'] ) : ?>
+                        <input type="hidden" name="<?php echo esc_attr( $base ); ?>[audience]" value="<?php echo esc_attr( $mine['audience'] ); ?>" />
+                    <?php endif; ?>
+                    <div class="uc-field" data-uc-mc-tags>
+                        <span class="uc-field-label">Tags</span>
+                        <div class="uc-chips" data-uc-mc-chips hidden></div>
+                        <div class="uc-chips-add" data-uc-mc-add hidden>
+                            <button type="button" class="uc-btn uc-btn-sm" data-uc-mc-toggle aria-expanded="false"><span>+ Add tag</span>
+                                <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '14px' ) ); ?></span></button>
+                        </div>
+                        <div class="uc-mc-source" data-uc-mc-source>
+                            <input type="search" class="uc-mc-search" data-uc-mc-search placeholder="Search tags" aria-label="Search <?php echo esc_attr( $c['name'] ); ?> tags" hidden />
+                            <div class="uc-check-grid" data-uc-mc-boxes>
+                                <?php foreach ( $tag_names as $t ) : ?>
+                                    <label class="uc-check" data-uc-chip-label="<?php echo esc_attr( $t ); ?>">
+                                        <input type="checkbox" name="<?php echo esc_attr( $base ); ?>[tags][]" value="<?php echo esc_attr( $t ); ?>"<?php checked( in_array( $t, $mine['tags'], true ) ); ?> />
+                                        <?php echo esc_html( $t ); ?>
+                                    </label>
+                                <?php endforeach; ?>
+                            </div>
+                            <label class="uc-field uc-mc-new">
+                                <span class="uc-field-label">New tag</span>
+                                <span class="uc-mc-new-row">
+                                    <input type="text" name="<?php echo esc_attr( $base ); ?>[new_tags]" value="" data-uc-mc-new maxlength="100" />
+                                    <button type="button" class="uc-btn uc-btn-sm" data-uc-mc-new-add hidden>Add</button>
+                                </span>
+                            </label>
+                        </div>
+                        <?php if ( $also ) : ?>
+                            <span class="uc-hint">Also added: <?php echo esc_html( implode( '; ', $also ) ); ?>.</span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </section>
+        <?php
+    }
+
+    /**
      * TEAM AND ACCESS (3.110.1; "Who can edit this" until then), on Add event
      * and Edit event alike: the organizer, up to two teams, and people by name.
      * Whoever it names has this event; their level decides what they can do.
@@ -18794,9 +18949,9 @@ class SFAF_Portal {
         <div class="uc-card">
             <div class="uc-card-head"><h2>What this record is</h2></div>
             <p class="uc-hint">
-                People who ticked &ldquo;Receive monthly email updates from SFAF&rdquo; on an RSVP form, with the
-                moment consent was given and the form it came from.
-                <strong>Nothing is sent from here and nothing is pushed anywhere.</strong>
+                People who ticked a sign-up box on an RSVP form, with the list, when, the event and the language.
+                SFAF Newsletter sign-ups are not sent anywhere yet. A team&rsquo;s sign-ups are sent to its Mailchimp
+                audience, and only once the registration is confirmed.
             </p>
             <?php
             /*
@@ -18820,13 +18975,15 @@ class SFAF_Portal {
                 <p class="uc-empty">No opt-ins recorded<?php echo $search ? ' for that search' : ' yet'; ?>.</p>
             <?php else : ?>
                 <table class="uc-table uc-table-cards">
-                    <thead><tr><th>Email</th><th>Name</th><th>Consented</th><th>Form</th><th>Event</th></tr></thead>
+                    <thead><tr><th>Email</th><th>Name</th><th>List</th><th>Consented</th><th>Language</th><th>Form</th><th>Event</th></tr></thead>
                     <tbody>
                         <?php foreach ( $rows as $row ) : ?>
                             <tr>
                                 <td><?php echo esc_html( $row->email ); ?></td>
                                 <td><?php echo esc_html( $row->name ); ?></td>
+                                <td><?php echo esc_html( SFAF_Optins::list_label( $row ) ); ?></td>
                                 <td><?php echo esc_html( $row->consented_at ); ?></td>
+                                <td><?php echo esc_html( SFAF_Optins::lang_label( $row ) ); ?></td>
                                 <td><?php echo esc_html( $row->source_form ); ?></td>
                                 <td><?php echo $row->event_title ? esc_html( $row->event_title ) : '--'; ?></td>
                             </tr>

@@ -19,7 +19,8 @@
  *      except embed.js's EMBED_JS_VERSION line, and the caladmin files in
  *      CALADMIN_ONLY, which no public calendar page loads.
  *
- * BASE is the release compared against: 3.122.0's released commit from 3.123.0
+ * BASE is the release compared against: 3.123.0's released commit from 3.124.0
+ * (3.122.0's, 45acce4, for 3.123.0)
  * (3.121.0's, 367a707, for 3.122.0)
  * (3.120.0's, ca4ae5d, for 3.121.0)
  * (3.119.0's, 91ff032, for 3.120.0)
@@ -39,15 +40,19 @@
  * name, in ALLOWED or ALLOWED_FILES.
  */
 
-const BASE      = '45acce4';
-const BASE_NAME = '3.122.0';
+const BASE      = '44988e8';
+const BASE_NAME = '3.123.0';
 
 /* Files under public/ and templates/ a release means to change, as path =>
    why. Probe A still compares every embed answer, so none of these can reach
    the embed unseen. */
 const ALLOWED_FILES = array(
-    // None in 3.123.0, which changes caladmin only. 3.122.0 named
-    // templates/single-uc_event.php for the Preview band.
+    // 3.124.0: the RSVP form's Stay in touch group, a team's Mailchimp box and
+    // the line under the email field. calendar.js is the event page's and the
+    // calendar block's script; the embed loads embed.js and calendar.css and
+    // never this file, and draws no RSVP form. The group's style is printed by
+    // the script, not in calendar.css, which the embed does load.
+    'public/js/calendar.js' => 'the RSVP form: Stay in touch and a team\'s Mailchimp box (3.124.0)',
 );
 
 /* Loaded by caladmin and the two public forms, never by the calendar, an event

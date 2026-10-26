@@ -2,9 +2,12 @@
 /**
  * Email marketing opt-ins.
  *
- * STORAGE ONLY. Nothing here talks to Pardot, Mailchimp or anything else, and
- * no integration is chosen yet. What it does do is record consent in a form
- * somebody can evidence later.
+ * THE ONE RECORD OF CONSENT, for every sign-up box on the RSVP form: "Sign me
+ * up for SFAF Newsletter and Updates", and since 3.124.0 a team's "Sign me up
+ * for [team] email updates". Each row says which list (list_key, list_name),
+ * when, on which event and in which language. Nothing here talks to Pardot or
+ * Mailchimp: the SFAF rows wait for Pardot, and a team's row is handed to
+ * SFAF_Mailchimp::enqueue(), whose queue does the sending.
  *
  * WHY THE TIMESTAMP AND THE FORM NAME ARE NOT OPTIONAL
  * ---------------------------------------------------------------------------
@@ -30,6 +33,10 @@ class SFAF_Optins {
         return $wpdb->prefix . 'uc_optins';
     }
 
+    /** The SFAF newsletter's list key, and its name on Email Opt-ins. */
+    const SFAF_LIST = 'sfaf';
+    const SFAF_NAME = 'SFAF Newsletter';
+
     /**
      * Record one consent.
      *
@@ -37,9 +44,10 @@ class SFAF_Optins {
      * @param string $name   Name given on the form, if any.
      * @param int    $event_id Event the form belonged to (0 when none).
      * @param string $source Which form it came from, e.g. 'rsvp'.
-     * @return bool
+     * @param array  $extra  list_key, list_name, lang, rsvp_id (3.124.0).
+     * @return int The row's id, or 0.
      */
-    public static function record( $email, $name, $event_id, $source ) {
+    public static function record( $email, $name, $event_id, $source, $extra = array() ) {
         global $wpdb;
 
         $email = sanitize_email( $email );
@@ -54,7 +62,11 @@ class SFAF_Optins {
             'source_form'  => sanitize_key( $source ),
             'consented_at' => current_time( 'mysql' ),
             'created_gmt'  => current_time( 'mysql', true ),
-        ), array( '%s', '%s', '%d', '%s', '%s', '%s' ) );
+            'list_key'     => isset( $extra['list_key'] ) ? substr( (string) $extra['list_key'], 0, 40 ) : self::SFAF_LIST,
+            'list_name'    => isset( $extra['list_name'] ) ? sanitize_text_field( (string) $extra['list_name'] ) : self::SFAF_NAME,
+            'lang'         => isset( $extra['lang'] ) && in_array( $extra['lang'], array( 'en', 'es' ), true ) ? $extra['lang'] : '',
+            'rsvp_id'      => isset( $extra['rsvp_id'] ) ? (int) $extra['rsvp_id'] : 0,
+        ), array( '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%d' ) );
 
         if ( $inserted ) {
             /**
@@ -65,7 +77,96 @@ class SFAF_Optins {
             do_action( 'sfaf_optin_recorded', $wpdb->insert_id, $email, $event_id, $source );
         }
 
-        return (bool) $inserted;
+        return $inserted ? (int) $wpdb->insert_id : 0;
+    }
+
+    /**
+     * The boxes a registration's form ticked, as the RSVP row keeps them
+     * between a waitlist join and its confirmation: 'sfaf' and 'mc:' plus a
+     * connection id, comma-separated.
+     *
+     * @param bool     $sfaf
+     * @param string[] $connections
+     * @return string
+     */
+    public static function ticks_string( $sfaf, $connections ) {
+        $out = $sfaf ? array( self::SFAF_LIST ) : array();
+        foreach ( (array) $connections as $id ) {
+            $out[] = 'mc:' . sanitize_key( (string) $id );
+        }
+        return implode( ',', $out );
+    }
+
+    /**
+     * Record a confirmed registration's ticks: the SFAF one as a row here, a
+     * team's as a row here handed to the Mailchimp queue.
+     *
+     * ONCE CONFIRMED (3.124.0). Called from SFAF_RSVP::submit() for a
+     * registration and from SFAF_Waitlist::admit() for a waitlisted one, so a
+     * waitlist sign-up counts when its place is confirmed and not before.
+     * Until 3.124.0 a waitlist join's SFAF tick was not kept at all.
+     *
+     * Nothing is recorded without an email address.
+     *
+     * @param array  $person event_id, rsvp_id, email, name, first_name, last_name, lang.
+     * @param string $ticks  ticks_string().
+     * @return int How many were recorded.
+     */
+    public static function record_ticks( $person, $ticks ) {
+        $email = isset( $person['email'] ) ? (string) $person['email'] : '';
+        if ( '' === trim( $email ) || '' === (string) $ticks ) {
+            return 0;
+        }
+        $event_id = (int) $person['event_id'];
+        $base     = array(
+            'lang'    => isset( $person['lang'] ) ? (string) $person['lang'] : '',
+            'rsvp_id' => isset( $person['rsvp_id'] ) ? (int) $person['rsvp_id'] : 0,
+        );
+        $name = isset( $person['name'] ) ? (string) $person['name'] : trim( ( $person['first_name'] ?? '' ) . ' ' . ( $person['last_name'] ?? '' ) );
+        $n    = 0;
+        foreach ( array_unique( array_filter( explode( ',', (string) $ticks ) ) ) as $tick ) {
+            if ( self::SFAF_LIST === $tick ) {
+                $n += self::record( $email, $name, $event_id, 'rsvp', $base ) ? 1 : 0;
+                continue;
+            }
+            if ( 0 !== strpos( $tick, 'mc:' ) || ! class_exists( 'SFAF_Mailchimp' ) ) {
+                continue;
+            }
+            $conn = SFAF_Mailchimp::get( substr( $tick, 3 ) );
+            if ( ! $conn ) {
+                continue;
+            }
+            $row = self::record( $email, $name, $event_id, 'rsvp', $base + array( 'list_key' => $tick, 'list_name' => $conn['name'] ) );
+            if ( $row ) {
+                $n++;
+                SFAF_Mailchimp::enqueue( $row, $conn['id'], array(
+                    'event_id'   => $event_id,
+                    'rsvp_id'    => $base['rsvp_id'],
+                    'email'      => $email,
+                    'first_name' => isset( $person['first_name'] ) ? (string) $person['first_name'] : '',
+                    'last_name'  => isset( $person['last_name'] ) ? (string) $person['last_name'] : '',
+                ) );
+            }
+        }
+        return $n;
+    }
+
+    /**
+     * The list a row was for, as Email Opt-ins names it. Rows from before
+     * 3.124.0 have no list and were all SFAF's.
+     */
+    public static function list_label( $row ) {
+        $key = isset( $row->list_key ) ? (string) $row->list_key : '';
+        if ( '' === $key || self::SFAF_LIST === $key ) {
+            return self::SFAF_NAME;
+        }
+        return '' !== (string) $row->list_name ? (string) $row->list_name : $key;
+    }
+
+    /** A row's language as Email Opt-ins shows it. */
+    public static function lang_label( $row ) {
+        $lang = isset( $row->lang ) ? (string) $row->lang : '';
+        return 'es' === $lang ? 'Spanish' : ( 'en' === $lang ? 'English' : '' );
     }
 
     /**
@@ -131,7 +232,8 @@ class SFAF_Optins {
         $table        = self::table();
         $placeholders = implode( ',', array_fill( 0, count( $emails ), '%s' ) );
         $rows         = $wpdb->get_results( $wpdb->prepare(
-            "SELECT email, event_id FROM $table WHERE LOWER(email) IN ($placeholders)",
+            // The SFAF newsletter's rows only: a team's list is not "SFAF news and updates".
+            "SELECT email, event_id FROM $table WHERE LOWER(email) IN ($placeholders) AND list_key IN ('', 'sfaf')",
             $emails
         ) );
 

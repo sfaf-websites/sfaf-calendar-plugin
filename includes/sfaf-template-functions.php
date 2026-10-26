@@ -1340,7 +1340,11 @@ function sfaf_rsvp_block( $post_id ) {
                         return sfaf_format_full( $post_id, $f );
                     }
                 ) ) ),
-            ),
+            )
+            /* A box per team whose Mailchimp sign-up this event shows, id and
+               name (3.124.0). Only when there is one, so an event with none
+               draws the button exactly as before. */
+            + ( ( $mc = SFAF_Mailchimp::form_lists( $post_id ) ) ? array( 'data-uc-lists' => wp_json_encode( $mc ) ) : array() ),
         ) );
 
     ob_start();

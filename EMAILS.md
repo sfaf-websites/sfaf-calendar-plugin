@@ -281,12 +281,14 @@ Labels, buttons and the calendar file's words. These are not edited on the Templ
 | Your last name | Su apellido |
 | Email * | Correo electrónico * |
 | your@email.com | su@correo.com |
-| We use your email only for this event: your confirmation, a reminder, and any changes. It is never shared or added to a list. | Usamos su correo electrónico solo para este evento: su confirmación, un recordatorio y cualquier cambio. Nunca se comparte ni se agrega a una lista. |
+| We use your email for this event, and only add it to a list if you tick a box below. | Usamos su correo electrónico para este evento, y solo lo agregamos a una lista si marca una casilla abajo. |
 | I do not use email, or prefer not to share it. | No uso correo electrónico o prefiero no compartirlo. |
 | You will not get a confirmation, a reminder, or notice of changes. | No recibirá una confirmación, un recordatorio ni avisos de cambios. |
 | Joining online needs an email address for the meeting link. | Para participar en línea se necesita un correo electrónico para el enlace de la reunión. |
 | Phone (optional) | Teléfono (opcional) |
-| Receive monthly email updates from SFAF with events, news, and updates. | Reciba correos mensuales de SFAF con eventos, noticias y novedades. |
+| Stay in touch | Sigamos en contacto |
+| Sign me up for SFAF Newsletter and Updates | Quiero recibir el boletín y las novedades de SFAF |
+| Sign me up for %s email updates | Quiero recibir las novedades por correo de %s |
 | Register Now | Inscribirse |
 | Submitting... | Enviando... |
 | Cancel | Cancelar |

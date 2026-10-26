@@ -430,7 +430,17 @@ eval( 'class SFAF_Portal {'
     . mk_lift( $mk_port, 'public static function link(' )
     . '}' );
 
-class SFAF_Optins { public static $recorded = array(); public static function record( $e, $n, $id, $src ) { self::$recorded[] = $e; return true; } }
+/* The opt-ins as the RSVP path calls them (3.124.0: the ticks travel as one string). */
+class SFAF_Optins {
+    public static $recorded = array();
+    public static function record( $e, $n, $id, $src, $extra = array() ) { self::$recorded[] = $e; return 1; }
+    public static function ticks_string( $sfaf, $conns ) { $o = $sfaf ? array( 'sfaf' ) : array(); foreach ( (array) $conns as $c ) { $o[] = 'mc:' . $c; } return implode( ',', $o ); }
+    public static function record_ticks( $p, $ticks ) {
+        if ( '' === trim( (string) ( $p['email'] ?? '' ) ) || false === strpos( ',' . $ticks . ',', ',sfaf,' ) ) { return 0; }
+        self::$recorded[] = $p['email'];
+        return 1;
+    }
+}
 
 foreach ( array( 'class-sfaf-email', 'class-sfaf-online', 'class-sfaf-cancellation', 'class-sfaf-privacy', 'class-sfaf-teams', 'class-sfaf-venues', 'class-sfaf-series',
                  'class-sfaf-sources', 'class-sfaf-reminders', 'class-sfaf-notifications', 'class-sfaf-digest', 'class-sfaf-rsvp',

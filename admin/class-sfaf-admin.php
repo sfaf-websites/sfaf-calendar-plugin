@@ -2920,6 +2920,11 @@ class SFAF_Admin {
                     <button type="button" class="button">Test All Connections</button>
                 </div>
             </form>
+
+            <?php
+            // Mailchimp (3.124.0): its own forms, so outside the one above.
+            SFAF_Mailchimp::render_panel();
+            ?>
         </div>
         <?php
     }

@@ -129,6 +129,9 @@ class SFAF_RSVP {
             // absent field is a "no", which is the safe reading and the one an
             // unchecked checkbox actually produces.
             'optin'      => ! empty( $_POST['optin'] ),
+            // A team's Mailchimp boxes (3.124.0), as connection ids. submit()
+            // keeps only the ones this event offers.
+            'lists'      => isset( $_POST['lists'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['lists'] ) ) : '',
             // How they said they would attend. Only a hybrid event asks, and
             // submit() validates this against that event's own list rather
             // than trusting it. See the capacity block there.
@@ -395,6 +398,16 @@ class SFAF_RSVP {
         $data['name']  = trim( $data['first_name'] . ' ' . $data['last_name'] );
         // A text opt-in means nothing without a number to text (3.110.0).
         $data['text_opt_in'] = ( ! empty( $data['text_opt_in'] ) && '' !== $data['phone'] ) ? 1 : 0;
+        /*
+         * THE SIGN-UP BOXES (3.124.0), kept as one string on the row: the SFAF
+         * one, and a team's for each connection this event offers. A waitlist
+         * join keeps them until its place is confirmed; a registration records
+         * them below. Without an email there is nobody to sign up.
+         */
+        $data['lists'] = ( '' === $data['email'] ) ? '' : SFAF_Optins::ticks_string(
+            ! empty( $data['optin'] ),
+            class_exists( 'SFAF_Mailchimp' ) ? SFAF_Mailchimp::allowed_lists( $data['event_id'], isset( $data['lists'] ) ? $data['lists'] : '' ) : array()
+        );
 
         if ( sfaf_format_full( $data['event_id'], $hybrid ? $format : '' ) ) {
             /*
@@ -448,7 +461,9 @@ class SFAF_RSVP {
             'text_opt_in' => (int) $data['text_opt_in'],
             // Schema 15 (3.113.6): the form's language, '' for a form without the toggle.
             'lang'        => $data['lang'],
-        ), array( '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s' ) );
+            // Schema 17 (3.124.0): the sign-up boxes ticked.
+            'lists'       => $data['lists'],
+        ), array( '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s' ) );
 
         if ( $inserted ) {
             /*
@@ -467,17 +482,16 @@ class SFAF_RSVP {
              */
             sfaf_clear_rsvp_count_cache( $data['event_id'] );
 
-            // The marketing opt-in, if it was ticked. Recorded separately from
-            // the RSVP on purpose: they are two different consents, and the
-            // RSVP row must never be the evidence for a mailing list.
-            if ( ! empty( $data['optin'] ) && '' !== $data['email'] ) {
-                SFAF_Optins::record( $data['email'], $data['name'], $data['event_id'], 'rsvp' );
-            }
-
             // The token travels with the data so the routed emails can build a
             // cancel link without a second query for the row just written.
             $data['token']   = $token;
             $data['rsvp_id'] = (int) $wpdb->insert_id;
+
+            // The sign-up boxes, if any were ticked. Recorded separately from
+            // the RSVP on purpose: they are different consents, and the RSVP
+            // row must never be the evidence for a mailing list. A team's is
+            // queued for Mailchimp, which the form does not wait for (3.124.0).
+            SFAF_Optins::record_ticks( $data, $data['lists'] );
 
             // The answers, before the alert that names them goes out.
             SFAF_Questions::store( $data['rsvp_id'], $data['event_id'], $checked['rows'] );

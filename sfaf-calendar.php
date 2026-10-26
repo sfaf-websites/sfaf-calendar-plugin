@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.123.0
+ * Version: 3.124.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.123.0' );
+define( 'SFAF_VERSION', '3.124.0' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -24,7 +24,7 @@ define( 'SFAF_VERSION', '3.123.0' );
  * hook — still gets its new tables, instead of throwing "table doesn't exist"
  * the first time the runner looks for one.
  */
-define( 'SFAF_DB_VERSION', '16' );
+define( 'SFAF_DB_VERSION', '17' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -104,6 +104,9 @@ $sfaf_includes = array(
     'includes/class-sfaf-embed.php',
     'includes/class-sfaf-rsvp.php',
     'includes/class-sfaf-optins.php',
+    // A team's Mailchimp list from the RSVP form (3.124.0). After SFAF_Optins,
+    // whose record of each tick it sends from.
+    'includes/class-sfaf-mailchimp.php',
     'includes/class-sfaf-privacy.php',
     // A draft's or a scheduled event's page, for the staff who can edit it (3.122.0).
     'includes/class-sfaf-preview.php',
@@ -251,6 +254,8 @@ function sfaf_init() {
 
     // The event page before it is public, for the staff who can edit it (3.122.0).
     SFAF_Preview::register();
+    // A team's Mailchimp list from the RSVP form, and its send queue (3.124.0).
+    SFAF_Mailchimp::register();
 
     // The public event request form. A front-end query var, like the cancel
     // link, so no rewrite rule and no REST route: see the note in the class.
@@ -498,6 +503,14 @@ function sfaf_enqueue_admin_assets( $hook ) {
     wp_enqueue_script(
         'sfaf-everyaction',
         SFAF_PLUGIN_URL . 'admin/js/everyaction.js',
+        array( 'sfaf-calendar-admin' ),
+        SFAF_VERSION,
+        true
+    );
+    // The Mailchimp panel's Test connection (3.124.0). Same arrangement.
+    wp_enqueue_script(
+        'sfaf-mailchimp',
+        SFAF_PLUGIN_URL . 'admin/js/mailchimp.js',
         array( 'sfaf-calendar-admin' ),
         SFAF_VERSION,
         true
@@ -996,6 +1009,12 @@ function sfaf_install_tables() {
      * SCHEMA 15 (3.113.6): lang, the language picked on the form's English |
      * Español toggle, 'en' or 'es'. Every message to that person speaks it.
      * '' is every row before, which goes on speaking the event's language.
+     *
+     * SCHEMA 17 (3.124.0): lists, the sign-up boxes ticked on the form, 'sfaf'
+     * and 'mc:' plus a Mailchimp connection's id, comma-separated. Read only
+     * when a waitlisted row is confirmed, which is when its sign-ups count
+     * (SFAF_Optins::record_ticks()). '' is every row before, so nothing is
+     * sent for a registration made before 3.124.0.
      */
     $sql[] = "CREATE TABLE $rsvps (
         id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -1019,6 +1038,7 @@ function sfaf_install_tables() {
         text_opt_in tinyint(1) NOT NULL DEFAULT 0,
         checked_in_at datetime NULL,
         lang varchar(5) NOT NULL DEFAULT '',
+        lists varchar(255) NOT NULL DEFAULT '',
         PRIMARY KEY (id),
         KEY event_id (event_id),
         KEY email (email),
@@ -1079,6 +1099,11 @@ function sfaf_install_tables() {
 
     // Marketing opt-ins. One row per consent, never updated in place: the
     // point is a record of when and where each consent was given.
+    //
+    // SCHEMA 17 (3.124.0): list_key, which list the box was for, 'sfaf' or
+    // 'mc:' and a Mailchimp connection's id ('' is every row before, all of
+    // them SFAF's); list_name, that list's name when the box was ticked; lang,
+    // the form's language; rsvp_id, the registration it came with.
     $optins = $wpdb->prefix . 'uc_optins';
     $sql[] = "CREATE TABLE $optins (
         id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -1088,9 +1113,42 @@ function sfaf_install_tables() {
         source_form varchar(40) NOT NULL DEFAULT '',
         consented_at datetime NULL,
         created_gmt datetime NULL,
+        list_key varchar(40) NOT NULL DEFAULT '',
+        list_name varchar(200) NOT NULL DEFAULT '',
+        lang varchar(5) NOT NULL DEFAULT '',
+        rsvp_id bigint(20) unsigned NOT NULL DEFAULT 0,
         PRIMARY KEY (id),
         KEY email (email),
         KEY event_id (event_id)
+    ) $charset;";
+
+    // MAILCHIMP SENDS (schema 17, 3.124.0). One row per team sign-up waiting
+    // for, or done with, its send; the consent itself is the uc_optins row it
+    // names. The audience and the tags are decided when the box was ticked.
+    // See SFAF_Mailchimp.
+    $mailchimp = $wpdb->prefix . 'uc_mailchimp_queue';
+    $sql[] = "CREATE TABLE $mailchimp (
+        id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+        optin_id bigint(20) unsigned NOT NULL DEFAULT 0,
+        rsvp_id bigint(20) unsigned NOT NULL DEFAULT 0,
+        event_id bigint(20) unsigned NOT NULL DEFAULT 0,
+        connection varchar(40) NOT NULL DEFAULT '',
+        audience varchar(40) NOT NULL DEFAULT '',
+        email varchar(200) NOT NULL DEFAULT '',
+        first_name varchar(100) NOT NULL DEFAULT '',
+        last_name varchar(100) NOT NULL DEFAULT '',
+        tags text NULL,
+        status varchar(20) NOT NULL DEFAULT 'queued',
+        outcome varchar(20) NOT NULL DEFAULT '',
+        attempts int(11) NOT NULL DEFAULT 0,
+        next_at datetime NULL,
+        last_error varchar(255) NOT NULL DEFAULT '',
+        log text NULL,
+        created_at datetime NULL,
+        done_at datetime NULL,
+        PRIMARY KEY (id),
+        KEY status_next (status, next_at),
+        KEY connection (connection)
     ) $charset;";
 
     // SERIES FOLLOWERS. Somebody who wants to hear when new dates are added to
