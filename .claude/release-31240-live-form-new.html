@@ -2008,7 +2008,7 @@
             $('#uc-rsvp-questions .uc-rsvp-q-more-label').html(WW('q_more', currentQuestions.more));
         }
         $('#uc-rsvp-text-label').html(WW('text_opt_in', $('#uc-rsvp-text-label').data('ucEn') || 'Text me about this event'));
-        $('#uc-rsvp-lists [data-uc-team]').each(function () {
+        $('#uc-rsvp-lists [data-uc-team-off]').each(function () {
             var name = $(this).attr('data-uc-team'), en = 'Sign me up for %s email updates';
             $(this).html(twin(W('team_optin', en).replace('%s', name), Wl(otherLang(), 'team_optin', en).replace('%s', name)));
         });
