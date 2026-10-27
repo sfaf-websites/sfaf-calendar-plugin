@@ -531,6 +531,24 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.125.0 =
+
+**Staff screens only. The embed, the event page and the community form are 3.124.0's.**
+
+**WHAT CHANGES ON PUBLIC PAGES:** nothing. The staff "Request an event" form is reached by the emailed sfaf.org link:
+
+* **The limit is per person.** 30 saved requests an hour for each verified sfaf.org address, where it was 5 per link and 10 an hour for the whole office connection, counting refused attempts too and shared with the community form. A request that fails a field check is not counted.
+* **If somebody still reaches it**, the form says "You have sent 30 requests this hour. You can send this one in N minutes." and keeps what they typed.
+
+**My events and All events:**
+
+* **Series and Organizer dropdowns** beside Categories. Every link on the screen (tabs, sort, pages, My events and All events) keeps them.
+* **The date filter finds an imported event that runs several days** on any of its days, not only its first.
+* **A date range outside the tab shows All.** A past date searched from Upcoming used to find nothing; the list now shows All, and the tabs say so.
+* **An empty My events with filters offers "Search all events"**, because an admin's My events holds only the events they created.
+* **Faster for everyone but admins.** The list of a person's events loaded each event and its series one by one, on every caladmin page.
+* A category and the dashboard's "no organizer" link no longer cancel each other out.
+
 = 3.124.0 =
 
 **Mailchimp sign-up for a team's own list, and Stay in touch on the RSVP form. The embed is 3.123.0's.**

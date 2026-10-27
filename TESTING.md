@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 394 items.** Quick 322, needs real conditions 68, blocked on other
+**Outstanding: 396 items.** Quick 324, needs real conditions 68, blocked on other
 people 4.
 
 ---
@@ -4398,6 +4398,31 @@ Delete the test registrations afterwards.
 
 **Why it needs a person:** the real form under sfaf.org's theme and the real
 opt-ins table on the site.
+### 1.325 My events: Series and Organizer, the date filter, and the speed (3.125.0)
+
+Signed in as an **editor** (not an admin), open My events and time it against
+3.124.0's: it should open and filter noticeably faster. The build has no
+database, so the saving (two queries per event on the site, on every caladmin
+page) is counted from the code and only a person can feel it.
+
+- Series and Organizer dropdowns sit beside Categories. Pick one of each with a
+  category: the list narrows to events matching all three, and a tab, a column
+  sort, page 2 and the My events | All events switch all keep them.
+- Search a past date from Upcoming: the list shows All with the All tab marked,
+  and the event on that date is in it.
+- An imported event that runs several days (EveryAction or Eventbrite, with an
+  end date): search for its second day and it is listed.
+- As an admin, in My events, search a date that has only somebody else's event:
+  "Only your events were searched. Search all events" appears, and the link
+  shows that event.
+
+### 1.326 The staff request form's limit (3.125.0)
+
+Send two requests from the staff form, from the office, while a colleague
+sends one: none is refused. Nobody can reach 30 by hand sensibly, so this only
+checks that ordinary use from one connection is never refused; the 30th and
+the wording of the refusal are covered by `.claude/release-31250-test.php`.
+
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event

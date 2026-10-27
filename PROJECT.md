@@ -250,10 +250,20 @@ markup; and the picture must be an attachment, be an image, and already be in
 the calendar folder. **The status is named in the code**, never read from the
 form, and `post_author` stays 0 because nobody logged in made it.
 
-> **Rate limiting takes two subjects, not one.** Per address and per client on
-> the link, per token and per client on the submission. Without the per-address
-> limit one inbox can be filled; without the per-client limit every address in
-> the organisation can be hit once each. Neither closes it alone.
+> **Rate limiting takes two subjects on the link, not one.** Per address and per
+> client. Without the per-address limit one inbox can be filled; without the
+> per-client limit every address in the organisation can be hit once each.
+> Neither closes it alone.
+>
+> **The submission is limited on the person, never the connection (3.125.0):**
+> 30 saved requests an hour per verified address, in a fixed window
+> (`SFAF_Submissions::window_wait()` and `window_count()`), and the refusal
+> names the minutes left and keeps what was typed. Until 3.125.0 it was 5 per
+> link and 10 per client an hour, counting refused attempts too, and the client
+> counter was the community form's own `submit_ip`: the office is one
+> connection, so colleagues used up one allowance between them. A request that
+> fails a field check is not counted. `SFAF_Submissions::allow()`, which every
+> other limit still uses, SLIDES: each counted hit sets a fresh expiry.
 
 **The picture chooser is not `wp.media`, and cannot be.** The frame needs a
 logged-in user with `upload_files`, so on this page it would not open. It is
@@ -7251,7 +7261,16 @@ registrations, the unscoped RSVP list and its export, Email Opt-ins (whose
 rows name a registrant and their event) and the orphan note, asks
 `is_admin_role()`. `SFAF_Portal::user_event_ids()` lists a person's events by
 asking the gate of each, for My events, the dashboard's counts and recent
-activity, so no list holds a rule of its own.
+activity, so no list holds a rule of its own. It primes every post, its terms
+and its meta first (3.125.0): the gate reads the author and the series term,
+and without that it was two queries per event on the site on every page load
+for anybody but an admin.
+
+**The Events list's filters (3.125.0)**: search, Categories, Series, Organizer,
+status and From and To, each added to the query rather than replacing
+another. An event is in a date range when any of its days is (`_uc_end_date`
+for an imported multi-day event). A range reaching outside Upcoming or Archived
+shows All, and the tabs drop a range that would do that to them.
 
 That third order matters and is not defensive tidiness. A team is a name and a
 set of user ids, and the `$offered` guarantee means it may legitimately hold
@@ -7342,7 +7361,8 @@ for it may not.
 
 **My events and All events (3.110.1).** My events is a person's events, as the
 gate decides them; for an admin, who has every event, it stays the literal
-author filter. All events lists everything; for anybody but an admin the page
+author filter, so an empty filtered My events offers the same search over All
+events (3.125.0). All events lists everything; for anybody but an admin the page
 is split, their own events in the full table and everybody else's in
 `public_events_table()`, whose only link is the event's public page, in a new
 tab, when it is published and not private. A request for the editor, the RSVP
