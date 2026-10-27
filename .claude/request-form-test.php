@@ -654,9 +654,16 @@ expect( 'a different subject is unaffected', $allow->invoke( null, 'test', 'some
 /* Two buckets do not share a counter either. */
 expect( 'a different bucket is unaffected', $allow->invoke( null, 'other', 'someone', 3, 60 ), true );
 
-foreach ( array( 'link_addr', 'link_ip', 'submit_tok', 'submit_ip' ) as $bucket ) {
+/* From 3.125.0 the submission is limited per verified address, 'request_addr',
+   and no longer per link or per connection (release-31250-test.php has the rest). */
+foreach ( array( 'link_addr', 'link_ip', 'request_addr' ) as $bucket ) {
     if ( false === strpos( $code, "'" . $bucket . "'" ) ) {
         $fails[] = "the $bucket rate limit is not applied anywhere";
+    }
+}
+foreach ( array( 'submit_tok', 'submit_ip' ) as $bucket ) {
+    if ( false !== strpos( $code, "'" . $bucket . "'" ) ) {
+        $fails[] = "the $bucket rate limit is back on the staff form";
     }
 }
 
