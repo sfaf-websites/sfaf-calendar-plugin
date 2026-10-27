@@ -707,7 +707,17 @@ class SFAF_Portal {
                 'update_post_term_cache' => false,
             ) );
             $ids = array_map( 'intval', (array) $q->posts );
-            if ( $ids && function_exists( 'update_meta_cache' ) ) {
+            /*
+             * THE POSTS AND THEIR TERMS TOO, NOT ONLY THE META (3.125.0). The
+             * gate reads each post's author and, through Team and access, its
+             * series term; with only the meta primed that was two database
+             * queries per event on the site, on every caladmin page anybody
+             * but an admin opened, and on every press of Filter. Three queries
+             * now, whatever the count.
+             */
+            if ( $ids && function_exists( '_prime_post_caches' ) ) {
+                _prime_post_caches( $ids, true, true );
+            } elseif ( $ids && function_exists( 'update_meta_cache' ) ) {
                 update_meta_cache( 'post', $ids );
             }
             foreach ( $ids as $id ) {
@@ -6658,10 +6668,37 @@ class SFAF_Portal {
      * being looked at is the first question the screen answers, and burying it
      * in a select beside four refinements makes it read as a fifth refinement.
      */
+    /**
+     * The view a date range leaves standing (3.125.0).
+     *
+     * Upcoming and Archived split on today. A From and To reaching across that
+     * line used to be applied inside the tab as well, so a past date searched
+     * from Upcoming, the tab the screen opens on, found nothing and said only
+     * "No events found." A range that reaches outside the tab now shows All,
+     * and the tabs say so.
+     *
+     * @return string The view to show.
+     */
+    private function dated_view( $view, $from, $to ) {
+        if ( '' === (string) $from && '' === (string) $to ) {
+            return $view;
+        }
+        $today = current_time( 'Y-m-d' );
+        if ( 'upcoming' === $view && ( '' === (string) $from || $from < $today ) ) {
+            return 'all';
+        }
+        if ( 'archived' === $view && ( '' === (string) $to || $to >= $today ) ) {
+            return 'all';
+        }
+        return $view;
+    }
+
     private function view_tabs( $view, $filters, $sort ) {
         $base = array_filter( array(
             's'       => $filters['s'],
             'cat'     => $filters['cat'] ? $filters['cat'] : '',
+            'series'  => ! empty( $filters['series'] ) ? $filters['series'] : '',
+            'org'     => ! empty( $filters['org'] ) ? $filters['org'] : '',
             'status'  => $filters['status'],
             'from'    => $filters['from'],
             'to'      => $filters['to'],
@@ -6676,7 +6713,13 @@ class SFAF_Portal {
                 // The order is deliberately NOT carried: each view has its own
                 // sensible default direction and forcing the previous view's
                 // onto it lands somebody on the oldest event of all.
-                $url = add_query_arg( array_merge( $base, array( 'view' => $key ) ), $this->url( 'events' ) );
+                $carry = $base;
+                // A date range reaching outside this tab would turn the list
+                // back to All (see dated_view()), so the tab leaves it behind.
+                if ( $this->dated_view( $key, $filters['from'], $filters['to'] ) !== $key ) {
+                    unset( $carry['from'], $carry['to'] );
+                }
+                $url = add_query_arg( array_merge( $carry, array( 'view' => $key ) ), $this->url( 'events' ) );
                 ?>
                 <a class="uc-view-tab<?php echo $active ? ' uc-view-tab-active' : ''; ?>"
                    href="<?php echo esc_url( $url ); ?>"<?php echo $active ? ' aria-current="page"' : ''; ?>>
@@ -6725,6 +6768,8 @@ class SFAF_Portal {
         $args = array_filter( array(
             's'       => $filters['s'],
             'cat'     => $filters['cat'] ? $filters['cat'] : '',
+            'series'  => ! empty( $filters['series'] ) ? $filters['series'] : '',
+            'org'     => ! empty( $filters['org'] ) ? $filters['org'] : '',
             'status'  => $filters['status'],
             'from'    => $filters['from'],
             'to'      => $filters['to'],
@@ -6771,6 +6816,8 @@ class SFAF_Portal {
         $filters = array(
             's'        => isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '',
             'cat'      => isset( $_GET['cat'] ) ? intval( $_GET['cat'] ) : 0,
+            'series'   => isset( $_GET['series'] ) ? absint( $_GET['series'] ) : 0,
+            'org'      => isset( $_GET['org'] ) ? absint( $_GET['org'] ) : 0,
             'status'   => isset( $_GET['status'] ) ? sanitize_key( $_GET['status'] ) : '',
             'from'     => isset( $_GET['from'] ) ? sanitize_text_field( wp_unslash( $_GET['from'] ) ) : '',
             'to'       => isset( $_GET['to'] ) ? sanitize_text_field( wp_unslash( $_GET['to'] ) ) : '',
@@ -6780,6 +6827,13 @@ class SFAF_Portal {
             // My events and the count above it would stop matching the table.
             'scope'    => $this->scope_choice(),
         );
+        foreach ( array( 'from', 'to' ) as $edge ) {
+            if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $filters[ $edge ] ) ) {
+                $filters[ $edge ] = '';
+            }
+        }
+        $view            = $this->dated_view( $view, $filters['from'], $filters['to'] );
+        $filters['view'] = $view;
 
         // SORT LIVES IN THE URL so a view can be linked, bookmarked and shared,
         // and so it survives paging and filtering without a session or a cookie
@@ -6807,6 +6861,9 @@ class SFAF_Portal {
         $paged = isset( $_GET['paged'] ) ? max( 1, (int) $_GET['paged'] ) : 1;
 
         $cats = get_terms( array( 'taxonomy' => 'uc_event_category', 'hide_empty' => false ) );
+        // Beside Categories, the same kind of list (3.125.0), alphabetical.
+        $series_terms = get_terms( array( 'taxonomy' => SFAF_Series::TAXONOMY, 'hide_empty' => false, 'orderby' => 'name', 'order' => 'ASC' ) );
+        $org_terms    = get_terms( array( 'taxonomy' => 'uc_organizer', 'hide_empty' => false, 'orderby' => 'name', 'order' => 'ASC' ) );
 
         /*
          * SCOPE, AND WHAT IT CHANGES BESIDES THE QUERY.
@@ -6859,6 +6916,8 @@ class SFAF_Portal {
             'view'    => $view,
             's'       => $filters['s'],
             'cat'     => $filters['cat'] ? $filters['cat'] : '',
+            'series'  => ! empty( $filters['series'] ) ? $filters['series'] : '',
+            'org'     => ! empty( $filters['org'] ) ? $filters['org'] : '',
             'status'  => $filters['status'],
             'orderby' => $orderby,
             'order'   => $order,
@@ -6908,6 +6967,22 @@ class SFAF_Portal {
                     <option value="<?php echo (int) $c->term_id; ?>" <?php selected( $filters['cat'], $c->term_id ); ?>><?php echo esc_html( $c->name ); ?></option>
                 <?php endforeach; endif; ?>
             </select>
+            <?php if ( ! is_wp_error( $series_terms ) && $series_terms ) : ?>
+                <select name="series" aria-label="Series">
+                    <option value="0">All series</option>
+                    <?php foreach ( $series_terms as $t ) : ?>
+                        <option value="<?php echo (int) $t->term_id; ?>" <?php selected( $filters['series'], $t->term_id ); ?>><?php echo esc_html( $t->name ); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            <?php endif; ?>
+            <?php if ( ! is_wp_error( $org_terms ) && $org_terms ) : ?>
+                <select name="org" aria-label="Organizer">
+                    <option value="0">All organizers</option>
+                    <?php foreach ( $org_terms as $t ) : ?>
+                        <option value="<?php echo (int) $t->term_id; ?>" <?php selected( $filters['org'], $t->term_id ); ?>><?php echo esc_html( $t->name ); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            <?php endif; ?>
             <select name="status">
                 <option value="">Any status</option>
                 <?php foreach ( array( 'publish', 'pending', 'draft', 'future' ) as $k ) : ?>
@@ -6979,6 +7054,25 @@ class SFAF_Portal {
                 $bulk = $this->bulk_plan( $user, $ids );
                 $this->render_bulk_actions( $bulk );
                 $this->events_table( $ids, $user, $sort, $filters, $bulk );
+
+                /*
+                 * NOTHING IN MY EVENTS IS NOT NOTHING ON THE CALENDAR (3.125.0).
+                 * An admin's My events is the events they created, so a request
+                 * or an import on the date they searched was never in it.
+                 */
+                $asked = array_filter( array(
+                    's'      => $filters['s'],
+                    'cat'    => $filters['cat'] ? $filters['cat'] : '',
+                    'series' => $filters['series'] ? $filters['series'] : '',
+                    'org'    => $filters['org'] ? $filters['org'] : '',
+                    'status' => $filters['status'],
+                    'from'   => $filters['from'],
+                    'to'     => $filters['to'],
+                ), function ( $v ) { return '' !== $v && null !== $v; } );
+                if ( ! $ids && 'mine' === $scope && $asked ) {
+                    $wider = add_query_arg( array_merge( $asked, array( 'view' => $view, 'scope' => 'all' ) ), $this->url( 'events' ) );
+                    echo '<p class="uc-hint" data-uc-search-all>Only your events were searched. <a href="' . esc_url( $wider ) . '">Search all events</a></p>';
+                }
             }
             ?>
             <?php $this->events_pagination( $paged, $pages, $total, $sort, $filters ); ?>
@@ -7028,6 +7122,8 @@ class SFAF_Portal {
         $base = array_filter( array(
             's'       => $filters['s'],
             'cat'     => $filters['cat'] ? $filters['cat'] : '',
+            'series'  => ! empty( $filters['series'] ) ? $filters['series'] : '',
+            'org'     => ! empty( $filters['org'] ) ? $filters['org'] : '',
             'status'  => $filters['status'],
             'from'    => $filters['from'],
             'to'      => $filters['to'],
@@ -23290,8 +23386,16 @@ class SFAF_Portal {
         if ( ! empty( $args['s'] ) ) {
             SFAF_Search::apply( $q, $args['s'] );
         }
-        if ( ! empty( $args['cat'] ) ) {
-            $q['tax_query'] = array( array( 'taxonomy' => 'uc_event_category', 'field' => 'term_id', 'terms' => (int) $args['cat'] ) );
+        /*
+         * CATEGORY, SERIES AND ORGANIZER ARE ADDED, NOT ASSIGNED (3.125.0).
+         * The category used to replace the whole tax_query, which threw away
+         * the dashboard's "no organizer" narrowing whenever both were asked.
+         */
+        foreach ( array( 'cat' => 'uc_event_category', 'series' => SFAF_Series::TAXONOMY, 'org' => 'uc_organizer' ) as $arg => $tax ) {
+            if ( ! empty( $args[ $arg ] ) ) {
+                $q['tax_query']   = isset( $q['tax_query'] ) ? $q['tax_query'] : array();
+                $q['tax_query'][] = array( 'taxonomy' => $tax, 'field' => 'term_id', 'terms' => (int) $args[ $arg ] );
+            }
         }
         if ( ! empty( $args['upcoming'] ) ) {
             $q['meta_query'][] = array( 'key' => '_uc_event_date', 'value' => current_time( 'Y-m-d' ), 'compare' => '>=', 'type' => 'DATE' );
@@ -23326,8 +23430,19 @@ class SFAF_Portal {
         if ( ! empty( $args['removed'] ) ) {
             $q['meta_query'][] = array( 'key' => SFAF_Sources::META_REMOVED_AT, 'compare' => 'EXISTS' );
         }
+        /*
+         * AN EVENT IS IN A RANGE WHEN ANY OF ITS DAYS IS (3.125.0). "From"
+         * used to be compared with the first day alone, so an imported event
+         * running several days was missing from a search for any day but its
+         * first. Its last day reaching the range is enough; `to` still needs
+         * the first day on or before it.
+         */
         if ( ! empty( $args['from'] ) ) {
-            $q['meta_query'][] = array( 'key' => '_uc_event_date', 'value' => $args['from'], 'compare' => '>=', 'type' => 'DATE' );
+            $q['meta_query'][] = array(
+                'relation' => 'OR',
+                array( 'key' => '_uc_event_date', 'value' => $args['from'], 'compare' => '>=', 'type' => 'DATE' ),
+                array( 'key' => '_uc_end_date', 'value' => $args['from'], 'compare' => '>=', 'type' => 'DATE' ),
+            );
         }
         if ( ! empty( $args['to'] ) ) {
             $q['meta_query'][] = array( 'key' => '_uc_event_date', 'value' => $args['to'], 'compare' => '<=', 'type' => 'DATE' );

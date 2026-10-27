@@ -52,6 +52,14 @@ class SFAF_Request {
     /** How long a link works for. */
     const TOKEN_TTL = 3600;
 
+    /**
+     * Requests one person may send in an hour (3.125.0), counted on the
+     * verified address and never on the connection: the whole office is one
+     * connection, so a per-connection count let colleagues use up each
+     * other's allowance.
+     */
+    const SUBMIT_LIMIT = 30;
+
     /** Where a live link is stored, keyed on a hash of the token. */
     const TOKEN_PREFIX = 'sfaf_evreq_tok_';
 
@@ -1004,14 +1012,23 @@ class SFAF_Request {
         }
 
         /*
-         * RATE LIMITED ON THE TOKEN AND ON THE CLIENT. The token limit is what
-         * stops one working link being used to fill the pending queue; the
-         * client limit is what stops somebody collecting several links first.
+         * RATE LIMITED ON THE PERSON (3.125.0), by the address the emailed link
+         * proved. Until 3.125.0 it was 5 per link and 10 per connection an
+         * hour, every attempt counted, refused ones included, and the
+         * connection count was the community form's own `submit_ip` counter:
+         * the office is one connection, so staff and community submissions
+         * from it used up one allowance between them.
+         *
+         * ONLY A REQUEST THAT IS SAVED COUNTS, so correcting a missing field
+         * costs nothing. The window is fixed from the first request, so the
+         * wait the message gives is the real one. What was typed is kept.
          */
-        if ( ! self::allow( 'submit_tok', $token, 5, self::TOKEN_TTL )
-            || ! self::allow( 'submit_ip', self::client(), 10, self::TOKEN_TTL ) ) {
-            self::render_form( $token, $email, array(), array(
-                'form' => 'That is several requests in a short time. Give it a few minutes, then try again.',
+        $wait = SFAF_Submissions::window_wait( 'request_addr', $email, self::SUBMIT_LIMIT );
+        if ( $wait > 0 ) {
+            $mins = max( 1, (int) ceil( $wait / 60 ) );
+            self::render_form( $token, $email, self::validate( $_POST )['clean'], array(
+                'form' => 'You have sent ' . self::SUBMIT_LIMIT . ' requests this hour. You can send this one in '
+                    . $mins . ( 1 === $mins ? ' minute.' : ' minutes.' ),
             ) );
             return;
         }
@@ -1057,6 +1074,8 @@ class SFAF_Request {
             ) );
             return;
         }
+
+        SFAF_Submissions::window_count( 'request_addr', $email, HOUR_IN_SECONDS );
 
         self::notify_admins( $event_id, $checked['clean'], $email );
         self::confirm_to_requester( $event_id, $checked['clean'], $email );

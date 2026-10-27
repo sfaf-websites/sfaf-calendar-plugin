@@ -239,6 +239,7 @@ for f in .claude/*.php; do
     plant-31230.php) continue ;;       # a fault planter for the 3.123.0 check, not a check
     release-31230-live.php) continue ;;  # run below with --run
     plant-31240.php) continue ;;       # a fault planter for the 3.124.0 checks, not a check
+    plant-31250.php) continue ;;       # a fault planter for the 3.125.0 check, not a check
     release-31240-live.php) continue ;;  # run below with --run
     release-31138-live.php) continue ;;  # run below with --run
     release-31138-pages-live.php) continue ;;  # run below with --run

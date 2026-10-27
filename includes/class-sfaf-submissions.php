@@ -624,8 +624,13 @@ class SFAF_Submissions {
      *
      * A COUNTER, NOT A LOCKOUT. It expires on its own, so nothing has to
      * unblock anybody and a mistake costs somebody an hour rather than an
-     * account. The window starts at the first hit and is NOT extended by later
-     * ones, so nobody can be held out indefinitely by their own retries.
+     * account.
+     *
+     * THE WINDOW SLIDES. set_transient() writes a fresh expiry with every
+     * counted hit, so the count clears an hour after the last one allowed,
+     * not an hour after the first. A refused hit writes nothing and moves
+     * nothing. This comment said the opposite until 3.125.0; the behaviour is
+     * unchanged, and window_wait() below is the fixed window.
      *
      * The subject is hashed rather than stored: an address in a transient key
      * is an address sitting in the options table for anyone with database
@@ -645,6 +650,43 @@ class SFAF_Submissions {
         }
         set_transient( $key, $count + 1, $window );
         return true;
+    }
+
+    /**
+     * A FIXED WINDOW THAT CAN SAY HOW LONG IS LEFT (3.125.0), for a limit
+     * whose refusal names the wait. Asking and counting are two calls, so a
+     * caller can count only what it actually did.
+     *
+     * @param string $bucket
+     * @param string $who    Already normalised.
+     * @param int    $limit
+     * @return int Seconds until another is allowed; 0 when one is allowed now.
+     */
+    public static function window_wait( $bucket, $who, $limit ) {
+        $v = get_transient( self::RATE_PREFIX . $bucket . '_' . hash( 'sha256', (string) $who ) );
+        if ( ! is_array( $v ) || (int) $v['n'] < (int) $limit ) {
+            return 0;
+        }
+        return max( 0, (int) $v['until'] - time() );
+    }
+
+    /**
+     * Count one against window_wait()'s limit. The window opens at the first
+     * and is not moved by later ones.
+     *
+     * @param string $bucket
+     * @param string $who
+     * @param int    $window Seconds.
+     */
+    public static function window_count( $bucket, $who, $window ) {
+        $key = self::RATE_PREFIX . $bucket . '_' . hash( 'sha256', (string) $who );
+        $now = time();
+        $v   = get_transient( $key );
+        if ( ! is_array( $v ) || (int) $v['until'] <= $now ) {
+            $v = array( 'n' => 0, 'until' => $now + (int) $window );
+        }
+        $v['n'] = (int) $v['n'] + 1;
+        set_transient( $key, $v, max( 1, (int) $v['until'] - $now ) );
     }
 
     /**
