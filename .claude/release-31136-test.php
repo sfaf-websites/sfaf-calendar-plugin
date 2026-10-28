@@ -214,7 +214,10 @@ $pl  = (string) file_get_contents( $root . '/sfaf-calendar.php' );
 rt( '7: the Register button carries the event\'s language', false !== strpos( $tf, "'data-uc-lang'    => sfaf_event_language( \$post_id )," ), true );
 rt( '7: the page carries the words', false !== strpos( $pl, "'rsvpWords' => SFAF_Messages::form_words()," ), true );
 rt( '7: the form sends the choice', false !== strpos( $js, "                lang:         currentLang\n" ), true );
-rt( '7: the form opens on the button\'s language', false !== strpos( $js, "currentLang = (\$(this).attr('data-uc-lang') === 'es') ? 'es' : 'en';" ), true );
+// 3.126.0: through startLang(), which falls back to the button's language
+// when the browser's is neither English nor Spanish (release-31260-live.php).
+rt( '7: the form opens on the button\'s language', false !== strpos( $js, "currentLang = startLang(\$(this).attr('data-uc-lang'));" )
+    && false !== strpos( $js, "return (eventLang === 'es') ? 'es' : 'en';" ), true );
 rt( '7: the toggle is two pressed-state buttons', false !== strpos( $js, '<button type="button" lang="en" data-uc-lang-pick="en" aria-pressed="true">English</button>' )
     && false !== strpos( $js, '<button type="button" lang="es" data-uc-lang-pick="es" aria-pressed="false">Español</button>' ), true );
 rt( '7: its styles are not in calendar.css, which the embed loads', false === strpos( $cal, 'uc-rsvp-lang' ), true );
