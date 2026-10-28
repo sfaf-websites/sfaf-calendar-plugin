@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 396 items.** Quick 324, needs real conditions 68, blocked on other
+**Outstanding: 399 items.** Quick 327, needs real conditions 68, blocked on other
 people 4.
 
 ---
@@ -4114,13 +4114,14 @@ member of the public" card is unchanged.
 ### 1.302 The English | Español toggle on the RSVP form (3.113.6)
 
 Open the event page of an English event that takes RSVPs here and press
-Register. Top right of the form: **English | Español**, small, with English bold
-and Español a teal underlined link; the form is no taller than before. Press
+Register. Top right of the form: the **English | Español** pill (3.126.0; how
+it looks is 1.327), English filled; the form is no taller than before. Press
 Español: the heading, every label, the placeholders, "How will you attend?" on
 a hybrid event, "Información adicional" over the questions, the opt-in line and
 the buttons change at once; the questions and their options stay as typed.
 Press English: all back. Open a Spanish event's form (an event or series set to
-Español): it opens with Español bold. Do the same on a phone. Then check the
+Español): it opens with Español filled when the browser's language is neither
+English nor Spanish (from 3.126.0; 1.328 covers the browser's language). Do the same on a phone. Then check the
 theme has not restyled the two words as big buttons.
 
 **Why it needs a person:** the live event page under the theme's own button
@@ -4422,6 +4423,46 @@ Send two requests from the staff form, from the office, while a colleague
 sends one: none is refused. Nobody can reach 30 by hand sensibly, so this only
 checks that ordinary use from one connection is never refused; the 30th and
 the wording of the refusal are covered by `.claude/release-31250-test.php`.
+
+### 1.327 The RSVP form's English | Español pill (3.126.0)
+
+Open an event page that takes RSVPs here and press Register, on a desktop and
+on a phone. Top right, above the heading: a small globe, then **English** and
+**Español** in one rounded teal outline, the chosen one filled teal with white
+words, the other teal words on white. The form is no taller than in 3.125.0
+and the heading has not moved. Press each: the fill moves and the form's words
+change at once. On the phone, each half is easy to hit with a thumb, and the
+theme has not restyled the two buttons (no grey boxes, no underline, no
+capitals).
+
+**Why it needs a person:** the live event page under the theme's own button
+styles, on a real phone.
+
+### 1.328 The RSVP form opens in the browser's language (3.126.0)
+
+Needs a browser whose language can be changed (Chrome: Settings > Languages,
+move a language to the top, then reload the page).
+
+- Browser in **English**: an English event's form and a Spanish event's form
+  both open in English.
+- Browser in **Spanish**: both open in Español.
+- Browser in **French** (or any other): each opens in its event's language.
+- With the browser in Spanish, open an English event, press English and
+  register a real address: the confirmation email is in English.
+
+**Why it needs a person:** a real browser's language setting, and real mail.
+
+### 1.329 The series page's dates name the day (3.126.0)
+
+Open a series' public page with upcoming and past dates, on a desktop and on a
+phone. Each upcoming date reads like "Wed, Oct 28" and each past one like
+"Thu, Oct 1, 2026", and the day is right (check one against a calendar). On a
+series or event set to Español the date is Spanish: "mié., 28 oct.". On the
+phone, a date stays on one line beside a long title. The titles now start a
+few pixels apart from row to row, because the dates differ in width; say if
+that reads badly.
+
+**Why it needs a person:** the live page under the theme, on a real phone.
 
 ## 2. Needs real conditions
 

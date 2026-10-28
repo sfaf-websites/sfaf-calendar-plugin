@@ -1479,6 +1479,19 @@ so a line is as tall as the longer of the two. Measured by
 English form on a phone is the Spanish one's height, up to 60px taller than in
 3.113.7.
 
+**A pill from 3.126.0.** Measured by `.claude/release-31260-live.php` at
+1280px and 390px. A 14px globe in `#6B7280`, 6px, then both buttons in one 1px
+`#0E7680` outline at the full radius, with no `|`. The chosen language is white on
+`#0E7680` and the other `#0E7680` on white (5.35:1 both), 13px/600; hover on the
+other is the secondary button's brand teal fill with Dark Gray ink. The outline
+is the pill's `::before`, so each button is its whole target. **Desktop**: 24px
+tall, in the same place in the top padding. **Phone**: each button 44px tall
+with its fill clipped (`background-clip: padding-box`) inside 9px of transparent
+border, so the pill shows 28px tall; the focus ring is pulled in to 2px outside
+it. The form is exactly 3.125.0's height at both widths. **The fill is
+`background-color`, never the `background` shorthand**, which resets the clip
+and fills the whole 44px.
+
 ### Stay in touch, and the Newsletter sign-up card (3.124.0)
 
 **On the RSVP form** the sign-up boxes are a `fieldset.uc-rsvp-stay` at the end,

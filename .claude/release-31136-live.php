@@ -131,6 +131,8 @@ $screen
 <script>
 $jqsrc
 </script>
+<!-- 3.126.0: a browser language that is neither English nor Spanish, so the event's language decides how the form opens. -->
+<script>Object.defineProperty(navigator, "languages", { get: function () { return ["fr-FR"]; } }); Object.defineProperty(navigator, "language", { get: function () { return "fr-FR"; } });</script>
 <script>var ucData = $data;</script>
 <script>
 $caljs

@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.125.0
+Stable tag: 3.126.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,16 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.126.0 =
+
+**The RSVP form and the series page. The embed is 3.125.0's: every embed answer is the same, proved by embed-identity-test.php.**
+
+**WHAT CHANGES ON PUBLIC PAGES:**
+
+* **The RSVP form's English | Español toggle is a pill**: a small globe, then both languages in one rounded teal outline, the chosen one filled teal. The form is no taller, on a desktop or a phone, and each half is a 44px tap on a phone.
+* **The RSVP form opens in the visitor's browser language** when that is English or Spanish, and in the event's language for any other. The visitor can still switch, and what they pick still decides their emails.
+* **The public series page names the day with each date**: "Wed, Oct 28" under Upcoming dates and "Thu, Oct 1, 2026" under Previously. A Spanish event's date is in Spanish, "mié., 28 oct.", where it was in English.
 
 = 3.125.0 =
 

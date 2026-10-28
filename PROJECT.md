@@ -6501,7 +6501,9 @@ event left alone goes on following its series. It travels with a repeating
 event.
 
 **THE PERSON'S OWN CHOICE COMES FIRST (3.113.6).** The RSVP form has an English
-| Español toggle in its top corner, opening on the event's language. What is
+| Español toggle in its top corner. **It opens on the browser's first language
+when that is English or Spanish, and on the event's language for any other**
+(3.126.0, `startLang()` in `calendar.js`, read at each open). What is
 picked is posted as `lang` and kept on the row (`uc_rsvps.lang`, schema 15,
 `en` or `es`); `''` is every row from before, and any page cached from before,
 and follows the event. Every message to that person asks the row first through

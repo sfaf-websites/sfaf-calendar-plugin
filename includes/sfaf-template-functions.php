@@ -3604,7 +3604,11 @@ function sfaf_local_timestamp( $when ) {
  * form, spelled out in the month-and-year heading.
  *
  * @param int|string $when  Timestamp, or a Y-m-d string.
+ * 'short_weekday' AND 'short_weekday_year' (3.126.0) are the series page's
+ * dates with the day in front: "Wed, Oct 28" and "Wed, Oct 28, 2026".
+ *
  * @param string     $style 'full' | 'day' | 'short' | 'short_year' | 'month_year'
+ *                          | 'short_weekday' | 'short_weekday_year'
  *                          | 'weekday' | 'month' | 'daynum'
  * @return string
  */
@@ -3621,6 +3625,8 @@ function sfaf_ap_date( $when, $style = 'full', $lang = 'en' ) {
         'short'      => 'M j',
         'short_year' => 'M j, Y',
         'month_year' => 'F Y',
+        'short_weekday'      => 'D, M j',
+        'short_weekday_year' => 'D, M j, Y',
         'weekday'    => 'D',
         /*
          * THE TWO HALVES OF 'full', FOR A COLUMN THAT CANNOT HOLD IT (3.95.1).
@@ -3679,6 +3685,8 @@ function sfaf_ap_date_es( $ts, $style ) {
         case 'short':         return $j . ' ' . $short;
         case 'short_year':    return $j . ' ' . $short . ' ' . $y;
         case 'month_year':    return $m . ' de ' . $y;
+        case 'short_weekday':      return $abbr[ (int) date_i18n( 'w', $ts ) ] . ', ' . $j . ' ' . $short;
+        case 'short_weekday_year': return $abbr[ (int) date_i18n( 'w', $ts ) ] . ', ' . $j . ' ' . $short . ' ' . $y;
         case 'weekday':       return $abbr[ (int) date_i18n( 'w', $ts ) ];
         case 'weekday_comma': return $d . ',';
         case 'day_year':      return $j . ' de ' . $m . ' de ' . $y;
