@@ -1286,6 +1286,8 @@ class SFAF_Embed {
      */
     public function flush_cache( $a = null, $b = null ) {
         update_option( self::CACHE_VERSION_OPTION, $this->cache_version() + 1 );
+        // LiteSpeed Cache's copies of the embed's answers (3.127.0).
+        SFAF_LiteSpeed::purge_embed();
     }
 
     /**
@@ -1300,6 +1302,7 @@ class SFAF_Embed {
         if ( wp_is_post_revision( $post_id ) || wp_is_post_autosave( $post_id ) ) {
             return;
         }
+        SFAF_LiteSpeed::purge_event( $post_id );
         $this->flush_cache();
     }
 
@@ -1308,6 +1311,7 @@ class SFAF_Embed {
         if ( $post instanceof WP_Post && $post->post_type !== 'uc_event' ) {
             return;
         }
+        SFAF_LiteSpeed::purge_event( $post_id, $post instanceof WP_Post && 'publish' === $post->post_status );
         $this->flush_cache();
     }
 
@@ -1316,6 +1320,8 @@ class SFAF_Embed {
         if ( get_post_type( $post_id ) !== 'uc_event' ) {
             return;
         }
+        // Trashed from published, or restored to it: the page either way.
+        SFAF_LiteSpeed::purge_event( $post_id, true );
         $this->flush_cache();
     }
 
@@ -1339,6 +1345,7 @@ class SFAF_Embed {
         if ( $new_status === $old_status ) {
             return;
         }
+        SFAF_LiteSpeed::purge_event( $post->ID, 'publish' === $old_status );
         $this->flush_cache();
     }
 
@@ -1370,6 +1377,15 @@ class SFAF_Embed {
                 '_uc_gofundme_url', '_uc_gofundme_goal', '_uc_gofundme_raised', '_uc_donate_choice',
                 '_uc_rsvp_enabled', '_uc_show_rsvp',
                 '_uc_show_social', '_uc_show_calendar', '_uc_show_reminders',
+                /*
+                 * CANCEL, REINSTATE AND REMOVE FROM THE CALENDAR (3.112.1,
+                 * back in 3.127.0 on its own). They are meta and nothing else,
+                 * from the editor, the series removal screen and a closed day
+                 * alike, so a cancelled event stayed on every embed, without
+                 * its Cancelled mark, until the cache ran out, and LiteSpeed
+                 * would have kept that answer for a week.
+                 */
+                SFAF_Cancellation::META, SFAF_Cancellation::VISIBILITY_META,
             ) );
         }
 
@@ -1379,6 +1395,7 @@ class SFAF_Embed {
         if ( get_post_type( $post_id ) !== 'uc_event' ) {
             return;
         }
+        SFAF_LiteSpeed::purge_event( $post_id );
         $this->flush_cache();
     }
 

@@ -1473,8 +1473,8 @@ active on resources.sfaf.org. Measured from outside on 2026-10-15:
   is not what it obeys: LiteSpeed Cache sends `X-LiteSpeed-Cache-Control:
   public,max-age=604800` on the route, and a repeat of the same URL is a cache
   hit in about 0.2 s against about 1.9 s for a miss (3.111.0's sfaf.org block).
-  So every distinct URL and every miss pays a full build, and our own cache
-  flush does not purge LiteSpeed's copy.
+  So every distinct URL and every miss pays a full build. Until 3.127.0 our
+  own cache flush did not purge LiteSpeed's copy; see below.
 - **It does not combine or minify the plugin's scripts** on its own pages: they
   load at their own `?ver=` addresses.
 - **Static files** carry `Last-Modified` only (see above). Whether LiteSpeed
@@ -1485,6 +1485,24 @@ active on resources.sfaf.org. Measured from outside on 2026-10-15:
   This line was listed as measured until 3.113.0, and it was not: it was the
   inference §7 rested on. An office of people behind one IP would share any
   such allowance.
+
+**LiteSpeed Cache is told what to drop (3.127.0), `SFAF_LiteSpeed`.** Wherever
+`SFAF_Embed::flush_cache()` runs, it sends LiteSpeed the tag `REST`, its own
+label for every cached REST answer, which is how the embed's are labelled. The
+flush callbacks that know the event (save, status, trash, delete, watched meta)
+also send `Po.<id>`, that event's page, when it is published or is leaving
+published. **Exact tags through `litespeed_purge`, never
+`litespeed_purge_post`**, which adds the site's own purge rules and, with the
+"all pages" rule on, purges everything. Each tag is sent once per request and
+LiteSpeed merges a request's tags into one purge header (in cron or WP-CLI,
+one queued purge), so a bulk action or an import is one purge. Measured by
+`.claude/release-31270-test.php`: a typical save is `REST` and `Po.<id>`; an
+import of 287 new drafts and 40 updated published events is `REST` and 40
+pages. Purging is per request, not deferred to shutdown, because an ajax or
+REST answer has sent its headers by then. **Nothing is added to the embed's
+route**, no tag and no header (`embed-identity-test.php`), and with no
+listener on `litespeed_purge` nothing is sent. A series or category change
+purges the embed's answers, not the pages of the events that show it.
 
 ### The embed has its own script, and that is where fixes go missing
 
@@ -8661,10 +8679,12 @@ range as three choices, Cancel event and Delete as dialogs, and the Asana copy.
 order after that is Mark's to settle; `HANDOVER.md` carries it as an open
 decision until he does. Tags, Location and the loader go last.
 
-**Until the cache-retire work returns**, cancelling or reinstating an event, Remove
-from the calendar and the events list's bulk category leave every embed's answer
-in place for up to ten minutes, as they did in 3.111.0. Cancel now offers All
-upcoming dates, so that can be several dates at once.
+**The cancellation keys came back on their own in 3.127.0** (`_uc_cancelled`,
+`_uc_cancelled_visibility`), on Mark's decision, so cancelling, reinstating and
+Remove from the calendar retire the embed's cache and LiteSpeed's. **Until the
+rest of the cache-retire work returns**, the events list's bulk category, a
+tag archived or restored, `_uc_private` and the multi-day keys leave every
+embed's answer in place for up to ten minutes, as they did in 3.111.0.
 
 What each one is, as it was written when it shipped:
 

@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.126.0
+Stable tag: 3.127.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,17 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.127.0 =
+
+**LiteSpeed Cache on its own. Every embed answer and header is 3.126.0's, proved by embed-identity-test.php.**
+
+**WHAT CHANGES ON PUBLIC PAGES:** changes show sooner on sites running LiteSpeed Cache (resources.sfaf.org); nothing about a page or the embed looks different.
+
+* **LiteSpeed Cache drops its copies when the calendar changes.** Wherever the plugin clears its own embed cache (a save, publish, unpublish, trash, restore, delete, a closure, a series or category change, the settings, an RSVP), LiteSpeed is told to drop its copies of the embed's answers, and of the event's own page when that event is published or is leaving published. It was keeping them up to a week.
+* **Only those, never the whole site.** One purge per request: a bulk action or an import is one, naming the embed and each published event it touched. Drafts are never named.
+* **Cancelling, reinstating and Remove from the calendar clear the embed's own cache again**, so they show on the calendar at once, where they waited up to ten minutes.
+* **Nothing is done when LiteSpeed Cache is not active.**
 
 = 3.126.0 =
 

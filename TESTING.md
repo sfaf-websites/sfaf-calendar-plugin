@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 399 items.** Quick 327, needs real conditions 68, blocked on other
+**Outstanding: 400 items.** Quick 327, needs real conditions 69, blocked on other
 people 4.
 
 ---
@@ -5425,6 +5425,26 @@ Delete the test registrations and the test contact afterwards.
 **Why it needs a person:** a real Mailchimp account and its API key, real
 scheduled events firing on the site, and Mailchimp's own record of a contact;
 the build has a fake of Mailchimp's API, not the service.
+
+### 2.71 LiteSpeed Cache drops the embed and the event page (3.127.0)
+
+On sfaf.org/calendar, note one published event as the block shows it, and open
+its own page on resources.sfaf.org. Load both twice so LiteSpeed has them
+(the response header `X-LiteSpeed-Cache: hit` on the second load, in the
+browser's Network tab).
+
+1. Change the event's time in Edit event and save. Reload sfaf.org/calendar and
+   the event page: the new time shows at once, not days later.
+2. Cancel the event (stay on the calendar): both show it Cancelled at once.
+   Reinstate it: both show it back at once.
+3. Add a closed day in Pending > On closed days: the calendar shows it at once.
+4. LiteSpeed Cache > Toolbox > Purge, or its debug log if it is on: no "Purge
+   All" was logged by the saves above.
+5. After the next scheduled EveryAction import, a published event it changed
+   shows the change on sfaf.org/calendar at once.
+
+**Why it needs a person:** the real LiteSpeed Cache on resources.sfaf.org; the
+build only has a stand-in that records what it is told.
 
 ## 3. Blocked on other people
 

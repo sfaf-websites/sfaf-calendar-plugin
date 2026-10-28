@@ -19,7 +19,8 @@
  *      except embed.js's EMBED_JS_VERSION line, and the caladmin files in
  *      CALADMIN_ONLY, which no public calendar page loads.
  *
- * BASE is the release compared against: 3.125.0's released commit from 3.126.0
+ * BASE is the release compared against: 3.126.0's released commit from 3.127.0
+ * (3.125.0's, 22fb9e0, for 3.126.0)
  * (3.124.0's, 571d2af, for 3.125.0)
  * (3.123.0's, 44988e8, for 3.124.0)
  * (3.122.0's, 45acce4, for 3.123.0)
@@ -42,15 +43,14 @@
  * name, in ALLOWED or ALLOWED_FILES.
  */
 
-const BASE      = '22fb9e0';
-const BASE_NAME = '3.125.0';
+const BASE      = 'b64aa3a';
+const BASE_NAME = '3.126.0';
 
 /* Files under public/ and templates/ a release means to change, as path =>
    why. Probe A still compares every embed answer, so none of these can reach
    the embed unseen. */
 const ALLOWED_FILES = array(
-    'public/js/calendar.js'            => '3.126.0: the language pill on the RSVP form, and the language it opens in. The embed never draws the form.',
-    'templates/taxonomy-uc_series.php' => '3.126.0: the dates on the series page carry the weekday. The embed never renders this template.',
+    // None in 3.127.0. 3.126.0 named public/js/calendar.js and templates/taxonomy-uc_series.php.
 );
 
 /* Loaded by caladmin and the two public forms, never by the calendar, an event
