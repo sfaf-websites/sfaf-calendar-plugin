@@ -183,6 +183,7 @@ $edit = function ( $id ) use ( $EDITOR_META ) {
 };
 
 measure( 'a typical save of a published event (the editor, 20 fields)', function () { return event( 'publish' ); }, $edit, array( 'REST', 'Po.{id}' ) );
+measure( 'a save that changes only the title', function () { return event( 'publish' ); }, function ( $id ) { wp_update_post( $id, 'publish' ); }, array( 'REST', 'Po.{id}' ) );
 measure( 'a save of a draft', function () { return event( 'draft' ); }, $edit, array( 'REST' ) );
 measure( 'publish a draft', function () { return event( 'draft' ); }, function ( $id ) use ( $edit ) { wp_update_post( $id, 'publish' ); $edit( $id ); }, array( 'REST', 'Po.{id}' ) );
 measure( 'back to draft', function () { return event( 'publish' ); }, function ( $id ) { wp_update_post( $id, 'draft' ); }, array( 'REST', 'Po.{id}' ) );

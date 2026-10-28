@@ -15,7 +15,7 @@ $plants = array(
     'flush_cache() no longer tells LiteSpeed' => array( 'release-31270-test.php', 'a closure added: the tags LiteSpeed drops', array(
         array( 'includes/class-sfaf-embed.php', "        SFAF_LiteSpeed::purge_embed();\n", '' ),
     ) ),
-    'a save no longer names the event\'s page' => array( 'release-31270-test.php', 'a typical save of a published event (the editor, 20 fields): the tags', array(
+    'a save no longer names the event\'s page' => array( 'release-31270-test.php', 'a save that changes only the title: the tags', array(
         array( 'includes/class-sfaf-embed.php', "        SFAF_LiteSpeed::purge_event( \$post_id );\n        \$this->flush_cache();\n    }\n\n    /** Flush when an event is deleted for good. */", "        \$this->flush_cache();\n    }\n\n    /** Flush when an event is deleted for good. */" ),
     ) ),
     'back to draft no longer purges the page it leaves' => array( 'release-31270-test.php', 'back to draft: the tags', array(
