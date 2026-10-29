@@ -3967,7 +3967,7 @@ function ucDismissOnBackdrop(dialog) {
                 // at example.org.
                 function hit(hay) {
                     if (q.length >= 3 && hay.indexOf(q) !== -1) { return true; }
-                    return hay.split(/[^a-z0-9À-ɏ]+/).some(function (w) { return w && w.indexOf(q) === 0; })
+                    return hay.split(/[^a-z0-9\xc0-\xff]+/).some(function (w) { return w && w.indexOf(q) === 0; })
                         || hay.indexOf(' ' + q) !== -1 || hay.indexOf(q) === 0;
                 }
                 waiting().forEach(function (l) {

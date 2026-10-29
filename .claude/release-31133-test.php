@@ -220,7 +220,8 @@ rt( '4: the four list emails, word for word', array(
     array( "Who's coming, two hours before", 'The full list of everyone who RSVPed. Not sent if nobody has.' ),
     array( 'Email when someone cancels', 'Sent each time someone cancels, with their name and the new count.' ),
 ) );
-rt( '4: the helper line', substr_count( $edit_on, '<p class="uc-hint">Everybody on this list gets the emails switched on below.</p>' ), 1 );
+// 3.129.0: the helper line went; the field's label says it.
+rt( '4: the helper line', substr_count( $edit_on, 'Everybody on this list gets the emails switched on below.' ) . substr_count( $edit_on, '>Who gets these emails</label>' ), '01' );
 rt( '4: the old one is gone', false === strpos( $edit_on, "registrations and reminders." ), true );
 rt( '4: the labels are what the card draws', false !== strpos( $edit_on, 'RSVP count, the day before' ) && false !== strpos( $edit_on, 'Who&#039;s coming, two hours before' ), true );
 $nobody = new WP_User(); $nobody->ID = 0; $nobody->user_email = '';
@@ -231,7 +232,7 @@ $sys    = rt_event( 'pending', array(), 0 );
 $real   = rt_event( 'publish', array(), 7 );
 $box_s  = rt_cap( function () use ( $portal, $sys ) { kit_call( 'SFAF_Portal', 'render_notify_box', $portal, array( new WP_User(), $sys ) ); } );
 $box_r  = rt_cap( function () use ( $portal, $real ) { kit_call( 'SFAF_Portal', 'render_notify_box', $portal, array( new WP_User(), $real ) ); } );
-rt( '4: no creator line for a system account', false === strpos( $box_s, $line ) && false !== strpos( $box_s, 'Who hears about this event' ), true );
+rt( '4: no creator line for a system account', false === strpos( $box_s, $line ) && false !== strpos( $box_s, 'Who gets these emails' ), true );
 rt( '4: kept for a real person with no address', false !== strpos( $box_r, $line ), true );
 $GLOBALS['kit_users'] = array();
 

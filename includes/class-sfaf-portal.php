@@ -18550,7 +18550,7 @@ class SFAF_Portal {
             <?php endif; ?>
             <?php if ( $pool ) : ?>
                 <details class="uc-rcpt-more" data-uc-rcpt-more>
-                    <summary>Add people or teams</summary>
+                    <summary><span>Add people or teams</span> <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '14px' ) ); ?></span></summary>
                     <div class="uc-email-pills uc-rcpt-pool" data-uc-rcpt-pool>
                         <?php foreach ( $pool as $box ) { $draw( $box, false ); } ?>
                     </div>

@@ -1994,7 +1994,8 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-sl-option.uc-sl-active { background: var(--uc-band); }
 .uc-sl-extra { font-weight: 600; }
 .uc-sl-note { color: var(--p-muted); }
-.uc-rcpt-more > summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+.uc-rcpt-more > summary { display: inline-flex; align-items: center; gap: 6px; list-style: none; cursor: pointer; font-size: 13px; font-weight: 600; }
+.uc-rcpt-more > summary::-webkit-details-marker { display: none; }
 .uc-rcpt-pool { margin-top: 8px; }
 .uc-rcpt-pool .uc-email-pill input:not(:checked) ~ .uc-email-pill-text { text-decoration: none; opacity: 1; }
 .uc-rcpt-pool .uc-email-pill-x { display: none; }
@@ -5361,6 +5362,9 @@ body.uc-modal-open { overflow: hidden; }
     .uc-waitlist .uc-table tr > td:nth-child(6) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex: 1 1 100%; }
     .uc-waitlist .uc-table .uc-rsvp-actions form { margin: 0; }
     .uc-waitlist .uc-table .uc-rsvp-actions button { min-height: 44px; }
+    /* Who gets these emails (3.129.0): every chip, and every suggestion, a 44px tap. */
+    .uc-rcpt-field .uc-email-pill, .uc-sl-option { min-height: 44px; box-sizing: border-box; }
+    .uc-sl-option { display: flex; align-items: center; }
     .uc-rsvp-table .uc-rsvp-actions .uc-btn,
     .uc-rsvp-table .uc-rsvp-actions button { min-height: 44px; display: inline-flex; align-items: center; }
     .uc-rsvp-table tr.uc-rsvp-details { display: block; }
