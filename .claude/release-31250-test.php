@@ -109,8 +109,9 @@ $GLOBALS['kit_query'] = function ( $a ) {
 $E = kit_write_post( array( 'post_type' => 'uc_event', 'post_status' => 'publish', 'post_title' => 'Coffee social', 'post_author' => 1 ) );
 update_post_meta( $E, '_uc_event_date', date( 'Y-m-d', strtotime( '+3 days' ) ) );
 $portal = ( new ReflectionClass( 'SFAF_Portal' ) )->newInstanceWithoutConstructor();
+$GLOBALS['wpdb'] = new class extends wpdb { function get_col( $q ) { $GLOBALS['rt_sql'][] = (string) $q; return array(); } };
 $run = function ( $get ) use ( $portal ) {
-    $GLOBALS['rt_q'] = array(); $_GET = $get;
+    $GLOBALS['rt_q'] = array(); $GLOBALS['rt_sql'] = array(); $_GET = $get;
     $d = ob_get_level(); ob_start();
     try { kit_call( 'SFAF_Portal', 'render_events', $portal, array( new WP_User() ) ); } catch ( Throwable $e ) { echo 'THREW ' . $e->getMessage() . ' ' . basename( $e->getFile() ) . ':' . $e->getLine(); }
     $h = ''; while ( ob_get_level() > $d ) { $h = ob_get_clean() . $h; }
@@ -134,16 +135,16 @@ $tax = array();
 foreach ( (array) ( isset( $q['tax_query'] ) ? $q['tax_query'] : array() ) as $c ) { if ( is_array( $c ) && isset( $c['taxonomy'] ) ) { $tax[ $c['taxonomy'] ] = (int) $c['terms']; } }
 rt( array( 'uc_event_category' => 11, 'uc_series' => 12, 'uc_organizer' => 11 ) === $tax, 'PLANT B: the query narrows by ' . json_encode( $tax ) );
 
-$from_ok = false;
-foreach ( (array) $q['meta_query'] as $c ) {
-    if ( is_array( $c ) && isset( $c['relation'] ) && 'OR' === $c['relation'] ) {
-        $keys = array();
-        foreach ( $c as $k => $sub ) { if ( is_array( $sub ) ) { $keys[ $sub['key'] ] = $sub['compare'] . ' ' . $sub['value']; } }
-        $from_ok = ( array( '_uc_event_date' => '>= ' . $past, '_uc_end_date' => '>= ' . $past ) === $keys );
-    }
-}
+/*
+ * FROM 3.128.0 THE RANGE IS SQL OF ITS OWN, range_event_ids(), not meta_query
+ * clauses. Read here from the query it sends; release-31280-test.php runs it
+ * against the rule on a modelled postmeta.
+ */
+$sql = implode( "\n", $GLOBALS['rt_sql'] );
+$from_ok = ( false !== strpos( $sql, "meta_key = '_uc_end_date' AND meta_value >= '" . $past . "'" ) )
+    && ( false !== strpos( $sql, "( meta_value >= '" . $past . "' OR" ) );
 rt( $from_ok, 'PLANT B: From compares the first day only, so a multi-day event is missed on its later days' );
-$up = false;
+$up = ( false !== strpos( $sql, "meta_value >= '" . current_time( 'Y-m-d' ) . "'" ) );
 foreach ( (array) $q['meta_query'] as $c ) { if ( is_array( $c ) && isset( $c['key'] ) && '_uc_event_date' === $c['key'] && '>=' === $c['compare'] && current_time( 'Y-m-d' ) === $c['value'] ) { $up = true; } }
 rt( ! $up, 'PLANT B: a past date searched from Upcoming is still held to Upcoming' );
 $view = $bar ? $x->query( './/input[@name="view"]', $bar )->item( 0 ) : null;

@@ -1593,7 +1593,8 @@ function sfaf_series_link( $post_id ) {
 }
 
 /**
- * "Upcoming in this series" list for the single event template.
+ * "Upcoming in this series" list for the single event template. Each date
+ * has its weekday, in that event's language (3.128.0).
  */
 function sfaf_series_list_html( $post_id ) {
     $term_id = SFAF_Series::id_for_event( $post_id );
@@ -1622,7 +1623,7 @@ function sfaf_series_list_html( $post_id ) {
                 $ts = $d ? strtotime( $d ) : false; ?>
                 <li>
                     <a href="<?php echo esc_url( get_permalink( $eid ) ); ?>"<?php echo sfaf_new_tab_attrs(); ?>>
-                        <span class="uc-series-date"><?php echo $ts ? esc_html( sfaf_ap_date( $ts, 'short' ) ) : ''; ?></span>
+                        <span class="uc-series-date"><?php echo $ts ? esc_html( sfaf_ap_date( $ts, 'short_weekday', sfaf_event_language( $eid ) ) ) : ''; ?></span>
                         <span class="uc-series-title"><?php echo esc_html( get_the_title( $eid ) ); ?></span>
                         <?php if ( $st ) : ?><span class="uc-series-time"><?php echo esc_html( sfaf_ap_time( $st ) ); ?></span><?php endif; ?><?php echo sfaf_new_tab_note(); ?>
                     </a>
@@ -3605,7 +3606,8 @@ function sfaf_local_timestamp( $when ) {
  *
  * @param int|string $when  Timestamp, or a Y-m-d string.
  * 'short_weekday' AND 'short_weekday_year' (3.126.0) are the series page's
- * dates with the day in front: "Wed, Oct 28" and "Wed, Oct 28, 2026".
+ * dates with the day in front: "Wed, Oct 28" and "Wed, Oct 28, 2026". The
+ * event page's "Upcoming in this series" uses 'short_weekday' too (3.128.0).
  *
  * @param string     $style 'full' | 'day' | 'short' | 'short_year' | 'month_year'
  *                          | 'short_weekday' | 'short_weekday_year'

@@ -23397,7 +23397,12 @@ class SFAF_Portal {
                 $q['tax_query'][] = array( 'taxonomy' => $tax, 'field' => 'term_id', 'terms' => (int) $args[ $arg ] );
             }
         }
-        if ( ! empty( $args['upcoming'] ) ) {
+        /*
+         * A DATE RANGE IS ANSWERED BY range_event_ids() (3.128.0), which also
+         * applies Upcoming or Archived, so neither adds a join of its own.
+         */
+        $dated = ( ! empty( $args['from'] ) || ! empty( $args['to'] ) );
+        if ( ! empty( $args['upcoming'] ) && ! $dated ) {
             $q['meta_query'][] = array( 'key' => '_uc_event_date', 'value' => current_time( 'Y-m-d' ), 'compare' => '>=', 'type' => 'DATE' );
         }
 
@@ -23416,7 +23421,7 @@ class SFAF_Portal {
          * use the same boundary with opposite comparisons, so no event can
          * fall into both and none can fall between them.
          */
-        if ( ! empty( $args['archived'] ) ) {
+        if ( ! empty( $args['archived'] ) && ! $dated ) {
             $q['meta_query'][] = array( 'key' => '_uc_event_date', 'value' => current_time( 'Y-m-d' ), 'compare' => '<', 'type' => 'DATE' );
         }
 
@@ -23431,21 +23436,30 @@ class SFAF_Portal {
             $q['meta_query'][] = array( 'key' => SFAF_Sources::META_REMOVED_AT, 'compare' => 'EXISTS' );
         }
         /*
-         * AN EVENT IS IN A RANGE WHEN ANY OF ITS DAYS IS (3.125.0). "From"
-         * used to be compared with the first day alone, so an imported event
-         * running several days was missing from a search for any day but its
-         * first. Its last day reaching the range is enough; `to` still needs
-         * the first day on or before it.
+         * AN EVENT IS IN A RANGE WHEN ANY OF ITS DAYS IS (3.125.0): its first
+         * day on or after `from`, or its last day reaching it; and its first
+         * day on or before `to`.
+         *
+         * ONE QUERY FOR THE IDS, NOT THREE META JOINS (3.128.0). As a
+         * meta_query this was an OR over two keys, which WordPress joins as
+         * every meta row of every event and MySQL cannot narrow by key, plus a
+         * further join for `to` and one for the tab, each comparing through
+         * CAST. Choosing a date took over 20 seconds for an admin on both My
+         * events and All events. The dates are stored Y-m-d, so comparing the
+         * text is the same comparison.
          */
-        if ( ! empty( $args['from'] ) ) {
-            $q['meta_query'][] = array(
-                'relation' => 'OR',
-                array( 'key' => '_uc_event_date', 'value' => $args['from'], 'compare' => '>=', 'type' => 'DATE' ),
-                array( 'key' => '_uc_end_date', 'value' => $args['from'], 'compare' => '>=', 'type' => 'DATE' ),
+        if ( $dated ) {
+            $in_range = self::range_event_ids(
+                isset( $args['from'] ) ? (string) $args['from'] : '',
+                isset( $args['to'] ) ? (string) $args['to'] : '',
+                ! empty( $args['upcoming'] ) ? 'upcoming' : ( ! empty( $args['archived'] ) ? 'archived' : '' )
             );
-        }
-        if ( ! empty( $args['to'] ) ) {
-            $q['meta_query'][] = array( 'key' => '_uc_event_date', 'value' => $args['to'], 'compare' => '<=', 'type' => 'DATE' );
+            if ( isset( $q['post__in'] ) ) {
+                $in_range = array_values( array_intersect( $in_range, array_map( 'intval', $q['post__in'] ) ) );
+            }
+            // Nothing in range is array( 0 ), never an empty array, which
+            // WordPress reads as no restriction.
+            $q['post__in'] = $in_range ? $in_range : array( 0 );
         }
 
         $query = new WP_Query( $q );
@@ -23462,6 +23476,48 @@ class SFAF_Portal {
         $this->last_query_pages = max( 1, (int) $query->max_num_pages );
 
         return wp_list_pluck( $query->posts, 'ID' );
+    }
+
+    /**
+     * The events with a day in a date range, for the Events screen (3.128.0).
+     *
+     * In range: first day on or after $from, or last day (`_uc_end_date`) on
+     * or after it; and first day on or before $to. Either edge may be ''.
+     * $view 'upcoming' or 'archived' adds that tab's rule on the first day.
+     * Every status and every author: query_events() narrows those.
+     *
+     * EACH LOOKUP IS BY KEY, NEVER BY EVENT. postmeta indexes post_id and
+     * meta_key separately, so a join on an event's id reads every meta row
+     * that event has to find one key. The end dates are a subquery by key.
+     *
+     * @param string $from Y-m-d or ''.
+     * @param string $to   Y-m-d or ''.
+     * @param string $view 'upcoming', 'archived' or ''.
+     * @return int[]
+     */
+    public static function range_event_ids( $from, $to, $view = '' ) {
+        global $wpdb;
+        $ymd   = '/^\d{4}-\d{2}-\d{2}$/';
+        $from  = preg_match( $ymd, (string) $from ) ? (string) $from : '';
+        $to    = preg_match( $ymd, (string) $to ) ? (string) $to : '';
+        $where = array( "meta_key = '_uc_event_date'" );
+        if ( '' !== $from ) {
+            $where[] = $wpdb->prepare(
+                "( meta_value >= %s OR post_id IN ( SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '_uc_end_date' AND meta_value >= %s ) )",
+                $from,
+                $from
+            );
+        }
+        if ( '' !== $to ) {
+            $where[] = $wpdb->prepare( "meta_value <> '' AND meta_value <= %s", $to );
+        }
+        if ( 'upcoming' === $view ) {
+            $where[] = $wpdb->prepare( 'meta_value >= %s', current_time( 'Y-m-d' ) );
+        } elseif ( 'archived' === $view ) {
+            $where[] = $wpdb->prepare( "meta_value <> '' AND meta_value < %s", current_time( 'Y-m-d' ) );
+        }
+        $ids = $wpdb->get_col( "SELECT DISTINCT post_id FROM {$wpdb->postmeta} WHERE " . implode( ' AND ', $where ) );
+        return array_values( array_unique( array_map( 'intval', (array) $ids ) ) );
     }
 
     private function count_events( $status, $author = 0, $upcoming = false, $only = null ) {

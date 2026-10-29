@@ -49,7 +49,7 @@ $plants = array(
         array( $P, "                \$q['tax_query']   = isset( \$q['tax_query'] ) ? \$q['tax_query'] : array();\n                \$q['tax_query'][] = array( 'taxonomy' => \$tax,", "                \$q['tax_query']   = array();\n                \$q['tax_query'][] = array( 'taxonomy' => \$tax," ),
     ) ),
     'B: From is the first day only' => array( 'PLANT B: From compares the first day only', array(
-        array( $P, "                array( 'key' => '_uc_end_date', 'value' => \$args['from'], 'compare' => '>=', 'type' => 'DATE' ),\n", '' ),
+        array( $P, "( meta_value >= %s OR post_id IN ( SELECT post_id FROM {\$wpdb->postmeta} WHERE meta_key = '_uc_end_date' AND meta_value >= %s ) )", "( meta_value >= %s OR %s = '' )" ),
     ) ),
     'B: the tab still holds the range' => array( 'PLANT B: a past date searched from Upcoming is still held to Upcoming', array(
         array( $P, "        \$view            = \$this->dated_view( \$view, \$filters['from'], \$filters['to'] );", "        \$view            = \$view;" ),
