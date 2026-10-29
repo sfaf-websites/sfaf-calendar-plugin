@@ -299,6 +299,9 @@ foreach ( $g as $name => $r ) {
     }
 
     /* ---- the Notifications card, on both ---- */
+    /* SUPERSEDED BY 3.129.0: the subheads, status lines and Choose buttons are
+       gone. release-31290-live.php measures the card now. Kept, not run. */
+    if ( false ) {
     $rows = (array) $r['rows'];
     foreach ( array( 'Who hears about this event' => array( 'Choose people', 'Nobody else yet.' ), 'Emails for this event' => array( 'Choose emails', "All $kinds_n are on." ) ) as $sub => $want ) {
         $x = isset( $rows[ $sub ] ) ? (array) $rows[ $sub ] : array();
@@ -321,6 +324,7 @@ foreach ( $g as $name => $r ) {
         rl( '1 switched off, ' . ( $kinds_n - 1 ) . ' on.' === $r['afterOff'] && "All $kinds_n are on." === $r['afterOn'],
             "NL: $name: the emails status line does not follow the ticks: " . json_encode( array( $r['afterOff'], $r['afterOn'] ) ) );
     }
+    } // superseded by 3.129.0
 }
 
 echo "\n3.113.0: the dialogs and the Notifications card, in Chrome\n" . str_repeat( '=', 72 ) . "\n";

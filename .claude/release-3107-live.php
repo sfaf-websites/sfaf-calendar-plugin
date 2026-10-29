@@ -370,8 +370,9 @@ foreach ( array_keys( $pages ) as $t ) {
     $ins = (array) $v( $t, 'insert' );
     rv_check( isset( $ins['text'] ) && 'Insert image' === $ins['text'] && "$ACCENT 1px" === $ins['border'] && $ACCENT === $ins['color'] && ! $ins['chevron'] && 'none' === $ins['marker'],
         "PLANT D.4: $t: Insert image is not an outlined accent button with no arrow: " . json_encode( $ins ) );
-    /* One empty state, and since 3.113.0 it is the status line over Choose people. */
-    rv_check( array( 'Nobody else yet.' ) === $v( $t, 'empties' ) && 'Nobody else yet.' === $v( $t, 'pickerCount' ), "PLANT D.7: $t: Notifications shows " . json_encode( array( $v( $t, 'empties' ), $v( $t, 'pickerCount' ) ) ) );
+    /* One empty state until 3.129.0; since then none: the creator starts as a
+       chip in Who gets these emails, so the card never says "nobody yet". */
+    rv_check( ! preg_grep( '/\byet\b/i', (array) $v( $t, 'empties' ) ) && in_array( $v( $t, 'pickerCount' ), array( null, '' ), true ), "PLANT D.7: $t: Notifications shows " . json_encode( array( $v( $t, 'empties' ), $v( $t, 'pickerCount' ) ) ) );
 
     /* D.5 */
     rv_check( ( $add ? '' : 'setalpha' ) === $v( $t, 'faqStart' ), "PLANT D.5: $t: the FAQ set starts on " . json_encode( $v( $t, 'faqStart' ) ) );

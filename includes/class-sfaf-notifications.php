@@ -85,6 +85,7 @@ class SFAF_Notifications {
         return array(
             'confirmation' => array(
                 'label' => 'Confirmation to the person who registers',
+                'short' => 'Confirmation',
                 'note'  => 'Sent the moment somebody registers. Carries the date, the time, the place, add-to-calendar links, and a link to cancel.',
             ),
             'alert' => array(
@@ -103,6 +104,7 @@ class SFAF_Notifications {
             ),
             'reminder' => array(
                 'label' => 'Morning-of reminder to everybody registered',
+                'short' => 'Morning-of reminder',
                 'note'  => 'Sent at 6 am on the day, or at midnight when the event starts earlier. Your notification list is copied in.',
             ),
             'summary' => array(

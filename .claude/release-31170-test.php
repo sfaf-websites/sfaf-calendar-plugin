@@ -48,15 +48,18 @@ function rt_form( $portal, $admin, $id ) { return rt_cap( function () use ( $por
 $plain = rt_event( 'publish', 11 );
 $own   = rt_event( 'publish', 11, array( '_uc_email_replyto' => 'team@sfaf.org' ) );
 $h = rt_form( $portal, $admin, $plain );
-rt( 'A: with no address of its own the box is empty', (bool) preg_match( '#name="event_replyto" id="uc-event-replyto"\s+value=""#', $h ), true );
-rt( 'A: the fallback is the placeholder', (bool) preg_match( '#name="event_replyto"[^>]*placeholder="[^"]+@[^"]+"#', $h ), true );
-rt( 'A: and the line names it', (bool) preg_match( '#<span class="uc-hint">Leave it empty to send replies to [^<]+@[^<]+\.</span>#', $h ), true );
-rt( 'A: the old line is gone', false === strpos( $h, 'Empty sends replies to' ), true );
+/* From 3.129.0 Replies go to is a picker: '' is the creator, __other the box.
+   What 3.117.0 protects still holds: the fallback is never put in the box,
+   where a save would store it as the event's own. */
+$picked = function ( $h ) { return preg_match( '#<option value="([^"]*)"\s+selected=["\']selected["\']>#', (string) strstr( $h, 'name="event_replyto_pick"' ), $m ) ? $m[1] : null; };
+$boxv   = function ( $h ) { return preg_match( '#name="event_replyto" id="uc-event-replyto"[^>]*\svalue="([^"]*)"#', $h, $m ) ? $m[1] : null; };
+rt( 'A: with no address of its own the creator is chosen', $picked( $h ), '' );
+rt( 'A: and the box is empty', $boxv( $h ), '' );
+rt( 'A: the old lines are gone', false === strpos( $h, 'Empty sends replies to' ) && false === strpos( $h, 'Leave it empty to send replies to' ), true );
 $h = rt_form( $portal, $admin, $own );
-rt( 'A: its own address is shown', (bool) preg_match( '#name="event_replyto" id="uc-event-replyto"\s+value="team@sfaf.org"#', $h ), true );
-rt( 'A: with no line under it', false === strpos( $h, 'Leave it empty to send replies to' ), true );
+rt( 'A: its own address is Someone else, in the box', array( $picked( $h ), $boxv( $h ) ), array( '__other', 'team@sfaf.org' ) );
 $h = rt_form( $portal, $admin, 0 );
-rt( 'A: Add event starts empty too', (bool) preg_match( '#name="event_replyto" id="uc-event-replyto"\s+value=""#', $h ), true );
+rt( 'A: Add event starts on the creator too', array( $picked( $h ), $boxv( $h ) ), array( '', '' ) );
 
 /* ======================================================================== B */
 $lone = rt_event( 'publish', 0 );

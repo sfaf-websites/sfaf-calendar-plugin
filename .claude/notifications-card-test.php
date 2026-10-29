@@ -68,7 +68,7 @@ nc( isset( $add['names'] ) ? $add['names'] : array(), isset( $edit['names'] ) ? 
 foreach ( array( 'notify_list_present', 'notify_author', 'notify_email_new', 'uc_notify_kinds_present', 'notify_kinds[]', 'event_replyto' ) as $must ) {
     nc( in_array( $must, isset( $add['names'] ) ? $add['names'] : array(), true ), true, "Add event's card has $must" );
 }
-nc( isset( $add['text'] ) && false !== strpos( $add['text'], 'Send to ' . $user->display_name ), true, 'on Add event the creator line names whoever is adding it' );
+nc( isset( $add['text'] ) && false !== strpos( $add['text'], $user->display_name . ', creator' ), true, 'on Add event the creator chip names whoever is adding it (3.129.0)' );
 
 /* A new event saved from Add event carries what was chosen. */
 $_GET  = array();

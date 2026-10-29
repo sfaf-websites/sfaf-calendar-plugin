@@ -123,8 +123,9 @@ foreach ( array( 'confirmation', 'reminder' ) as $k ) {
     rt( "3: $k has no tick", false === strpos( $card, 'name="notify_kinds[]" value="' . $k . '"' ), true );
     rt( "3: $k is listed as always sent", (bool) preg_match( '#data-uc-notify-always="' . $k . '">\s*[^<]+<span class="uc-pill uc-notify-always-tag">Always sent</span>#', $card ), true );
 }
-rt( '3: the labels are the kinds\' own', false !== strpos( $card, 'Confirmation to the person who registers' ) && false !== strpos( $card, 'Morning-of reminder to everybody registered' ), true );
-rt( '3: the status line counts one off of six', preg_match( '#data-uc-notify-kinds-status[^>]*>([^<]*)<#', $card, $m ) ? $m[1] : null, '1 switched off, 5 on.' );
+// 3.129.0: the two always sent are named short, under Sent to registrants.
+rt( '3: the labels are the kinds\' own', false !== strpos( $card, 'Confirmation' ) && false !== strpos( $card, 'Morning-of reminder' ), true );
+// The status line went in 3.129.0: the emails are shown open, in two groups.
 /* The save: the form offers four, so the always two cannot be stored off. */
 $_POST = array( 'uc_notify_kinds_present' => '1', 'notify_kinds' => array( 'alert' ) );
 $offered = SFAF_Notifications::choosable();
@@ -132,7 +133,7 @@ SFAF_Notifications::set_off( $ev, array_diff( $offered, array( 'alert' ) ) );
 rt( '3: unticking all but one stores three off', get_post_meta( $ev, SFAF_Notifications::OFF_META, true ), array( 'day_before', 'summary', 'cancel_alert' ) );
 rt( '3: and the save route asks choosable()', false !== strpos( (string) file_get_contents( $GLOBALS['kit_root'] . '/includes/class-sfaf-portal.php' ), "\$offered = SFAF_Notifications::choosable();" ), true );
 $js = (string) file_get_contents( $GLOBALS['kit_root'] . '/public/js/portal.js' );
-rt( '3: portal.js writes the same words', false !== strpos( $js, "(off + ' switched off, ' + (total - off) + ' on.')" ), true );
+// Its words in portal.js went with it (3.129.0).
 
 /* ======================================================================== 4 */
 $form = rt_cap( function () use ( $portal ) { $_GET = array(); kit_call( 'SFAF_Portal', 'render_event_form', $portal, array( new WP_User(), 0 ) ); } );

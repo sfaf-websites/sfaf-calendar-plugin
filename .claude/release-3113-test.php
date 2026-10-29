@@ -152,6 +152,10 @@ rt( '4: Delete posts the same route, and deletes', 'trash' === get_post_status( 
 
 
 /* ======================================================================== N */
+/* SUPERSEDED BY 3.129.0. The status lines, Choose people and Choose emails are
+   gone: one field, Who gets these emails, and the emails in two groups.
+   release-31290-test.php checks the card now. Kept, not run, as the record. */
+if ( false ) {
 /* Two calendar people, and an event with nothing chosen. */
 $GLOBALS['kit_users'] = array();
 foreach ( array( 21 => 'Ana Ruiz', 22 => 'Ben Young' ) as $uid => $name ) {
@@ -219,6 +223,8 @@ rt( 'N: Add event says nobody else yet and all on', array( $status( $add_card, '
 $js = (string) file_get_contents( $GLOBALS['kit_root'] . '/public/js/portal.js' );
 rt( 'N: portal.js recounts the emails status in the same words', false !== strpos( $js, "status.textContent = off ? (off + ' switched off, ' + (total - off) + ' on.') : ('All ' + total + ' are on.');" ) && false !== strpos( $js, "run('notifyKinds', initNotifyKinds);" ), true );
 rt( 'N: portal.js writes the empty state where the server does', false !== strpos( $js, "countEl.textContent = typedCount() ? inTotal : 'Nobody else yet.';" ), true );
+
+}
 
 echo "\nRelease 3.113.0: the dialogs and the Notifications card\n" . str_repeat( '=', 72 ) . "\n";
 echo "ran $ran assertions.\n";

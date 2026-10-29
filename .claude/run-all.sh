@@ -243,6 +243,8 @@ for f in .claude/*.php; do
     plant-31260.php) continue ;;       # a fault planter for the 3.126.0 checks, not a check
     plant-31270.php) continue ;;       # a fault planter for the 3.127.0 check, not a check
     plant-31280.php) continue ;;       # a fault planter for the 3.128.0 check, not a check
+    plant-31290.php) continue ;;       # a fault planter for the 3.129.0 checks, not a check
+    release-31290-live.php) continue ;;  # run below with --run
     release-31260-live.php) continue ;;  # run below with --run
     release-31240-live.php) continue ;;  # run below with --run
     release-31138-live.php) continue ;;  # run below with --run
@@ -559,6 +561,7 @@ run "release-31230-live --run" php .claude/release-31230-live.php --run
 run "release-31240-live --run" php .claude/release-31240-live.php --run
 # The RSVP form's language pill against 3.125.0's, and the language it opens in (3.126.0).
 run "release-31260-live --run" php .claude/release-31260-live.php --run
+run "release-31290-live --run" php .claude/release-31290-live.php --run
 # The embed in its shadow root under a hostile host stylesheet, and the combined
 # sidebar ending at its content (3.111.0 J and K), at 1280px and 390px.
 run "embed-isolation-live --run" php .claude/embed-isolation-live.php --run

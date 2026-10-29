@@ -84,8 +84,8 @@ function ucDismissOnBackdrop(dialog) {
         run('emailTemplates', initEmailTemplates);
         run('questions', initQuestions);
         run('rsvpDetails', initRsvpDetails);
-        run('notifyPicker', initNotifyPicker);
-        run('notifyKinds', initNotifyKinds);
+        run('recipients', initRecipients);
+        run('replyTo', initReplyTo);
         // ORDER MATTERS between these three. Both the scope confirmation and
         // the completeness confirmation bind a click listener to the same save
         // buttons, and listeners on one element fire in the order they were
@@ -97,7 +97,6 @@ function ucDismissOnBackdrop(dialog) {
         run('recurrence', initRecurrence);
         // After recurrence, which publishes the dates this names.
         run('closedDays', initClosedDays);
-        run('emailPills', initEmailPills);
         run('locationPicker', initLocationPicker);
         run('registration', initRegistration);
         run('liveSearch', initLiveSearch);
@@ -3784,331 +3783,302 @@ function ucDismissOnBackdrop(dialog) {
     }
 
     /* ---------------------------------------------------------------------
-     * The notification picker: two tabs, a filter, and a live count.
-     *
-     * ENHANCEMENT ONLY. The server sends a <details> holding both panels and
-     * every checkbox, so with this function deleted the control still opens,
-     * still shows individuals and teams, and still saves. What is added here
-     * is switching between the panels instead of stacking them, filtering the
-     * people list, and recomputing the summary as boxes are ticked.
-     *
-     * FILTERING HIDES, IT NEVER UNCHECKS. A hidden checkbox still posts, so
-     * typing a name to find one person cannot quietly drop the four chosen a
-     * minute ago. That is the one rule this must not get wrong.
-     *
-     * THE COUNT IS A SET OF ADDRESSES, NOT A SUM. Two individuals plus a team
-     * of six is not eight if one of them is in the team, and the number a
-     * manager reads has to be the number of emails that will be sent. So the
-     * addresses are unioned, exactly as SFAF_Reminders::notify_list() unions
-     * them server-side. The creator and any typed addresses are in the total
-     * too, because they are also going to get one.
+     * A LISTBOX UNDER A TEXT BOX (3.129.0), for Who gets these emails and
+     * Replies go to. `items()` answers the box's text with up to eight
+     * {text, pick} entries; Enter or a click runs the highlighted one's pick.
+     * Returns { open, close, isOpen }.
      * ------------------------------------------------------------------- */
-    /* EMAILS FOR THIS EVENT: the status line follows the ticks (3.113.0),
-     * in the words notify_kinds_status() writes. */
-    function initNotifyKinds() {
-        document.querySelectorAll('[data-uc-notify-kinds]').forEach(function (root) {
-            var status = root.querySelector('[data-uc-notify-kinds-status]');
-            if (!status) { return; }
-            var total = parseInt(status.getAttribute('data-uc-kinds-total'), 10) || 0;
-            root.addEventListener('change', function (e) {
-                if (!e.target || e.target.name !== 'notify_kinds[]') { return; }
-                var off = 0;
-                Array.prototype.forEach.call(root.querySelectorAll('input[name="notify_kinds[]"]'), function (box) {
-                    if (!box.checked) { off++; }
-                });
-                status.textContent = off ? (off + ' switched off, ' + (total - off) + ' on.') : ('All ' + total + ' are on.');
+    function suggestList(input, list, items, onEnterEmpty) {
+        var shown = [];
+        var active = -1;
+        var idBase = list.id || ('uc-sl-' + Math.random().toString(36).slice(2));
+
+        function mark() {
+            Array.prototype.forEach.call(list.children, function (li, i) {
+                li.setAttribute('aria-selected', i === active ? 'true' : 'false');
+                li.classList.toggle('uc-sl-active', i === active);
             });
+            if (active >= 0 && list.children[active]) {
+                input.setAttribute('aria-activedescendant', list.children[active].id);
+                if (list.children[active].scrollIntoView) { list.children[active].scrollIntoView({ block: 'nearest' }); }
+            } else {
+                input.removeAttribute('aria-activedescendant');
+            }
+        }
+        function close() {
+            list.hidden = true;
+            list.innerHTML = '';
+            shown = [];
+            active = -1;
+            input.setAttribute('aria-expanded', 'false');
+            input.removeAttribute('aria-activedescendant');
+        }
+        function open() {
+            shown = items() || [];
+            list.innerHTML = '';
+            if (!shown.length) { close(); return; }
+            shown.forEach(function (it, i) {
+                var li = document.createElement('li');
+                li.id = idBase + '-' + i;
+                li.setAttribute('role', 'option');
+                li.className = 'uc-sl-option' + (it.extra ? ' uc-sl-extra' : '');
+                li.textContent = it.text;
+                if (it.note) {
+                    var n = document.createElement('span');
+                    n.className = 'uc-sl-note';
+                    n.textContent = ' ' + it.note;
+                    li.appendChild(n);
+                }
+                // mousedown, so the box does not lose focus and close the list first.
+                li.addEventListener('mousedown', function (e) { e.preventDefault(); });
+                li.addEventListener('click', function () { it.pick(); });
+                list.appendChild(li);
+            });
+            list.hidden = false;
+            input.setAttribute('aria-expanded', 'true');
+            active = 0;
+            mark();
+        }
+        input.addEventListener('input', open);
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (list.hidden) { open(); return; }
+                var n = shown.length;
+                if (!n) { return; }
+                active = e.key === 'ArrowDown' ? (active + 1) % n : (active - 1 + n) % n;
+                mark();
+            } else if (e.key === 'Enter') {
+                // Enter chooses; it never submits the event form from here.
+                e.preventDefault();
+                if (!list.hidden && active >= 0 && shown[active]) { shown[active].pick(); }
+                else if (onEnterEmpty) { onEnterEmpty(); }
+            } else if (e.key === 'Escape' && !list.hidden) {
+                e.preventDefault();
+                e.stopPropagation();
+                close();
+            }
+        });
+        input.addEventListener('blur', function () { window.setTimeout(close, 150); });
+        return { open: open, close: close, isOpen: function () { return !list.hidden; } };
+    }
+
+    /* ---------------------------------------------------------------------
+     * WHO GETS THESE EMAILS (3.129.0).
+     *
+     * ENHANCEMENT ONLY. Every chip is a ticked checkbox the save reads, and
+     * everybody not chosen is an unticked box in the "Add people or teams"
+     * fold, so with this gone the field still adds, removes and saves. What
+     * this adds: the fold is hidden and its boxes are offered as suggestions
+     * while somebody types; ticking moves a box into the chips and unticking
+     * moves it back; a whole address typed becomes a chip on Enter, or is the
+     * person it belongs to when it is a calendar person's.
+     * ------------------------------------------------------------------- */
+    function initRecipients() {
+        document.querySelectorAll('[data-uc-recipients]').forEach(function (root) {
+            var chips = root.querySelector('[data-uc-rcpt-chips]');
+            var input = root.querySelector('[data-uc-rcpt-input]');
+            var list = root.querySelector('[data-uc-rcpt-list]');
+            var error = root.querySelector('[data-uc-rcpt-error]');
+            var more = root.querySelector('[data-uc-rcpt-more]');
+            var pool = root.querySelector('[data-uc-rcpt-pool]');
+            if (!chips || !input || !list) { return; }
+            if (!pool) {
+                pool = document.createElement('div');
+                pool.setAttribute('data-uc-rcpt-pool', '');
+                pool.hidden = true;
+                root.appendChild(pool);
+            }
+            if (more) { more.hidden = true; }
+
+            function say(msg) {
+                if (!error) { return; }
+                error.textContent = msg || '';
+                error.hidden = !msg;
+            }
+            function valid(a) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a); }
+            function waiting() { return Array.prototype.slice.call(pool.querySelectorAll('[data-uc-rcpt]')); }
+            function textOf(label) {
+                var t = label.querySelector('.uc-email-pill-text');
+                return t ? t.textContent.replace(/\s+/g, ' ').trim() : '';
+            }
+            function emailOf(label) { return (label.getAttribute('title') || '').toLowerCase(); }
+
+            function choose(label) {
+                var box = label.querySelector('[data-uc-rcpt-box]');
+                if (!box) { return; }
+                box.checked = true;
+                chips.appendChild(label);
+                input.value = '';
+                say('');
+                sl.close();
+                input.focus();
+            }
+            function addEmail(addr) {
+                addr = String(addr || '').trim();
+                if (!valid(addr)) { say('"' + addr + '" is not an email address.'); return false; }
+                var lower = addr.toLowerCase();
+                var person = waiting().filter(function (l) { return emailOf(l) === lower; })[0];
+                if (person) { choose(person); return true; }
+                var on = Array.prototype.some.call(chips.querySelectorAll('[data-uc-rcpt]'), function (l) {
+                    var b = l.querySelector('[data-uc-rcpt-box]');
+                    return b && b.checked && emailOf(l) === lower;
+                });
+                if (on) { say('That address is already on the list.'); input.value = ''; sl.close(); return false; }
+
+                var label = document.createElement('label');
+                label.className = 'uc-email-pill uc-rcpt uc-rcpt-email';
+                label.setAttribute('data-uc-rcpt', 'email');
+                label.setAttribute('data-uc-rcpt-search', lower);
+                label.setAttribute('title', addr);
+                var box = document.createElement('input');
+                box.type = 'checkbox';
+                box.name = 'notify_emails[]';
+                box.value = addr;
+                box.checked = true;
+                box.setAttribute('data-uc-rcpt-box', '');
+                box.setAttribute('data-uc-email-pill', '');
+                var text = document.createElement('span');
+                text.className = 'uc-email-pill-text';
+                text.textContent = addr;
+                var x = document.createElement('span');
+                x.className = 'uc-email-pill-x';
+                x.setAttribute('aria-hidden', 'true');
+                x.textContent = '×';
+                label.appendChild(box);
+                label.appendChild(text);
+                label.appendChild(x);
+                chips.appendChild(label);
+                // The box must not also post it, or it would be added twice.
+                input.value = '';
+                say('');
+                sl.close();
+                return true;
+            }
+
+            var sl = suggestList(input, list, function () {
+                say('');
+                var raw = input.value.trim();
+                var q = raw.replace(/\s+/g, ' ').toLowerCase();
+                if (!q) { return []; }
+                var out = [];
+                // A word of the name, or the address, starts with what was typed;
+                // anywhere inside only from three letters, so "a" is not everybody
+                // at example.org.
+                function hit(hay) {
+                    if (q.length >= 3 && hay.indexOf(q) !== -1) { return true; }
+                    return hay.split(/[^a-z0-9À-ɏ]+/).some(function (w) { return w && w.indexOf(q) === 0; })
+                        || hay.indexOf(' ' + q) !== -1 || hay.indexOf(q) === 0;
+                }
+                waiting().forEach(function (l) {
+                    if (out.length < 8 && hit(l.getAttribute('data-uc-rcpt-search') || '')) {
+                        out.push({ text: textOf(l), pick: function () { choose(l); } });
+                    }
+                });
+                if (valid(raw) && !waiting().some(function (l) { return emailOf(l) === q; })) {
+                    out.push({ text: 'Add ' + raw, extra: true, pick: function () { addEmail(raw); } });
+                }
+                return out;
+            }, function () {
+                var raw = input.value.trim();
+                if (!raw) { return; }
+                if (valid(raw)) { addEmail(raw); return; }
+                say('Choose a name from the list, or type a whole email address.');
+            });
+
+            // A chip unticked comes off: back to the fold, or gone if it was typed.
+            chips.addEventListener('change', function (e) {
+                var box = e.target;
+                if (!box || !box.hasAttribute || !box.hasAttribute('data-uc-rcpt-box') || box.checked) { return; }
+                var label = box.closest('[data-uc-rcpt]');
+                if (!label) { return; }
+                if ('email' === label.getAttribute('data-uc-rcpt')) {
+                    label.parentNode.removeChild(label);
+                } else {
+                    pool.appendChild(label);
+                }
+                input.focus();
+            });
+            // Ticked from anywhere else (the series prefill), it joins the chips.
+            pool.addEventListener('change', function (e) {
+                var box = e.target;
+                if (box && box.checked && box.hasAttribute && box.hasAttribute('data-uc-rcpt-box')) {
+                    var label = box.closest('[data-uc-rcpt]');
+                    if (label) { chips.appendChild(label); }
+                }
+            });
+
+            root.ucAddRecipient = addEmail;
         });
     }
 
-    function initNotifyPicker() {
-        document.querySelectorAll('[data-uc-notify-picker]').forEach(function (root) {
-            var dataNode = root.querySelector('[data-uc-notify-data]');
-            var details = root.querySelector('[data-uc-picker]');
-            var countEl = root.querySelector('[data-uc-picker-count]');
-            if (!dataNode || !details) {
-                return;
-            }
+    /* ---------------------------------------------------------------------
+     * REPLIES GO TO (3.129.0). The select is the form: '' is the creator, an
+     * address is that calendar person, __other uses the box beside it. This
+     * puts a searchable box over the select and shows the address box only
+     * for Someone else. With no script the select and the box are both there.
+     * ------------------------------------------------------------------- */
+    function initReplyTo() {
+        document.querySelectorAll('[data-uc-replyto]').forEach(function (root) {
+            var select = root.querySelector('[data-uc-replyto-pick]');
+            var other = root.querySelector('[data-uc-replyto-other]');
+            if (!select || !other) { return; }
 
-            var data;
-            try {
-                data = JSON.parse(dataNode.textContent || '{}');
-            } catch (err) {
-                return; // leave the plain list alone rather than half a control
-            }
-            data.users = data.users || {};
-            data.teams = data.teams || {};
+            function sync() { other.hidden = select.value !== '__other'; }
+            select.addEventListener('change', sync);
+            sync();
 
-            /* ---- Tabs ---------------------------------------------------- */
-            var tabs = Array.prototype.slice.call(root.querySelectorAll('[data-uc-picker-tab]'));
-            var panels = {};
-            Array.prototype.forEach.call(root.querySelectorAll('[data-uc-picker-panel]'), function (p) {
-                panels[p.getAttribute('data-uc-picker-panel')] = p;
+            var wrap = document.createElement('div');
+            wrap.className = 'uc-rcpt-add uc-replyto-search';
+            var box = document.createElement('input');
+            box.type = 'text';
+            box.id = select.id + '-search';
+            box.setAttribute('role', 'combobox');
+            box.setAttribute('aria-autocomplete', 'list');
+            box.setAttribute('aria-expanded', 'false');
+            box.setAttribute('autocomplete', 'off');
+            box.setAttribute('data-uc-replyto-search', '');
+            var ul = document.createElement('ul');
+            ul.className = 'uc-rcpt-list';
+            ul.id = select.id + '-list';
+            ul.setAttribute('role', 'listbox');
+            ul.setAttribute('aria-label', 'Calendar people');
+            ul.hidden = true;
+            box.setAttribute('aria-controls', ul.id);
+            wrap.appendChild(box);
+            wrap.appendChild(ul);
+            select.parentNode.insertBefore(wrap, select);
+            select.hidden = true;
+            // The label now names the box somebody types in.
+            var label = root.querySelector('label[for="' + select.id + '"]');
+            if (label) { label.setAttribute('for', box.id); }
+
+            function current() {
+                var o = select.options[select.selectedIndex];
+                return o ? o.text : '';
+            }
+            function pick(i) {
+                select.selectedIndex = i;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+                box.value = current();
+                sl.close();
+                if (select.value === '__other') { other.focus(); }
+            }
+            var sl = suggestList(box, ul, function () {
+                var q = box.value.replace(/\s+/g, ' ').trim().toLowerCase();
+                if (q === current().toLowerCase()) { q = ''; }
+                var out = [];
+                Array.prototype.forEach.call(select.options, function (o, i) {
+                    if (o.value === '__other' || !q || o.text.toLowerCase().indexOf(q) !== -1) {
+                        out.push({ text: o.text, extra: o.value === '__other', pick: function () { pick(i); } });
+                    }
+                });
+                return out;
             });
-
-            function selectTab(name, focus) {
-                tabs.forEach(function (tab) {
-                    var mine = tab.getAttribute('data-uc-picker-tab') === name;
-                    tab.setAttribute('aria-selected', mine ? 'true' : 'false');
-                    // Roving tabindex: one stop for the whole tablist, and the
-                    // arrow keys move between the tabs inside it.
-                    tab.setAttribute('tabindex', mine ? '0' : '-1');
-                    if (mine && focus) { tab.focus(); }
-                });
-                Object.keys(panels).forEach(function (key) {
-                    if (key === name) {
-                        panels[key].removeAttribute('hidden');
-                    } else {
-                        panels[key].setAttribute('hidden', 'hidden');
-                    }
-                });
-            }
-
-            tabs.forEach(function (tab, i) {
-                tab.addEventListener('click', function () {
-                    selectTab(tab.getAttribute('data-uc-picker-tab'), false);
-                });
-                tab.addEventListener('keydown', function (e) {
-                    var next = null;
-                    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { next = (i + 1) % tabs.length; }
-                    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { next = (i - 1 + tabs.length) % tabs.length; }
-                    else if (e.key === 'Home') { next = 0; }
-                    else if (e.key === 'End') { next = tabs.length - 1; }
-                    if (next !== null) {
-                        e.preventDefault();
-                        selectTab(tabs[next].getAttribute('data-uc-picker-tab'), true);
-                    }
-                });
-            });
-
-            // Only now that switching works are the panels allowed to hide.
-            // Doing this before the listeners were bound would have left a
-            // panel unreachable if anything above had thrown.
-            root.classList.add('uc-picker-tabbed');
-            selectTab('people', false);
-
-            /* ---- Filter -------------------------------------------------- */
-            var filter = root.querySelector('[data-uc-picker-filter="people"]');
-            var emptyNote = root.querySelector('[data-uc-picker-empty="people"]');
-            if (filter) {
-                /*
-                 * THE EMPTY NOTE IS DRIVEN FROM ONE PLACE, AND IT RUNS ONCE ON
-                 * LOAD. It used to be updated only inside the input handler, so
-                 * its state was whatever the markup said until somebody typed.
-                 * Calling the same function at the end means the message on
-                 * screen always describes the list on screen, including before
-                 * anything has been typed at all.
-                 */
-                var applyFilter = function () {
-                    var q = filter.value.replace(/\s+/g, ' ').trim().toLowerCase();
-                    var shown = 0;
-                    Array.prototype.forEach.call(
-                        root.querySelectorAll('[data-uc-picker-search]'),
-                        function (opt) {
-                            var hay = opt.getAttribute('data-uc-picker-search') || '';
-                            var box = opt.querySelector('input[type="checkbox"]');
-                            // A chosen person is never filtered out of sight.
-                            // Losing track of somebody already selected is how
-                            // a filter turns into an accidental deselection.
-                            var keep = !q || hay.indexOf(q) !== -1 || (box && box.checked);
-                            opt.hidden = !keep;
-                            if (keep) { shown++; }
-                        }
-                    );
-                    if (emptyNote) {
-                        // Only ever shown in answer to a query. With the box
-                        // empty there is nothing to fail to match, so "Nobody
-                        // matches that" would be answering a question nobody
-                        // asked, which is how it came to be on screen before a
-                        // single keystroke.
-                        emptyNote.hidden = ( shown !== 0 || q === '' );
-                    }
-                };
-                filter.addEventListener('input', applyFilter);
-                applyFilter();
-                // Escape clears the filter before the browser closes the
-                // <details> out from under somebody mid-search.
-                filter.addEventListener('keydown', function (e) {
-                    if (e.key === 'Escape' && filter.value !== '') {
-                        e.stopPropagation();
-                        filter.value = '';
-                        filter.dispatchEvent(new Event('input'));
-                    }
-                });
-            }
-
-            /* ---- The chosen, as chips ------------------------------------
-             *
-             * The picker list finds people; these hold the answer. Removing a
-             * chip unticks the box it was drawn from, which is the single
-             * source of truth: the boxes are what post, and nothing here keeps
-             * a second copy of the selection to fall out of step with them.
-             * ------------------------------------------------------------ */
-            var chipWrap = root.querySelector('[data-uc-notify-chips]');
-            var chipList = root.querySelector('[data-uc-notify-chips-list]');
-            var chipLabel = root.querySelector('[data-uc-notify-chips-label]');
-
-            function pickerBoxes() {
-                return Array.prototype.slice.call(
-                    root.querySelectorAll('[data-uc-picker-user], [data-uc-picker-team]')
-                );
-            }
-            function chipNameOf(box) {
-                var label = box.closest ? box.closest('label') : null;
-                if (!label) { return box.value; }
-                var span = label.querySelector('span');
-                if (!span) { return label.textContent.trim(); }
-                // The label carries the name and a muted qualifier (the address,
-                // or the team's size). The chip wants the name only.
-                var muted = span.querySelector('.uc-muted');
-                var text = span.textContent;
-                if (muted) { text = text.replace(muted.textContent, ''); }
-                return text.replace(/\s+/g, ' ').trim();
-            }
-
-            function drawChips() {
-                if (!chipWrap || !chipList) { return; }
-                chipWrap.hidden = false;
-                chipList.innerHTML = '';
-                var n = 0;
-
-                pickerBoxes().forEach(function (box) {
-                    if (!box.checked) { return; }
-                    n++;
-                    var isTeam = box.hasAttribute('data-uc-picker-team');
-                    var chip = document.createElement('span');
-                    chip.className = 'uc-rchip' + (isTeam ? ' uc-rchip-team' : '');
-
-                    var text = document.createElement('span');
-                    text.className = 'uc-rchip-text';
-                    text.textContent = chipNameOf(box);
-                    chip.appendChild(text);
-
-                    var kill = document.createElement('button');
-                    kill.type = 'button';
-                    kill.className = 'uc-rchip-x';
-                    kill.setAttribute('aria-label', 'Remove ' + chipNameOf(box));
-                    kill.innerHTML = '&times;';
-                    kill.addEventListener('click', function () {
-                        box.checked = false;
-                        drawChips();
-                        summarise();
-                        // Focus has just been destroyed with the button it was
-                        // on, so it goes somewhere deliberate rather than back
-                        // to the top of the document.
-                        if (details && details.querySelector('[data-uc-picker-toggle]')) {
-                            details.querySelector('[data-uc-picker-toggle]').focus();
-                        }
-                    });
-                    chip.appendChild(kill);
-                    chipList.appendChild(chip);
-                });
-
-                /* ONE EMPTY STATE FOR THE CARD (3.107.0), the status line
-                 * since 3.113.0; see summarise(). The label is there only
-                 * over chips. */
-                if (chipLabel) { chipLabel.hidden = (n === 0); }
-                chipList.hidden = (n === 0);
-            }
-
-            function typedCount() {
-                var typed = 0;
-                Array.prototype.forEach.call(document.querySelectorAll('[data-uc-email-pill]'), function (box) {
-                    if (box.checked) { typed++; }
-                });
-                return typed;
-            }
-
-            /* ---- The live count ------------------------------------------ */
-            function summarise() {
-                if (!countEl) { return; }
-
-                var picked = [];
-                var addresses = {};
-
-                // Everyone who is going to get one, by address.
-                if (data.author) {
-                    var authorBox = root.parentNode
-                        ? root.parentNode.querySelector('input[name="notify_author"]')
-                        : null;
-                    if (!authorBox || authorBox.checked) { addresses[data.author] = true; }
-                }
-
-                var people = 0;
-                Array.prototype.forEach.call(root.querySelectorAll('[data-uc-picker-user]'), function (box) {
-                    if (!box.checked) { return; }
-                    people++;
-                    var email = data.users[box.getAttribute('data-uc-picker-user')];
-                    if (email) { addresses[email] = true; }
-                });
-                if (people) {
-                    picked.push(people + (people === 1 ? ' individual' : ' individuals'));
-                }
-
-                Array.prototype.forEach.call(root.querySelectorAll('[data-uc-picker-team]'), function (box) {
-                    if (!box.checked) { return; }
-                    var team = data.teams[box.getAttribute('data-uc-picker-team')];
-                    if (!team) { return; }
-                    var n = (team.emails || []).length;
-                    picked.push(team.name + ' team (' + n + (n === 1 ? ' person' : ' people') + ')');
-                    (team.emails || []).forEach(function (e) { addresses[e] = true; });
-                });
-
-                /*
-                 * Typed addresses, counted the same way the save reads them.
-                 *
-                 * These are PILLS now. This read the removed textarea by id
-                 * and therefore silently counted none of them, so an event
-                 * with four typed addresses reported the wrong total from the
-                 * moment 3.14.0 replaced the control. A ticked pill is on the
-                 * list, an unticked one is being removed, which is exactly the
-                 * test the server applies to the same field.
-                 */
-                Array.prototype.forEach.call(
-                    document.querySelectorAll('[data-uc-email-pill]'),
-                    function (box) {
-                        if (!box.checked) { return; }
-                        var addr = (box.value || '').trim().toLowerCase();
-                        if (addr.indexOf('@') > 0) { addresses[addr] = true; }
-                    }
-                );
-
-                /* The status line, as notify_summary_text() writes it
-                 * (3.113.0): the card's one empty state when nobody beyond
-                 * the creator is picked or typed. */
-                var total = Object.keys(addresses).length;
-                var inTotal = total + (total === 1 ? ' person' : ' people') + ' in total.';
-                if (!picked.length) {
-                    countEl.textContent = typedCount() ? inTotal : 'Nobody else yet.';
-                    return;
-                }
-                countEl.textContent = picked.join(', ') + '. ' + inTotal;
-            }
-
-            function refreshBoth() { drawChips(); summarise(); }
-
-            root.addEventListener('change', refreshBoth);
-            var authorBox = root.parentNode ? root.parentNode.querySelector('input[name="notify_author"]') : null;
-            if (authorBox) { authorBox.addEventListener('change', summarise); }
-
-            // The address pills live outside this picker but are part of the
-            // same total, so a pill added or removed has to recount.
-            var pillField = document.querySelector('[data-uc-emails]');
-            if (pillField) {
-                pillField.addEventListener('change', refreshBoth);
-                pillField.addEventListener('click', function () {
-                    // The Add button builds a pill without firing `change`, so
-                    // the recount is deferred to after the click handler that
-                    // creates it has run.
-                    window.setTimeout( refreshBoth, 0 );
-                });
-                // Enter in the box adds a pill too, again without `change`.
-                pillField.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter') { window.setTimeout( refreshBoth, 0 ); }
-                });
-            }
-
-            refreshBoth();
+            box.value = current();
+            // Opening shows the whole list; leaving without a choice puts the choice back.
+            box.addEventListener('focus', function () { box.select(); sl.open(); });
+            box.addEventListener('blur', function () { window.setTimeout(function () { box.value = current(); }, 160); });
         });
     }
 
@@ -5518,109 +5488,6 @@ function ucDismissOnBackdrop(dialog) {
     }
 
     /* ---------------------------------------------------------------------
-     * "Anyone else": one address at a time, as removable pills.
-     *
-     * ENHANCEMENT ONLY, AGAIN. Each pill is a ticked checkbox, so unticking one
-     * takes the address off the list with scripting switched off, and the Add
-     * field simply posts and is appended by the server. What this adds is
-     * refusing a bad address while the person is still looking at it, rather
-     * than after a save and a page load, and taking a removed pill off the
-     * screen instead of leaving it there greyed out.
-     * ------------------------------------------------------------------- */
-    function initEmailPills() {
-        Array.prototype.forEach.call(document.querySelectorAll('[data-uc-emails]'), function (root) {
-            var list = root.querySelector('[data-uc-email-pills]');
-            var input = root.querySelector('[data-uc-email-input]');
-            var addBtn = root.querySelector('[data-uc-email-add]');
-            var error = root.querySelector('[data-uc-email-error]');
-            var empty = root.querySelector('[data-uc-emails-empty]');
-            if (!list || !input || !addBtn) { return; }
-
-            function known() {
-                var out = [];
-                Array.prototype.forEach.call(list.querySelectorAll('[data-uc-email-pill]'), function (b) {
-                    if (b.checked) { out.push(b.value.toLowerCase()); }
-                });
-                return out;
-            }
-            function syncEmpty() {
-                if (!empty) { return; }
-                empty.hidden = known().length !== 0;
-            }
-            function say(msg) {
-                if (!error) { return; }
-                error.textContent = msg || '';
-                error.hidden = !msg;
-            }
-            function valid(addr) {
-                // Deliberately the same shape of test the server applies: an
-                // address with one @, something either side, and a dot in the
-                // domain. Anything stricter here would reject addresses the
-                // server would have accepted, which is worse than the reverse.
-                return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr);
-            }
-
-            function add() {
-                var addr = (input.value || '').trim();
-                if (!addr) { say('Type an address first.'); input.focus(); return; }
-                if (!valid(addr)) { say('"' + addr + '" is not an email address.'); input.focus(); return; }
-                if (known().indexOf(addr.toLowerCase()) !== -1) {
-                    say('That address is already on the list.');
-                    input.value = '';
-                    return;
-                }
-
-                var label = document.createElement('label');
-                label.className = 'uc-email-pill';
-                var box = document.createElement('input');
-                box.type = 'checkbox';
-                box.name = 'notify_emails[]';
-                box.value = addr;
-                box.checked = true;
-                box.setAttribute('data-uc-email-pill', '');
-                var text = document.createElement('span');
-                text.className = 'uc-email-pill-text';
-                text.textContent = addr;
-                var x = document.createElement('span');
-                x.className = 'uc-email-pill-x';
-                x.setAttribute('aria-hidden', 'true');
-                x.textContent = '×';
-                label.appendChild(box);
-                label.appendChild(text);
-                label.appendChild(x);
-                list.appendChild(label);
-
-                // The add field must not also post, or the address would be
-                // counted twice: once as a pill and once as a new one.
-                input.value = '';
-                say('');
-                syncEmpty();
-                input.focus();
-            }
-
-            addBtn.addEventListener('click', add);
-            input.addEventListener('keydown', function (e) {
-                // Enter adds the address rather than submitting the whole form,
-                // which is what it would otherwise do in a single-field row.
-                if (e.key === 'Enter') { e.preventDefault(); add(); }
-            });
-            input.addEventListener('input', function () { say(''); });
-
-            list.addEventListener('change', function (e) {
-                var box = e.target;
-                if (!box || !box.hasAttribute || !box.hasAttribute('data-uc-email-pill')) { return; }
-                if (!box.checked) {
-                    var pill = box.closest('.uc-email-pill');
-                    if (pill) { pill.parentNode.removeChild(pill); }
-                }
-                syncEmpty();
-            });
-
-            syncEmpty();
-        });
-    }
-
-    /* ---------------------------------------------------------------------
      * SERIES PREFILL, AT EVENT CREATION (3.38.0).
      *
      * Choosing a series offers to fill the rest of the form in from it. Every
@@ -6345,7 +6212,7 @@ function ucDismissOnBackdrop(dialog) {
                 }
             },
             {
-                key: 'notify', label: 'Who hears about it',
+                key: 'notify', label: 'Who gets these emails',
                 has: function (d) { return !!(d.notify && (d.notify.users.length || d.notify.teams.length || d.notify.emails.length)); },
                 preview: function (d) {
                     var n = d.notify.users.length + d.notify.teams.length + d.notify.emails.length;
@@ -6361,18 +6228,16 @@ function ucDismissOnBackdrop(dialog) {
                         var b = form.querySelector('[name="notify_teams[]"][value="' + id + '"]');
                         if (b && !b.checked) { b.checked = true; b.dispatchEvent(new Event('change', { bubbles: true })); }
                     });
-                    var root = form.querySelector('[data-uc-emails]');
-                    var input = root ? root.querySelector('[data-uc-email-input]') : null;
-                    var add = root ? root.querySelector('[data-uc-email-add]') : null;
+                    // Who gets these emails takes an address through its own add (3.129.0).
+                    var root = form.querySelector('[data-uc-recipients]');
                     d.notify.emails.forEach(function (e) {
-                        if (!input || !add || form.querySelector('[name="notify_emails[]"][value="' + e + '"]')) { return; }
-                        input.value = e;
-                        add.click();
+                        if (!root || !root.ucAddRecipient || form.querySelector('[name="notify_emails[]"][value="' + e + '"]')) { return; }
+                        root.ucAddRecipient(e);
                     });
                 }
             },
             {
-                key: 'emails', label: 'Emails for this event',
+                key: 'emails', label: 'Emails sent to the people above',
                 has: function (d) { return d.notify_off !== null && d.notify_off !== undefined; },
                 preview: function (d) { return d.notify_off.length ? d.notify_off.length + ' off' : 'All on'; },
                 filled: function () { return false; },

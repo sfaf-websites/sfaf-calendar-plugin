@@ -8498,8 +8498,8 @@ class SFAF_Portal {
         // ---- Notifications. ------------------------------------------------
         $notify_text = '' !== $source
             ? 'Registrations are taken on another site, so no registration emails are sent.'
-            : 'Choose who hears about this event: the person who created it, people and teams under Choose people, and anyone else by email address. '
-                . 'Choose emails lists every email this event sends; untick one to stop it for this event only. Replies go to is where answers arrive. '
+            : 'Under Who gets these emails, type a name, a team or any email address; the person who created the event starts on the list. '
+                . 'Registrants always get the confirmation and the morning-of reminder; untick any of the other four to stop it for this event only. Replies go to is where answers arrive. '
                 . 'With External RSVP, no registration emails are sent.';
 
         // ---- Who can find this event. --------------------------------------
@@ -16853,59 +16853,72 @@ class SFAF_Portal {
                 break;
 
             case 'replyto':
-                $reply_current  = (string) $g( '_uc_email_replyto' );
-                $reply_resolved = SFAF_Reminders::reply_to_for( $event_id );
-                $reply_source   = SFAF_Reminders::reply_to_source( $event_id );
-                // Add event: the person adding it will be its creator (3.106.2).
-                if ( ! $event_id && $user && is_email( $user->user_email ) ) {
-                    $reply_resolved = $user->user_email;
-                    $reply_source   = 'author';
-                }
+                $reply_current  = trim( (string) $g( '_uc_email_replyto' ) );
                 $reply_rejected = get_transient( 'sfaf_replyto_rejected_' . $user->ID . '_' . $event_id );
                 if ( $reply_rejected ) {
                     delete_transient( 'sfaf_replyto_rejected_' . $user->ID . '_' . $event_id );
                 }
                 /*
-                 * ITS OWN HEADING TRAVELS WITH IT. Replies is a separate
-                 * question from who receives the mail: it is who fields the
-                 * answers, very often a shared mailbox rather than whichever
-                 * staff member is on the list. Carrying the heading here means
-                 * the editor and the registrations screen both show it under
-                 * the same words, and it cannot be drawn by anything else.
+                 * A PICKER (3.129.0): the creator first, then calendar people,
+                 * then Someone else with its own box. One labelled field, no
+                 * "Replies" heading. The creator's option is the empty value,
+                 * which is what "no address of its own" has always meant:
+                 * replies go to whoever created the event. Without a creator
+                 * the empty value is the site's default. A stored address that
+                 * is nobody on the list is Someone else, with the box filled.
+                 * portal.js (initReplyTo) makes the select searchable and
+                 * shows the box only for Someone else.
                  */
+                $reply_post    = $event_id ? get_post( $event_id ) : null;
+                $reply_creator = $reply_post ? get_userdata( $reply_post->post_author ) : $user;
+                $reply_options = array();
+                if ( $reply_creator && is_email( $reply_creator->user_email ) ) {
+                    $reply_options[''] = $reply_creator->display_name . ' (creator), ' . $reply_creator->user_email;
+                } else {
+                    $reply_settings = get_option( 'uc_settings', array() );
+                    $reply_default  = isset( $reply_settings['email_reply_to'] ) ? trim( (string) $reply_settings['email_reply_to'] ) : '';
+                    $reply_options[''] = ( '' !== $reply_default && is_email( $reply_default ) ) ? 'Site default, ' . $reply_default : 'The address the mail comes from';
+                }
+                foreach ( $this->calendar_people() as $pu ) {
+                    $em = strtolower( trim( (string) $pu->user_email ) );
+                    if ( ! is_email( $em ) || isset( $reply_options[ $em ] )
+                        || ( $reply_creator && strtolower( (string) $reply_creator->user_email ) === $em ) ) {
+                        continue;
+                    }
+                    $reply_options[ $em ] = $pu->display_name . ', ' . $pu->user_email;
+                }
+                $reply_lc = strtolower( $reply_current );
+                if ( '' === $reply_current || ( $reply_creator && strtolower( (string) $reply_creator->user_email ) === $reply_lc ) ) {
+                    $reply_pick = '';
+                } elseif ( isset( $reply_options[ $reply_lc ] ) ) {
+                    $reply_pick = $reply_lc;
+                } else {
+                    $reply_pick = '__other';
+                }
+                if ( $reply_rejected ) {
+                    $reply_pick = '__other';
+                }
                 ?>
                 <div class="uc-notify-section">
-                <h4 class="uc-notify-subhead">Replies</h4>
-                <label class="uc-field">
-                    <span class="uc-field-label">Replies go to</span>
-                    <?php
-                    // A server-side rejection renders in exactly the shape the
-                    // client-side validator uses, so the two are
-                    // indistinguishable to the person reading them and to a
-                    // screen reader.
-                    ?>
-                    <?php
-                    /* THE EVENT'S OWN ADDRESS ONLY (3.117.0). The box was filled
-                       with the fallback, so a save stored it as the event's own
-                       and "Empty sends replies to" sat beside a box that never
-                       was. The fallback is the placeholder now. */
-                    ?>
-                    <input type="email" name="event_replyto" id="uc-event-replyto"
-                           value="<?php echo esc_attr( $reply_current ); ?>"
-                           <?php echo $reply_rejected ? ' class="uc-invalid" aria-invalid="true" aria-describedby="uc-event-replyto-error"' : ''; ?>
-                           placeholder="<?php echo esc_attr( '' !== (string) $reply_resolved ? $reply_resolved : 'events@sfaf.org' ); ?>" />
+                <div class="uc-field uc-replyto-field" data-uc-replyto>
+                    <label class="uc-field-label" for="uc-event-replyto-pick">Replies go to</label>
+                    <select name="event_replyto_pick" id="uc-event-replyto-pick" data-uc-replyto-pick>
+                        <?php foreach ( $reply_options as $val => $text ) : ?>
+                            <option value="<?php echo esc_attr( $val ); ?>" <?php selected( $reply_pick, (string) $val ); ?>><?php echo esc_html( $text ); ?></option>
+                        <?php endforeach; ?>
+                        <option value="__other" <?php selected( $reply_pick, '__other' ); ?>>Someone else</option>
+                    </select>
+                    <input type="email" name="event_replyto" id="uc-event-replyto" aria-label="Email address for replies"
+                           value="<?php echo esc_attr( '__other' === $reply_pick ? ( $reply_rejected ? $reply_rejected : $reply_current ) : '' ); ?>"
+                           placeholder="name@example.org" data-uc-replyto-other
+                           <?php echo $reply_rejected ? ' class="uc-invalid" aria-invalid="true" aria-describedby="uc-event-replyto-error"' : ''; ?> />
                     <?php if ( $reply_rejected ) : ?>
                         <p class="uc-field-error" id="uc-event-replyto-error" data-uc-for="uc-event-replyto" role="alert">
                             <?php echo esc_html( 'Not an email address, so it was not saved: ' . $reply_rejected ); ?>
                         </p>
                     <?php endif; ?>
-                    <?php if ( '' !== $reply_current ) : ?>
-                    <?php elseif ( '' !== (string) $reply_resolved ) : ?>
-                        <span class="uc-hint">Leave it empty to send replies to <?php echo esc_html( $reply_resolved ); ?>.</span>
-                    <?php else : ?>
-                        <span class="uc-hint">Leave it empty to send replies to the address the mail comes from.</span>
-                    <?php endif; ?>
-                </label>
+                    <p class="uc-hint">Email replies come here. Anyone who replies to a text or WhatsApp is asked to email this address.</p>
+                </div>
                 </div>
                 <?php
                 break;
@@ -17045,8 +17058,16 @@ class SFAF_Portal {
             $want = isset( $_POST['email_required'] ) || sfaf_email_required_locked( $event_id );
             update_post_meta( $event_id, '_uc_email_required', $want ? '1' : '0' );
         }
-        if ( isset( $_POST['event_replyto'] ) ) {
-            $raw = trim( (string) wp_unslash( $_POST['event_replyto'] ) );
+        /*
+         * THE PICKER (3.129.0) posts event_replyto_pick: '' for the creator,
+         * a calendar person's address, or __other for the box beside it. A
+         * form without the picker posts the box alone, as before.
+         */
+        $reply_pick = isset( $_POST['event_replyto_pick'] ) ? trim( (string) wp_unslash( $_POST['event_replyto_pick'] ) ) : '__other';
+        if ( isset( $_POST['event_replyto'] ) || '__other' !== $reply_pick ) {
+            $raw = ( '__other' === $reply_pick )
+                ? trim( (string) wp_unslash( isset( $_POST['event_replyto'] ) ? $_POST['event_replyto'] : '' ) )
+                : $reply_pick;
             if ( '' === $raw ) {
                 delete_post_meta( $event_id, '_uc_email_replyto' );
             } else {
@@ -18288,145 +18309,53 @@ class SFAF_Portal {
               // Notifications card, which supplies the heading. ?>
         <div class="uc-notify-block">
 
-            <?php // ---- 1. THE ONE LIST. --------------------------------- ?>
+            <?php // ---- 1. WHO GETS THESE EMAILS (3.129.0). --------------- ?>
             <div class="uc-notify-section">
-                <h4 class="uc-notify-subhead">Who hears about this event</h4>
-                <p class="uc-hint">Everybody on this list gets the emails switched on below.</p>
-
                 <?php if ( ! $reminders_on ) : ?>
                     <p class="uc-field-note uc-field-note-attention"><?php echo $this->icon_needs(); ?><span>Reminder emails are currently switched off in Settings, so nothing on this list will be sent until they are switched back on.</span></p>
                 <?php endif; ?>
 
                 <input type="hidden" name="notify_list_present" value="1" />
 
-                <?php if ( $author && is_email( $author->user_email ) ) : ?>
-                    <label class="uc-check">
-                        <input type="checkbox" name="notify_author" value="1" <?php checked( $author_on ); ?> />
-                        Send to <strong><?php echo esc_html( $author->display_name ); ?></strong> (created this event, <?php echo esc_html( $author->user_email ); ?>)
-                    </label>
-                <?php elseif ( ! $post || (int) $post->post_author > 0 ) : ?>
-                    <?php // Not for a system account (3.113.3): an import, the
-                          // staff request form and the community form create
-                          // with no author, and there is nobody to email. ?>
+                <?php if ( ! ( $author && is_email( $author->user_email ) ) && ( ! $post || (int) $post->post_author > 0 ) ) : ?>
+                    <?php // Not for a system account (3.113.3): an import and the
+                          // two request forms create with no author. ?>
                     <p class="uc-muted">This event's creator has no usable email address on file.</p>
                 <?php endif; ?>
 
-                <?php $this->render_notify_picker( $event_id, $author, $portal_users, $chosen_users ); ?>
-
-                <?php
-                /*
-                 * ANYONE ELSE: PILLS, AND ONE ADDRESS AT A TIME.
-                 *
-                 * This was a textarea of one address per line, which meant a
-                 * typo was not found until Save, was reported after the page
-                 * had reloaded, and left the manager rereading their own
-                 * block of text to find which line was wrong.
-                 *
-                 * EACH PILL IS A TICKED CHECKBOX, not a script-built widget.
-                 * Untick and the address comes off the list; that works with
-                 * scripting off, it posts correctly, and a screen reader gets
-                 * a labelled checkbox rather than a div with an x in it. The
-                 * script hides an unticked pill so the effect is immediate,
-                 * but it is the checkbox doing the work either way.
-                 *
-                 * ADDING is one field and one button. With script the button
-                 * validates and makes a pill on the spot, so a bad address is
-                 * refused while the person is still looking at it. Without
-                 * script the field simply posts and the server appends it,
-                 * validating exactly as it always did.
-                 */
-                $notify_invalid = ( is_array( $rejected ) && ! empty( $rejected ) );
-                ?>
-                <div class="uc-field uc-emails-field" data-uc-emails>
-                    <span class="uc-field-label">Anyone else</span>
-                    <div class="uc-email-pills" data-uc-email-pills>
-                        <?php foreach ( $extra_emails as $addr ) :
-                            $addr = (string) $addr;
-                            if ( '' === $addr ) { continue; } ?>
-                            <label class="uc-email-pill">
-                                <input type="checkbox" name="notify_emails[]" value="<?php echo esc_attr( $addr ); ?>"
-                                       checked data-uc-email-pill />
-                                <span class="uc-email-pill-text"><?php echo esc_html( $addr ); ?></span>
-                                <span class="uc-email-pill-x" aria-hidden="true">&times;</span>
-                            </label>
-                        <?php endforeach; ?>
-                    </div>
-                    <?php // No empty line of its own (3.107.0): "Nobody else yet." under the picker covers it. ?>
-
-                    <div class="uc-email-add">
-                        <input type="email" name="notify_email_new" id="uc-notify-email-new"
-                               data-uc-email-input
-                               placeholder="supervisor@example.org" autocomplete="off"
-                               <?php echo $notify_invalid ? ' class="uc-invalid" aria-invalid="true" aria-describedby="uc-notify-emails-error"' : ''; ?> />
-                        <button type="button" class="uc-btn uc-btn-sm uc-btn-primary" data-uc-email-add>Add</button>
-                    </div>
-                    <p class="uc-field-error" data-uc-email-error role="alert" hidden></p>
-                    <?php if ( $notify_invalid ) : ?>
-                        <p class="uc-field-error" id="uc-notify-emails-error" data-uc-for="uc-notify-email-new" role="alert">
-                            <?php echo esc_html( 1 === count( $rejected ) ? 'This is not an email address, so it was not saved: ' : 'These are not email addresses, so they were not saved: ' ); ?>
-                            <?php echo esc_html( implode( ', ', $rejected ) ); ?>
-                        </p>
-                    <?php endif; ?>
-                    <span class="uc-hint">For anybody without calendar access.</span>
-                </div>
+                <?php $this->render_notify_recipients( $event_id, $author, $author_on, $chosen_users, $extra_emails, $portal_users, $rejected ); ?>
             </div>
 
             <?php
             /*
-             * ---- 2. THE FOUR EMAILS, BEHIND A DISCLOSURE. -----------------
+             * ---- 2. THE EMAILS, IN TWO GROUPS (3.129.0). ------------------
              *
-             * ALL FOUR ARE ON AND NOBODY HAS TO KNOW THAT. Creating an event is
-             * a title, a date, a time, a place, a category and a picture. If
-             * working email costs six more decisions, it will be got wrong or
-             * skipped, so the decisions are not asked: the defaults are the
-             * answer and this fold is where somebody goes who wants a different
-             * one.
-             *
-             * THE SUMMARY LINE STATES WHAT THE DEFAULT IS DOING, which is the
-             * point of a disclosure rather than a hidden panel. Closed, it says
-             * all four are on, or names how many are not. Either way the state
-             * is visible without being a decision, and nothing is switched off
-             * without the closed line saying so.
+             * The two every registrant gets, with no switch, then the four the
+             * list above gets, each with its tick. Shown open: six lines, and
+             * the ticks are the answer to "what will these people get".
              */
-            $off_count = SFAF_Notifications::off_count( $event_id );
-            $kinds_n   = count( SFAF_Notifications::kinds() );
             ?>
-            <div class="uc-notify-section" data-uc-notify-kinds>
-                <?php /* A subhead, a status line and a button (3.113.0), as Who
-                   hears about this event has. The status is recounted by
-                   portal.js on every tick; the button is a <summary>, so it
-                   opens with no script. */ ?>
-                <h4 class="uc-notify-subhead">Emails for this event</h4>
-                <p class="uc-notify-status" data-uc-notify-kinds-status data-uc-kinds-total="<?php echo (int) $kinds_n; ?>"><?php
-                    echo esc_html( $this->notify_kinds_status( $off_count, $kinds_n ) );
-                ?></p>
-                <details class="uc-notify-choose uc-notify-kinds" data-uc-disclosure <?php echo $off_count ? 'open' : ''; ?>>
-                    <summary class="uc-btn uc-btn-sm uc-notify-choose-btn" aria-expanded="<?php echo $off_count ? 'true' : 'false'; ?>">
-                        <span>Choose emails</span>
-                        <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '14px' ) ); ?></span>
-                    </summary>
-                    <div class="uc-picker-panel">
-                        <p class="uc-hint">Untick one to stop it for this event only.</p>
-                        <input type="hidden" name="uc_notify_kinds_present" value="1" />
-                        <?php foreach ( SFAF_Notifications::kinds() as $key => $kind ) : ?>
-                            <?php if ( SFAF_Notifications::is_always( $key ) ) : ?>
-                            <p class="uc-notify-always" data-uc-notify-always="<?php echo esc_attr( $key ); ?>">
-                                <?php echo esc_html( $kind['label'] ); ?>
-                                <span class="uc-pill uc-notify-always-tag">Always sent</span>
-                            </p>
-                            <p class="uc-hint uc-notify-kind-note"><?php echo esc_html( $kind['note'] ); ?></p>
-                            <?php continue; endif; ?>
-                            <label class="uc-check">
-                                <input type="checkbox" name="notify_kinds[]" value="<?php echo esc_attr( $key ); ?>"
-                                       <?php checked( SFAF_Notifications::stored_on( $event_id, $key ) ); ?> />
-                                <?php echo esc_html( $kind['label'] ); ?>
-                            </label>
-                            <p class="uc-hint uc-notify-kind-note"><?php echo esc_html( $kind['note'] ); ?></p>
-                        <?php endforeach; ?>
-                    </div>
-                </details>
-            </div>
+            <div class="uc-notify-section uc-notify-kinds" data-uc-notify-kinds>
+                <input type="hidden" name="uc_notify_kinds_present" value="1" />
+                <h4 class="uc-notify-subhead">Sent to registrants</h4>
+                <?php foreach ( SFAF_Notifications::kinds() as $key => $kind ) : if ( ! SFAF_Notifications::is_always( $key ) ) { continue; } ?>
+                    <p class="uc-notify-always" data-uc-notify-always="<?php echo esc_attr( $key ); ?>">
+                        <?php echo esc_html( isset( $kind['short'] ) ? $kind['short'] : $kind['label'] ); ?>
+                        <span class="uc-pill uc-notify-always-tag">Always sent</span>
+                    </p>
+                    <p class="uc-hint uc-notify-kind-note"><?php echo esc_html( $kind['note'] ); ?></p>
+                <?php endforeach; ?>
 
+                <h4 class="uc-notify-subhead">Sent to the people above</h4>
+                <?php foreach ( SFAF_Notifications::kinds() as $key => $kind ) : if ( SFAF_Notifications::is_always( $key ) ) { continue; } ?>
+                    <label class="uc-check">
+                        <input type="checkbox" name="notify_kinds[]" value="<?php echo esc_attr( $key ); ?>"
+                               <?php checked( SFAF_Notifications::stored_on( $event_id, $key ) ); ?> />
+                        <?php echo esc_html( $kind['label'] ); ?>
+                    </label>
+                    <p class="uc-hint uc-notify-kind-note"><?php echo esc_html( $kind['note'] ); ?></p>
+                <?php endforeach; ?>
+            </div>
             <?php
             /*
              * ---- 3. REPLIES IS NOT DRAWN HERE. ---------------------------
@@ -18516,326 +18445,125 @@ class SFAF_Portal {
     }
 
     /**
-     * The notification picker: one control, two tabs, individuals and teams.
+     * "Who gets these emails" (3.129.0), one field in place of the creator
+     * tick, Choose people, "Anyone else" with its Add button, and the status
+     * line that said "Nobody else yet."
      *
-     * WHY A DISCLOSURE AND NOT A LIST. The list it replaces rendered every
-     * calendar user as a checkbox, always open, in the middle of the event
-     * form. At a dozen users that is a paragraph; at a few hundred it is a
-     * screenful of names between the manager and the Save button, and there
-     * was no way to find anybody in it except to read. This is shut until it
-     * is wanted, says what is currently chosen when shut, and has a filter
-     * field at the top when open.
+     * EVERY CHIP IS A TICKED CHECKBOX under the name the save has always read:
+     * notify_author, notify_users[], notify_teams[], notify_emails[]. So
+     * nothing stored changes meaning, and the field works with no script.
+     * Everybody who could be added and is not is an UNticked box in the "Add
+     * people or teams" fold. portal.js (initRecipients) hides the fold, offers
+     * those boxes as suggestions while somebody types, and moves a box between
+     * the chips and the fold as it is ticked. The typing box is
+     * notify_email_new, which the save has always appended when it holds an
+     * address.
      *
-     * WHY THE CHECKBOXES ARE ALL STILL IN THE FORM. Filtering hides rows; it
-     * never removes them. A checkbox that is display:none still posts, so
-     * typing a name to find one person cannot silently deselect the four
-     * chosen earlier. The filter is a view over the list, not an edit of it.
+     * A PERSON ALREADY CHOSEN IS DRAWN EVEN WHEN THEY ARE NO LONGER A CALENDAR
+     * PERSON, so the form speaks for every id it holds (the $offered rule)
+     * rather than dropping them on the next save, as the old picker did.
      *
-     * WITHOUT JAVASCRIPT it is a <details> element containing every checkbox,
-     * both tab panels visible one after the other, and the server-rendered
-     * summary. Everything can still be chosen and saved; what is lost is the
-     * filtering and the live count. Nothing here is built by script.
-     *
-     * THE COUNT IS RESOLVED, NOT COUNTED. Selecting two individuals and a team
-     * of six does not necessarily mean eight people, because a team member may
-     * be one of the individuals, or the creator. The summary deduplicates by
-     * email address, which is exactly what SFAF_Reminders::notify_list() does
-     * when the mail goes out, so the number shown is the number of messages.
-     *
-     * @param int       $event_id
-     * @param WP_User   $author
-     * @param WP_User[] $portal_users
-     * @param int[]     $chosen_users
+     * @param int            $event_id
+     * @param WP_User|false  $author
+     * @param bool           $author_on
+     * @param int[]          $chosen_users
+     * @param string[]       $extra_emails
+     * @param WP_User[]      $portal_users
+     * @param string[]|false $rejected     Addresses the last save refused.
      */
-    private function render_notify_picker( $event_id, $author, $portal_users, $chosen_users ) {
+    private function render_notify_recipients( $event_id, $author, $author_on, $chosen_users, $extra_emails, $portal_users, $rejected ) {
         $teams        = SFAF_Teams::all();
         $chosen_teams = SFAF_Teams::for_event( $event_id );
+        $field_id     = 'uc-recipients-' . (int) $event_id;
+        $author_id    = $author ? (int) $author->ID : 0;
 
-        /*
-         * What the browser needs to recompute the count as boxes are ticked:
-         * one address per user, lowercased, and each team's membership as user
-         * ids. Addresses rather than ids because deduplication happens on the
-         * address, the same key the server uses. Every one of these addresses
-         * is already on this screen as a checkbox label.
-         */
-        $payload = array(
-            'users'  => array(),
-            'teams'  => array(),
-            'author' => '',
-        );
+        $chips = array();
+        $pool  = array();
+        if ( $author && is_email( $author->user_email ) ) {
+            $box = array( 'author', 'notify_author', '1', $author->display_name, 'creator', $author->user_email );
+            if ( $author_on ) { $chips[] = $box; } else { $pool[] = $box; }
+        }
+        $people = array();
         foreach ( $portal_users as $pu ) {
-            if ( is_email( $pu->user_email ) ) {
-                $payload['users'][ (string) $pu->ID ] = strtolower( trim( $pu->user_email ) );
+            $people[ (int) $pu->ID ] = $pu;
+        }
+        foreach ( $chosen_users as $uid ) {
+            if ( ! isset( $people[ $uid ] ) && $uid !== $author_id ) {
+                $u = get_userdata( $uid );
+                if ( $u ) { $people[ $uid ] = $u; }
             }
+        }
+        foreach ( $people as $uid => $pu ) {
+            if ( $uid === $author_id ) {
+                continue;
+            }
+            $box = array( 'user', 'notify_users[]', (string) $uid, $pu->display_name, '', $pu->user_email );
+            if ( in_array( $uid, $chosen_users, true ) ) { $chips[] = $box; } else { $pool[] = $box; }
         }
         foreach ( $teams as $team ) {
-            $emails = array();
-            foreach ( $team['users'] as $uid ) {
-                $member = get_userdata( $uid );
-                if ( $member && is_email( $member->user_email ) ) {
-                    $emails[] = strtolower( trim( $member->user_email ) );
-                }
+            $size = SFAF_Teams::size( $team['id'] );
+            $box  = array( 'team', 'notify_teams[]', (string) $team['id'], $team['name'], 'team, ' . $size . ' ' . ( 1 === $size ? 'person' : 'people' ), '' );
+            if ( in_array( $team['id'], $chosen_teams, true ) ) { $chips[] = $box; } else { $pool[] = $box; }
+        }
+        foreach ( $extra_emails as $addr ) {
+            $addr = (string) $addr;
+            if ( '' !== $addr ) {
+                $chips[] = array( 'email', 'notify_emails[]', $addr, $addr, '', $addr );
             }
-            $payload['teams'][ $team['id'] ] = array(
-                'name'   => $team['name'],
-                'emails' => array_values( array_unique( $emails ) ),
-            );
-        }
-        if ( $author && is_email( $author->user_email ) ) {
-            $payload['author'] = strtolower( trim( $author->user_email ) );
         }
 
-        $uid_attr = 'uc-notify-' . (int) $event_id;
-        ?>
-        <?php
-        /*
-         * A STATUS LINE AND A BUTTON (3.113.0). The row this replaced was a
-         * full-width disclosure whose label was a sentence, so it read as a
-         * line of status rather than as something to press. The status is
-         * its own line, recounted by portal.js on every tick, and the control
-         * is a secondary button that opens the same panel. Still a <summary>,
-         * so it opens with no script.
-         */
-        ?>
-        <div class="uc-notify-picker" data-uc-notify-picker>
-            <p class="uc-notify-status" data-uc-picker-count><?php
-                echo esc_html( $this->notify_summary_text( $event_id, $chosen_users, $chosen_teams, $teams ) );
-            ?></p>
-            <details class="uc-notify-choose" data-uc-picker>
-                <summary class="uc-btn uc-btn-sm uc-notify-choose-btn" data-uc-picker-toggle>
-                    <span>Choose people</span>
-                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '14px' ) ); ?></span>
-                </summary>
-
-                <div class="uc-picker-panel">
-                    <?php
-                    /*
-                     * Real tabs: a tablist of buttons controlling two panels,
-                     * with arrow keys between them. Without script both panels
-                     * are shown, each under its own heading, because a tab that
-                     * cannot be switched is just a hidden panel.
-                     */
-                    ?>
-                    <div class="uc-picker-tabs" role="tablist" aria-label="Who to notify" data-uc-picker-tabs>
-                        <button type="button" role="tab" class="uc-picker-tab"
-                                id="<?php echo esc_attr( $uid_attr ); ?>-tab-people"
-                                aria-controls="<?php echo esc_attr( $uid_attr ); ?>-panel-people"
-                                aria-selected="true" data-uc-picker-tab="people">Individuals</button>
-                        <button type="button" role="tab" class="uc-picker-tab"
-                                id="<?php echo esc_attr( $uid_attr ); ?>-tab-teams"
-                                aria-controls="<?php echo esc_attr( $uid_attr ); ?>-panel-teams"
-                                aria-selected="false" tabindex="-1" data-uc-picker-tab="teams">Teams</button>
-                    </div>
-
-                    <div role="tabpanel" class="uc-picker-panel-body"
-                         id="<?php echo esc_attr( $uid_attr ); ?>-panel-people"
-                         aria-labelledby="<?php echo esc_attr( $uid_attr ); ?>-tab-people"
-                         data-uc-picker-panel="people">
-                        <h4 class="uc-picker-heading">Individuals</h4>
-                        <?php
-                        /*
-                         * THE LIST IS TESTED, NOT THE SOURCE OF THE LIST.
-                         *
-                         * This branch used to ask whether $portal_users was
-                         * empty, then render a filter box over a list built by
-                         * excluding the creator from it. On a calendar where
-                         * every listed person IS the creator, that produced a
-                         * search field above nothing, and typing anything at
-                         * all reported "Nobody matches that" because there was
-                         * genuinely nobody to match. Count what will actually
-                         * be drawn.
-                         */
-                        $pickable = array();
-                        foreach ( $portal_users as $pu ) {
-                            if ( $author && (int) $pu->ID === (int) $author->ID ) {
-                                continue;
-                            }
-                            $pickable[] = $pu;
-                        }
-                        ?>
-                        <?php if ( empty( $pickable ) ) : ?>
-                            <p class="uc-muted">
-                                <?php echo empty( $portal_users )
-                                    ? 'No calendar users yet. An admin can add people under Users.'
-                                    : 'Nobody else has calendar access yet, so there is no one to add here.'; ?>
-                            </p>
-                        <?php else : ?>
-                            <label class="uc-picker-filter">
-                                <span class="uc-visually-hidden">Filter people by name or address</span>
-                                <?php
-                                /*
-                                 * THIS BOX IS NOT A FIELD ON THE EVENT, AND
-                                 * THAT DISTINCTION USED TO BE LOAD-BEARING.
-                                 *
-                                 * It changes nothing, saves nothing and posts
-                                 * nothing: it narrows the list below it. The
-                                 * edit-scope lock used to walk every input in
-                                 * the form and make it readonly until that
-                                 * field's pencil was pressed, which made this
-                                 * picker unusable at any real size on exactly
-                                 * the events that need it most, since a
-                                 * recurring event is the one with a scope
-                                 * choice. It carried data-uc-not-a-field to opt
-                                 * out of that walk.
-                                 *
-                                 * The pencils went in 3.23.0 and nothing walks
-                                 * the form's inputs any more, so the attribute
-                                 * went with the code that read it rather than
-                                 * being left as markup nothing consults. The
-                                 * category it recorded is written down here
-                                 * instead: if anything ever again treats "every
-                                 * input in this form" as "every field on this
-                                 * event", this control is the counterexample.
-                                 */
-                                ?>
-                                <input type="search" placeholder="Type to filter people…"
-                                       data-uc-picker-filter="people" autocomplete="off" />
-                            </label>
-                            <div class="uc-picker-options" data-uc-picker-options="people">
-                                <?php foreach ( $pickable as $pu ) : ?>
-                                    <label class="uc-check uc-picker-option"
-                                           data-uc-picker-search="<?php echo esc_attr( strtolower( $pu->display_name . ' ' . $pu->user_email ) ); ?>">
-                                        <input type="checkbox" name="notify_users[]" value="<?php echo (int) $pu->ID; ?>"
-                                               data-uc-picker-user="<?php echo (int) $pu->ID; ?>"
-                                               <?php checked( in_array( (int) $pu->ID, $chosen_users, true ) ); ?> />
-                                        <span><?php echo esc_html( $pu->display_name ); ?>
-                                            <span class="uc-muted"><?php echo esc_html( $pu->user_email ); ?></span></span>
-                                    </label>
-                                <?php endforeach; ?>
-                            </div>
-                            <p class="uc-muted uc-picker-empty" data-uc-picker-empty="people" hidden>Nobody matches that.</p>
-                        <?php endif; ?>
-                    </div>
-
-                    <div role="tabpanel" class="uc-picker-panel-body"
-                         id="<?php echo esc_attr( $uid_attr ); ?>-panel-teams"
-                         aria-labelledby="<?php echo esc_attr( $uid_attr ); ?>-tab-teams"
-                         data-uc-picker-panel="teams">
-                        <h4 class="uc-picker-heading">Teams</h4>
-                        <?php if ( empty( $teams ) ) : ?>
-                            <p class="uc-muted">No teams yet. An admin can make one under Users &amp; Teams.</p>
-                        <?php else : ?>
-                            <div class="uc-picker-options" data-uc-picker-options="teams">
-                                <?php foreach ( $teams as $team ) : $tsize = SFAF_Teams::size( $team['id'] ); ?>
-                                    <label class="uc-check uc-picker-option">
-                                        <input type="checkbox" name="notify_teams[]" value="<?php echo esc_attr( $team['id'] ); ?>"
-                                               data-uc-picker-team="<?php echo esc_attr( $team['id'] ); ?>"
-                                               <?php checked( in_array( $team['id'], $chosen_teams, true ) ); ?> />
-                                        <span><?php echo esc_html( $team['name'] ); ?>
-                                            <span class="uc-muted"><?php echo (int) $tsize; ?> <?php echo esc_html( 1 === $tsize ? 'person' : 'people' ); ?></span></span>
-                                    </label>
-                                <?php endforeach; ?>
-                            </div>
-                            <p class="uc-hint">A team is emailed as it is when each message goes out.</p>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </details>
-
-            <?php
-            /*
-             * WHO IS CHOSEN, AS CHIPS, BELOW THE PICKER.
-             *
-             * THE LIST ABOVE IS FOR FINDING PEOPLE, NOT FOR HOLDING THE
-             * ANSWER. A scrolling column of forty checkboxes with six ticked
-             * somewhere in it makes "who is on this list" a question you
-             * answer by scrolling, and the answer changes as you filter. The
-             * chips are the answer, they sit still, and they read the same way
-             * as the address pills further down the card, so the whole card
-             * says one thing in one language.
-             *
-             * BUILT BY SCRIPT, AND HIDDEN UNTIL IT IS. Same arrangement as the
-             * category chips: the checkboxes ARE the form and post on their
-             * own, so with the script gone this container never appears and
-             * the plain list is exactly the control it has always been.
-             * Nothing here is the only way to do anything.
-             */
+        $draw = function ( $box, $on ) {
+            list( $kind, $name, $value, $label, $note, $email ) = $box;
+            $search = strtolower( $label . ' ' . $email . ( 'team' === $kind ? ' team' : '' ) );
             ?>
+            <label class="uc-email-pill uc-rcpt uc-rcpt-<?php echo esc_attr( $kind ); ?>" data-uc-rcpt="<?php echo esc_attr( $kind ); ?>"
+                   data-uc-rcpt-search="<?php echo esc_attr( $search ); ?>"<?php echo '' !== $email ? ' title="' . esc_attr( $email ) . '"' : ''; ?>>
+                <input type="checkbox" name="<?php echo esc_attr( $name ); ?>" value="<?php echo esc_attr( $value ); ?>"<?php echo $on ? ' checked' : ''; ?>
+                       data-uc-rcpt-box<?php echo 'email' === $kind ? ' data-uc-email-pill' : ''; ?> />
+                <span class="uc-email-pill-text"><?php echo esc_html( $label ); ?><?php if ( '' !== $note ) : ?><span class="uc-rcpt-note">, <?php echo esc_html( $note ); ?></span><?php endif; ?></span>
+                <span class="uc-email-pill-x" aria-hidden="true">&times;</span>
+            </label>
             <?php
-            /*
-             * ONE EMPTY STATE FOR THE WHOLE CARD (3.107.0). Since 3.113.0 it
-             * is the status line above the button, which says "Nobody else
-             * yet." when nobody is chosen; the "On the list" label shows only
-             * with chips under it.
-             */
-            ?>
-            <div class="uc-rchips" data-uc-notify-chips hidden>
-                <span class="uc-rchips-label" data-uc-notify-chips-label>On the list</span>
-                <div class="uc-rchips-list" data-uc-notify-chips-list></div>
+        };
+        $invalid = ( is_array( $rejected ) && ! empty( $rejected ) );
+        ?>
+        <div class="uc-field uc-rcpt-field" data-uc-recipients>
+            <label class="uc-field-label" for="<?php echo esc_attr( $field_id ); ?>">Who gets these emails</label>
+            <div class="uc-email-pills uc-rcpt-chips" data-uc-rcpt-chips>
+                <?php foreach ( $chips as $box ) { $draw( $box, true ); } ?>
             </div>
-
-            <?php // The marker that tells the save "this form carried the teams
-                  // block", so clearing every box means clear rather than
-                  // "leave alone". Same reasoning as notify_list_present. ?>
+            <div class="uc-rcpt-add">
+                <input type="text" name="notify_email_new" id="<?php echo esc_attr( $field_id ); ?>"
+                       role="combobox" aria-autocomplete="list" aria-expanded="false"
+                       aria-controls="<?php echo esc_attr( $field_id ); ?>-list"
+                       placeholder="Type a name, a team or an email address" autocomplete="off"
+                       data-uc-rcpt-input
+                       <?php echo $invalid ? ' class="uc-invalid" aria-invalid="true" aria-describedby="uc-notify-emails-error"' : ''; ?> />
+                <ul class="uc-rcpt-list" id="<?php echo esc_attr( $field_id ); ?>-list" role="listbox" aria-label="Suggestions" data-uc-rcpt-list hidden></ul>
+            </div>
+            <p class="uc-field-error" data-uc-rcpt-error role="alert" hidden></p>
+            <?php if ( $invalid ) : ?>
+                <p class="uc-field-error" id="uc-notify-emails-error" data-uc-for="<?php echo esc_attr( $field_id ); ?>" role="alert">
+                    <?php echo esc_html( 1 === count( $rejected ) ? 'This is not an email address, so it was not saved: ' : 'These are not email addresses, so they were not saved: ' ); ?>
+                    <?php echo esc_html( implode( ', ', $rejected ) ); ?>
+                </p>
+            <?php endif; ?>
+            <?php if ( $pool ) : ?>
+                <details class="uc-rcpt-more" data-uc-rcpt-more>
+                    <summary>Add people or teams</summary>
+                    <div class="uc-email-pills uc-rcpt-pool" data-uc-rcpt-pool>
+                        <?php foreach ( $pool as $box ) { $draw( $box, false ); } ?>
+                    </div>
+                </details>
+            <?php endif; ?>
+            <?php if ( $teams ) : ?>
+                <span class="uc-hint">A team is emailed as it is when each message goes out.</span>
+            <?php endif; ?>
+            <?php // Clearing every team box means none, not "this form did not ask". ?>
             <input type="hidden" name="notify_teams_present" value="1" />
-
-            <script type="application/json" data-uc-notify-data><?php
-                echo wp_json_encode( $payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT );
-            ?></script>
         </div>
         <?php
     }
-
-    /**
-     * The status line under "Emails for this event" (3.113.0). portal.js
-     * writes the same words as boxes are ticked.
-     *
-     * @param int $off_count Of the kinds with a tick.
-     * @param int $kinds_n   Every kind, the two always sent included.
-     * @return string
-     */
-    private function notify_kinds_status( $off_count, $kinds_n ) {
-        if ( ! $off_count ) {
-            return 'All ' . (int) $kinds_n . ' are on.';
-        }
-        return (int) $off_count . ' switched off, ' . ( (int) $kinds_n - (int) $off_count ) . ' on.';
-    }
-
-    /**
-     * The status line under "Who hears about this event": what is currently
-     * selected (the picker's summary until 3.113.0).
-     *
-     * Rendered by PHP for the page load and recomputed by portal.js on every
-     * tick, from the same rule: count the distinct addresses. Both say
-     * "3 individuals, Philanthropy team (6 people), 7 people in total" so a
-     * manager can see both what they chose and what it comes to.
-     *
-     * @param int      $event_id
-     * @param int[]    $chosen_users
-     * @param string[] $chosen_teams
-     * @param array[]  $teams
-     * @return string
-     */
-    private function notify_summary_text( $event_id, $chosen_users, $chosen_teams, $teams ) {
-        $parts = array();
-        $n     = count( $chosen_users );
-        if ( $n ) {
-            $parts[] = $n . ' ' . ( 1 === $n ? 'individual' : 'individuals' );
-        }
-        foreach ( $chosen_teams as $tid ) {
-            if ( ! isset( $teams[ $tid ] ) ) {
-                continue;
-            }
-            $size    = SFAF_Teams::size( $tid );
-            $parts[] = $teams[ $tid ]['name'] . ' team (' . $size . ' ' . ( 1 === $size ? 'person' : 'people' ) . ')';
-        }
-
-        // The total is the resolved list, which already deduplicates and
-        // already includes the creator and any typed addresses. It is the
-        // honest answer to "how many emails is that".
-        $total    = $event_id ? count( SFAF_Reminders::notify_list( $event_id ) ) : 0;
-        $in_total = $total . ' ' . ( 1 === $total ? 'person' : 'people' ) . ' in total.';
-
-        if ( empty( $parts ) ) {
-            /* The status line is the card's one empty state (3.113.0): nobody
-               beyond the creator, picked or typed. */
-            $typed = array_filter( array_map( 'strval', (array) get_post_meta( $event_id, SFAF_Reminders::NOTIFY_EMAILS_META, true ) ) );
-            return $typed ? $in_total : 'Nobody else yet.';
-        }
-
-        return implode( ', ', $parts ) . '. ' . $in_total;
-    }
-
     /* =====================================================================
      * Rendering — edit scope
      * ================================================================== */

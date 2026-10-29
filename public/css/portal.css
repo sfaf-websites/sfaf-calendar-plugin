@@ -1978,6 +1978,29 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-email-add input { flex: 1 1 240px; min-width: 0; }
 .uc-emails-field { gap: 8px; }
 
+/* WHO GETS THESE EMAILS (3.129.0): the chips, then the box, its suggestions
+   in a list under it. The fold of people and teams not chosen is what the
+   field is with no script; portal.js hides it. A box there is unticked by
+   design, so it is drawn plain, not struck through, and has no x. */
+.uc-rcpt-field { gap: 8px; }
+.uc-rcpt-chips:empty { display: none; }
+.uc-rcpt-note { color: var(--p-muted); font-weight: 400; }
+.uc-rcpt-add { position: relative; }
+.uc-rcpt-add input { width: 100%; }
+.uc-rcpt-list { position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 2px); margin: 0; padding: 4px 0; background: var(--p-panel);
+    list-style: none; max-height: 264px; overflow-y: auto;
+    border: 1px solid var(--p-border-strong); border-radius: 8px; box-shadow: var(--p-shadow-raised); }
+.uc-sl-option { padding: 8px 12px; font-size: 14px; line-height: 1.4; cursor: pointer; }
+.uc-sl-option.uc-sl-active { background: var(--uc-band); }
+.uc-sl-extra { font-weight: 600; }
+.uc-sl-note { color: var(--p-muted); }
+.uc-rcpt-more > summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+.uc-rcpt-pool { margin-top: 8px; }
+.uc-rcpt-pool .uc-email-pill input:not(:checked) ~ .uc-email-pill-text { text-decoration: none; opacity: 1; }
+.uc-rcpt-pool .uc-email-pill-x { display: none; }
+.uc-replyto-field { gap: 8px; }
+.uc-replyto-field input[type="email"][hidden] { display: none; }
+
 /* ---------- Categories as chips ---------- */
 .uc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .uc-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 11px;
@@ -4194,6 +4217,16 @@ body.uc-modal-open { overflow: hidden; }
 .uc-notify-kinds input[type="hidden"] + .uc-notify-always { margin-top: 4px; }
 .uc-notify-kinds .uc-notify-always ~ .uc-check:first-of-type { margin-top: 12px; }
 .uc-notify-kinds .uc-notify-always-tag { margin-left: 6px; text-transform: none; }
+/* IN TWO GROUPS (3.129.0), each under its subhead. "Sent to registrants" has
+   no boxes, so its lines and notes start at the edge; the four with boxes keep
+   the note under the label text. The section is a flex column with a 10px
+   gap, so the rows need no margins of their own. */
+.uc-portal .uc-notify-kinds .uc-notify-always { margin: 0; padding-left: 0; }
+.uc-portal .uc-notify-kinds .uc-notify-always + .uc-notify-kind-note { margin: -8px 0 0; }
+.uc-portal .uc-notify-kinds .uc-check,
+.uc-portal .uc-notify-kinds .uc-notify-always ~ .uc-check:first-of-type { margin-top: 0; }
+.uc-portal .uc-notify-kinds .uc-check + .uc-notify-kind-note { margin: -8px 0 0 26px; }
+.uc-portal .uc-notify-section.uc-notify-kinds > .uc-notify-kind-note + .uc-notify-subhead { margin-top: 10px; }
 
 /* ---------------------------------------------------------------------------
    WHO HEARS AND EMAILS FOR THIS EVENT ARE CONTROLS (3.113.0).
