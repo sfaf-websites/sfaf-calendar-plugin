@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 400 items.** Quick 327, needs real conditions 69, blocked on other
+**Outstanding: 402 items.** Quick 329, needs real conditions 69, blocked on other
 people 4.
 
 ---
@@ -4461,6 +4461,27 @@ series or event set to Español the date is Spanish: "mié., 28 oct.". On the
 phone, a date stays on one line beside a long title. The titles now start a
 few pixels apart from row to row, because the dates differ in width; say if
 that reads badly.
+
+**Why it needs a person:** the live page under the theme, on a real phone.
+
+### 1.330 The Events date filter on sfaf.org (3.128.0)
+
+As an admin, on caladmin Events, set a From and To a month apart and press
+Filter, on My events and then on All events. Time each from the press to the
+list (a phone stopwatch is enough); it should be about a second, where it was
+20 seconds and more. Then try a range of a whole year, and one with only From.
+Check that an imported event running several days shows for a range that
+starts on its second day.
+
+**Why it needs a person:** the site's own database, with all its events and
+meta; the check measured a modelled 6,000 events on MySQL 8.4.
+
+### 1.331 "Upcoming in this series" on an event page names the day (3.128.0)
+
+Open an event in a series with more upcoming dates, from Edit event's View
+event page. Under "Upcoming in this series" each date reads like "Wed, Oct 28",
+and the day is right. On an event set to Español the date is Spanish:
+"mié., 28 oct.". On a phone, a date stays on one line beside the title.
 
 **Why it needs a person:** the live page under the theme, on a real phone.
 

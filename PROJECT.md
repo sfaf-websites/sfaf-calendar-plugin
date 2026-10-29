@@ -7292,6 +7292,17 @@ another. An event is in a date range when any of its days is (`_uc_end_date`
 for an imported multi-day event). A range reaching outside Upcoming or Archived
 shows All, and the tabs drop a range that would do that to them.
 
+**A date range is never a meta_query (3.128.0).** postmeta indexes `post_id`
+and `meta_key` separately, so every meta join on an event reads all of that
+event's meta rows to find one key. The range as meta_query clauses was an OR
+over two keys, a `to` clause and the tab's clause, each a join with CAST, across
+every event once the tab went to All: over 20 seconds for an admin on the site,
+2.7 s on a modelled 6,000 events on MySQL 8.4. `SFAF_Portal::range_event_ids()`
+asks postmeta by key alone, end dates through a subquery by key, comparing the
+stored Y-m-d text, folds in Upcoming or Archived, and hands WP_Query `post__in`,
+crossed with a person's own events: 0.04 s on the same data. The date still
+orders the list through `meta_key`, now a join over only the events in range.
+
 That third order matters and is not defensive tidiness. A team is a name and a
 set of user ids, and the `$offered` guarantee means it may legitimately hold
 somebody with no calendar record: a person added so they could be mailed, or one

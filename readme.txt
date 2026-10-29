@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.127.0
+Stable tag: 3.128.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,18 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.128.0 =
+
+**The Events screen's date filter, and the event page's series list. Every embed answer and header is 3.127.0's, proved by embed-identity-test.php.**
+
+**WHAT CHANGES ON PUBLIC PAGES:** the event page only.
+
+* **"Upcoming in this series" on an event page names the day with each date**: "Wed, Oct 28", as the series page has since 3.126.0. A Spanish event's date is in Spanish, "mié., 28 oct.".
+
+**Staff:**
+
+* **A date range on My events and All events answers in a fraction of a second.** It took 20 seconds and more. Measured on MySQL 8.4 with 6,000 events: a month on All events went from 2.71 s to 0.04 s, a year from 2.74 s to 0.21 s, and an admin's My events from 0.44 s to 0.04 s. The same events are found as before.
 
 = 3.127.0 =
 
