@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 402 items.** Quick 329, needs real conditions 69, blocked on other
+**Outstanding: 403 items.** Quick 330, needs real conditions 69, blocked on other
 people 4.
 
 ---
@@ -4484,6 +4484,21 @@ and the day is right. On an event set to Español the date is Spanish:
 "mié., 28 oct.". On a phone, a date stays on one line beside the title.
 
 **Why it needs a person:** the live page under the theme, on a real phone.
+
+### 1.332 The Notifications card, on an event that already has a list (3.129.0)
+
+Open Edit event on an event whose Notifications already name people, a team
+and a typed address. Under **Who gets these emails** the creator and each of
+them is a chip. Type part of a colleague's name and choose them; type a team's
+name and choose it; type a whole address and press Enter; take one chip off
+with its x. Save, open the event again, and check the chips are what you left.
+Then open **Replies go to**: the creator is first, typing narrows the list,
+Someone else shows the address box. Pick a colleague, save, reopen. Do the same
+on Add event, where the only chip is you, and once on a phone. The emails show
+in two groups, Sent to registrants and Sent to the people above.
+
+**Why it needs a person:** real calendar people and teams, a real save, and the
+editor on a phone; the checks used invented ones.
 
 ## 2. Needs real conditions
 

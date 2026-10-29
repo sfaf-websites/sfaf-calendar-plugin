@@ -6188,12 +6188,29 @@ The card holding who hears about an event (the creator, the recipient picker,
 anyone else), the message ticks and the reply-to was drawn only on Edit event,
 because `render_notify_box()` read the event's author and stored lists. On Add
 event the person adding it is the creator and the lists start empty.
-**Replies go to holds only the event's own address (3.117.0).** It was filled
-with the fallback (the creator's or the site's address), so a save stored the
-fallback as the event's own and the line "Empty sends replies to" sat beside a
-box that was never empty. The fallback is now the placeholder and the line
-under an empty box names it; an empty box saves as nothing, so the event
-follows the fallback at send time. **The save needed nothing new**: every field
+**Who gets these emails is one field (3.129.0)**, in place of the creator
+tick, Choose people, "Anyone else" with its Add button and the status line.
+`render_notify_recipients()` draws every chip as a ticked checkbox under the
+name the save has always read (`notify_author`, `notify_users[]`,
+`notify_teams[]`, `notify_emails[]`), and everybody not chosen as an unticked
+box in an "Add people or teams" fold, so **nothing stored changes meaning** and
+it works with no script. portal.js `initRecipients()` hides the fold and offers
+those boxes as suggestions while somebody types; the typing box is
+`notify_email_new`, appended by the save when it holds an address. A chosen
+person who is no longer a calendar person is drawn as a chip, so the form
+speaks for every id it holds (the `$offered` rule); the old picker dropped
+them on the next save. **The emails are two groups, shown open**: Sent to
+registrants (Confirmation and Morning-of reminder, always sent, no box) and
+Sent to the people above (the four with boxes).
+
+**Replies go to is a picker (3.129.0)**: the creator first, as the empty value,
+which has always meant "whoever created the event"; then calendar people; then
+Someone else, with the address box beside it. A picked person's address is
+stored, not their id, as `_uc_email_replyto` always held. A stored address that
+is nobody on the list opens as Someone else with the box filled. What 3.117.0
+fixed still holds: the fallback is never put in the box, where a save would
+store it as the event's own. `initReplyTo()` makes the select searchable.
+**The save needed nothing new**: every field
 carries its own marker and `save_event_from_post()` inserts the post before it
 saves them. `.claude/notifications-card-test.php` renders both screens and
 compares the card's fields, and saves a new event with chosen recipients and
@@ -8690,6 +8707,10 @@ range as three choices, Cancel event and Delete as dialogs, and the Asana copy.
 order after that is Mark's to settle; `HANDOVER.md` carries it as an open
 decision until he does. Tags, Location and the loader go last.
 
+**Replies go to as a list of people was built again in 3.129.0**, not restored
+from git: the Notifications card was redesigned around it ("The Notifications
+card is on Add event too", above).
+
 **The cancellation keys came back on their own in 3.127.0** (`_uc_cancelled`,
 `_uc_cancelled_visibility`), on Mark's decision, so cancelling, reinstating and
 Remove from the calendar retire the embed's cache and LiteSpeed's. **Until the
@@ -8837,15 +8858,6 @@ looking, admin or not**. They are not an access rule: the gate in 5 still
 decides what anybody can open. On these tabs the view is "every date", the view
 tabs and the status select are hidden, and the heading names the tab.
 `own_status_tabs()` is the one list.
-
-#### Replies go to is a list of people (3.112.0)
-
-The editor's Replies go to is a searchable dropdown of calendar people plus the
-editor, defaulting to the creator, with "Someone else" revealing the typed
-address (`:has()`, and visible without it). **It is stored as before**, one
-address in `_uc_email_replyto`: a picked person's email is written, not their id, so
-a person who later changes address does not change where an event's replies
-go.
 
 #### A multi-day event is one event with an End date (3.112.0)
 

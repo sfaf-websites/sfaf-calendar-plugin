@@ -1212,19 +1212,19 @@ above; Field label, 13px/600 at 1.45. A failure in the same place is
 series prefill, the FAQ set and Insert image say after they act. **Caladmin's
 page-level `.uc-flash` banners are unchanged** and still use their own greens.
 
-**Who hears about this event and Emails for this event (3.113.0)** are each a
-subhead, a status line and a button, in that order; until 3.113.0 each was a
-full-width bordered row whose label was a sentence, which read as status rather
-than as something to press. Measured in Chrome by `.claude/release-3113-live.php`
-at 1280px and 390px.
+**The Notifications card (3.129.0)**: Who gets these emails, the emails in two
+groups, then Replies go to. Measured in Chrome by
+`.claude/release-31290-live.php` at 1280px and 390px.
 
 | Part | Values |
 |---|---|
-| Subhead | `.uc-notify-subhead`, as before |
-| Status line | 14px/400 at 1.5 `--p-text`: "Nobody else yet.", "2 individuals. 4 people in total.", "All 6 are on.", "1 switched off, 5 on." (3.113.1). It is the card's one empty state |
-| Button | the small secondary button, `.uc-btn .uc-btn-sm`: Light Gray `--p-btn-face`, the `--p-border-strong` edge, 13px/600, sized to its label, with the 14px chevron, since it opens something. "Choose people", "Choose emails" |
-| Panel | opens 10px under the button in the picker's box: 1px `--p-border`, 10px radius, white, the 12px 14px 14px padding |
-| Always sent (3.113.1) | the confirmation and the morning-of reminder: no box, the label indented 26px to where the ticked labels' text starts, then `.uc-pill` "Always sent" 6px after it, not capitalized |
+| Who gets these emails | the field label, then the chips, then a full-width text box. Chips are the address pills (`.uc-email-pill`): `--uc-band`, the `--p-border-strong` edge, 99px radius, 13px/500, the x after the text; a note after the name in `--p-muted` 400 (", creator", ", team, 2 people") |
+| Suggestions | a list under the box, inside the card: `--p-panel`, the `--p-border-strong` edge, 8px radius, `--p-shadow-raised`, 264px tall at most. Rows 14px at 1.4, 8px 12px padding; the highlighted row on `--uc-band`. "Add name@example.org" in 600 |
+| The fold | "Add people or teams", a `<details>` of unticked pills, drawn plain (no strike, no x). What the field is with no script; hidden with it |
+| Email groups | `.uc-notify-subhead` "Sent to registrants" and "Sent to the people above". The two always sent have no box and start at the edge, `.uc-pill` "Always sent" 6px after the name; the four keep their box and the note under the label text |
+| Replies go to | the field label, a text box showing the choice, the same suggestion list, the address box only for Someone else, and the 12px hint under it |
+
+The section's 10px gap is the space between the rows.
 
 **A button that shows or hides a list shows which (3.113.1).** + Add category,
 + Add organizer (and Pending's Show dismissed, until 3.113.2 made it a tab) carry the 14px chevron, which points
@@ -1235,11 +1235,6 @@ shadow, `inset 0 2px 3px rgba(55, 52, 51, 0.22)`, so it reads as pressed; a
 second press puts all three back. Keyed on `aria-expanded="true"` for a
 button and `[open]` for a `<summary>`. Measured by
 `.claude/release-31131-live.php`.
-
-The section's 10px gap is the space between the three; Choose people's status
-line keeps 10px under it inside the picker. The button is the `<summary>` of the
-panel's `<details>`, so it opens with no script, and the status line follows the
-ticks with it.
 
 ### Restore what you were typing, and the session-ended page (3.110.5)
 
@@ -1709,8 +1704,9 @@ appears beside Date in the same two-column row (stacking on a phone like every
 row in the card), and Repeats is hidden. The swap is `:has()`; without it all
 three show.
 
-**Replies go to** is the notification picker's closed row and panel: one radio
-per person, then Someone else, which shows a standard text field under the list.
+**Replies go to** (set aside with 3.112.x) was the notification picker's closed
+row and panel; 3.129.0 built it again as a searchable box ("The Notifications
+card", above).
 
 **On closed days** is the queue card with its band ("ON CLOSED DAYS" and the
 yellow count): per row, the event as a teal link in 600, then "Tuesday, November

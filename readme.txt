@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.128.0
+Stable tag: 3.129.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,17 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.129.0 =
+
+**The Notifications card on Add event, Edit event and the RSVP list. Staff screens only: every embed answer and header is 3.128.0's, proved by embed-identity-test.php.**
+
+**WHAT CHANGES ON PUBLIC PAGES:** nothing.
+
+* **Who gets these emails is one field.** Type a name, a team or any email address and choose it; each choice is a chip with an x to take it off. The creator starts as a chip. It replaces the creator tick, Choose people, "Anyone else" with its Add button, and "Nobody else yet". The same people, teams and addresses get the same emails as before.
+* **The emails are in two groups, shown open.** Sent to registrants: Confirmation and Morning-of reminder, each marked Always sent. Sent to the people above: the four with ticks.
+* **Replies go to is a list of calendar people**, the creator first, that narrows as you type, with Someone else for any address. Under it: "Email replies come here. Anyone who replies to a text or WhatsApp is asked to email this address."
+* A person on an event's list who no longer has calendar access stays on the list when the event is saved; until now a save took them off.
 
 = 3.128.0 =
 
