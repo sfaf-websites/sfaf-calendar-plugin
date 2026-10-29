@@ -199,7 +199,7 @@ $GLOBALS['kit_get_posts'] = $GLOBALS['kit_query'];
 $html = sfaf_series_list_html( $ev['me'][0] );
 function rt_want_date( $d, $lang ) {
     $t = strtotime( $d . ' 12:00:00' );
-    if ( 'es' !== $lang ) { return date( 'D, M j', $t ); }
+    if ( 'es' !== $lang ) { $f = 'D, M j'; return date( $f, $t ); }
     $dias = array( 'dom.', 'lun.', 'mar.', 'mié.', 'jue.', 'vie.', 'sáb.' );
     $mes  = array( 1 => 'ene.', 'feb.', 'mar.', 'abr.', 'may.', 'jun.', 'jul.', 'ago.', 'sep.', 'oct.', 'nov.', 'dic.' );
     return $dias[ (int) date( 'w', $t ) ] . ', ' . date( 'j', $t ) . ' ' . $mes[ (int) date( 'n', $t ) ];
