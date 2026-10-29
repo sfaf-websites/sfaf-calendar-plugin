@@ -76,7 +76,6 @@ and from 3.111.0 `calendar-files/` for PDFs, beside them.
 ## In flight
 
 - **3.129.0 is built, NOT released** (2026-10-29). Its suite: 245 passed, 11 failed, every one fixed since (a raw accented regex range in portal.js, 44px chips on a phone, the fold's chevron, release-31133-test); the failed checks and the planter pass. Next: the full suite again, then ask Mark (a check failed), then publish. **3.130.0 (Text and WhatsApp)** is drafted in `.claude/drafts/class-sfaf-texts-31300.php`, not wired in.
-- **The event-page alignment (3.114.0 to 3.121.0) is shipped**; what the audit left to decide is in `PROJECT.md` 8.
 - **Following a series is half built.** 3.53.0 established the followers; nothing
   sends them. `PROJECT.md` 8, then `TESTING.md` 1.22.
 - **Automated fetching is ON and its own copy says it should not be**, and only
