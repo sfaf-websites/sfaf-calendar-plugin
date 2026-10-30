@@ -1403,7 +1403,7 @@ window.addEventListener('load', function () { setTimeout(function () {
     if (ph) { ph.value = '(415) 555-0199'; ph.dispatchEvent(new Event('input', { bubbles: true })); }
     out.textAfter = seen(q('#uc-rsvp-text-wrap'));
     out.textLabel = text(q('#uc-rsvp-text-wrap [data-uc-w="text_consent"]'));
-    var tb = q('input[name="uc-rsvp-text-channel"][value="whatsapp"]'); if (tb) { tb.checked = true; }
+    var tb = q('input[name="uc-rsvp-text-channel"][value="whatsapp"]'); if (tb) { tb.checked = true; tb.dispatchEvent(new Event('change', { bubbles: true })); }
     q('#uc-rsvp-submit-btn').click();
     var d = q('#uc-agree');
     out.formHeading = text(q('#uc-rsvp-heading'));

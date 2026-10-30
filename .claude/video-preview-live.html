@@ -200,6 +200,7 @@ function ucDismissOnBackdrop(dialog) {
         run('users-table', initUsersTable);
         run('table-cards', initTableCards);
         run('registrantMail', initRegistrantMail);
+        run('recipientList', initRecipientList);
         run('attachment', initAttachment);
         run('checkin', initCheckin);
         run('rsvpFilter', initRsvpFilter);
@@ -296,20 +297,10 @@ function ucDismissOnBackdrop(dialog) {
             });
             form.addEventListener('submit', function () { chips.syncAll(); saveBody(); });
 
+            // How many messages a send makes is the recipient list's to say
+            // now (3.131.0): initRecipientList() sets Send's question.
             var tick = form.querySelector('[data-uc-rm-waitlist]');
             var team = form.querySelector('[data-uc-rm-team]');
-            var send = form.querySelector('[data-uc-rm-send]');
-            var counts = {};
-            try { counts = JSON.parse(form.getAttribute('data-uc-rm-counts') || '{}') || {}; } catch (e) { counts = {}; }
-            // How many messages the ticks make, the organizer's copy included (3.110.2).
-            function confirmText() {
-                var key = (tick && tick.checked ? '1' : '0') + (team && team.checked ? '1' : '0');
-                var n = parseInt(counts[key], 10) || 0;
-                if (send) { send.setAttribute('data-uc-confirm', 'Send to ' + n + (1 === n ? ' person?' : ' people?')); }
-            }
-            if (tick) { tick.addEventListener('change', confirmText); }
-            if (team) { team.addEventListener('change', confirmText); }
-            confirmText();
 
 
             var btn = form.querySelector('[data-uc-rm-preview]');
@@ -329,6 +320,9 @@ function ucDismissOnBackdrop(dialog) {
                 });
                 body.append('rm_waitlist', tick && tick.checked ? '1' : '');
                 body.append('rm_team', team && team.checked ? '1' : '');
+                // The people ticked (3.131.0): the preview is the first of them.
+                body.append('rm_picked', '1');
+                Array.prototype.forEach.call(form.querySelectorAll('input[name="rm_ids[]"]:checked'), function (b) { body.append('rm_ids[]', b.value); });
                 if (err) { err.hidden = true; }
                 btn.disabled = true;
                 fetch(form.getAttribute('data-uc-rm-url'), {
@@ -351,6 +345,100 @@ function ucDismissOnBackdrop(dialog) {
                     if (err) { err.textContent = 'The preview could not be made.'; err.hidden = false; }
                 });
             });
+        });
+    }
+
+    /* ---------------------------------------------------------------------
+     * WHO GETS IT (3.131.0): the recipient list under Email registrants' and
+     * Text registrants' message. The search box hides rows and never unticks
+     * them; By answer and Didn't get tick exactly the rows that match and
+     * untick the rest; Tick all and Clear all; Include the waitlist shows the
+     * waiting rows. The count under the list and Send's question follow every
+     * change, and Send is off with nobody ticked.
+     * ------------------------------------------------------------------ */
+    function initRecipientList() {
+        document.querySelectorAll('[data-uc-rcp]').forEach(function (box) {
+            var form = box.closest('form');
+            if (!form) { return; }
+            var text = 'text' === box.getAttribute('data-uc-rcp-kind');
+            var rows = Array.prototype.slice.call(box.querySelectorAll('[data-uc-rcp-row]'));
+            var search = box.querySelector('[data-uc-rcp-search]');
+            var answer = box.querySelector('[data-uc-rcp-answer]');
+            var missed = box.querySelector('[data-uc-rcp-missed]');
+            var count = box.querySelector('[data-uc-rcp-count]');
+            var send = form.querySelector('[data-uc-rm-send], [data-uc-tr-send]');
+            var wait = form.querySelector('[data-uc-rm-waitlist]');
+            var team = form.querySelector('[data-uc-rm-team]');
+            var extra = {};
+            try { extra = JSON.parse(form.getAttribute('data-uc-rcp-extra') || '{}') || {}; } catch (e) { extra = {}; }
+            function boxOf(r) { return r.querySelector('input[type="checkbox"]'); }
+            function waitOff(r) { return r.hasAttribute('data-uc-rcp-wait') && !(wait && wait.checked); }
+            function usable(r) { var b = boxOf(r); return b && !b.disabled && !waitOff(r); }
+            function show() {
+                var q = search ? search.value.trim().toLowerCase() : '';
+                var digits = q.replace(/[^0-9]/g, '');
+                rows.forEach(function (r) {
+                    var find = r.getAttribute('data-uc-rcp-find') || '';
+                    var hit = !q || find.indexOf(q) >= 0 || (digits.length >= 3 && find.indexOf(digits) >= 0);
+                    r.hidden = waitOff(r) || !hit;
+                });
+            }
+            function update() {
+                var n = 0, sms = 0;
+                rows.forEach(function (r) {
+                    if (usable(r) && boxOf(r).checked) {
+                        n++;
+                        if ('sms' === r.getAttribute('data-uc-rcp-how')) { sms++; }
+                    }
+                });
+                var who = n + (1 === n ? ' person' : ' people');
+                var words;
+                if (!n) {
+                    words = 'Nobody is ticked.';
+                } else if (text) {
+                    var bits = [];
+                    if (sms) { bits.push(sms + ' by text'); }
+                    if (n - sms) { bits.push((n - sms) + ' by WhatsApp'); }
+                    words = 'Sending to ' + who + ': ' + bits.join(', ') + '.';
+                } else {
+                    words = 'Sending to ' + who + ' by email.';
+                }
+                if (count) { count.textContent = words; }
+                if (send) {
+                    var total = n + (text ? 0 : (parseInt(extra[team && team.checked ? '1' : '0'], 10) || 0));
+                    send.disabled = !n;
+                    send.setAttribute('data-uc-confirm', 'Send to ' + total + (1 === total ? ' person?' : ' people?') + (text ? ' A text cannot be recalled.' : ''));
+                }
+            }
+            function tickWhere(test) {
+                rows.forEach(function (r) { var b = boxOf(r); if (b && !b.disabled) { b.checked = test(r); } });
+                update();
+            }
+            rows.forEach(function (r) { var b = boxOf(r); if (b) { b.addEventListener('change', update); } });
+            if (search) { search.addEventListener('input', show); search.addEventListener('keydown', function (e) { if ('Enter' === e.key) { e.preventDefault(); } }); }
+            var all = box.querySelector('[data-uc-rcp-all]'), none = box.querySelector('[data-uc-rcp-none]');
+            if (all) { all.addEventListener('click', function () { if (answer) { answer.value = ''; } if (missed) { missed.value = ''; } tickWhere(function () { return true; }); }); }
+            if (none) { none.addEventListener('click', function () { if (answer) { answer.value = ''; } if (missed) { missed.value = ''; } tickWhere(function () { return false; }); }); }
+            if (answer) {
+                answer.addEventListener('change', function () {
+                    if (!answer.value) { return; }
+                    if (missed) { missed.value = ''; }
+                    var want = answer.value;
+                    tickWhere(function (r) { return (' ' + (r.getAttribute('data-uc-rcp-answers') || '') + ' ').indexOf(' ' + want + ' ') >= 0; });
+                });
+            }
+            if (missed) {
+                missed.addEventListener('change', function () {
+                    if ('' === missed.value) { return; }
+                    if (answer) { answer.value = ''; }
+                    var idx = missed.value;
+                    tickWhere(function (r) { return (' ' + (r.getAttribute('data-uc-rcp-got') || '') + ' ').indexOf(' ' + idx + ' ') < 0; });
+                });
+            }
+            if (wait) { wait.addEventListener('change', function () { show(); update(); }); }
+            if (team) { team.addEventListener('change', update); }
+            show();
+            update();
         });
     }
 

@@ -36,7 +36,7 @@
              data-filter-pin=""
              data-pagination="load_more"
              data-page="1"
-                                       data-month="2026-10-30 20:20:19"
+                                       data-month="2026-10-30 21:29:52"
              data-max-pages="1">
 
                                                 <form class="uc-filter-form" method="get" action="" data-uc-filter-form>
@@ -79,12 +79,12 @@
                 <span class="uc-who-label" data-uc-who-label>Organizers and groups</span>
                 <svg class="sfaf-icon sfaf-icon-chevron uc-who-chevron" width="1em" height="1em" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg>            </summary>
 
-            <div class="uc-who-panel" id="uc-who-2678" data-uc-who-panel>
+            <div class="uc-who-panel" id="uc-who-6145" data-uc-who-panel>
                                 <button type="button" class="uc-who-clear" data-uc-who-clear>Clear all</button>
                                 <div class="uc-who-cols">
                                             <section class="uc-who-col uc-who-col-org">
-                            <p class="uc-who-heading" id="uc-who-2678-org">Organizers</p>
-                            <div class="uc-who-list" role="group" aria-labelledby="uc-who-2678-org">
+                            <p class="uc-who-heading" id="uc-who-6145-org">Organizers</p>
+                            <div class="uc-who-list" role="group" aria-labelledby="uc-who-6145-org">
                                                                     <label class="uc-who-opt">
                                         <input type="checkbox" name="uc_org[]"
                                                value="sfaf"
@@ -1751,19 +1751,20 @@ jQuery.ajax = function () {
                         // under the caret while somebody is still typing it,
                         // and an international number, a country code or an
                         // extension is kept exactly as entered.
-                        '<div><label for="uc-rsvp-phone" data-uc-w="phone">Phone (optional)</label>' +
+                        // The label is Mark's longer one when texts can go (3.131.0).
+                        '<div><label for="uc-rsvp-phone" id="uc-rsvp-phone-label" data-uc-w="phone">Phone (optional)</label>' +
                             '<input type="tel" id="uc-rsvp-phone" autocomplete="tel" placeholder="(555) 000-0000" />' +
-                            // TEXT, WHATSAPP OR NEITHER (3.130.0): only once a
-                            // number is typed, and only when the button says
-                            // texts can go. Neither is chosen every time the form
-                            // opens. Mark's consent line and the privacy policy
-                            // sit beside the choice.
+                            // TEXT OR WHATSAPP (3.131.0, Mark's words): shown from
+                            // the moment the form opens when the button says texts
+                            // can go. Two boxes, at most one ticked, neither when the
+                            // form opens; pressing the ticked one again clears it.
+                            // One ticked makes the phone required and shows Mark's
+                            // consent line and the privacy policy under them.
                             '<fieldset class="uc-rsvp-texts" id="uc-rsvp-text-wrap" hidden>' +
-                                '<legend data-uc-w="updates_by">Get updates by</legend>' +
-                                '<label class="uc-rsvp-optin"><input type="radio" name="uc-rsvp-text-channel" value="sms" /><span data-uc-w="by_sms">Text</span></label>' +
-                                '<label class="uc-rsvp-optin" id="uc-rsvp-text-wa"><input type="radio" name="uc-rsvp-text-channel" value="whatsapp" /><span data-uc-w="by_whatsapp">WhatsApp</span></label>' +
-                                '<label class="uc-rsvp-optin"><input type="radio" name="uc-rsvp-text-channel" value="" checked /><span data-uc-w="by_none">Neither</span></label>' +
-                                '<p class="uc-rsvp-note"><span data-uc-w="text_consent">Text me updates about this event. Message frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help.</span> ' +
+                                '<legend data-uc-w="updates_by">Get event updates by:</legend>' +
+                                '<label class="uc-rsvp-optin"><input type="checkbox" name="uc-rsvp-text-channel" value="sms" /><span data-uc-w="by_sms">Text</span></label>' +
+                                '<label class="uc-rsvp-optin" id="uc-rsvp-text-wa"><input type="checkbox" name="uc-rsvp-text-channel" value="whatsapp" /><span data-uc-w="by_whatsapp">WhatsApp</span></label>' +
+                                '<p class="uc-rsvp-note" id="uc-rsvp-text-consent" hidden><span data-uc-w="text_consent">Text me updates about this event. Message frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help.</span> ' +
                                     '<a id="uc-rsvp-privacy" href="https://www.sfaf.org/privacy-policy/" target="_blank" rel="noopener" data-uc-w="privacy">Privacy policy</a></p>' +
                             '</fieldset></div>' +
                         // STAY IN TOUCH (3.124.0): the SFAF box, then one per
@@ -1789,6 +1790,8 @@ jQuery.ajax = function () {
                     '<div class="uc-check">&#10003;</div>' +
                     '<p id="uc-rsvp-success-msg">You are registered!</p>' +
                     '<p class="uc-modal-subtitle" id="uc-rsvp-success-sub">We look forward to seeing you.</p>' +
+                    // How they will also hear from us, by text or WhatsApp (3.131.0).
+                    '<p class="uc-modal-subtitle" id="uc-rsvp-success-texts" style="display:none;"></p>' +
                     // THE EMAIL, STATED NEUTRALLY.
                     //
                     // "It may be in your spam folder" undercuts a message that
@@ -1863,12 +1866,17 @@ jQuery.ajax = function () {
             agreedNow = false;
             try { currentAgreement = JSON.parse($(this).attr('data-uc-agreement') || 'null'); } catch (err) { currentAgreement = null; }
             currentLang = startLang($(this).attr('data-uc-lang'));
-            // Text and WhatsApp (3.130.0): what the server offers, Neither chosen.
+            // Text and WhatsApp (3.131.0): what the server offers, shown at
+            // once, neither ticked; the phone's label says what it is for.
             currentTexts = ($(this).attr('data-uc-texts') || '').split(',').filter(Boolean);
             if ($(this).attr('data-uc-privacy')) { $('#uc-rsvp-privacy').attr('href', $(this).attr('data-uc-privacy')); }
             $('#uc-rsvp-text-wa').prop('hidden', currentTexts.indexOf('whatsapp') < 0);
-            $('input[name="uc-rsvp-text-channel"][value=""]').prop('checked', true);
-            $('#uc-rsvp-text-wrap').attr('hidden', 'hidden');
+            $('input[name="uc-rsvp-text-channel"]').prop('checked', false);
+            $('#uc-rsvp-text-wrap').prop('hidden', !currentTexts.length);
+            $('#uc-rsvp-phone-label').attr('data-uc-w', currentTexts.length ? 'phone_texts' : 'phone')
+                .data('ucEn', currentTexts.length ? 'Phone number, for event updates by text or WhatsApp (optional)' : 'Phone (optional)');
+            $('#uc-rsvp-success-texts').hide().text('');
+            syncTexts();
 
             // Reset form. The opt-in is cleared with everything else: it must
             // never carry a previous visitor's tick into a fresh form.
@@ -1905,15 +1913,12 @@ jQuery.ajax = function () {
             if (e.key === 'Escape' && !agreementOpen()) closeModal();
         });
 
-        // Text, WhatsApp or Neither shows once a number is typed, when texts
-        // can go, and goes back to Neither when the number is cleared (3.130.0).
-        $(document).on('input', '#uc-rsvp-phone', function () {
-            if ($(this).val().trim() && currentTexts.length) {
-                $('#uc-rsvp-text-wrap').removeAttr('hidden');
-            } else {
-                $('input[name="uc-rsvp-text-channel"][value=""]').prop('checked', true);
-                $('#uc-rsvp-text-wrap').attr('hidden', 'hidden');
-            }
+        // Text or WhatsApp, at most one (3.131.0): ticking one unticks the
+        // other, and pressing the ticked one again leaves neither.
+        $(document).on('change', 'input[name="uc-rsvp-text-channel"]', function () {
+            if (this.checked) { $('input[name="uc-rsvp-text-channel"]').not(this).prop('checked', false); }
+            syncTexts();
+            $('#uc-rsvp-error').hide();
         });
 
         initAgreement();
@@ -2133,6 +2138,23 @@ jQuery.ajax = function () {
     /* THE LANGUAGE THE FORM OPENS IN (3.126.0): the browser's first language
        when it is English or Spanish, the event's for any other. The toggle
        still decides what is sent, and so every email to that person. */
+    /* TEXT OR WHATSAPP (3.131.0). What is ticked, '' for neither or when the
+       form does not offer texts; one ticked makes the phone required and shows
+       the consent line; a number is usable when SFAF_Texts::e164() takes it. */
+    function textChannel() {
+        return currentTexts.length ? ($('input[name="uc-rsvp-text-channel"]:checked').val() || '') : '';
+    }
+    function syncTexts() {
+        var on = !!textChannel();
+        $('#uc-rsvp-text-consent').prop('hidden', !on);
+        $('#uc-rsvp-phone').prop('required', on).attr('aria-required', on ? 'true' : null);
+    }
+    function phoneUsable(raw) {
+        var t = String(raw || '').trim();
+        var d = t.replace(/(x|ext\.?)\s*[0-9]+$/i, '').replace(/[^0-9]/g, '');
+        if (t.charAt(0) === '+') { return d.length >= 8 && d.length <= 15; }
+        return d.length === 10 || (d.length === 11 && d.charAt(0) === '1');
+    }
     function startLang(eventLang) {
         var nav = window.navigator || {};
         var first = String((nav.languages && nav.languages[0]) || nav.language || '').toLowerCase().split(/[-_]/)[0];
@@ -2442,6 +2464,14 @@ jQuery.ajax = function () {
             return;
         }
 
+        // TEXT OR WHATSAPP NEEDS A NUMBER (3.131.0): a US one, or one written
+        // with + and a country code, as SFAF_Texts::e164() takes it.
+        if (textChannel() && !phoneUsable(phone)) {
+            $('#uc-rsvp-error').text(W('need_phone', 'Enter a phone number to get updates by text or WhatsApp.')).show();
+            $('#uc-rsvp-phone').focus();
+            return;
+        }
+
         // THE AGREEMENT (3.110.0): asked once everything else is filled in.
         // Confirm RSVP sets agreedNow and calls this again.
         if (currentAgreement && !agreedNow) {
@@ -2478,7 +2508,7 @@ jQuery.ajax = function () {
                 agreed:       agreedNow ? '1' : '',
                 // Text, WhatsApp or '' for Neither (3.130.0). The server keeps
                 // only a channel it offered, with a number.
-                text_channel: (phone && currentTexts.length) ? ($('input[name="uc-rsvp-text-channel"]:checked').val() || '') : '',
+                text_channel: textChannel(),
                 // The toggle (3.113.6): every message to this person speaks it.
                 lang:         currentLang
             },
@@ -2501,6 +2531,14 @@ jQuery.ajax = function () {
                         response.ics = '';
                     } else if (response.first_name) {
                         $('#uc-rsvp-success-msg').text(W('registered_name', 'You are registered, %s!').replace('%s', response.first_name));
+                    }
+                    // Text or WhatsApp (3.131.0), with the number as the server kept it.
+                    if (response.text_channel && response.text_phone) {
+                        $('#uc-rsvp-success-texts').text((response.text_channel === 'whatsapp'
+                            ? W('also_whatsapp', "We'll also send WhatsApp messages to %s.")
+                            : W('also_sms', "We'll also text you at %s.")).replace('%s', response.text_phone)).show();
+                    } else {
+                        $('#uc-rsvp-success-texts').hide().text('');
                     }
 
                     // Add to calendar, drawn only where there is somewhere to
