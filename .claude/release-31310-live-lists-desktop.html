@@ -304,7 +304,7 @@ window.addEventListener('load', function () { setTimeout(function () {
   function tickedNames(b) { return qa('[data-uc-rcp-row]', b).filter(function (r) { var x = q('input', r); return x.checked && !x.disabled; }).map(function (r) { return text(q('.uc-rcp-name', r)); }); }
   out.textStart = { count: count(tbox), ticked: tickedNames(tbox), confirm: tsend.getAttribute('data-uc-confirm') };
   var s = q('[data-uc-rcp-search]', tbox); s.value = 'beto'; s.dispatchEvent(new Event('input', { bubbles: true }));
-  out.search = { shown: shownNames(tbox), count: count(tbox) };
+  out.search = { shown: shownNames(tbox), count: count(tbox), ticked: tickedNames(tbox) };
   s.value = '5550103'; s.dispatchEvent(new Event('input', { bubbles: true }));
   out.searchPhone = shownNames(tbox);
   s.value = ''; s.dispatchEvent(new Event('input', { bubbles: true }));

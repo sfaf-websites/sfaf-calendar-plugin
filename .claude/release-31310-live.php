@@ -180,7 +180,7 @@ window.addEventListener('load', function () { setTimeout(function () {
   function tickedNames(b) { return qa('[data-uc-rcp-row]', b).filter(function (r) { var x = q('input', r); return x.checked && !x.disabled; }).map(function (r) { return text(q('.uc-rcp-name', r)); }); }
   out.textStart = { count: count(tbox), ticked: tickedNames(tbox), confirm: tsend.getAttribute('data-uc-confirm') };
   var s = q('[data-uc-rcp-search]', tbox); s.value = 'beto'; s.dispatchEvent(new Event('input', { bubbles: true }));
-  out.search = { shown: shownNames(tbox), count: count(tbox) };
+  out.search = { shown: shownNames(tbox), count: count(tbox), ticked: tickedNames(tbox) };
   s.value = '5550103'; s.dispatchEvent(new Event('input', { bubbles: true }));
   out.searchPhone = shownNames(tbox);
   s.value = ''; s.dispatchEvent(new Event('input', { bubbles: true }));
@@ -264,7 +264,7 @@ foreach ( $g as $name => $r ) {
     }
     rl( 'Sending to 3 people: 2 by text, 1 by WhatsApp.' === $r['textStart']['count'] && array( 'Ana', 'Beto', 'Cruz' ) === $r['textStart']['ticked']
         && 'Send to 3 people? A text cannot be recalled.' === $r['textStart']['confirm'], "PLANT G: $name: Text registrants opens with " . json_encode( $r['textStart'] ) );
-    rl( array( 'Beto' ) === $r['search']['shown'] && 'Sending to 3 people: 2 by text, 1 by WhatsApp.' === $r['search']['count'], "PLANT G: $name: searching beto: " . json_encode( $r['search'] ) );
+    rl( array( 'Beto' ) === $r['search']['shown'] && 'Sending to 3 people: 2 by text, 1 by WhatsApp.' === $r['search']['count'] && array( 'Ana', 'Beto', 'Cruz' ) === $r['search']['ticked'], "PLANT G: $name: searching beto: " . json_encode( $r['search'] ) );
     rl( array( 'Cruz' ) === $r['searchPhone'], "$name: searching by phone digits finds " . json_encode( $r['searchPhone'] ) );
     rl( 'Nobody is ticked.' === $r['cleared']['count'] && array() === $r['cleared']['ticked'] && true === $r['cleared']['sendOff'], "PLANT G: $name: Clear all: " . json_encode( $r['cleared'] ) );
     rl( array( 'Ana' ) === $r['byAnswer']['ticked'] && 'Sending to 1 person: 1 by text.' === $r['byAnswer']['count'] && true === $r['byAnswer']['sendOn'], "PLANT G: $name: By answer Vegetarian: " . json_encode( $r['byAnswer'] ) );
