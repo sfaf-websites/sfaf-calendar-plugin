@@ -348,8 +348,9 @@ rt( 'D: the log is shown under the box', false !== strpos( $html, 'Texts sent fr
 tw_fresh();
 $html = rt_cap( function () use ( $portal, $me ) { kit_call( 'SFAF_Portal', 'render_text_registrants', $portal, array( $me, 900 ) ); } );
 rt( 'D: absent while texts are off and nobody chose', '' === trim( $html ) );
-$GLOBALS['wpdb']->rsvps = array( tw_row( 7, 900, '(415) 555-0107', 'sms', 'en', 'Neve' ) );
-$GLOBALS['wpdb']->rsvps[0]->text_channel = '';
+// A query that hands back every row, as the kit's own stand-in does.
+$GLOBALS['wpdb'] = new class extends Tw_Db { function get_results( $sql ) { return $this->rsvps; } };
+$GLOBALS['wpdb']->rsvps = array( tw_row( 7, 900, '(415) 555-0107', '', 'en', 'Neve' ) );
 rt( 'D: Neither is never listed, whatever the query returns', array() === SFAF_Texts::plan( 900 ) );
 $pt = file_get_contents( dirname( __DIR__ ) . '/includes/class-sfaf-portal.php' );
 rt( 'D: the route asks the event gate', 1 === preg_match( "/case 'text_registrants_send':\s*\\\$event_id = [^;]+;\s*\\\$post\s*= [^;]+;\s*if \( ! \\\$post \|\| 'uc_event' !== \\\$post->post_type \|\| ! \\\$this->can_edit_event\( \\\$user, \\\$post \) \) \{\s*wp_die\( 'Denied' \);/", $pt ) );
