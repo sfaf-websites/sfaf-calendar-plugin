@@ -32,7 +32,7 @@ $plants = array(
         array( $X, "            if ( 1 !== preg_match( '/^HX[0-9a-f]{32}\$/i', self::setting( \$key ) ) ) {\n                return false;", "            if ( false ) {\n                return false;" ),
     ) ),
     'a channel is kept without a number' => array( $T, 'FAIL  B: a channel without a number is dropped', array(
-        array( $X, "        return ( '' !== self::e164( $phone ) && in_array(", "        return ( in_array(" ),
+        array( $X, "        return ( '' !== self::e164( \$phone ) && in_array(", "        return ( in_array(" ),
     ) ),
 
     "the consent line is not Mark's" => array( $T, "FAIL  B: Mark's consent line", array(
