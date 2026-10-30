@@ -8644,6 +8644,37 @@ Decisions settled in conversation that have no code yet. They live here because
 a chat ends and this file does not. Move an entry into the body of this document
 when it ships, and delete it here.
 
+### Text and WhatsApp through Twilio, 3.130.0 (agreed 2026-10-30)
+
+Mark's instruction, in full in the 2026-10-30 chat; the parts that decide the
+build:
+
+- **Settings in WP admin, administrators only**: Account SID, Auth Token,
+  Messaging Service SID (MG...), the WhatsApp sender, the WhatsApp template
+  SIDs, and Test connection. The token never shown in full, logged, put in a
+  page or an email.
+- **The RSVP form**: once a phone is entered, Text, WhatsApp or Neither,
+  Neither by default, beside "Text me updates about this event. Message
+  frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for
+  help." in English and Spanish, with a link to SFAF's privacy policy.
+  Registrations that ticked the old "Text me about this event" are left as they
+  are and reported, for Mark to decide.
+- **What is sent**: the morning-of reminder, as well as the email and at the
+  same time; and **Text registrants** beside Email registrants, one typed
+  message, showing who gets it and how before it goes, every send logged. Each
+  in the language the person chose on the form.
+- **Replies**: one automatic answer, "This number isn't monitored. For
+  questions about [event name], please contact [email].", from the event's
+  Replies go to, else the site default. Nothing is forwarded. **STOP** is
+  honoured on both channels and recorded.
+- **WhatsApp stays off until its template SIDs are entered**; texts work
+  without them. Until then a person who chose WhatsApp gets email, and the RSVP
+  page says WhatsApp isn't active yet. The two Utility templates, each in
+  English and Spanish: `sfaf_event_reminder` "Reminder from SFAF: {{1}} is today
+  at {{2}}, at {{3}}. Event details: {{4}}" (name, time, place, link) and
+  `sfaf_event_update` "Update from SFAF about {{1}}: {{2}} For questions, please
+  email {{3}}." (name, the typed message, Replies go to).
+
 ### Left to decide after the event-page alignment (2026-10-25)
 
 The 2026-10-23 audit was built as 3.114.0 to 3.121.0. Mark asked for the rest

@@ -2924,6 +2924,8 @@ class SFAF_Admin {
             <?php
             // Mailchimp (3.124.0): its own forms, so outside the one above.
             SFAF_Mailchimp::render_panel();
+            // Twilio (3.130.0): the same arrangement.
+            SFAF_Texts::render_panel();
             ?>
         </div>
         <?php

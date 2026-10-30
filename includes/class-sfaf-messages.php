@@ -116,8 +116,6 @@ class SFAF_Messages {
             'agreement_tick'    => array( 'label' => 'Agreement: the tick', 'kind' => 'line', 'variants' => array( 'default' => '' ), 'tokens' => array() ),
             'agreement_confirm' => array( 'label' => 'Agreement: confirm button', 'kind' => 'line', 'variants' => array( 'default' => '' ), 'tokens' => array() ),
             'agreement_cancel'  => array( 'label' => 'Agreement: cancel button', 'kind' => 'line', 'variants' => array( 'default' => '' ), 'tokens' => array() ),
-            // Under the phone field on the RSVP form (3.110.0).
-            'text_opt_in'       => array( 'label' => 'Text opt-in', 'kind' => 'line', 'variants' => array( 'default' => '' ), 'tokens' => array() ),
             'cancel_page'    => array( 'label' => 'Cancel your place page', 'kind' => 'page',
                 'variants' => array( 'ask' => 'Asking', 'done' => 'Released', 'leave' => 'Leaving the waitlist', 'left' => 'Left the waitlist', 'nothing' => 'Nothing to cancel' ),
                 'tokens' => array( 'title', 'date', 'time' ) ),
@@ -297,11 +295,6 @@ class SFAF_Messages {
             'en' => array( 'subject' => '', 'intro' => 'Cancel', 'closing' => '' ),
             'es' => array( 'subject' => '', 'intro' => 'Cancelar', 'closing' => '' ),
         ) );
-        $d['text_opt_in'] = array( 'default' => array(
-            'en' => array( 'subject' => '', 'intro' => 'Text me about this event', 'closing' => '' ),
-            'es' => array( 'subject' => '', 'intro' => 'Envíenme mensajes de texto sobre este evento', 'closing' => '' ),
-        ) );
-
         $d['donate_line'] = array( 'default' => array(
             'en' => array( 'subject' => '', 'intro' => 'Support this work: {donate_link}.', 'closing' => '' ),
             'es' => array( 'subject' => '', 'intro' => 'Apoye este trabajo: {donate_link}.', 'closing' => '' ),
@@ -369,7 +362,7 @@ class SFAF_Messages {
             $w['q_heading'] = self::label( 'q_heading', $lang );
             $w['q_more']    = self::label( 'q_more', $lang );
             $w['q_required'] = self::label( 'q_required', $lang );
-            foreach ( array( 'agreement_heading', 'agreement_tick', 'agreement_confirm', 'agreement_cancel', 'text_opt_in' ) as $key ) {
+            foreach ( array( 'agreement_heading', 'agreement_tick', 'agreement_confirm', 'agreement_cancel' ) as $key ) {
                 $w[ $key ] = SFAF_Agreement::line( $key, $lang );
             }
             $out[ $lang ] = $w;
@@ -443,6 +436,14 @@ class SFAF_Messages {
                 'f_noemail_note'   => array( 'You will not get a confirmation, a reminder, or notice of changes.', 'No recibirá una confirmación, un recordatorio ni avisos de cambios.' ),
                 'f_online_email'   => array( 'Joining online needs an email address for the meeting link.', 'Para participar en línea se necesita un correo electrónico para el enlace de la reunión.' ),
                 'f_phone'          => array( 'Phone (optional)', 'Teléfono (opcional)' ),
+                // Text, WhatsApp or Neither, once a number is typed (3.130.0),
+                // and Mark's consent line beside it.
+                'f_updates_by'     => array( 'Get updates by', 'Recibir novedades por' ),
+                'f_by_sms'         => array( 'Text', 'Mensaje de texto' ),
+                'f_by_whatsapp'    => array( 'WhatsApp', 'WhatsApp' ),
+                'f_by_none'        => array( 'Neither', 'Ninguno' ),
+                'f_text_consent'   => array( 'Text me updates about this event. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.', 'Envíenme novedades sobre este evento. La frecuencia de los mensajes varía. Pueden aplicarse tarifas de mensajes y datos. Responda STOP para cancelar, HELP para obtener ayuda.' ),
+                'f_privacy'        => array( 'Privacy policy', 'Política de privacidad' ),
                 // The "Stay in touch" group at the end of the form (3.124.0): the
                 // SFAF box, and one per team with a Mailchimp connection, %s its name.
                 'f_stay'           => array( 'Stay in touch', 'Sigamos en contacto' ),

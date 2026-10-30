@@ -145,8 +145,9 @@ class SFAF_RSVP {
             'answers_more' => isset( $_POST['answers_more'] ) ? json_decode( wp_unslash( (string) $_POST['answers_more'] ), true ) : array(),
             // The agreement dialog's tick (3.110.0): '1' only from Confirm RSVP.
             'agreed'       => isset( $_POST['agreed'] ) && '1' === (string) wp_unslash( $_POST['agreed'] ),
-            // "Text me about this event" under the phone (3.110.0).
-            'text_opt_in'  => ! empty( $_POST['text_opt_in'] ),
+            // Text, WhatsApp or Neither, under the phone (3.130.0). submit()
+            // keeps only a channel the form offered, with a number.
+            'text_channel' => isset( $_POST['text_channel'] ) ? sanitize_key( wp_unslash( $_POST['text_channel'] ) ) : '',
             // The form's English | Español toggle (3.113.6); submit() keeps only en or es.
             'lang'         => isset( $_POST['lang'] ) ? sanitize_key( wp_unslash( $_POST['lang'] ) ) : '',
         ) );
@@ -396,8 +397,9 @@ class SFAF_RSVP {
 
         $data['phone'] = self::format_phone( $data['phone'] ?? '' );
         $data['name']  = trim( $data['first_name'] . ' ' . $data['last_name'] );
-        // A text opt-in means nothing without a number to text (3.110.0).
-        $data['text_opt_in'] = ( ! empty( $data['text_opt_in'] ) && '' !== $data['phone'] ) ? 1 : 0;
+        // Text or WhatsApp means nothing without a number (3.130.0). The old
+        // "Text me about this event" is no longer on the form.
+        $data['text_channel'] = SFAF_Texts::clean_channel( isset( $data['text_channel'] ) ? $data['text_channel'] : '', $data['phone'] );
         /*
          * THE SIGN-UP BOXES (3.124.0), kept as one string on the row: the SFAF
          * one, and a team's for each connection this event offers. A waitlist
@@ -456,14 +458,15 @@ class SFAF_RSVP {
             'created_at' => current_time( 'mysql' ),
             // '' on every event that never asked. See the column's note.
             'format'     => $data['format'],
-            // Schema 13 (3.110.0): when they agreed, and whether they want texts.
+            // Schema 13 (3.110.0): when they agreed.
             'agreed_at'   => '' !== $data['agreed_at'] ? $data['agreed_at'] : null,
-            'text_opt_in' => (int) $data['text_opt_in'],
             // Schema 15 (3.113.6): the form's language, '' for a form without the toggle.
             'lang'        => $data['lang'],
             // Schema 17 (3.124.0): the sign-up boxes ticked.
             'lists'       => $data['lists'],
-        ), array( '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s' ) );
+            // Schema 18 (3.130.0): Text, WhatsApp, or '' for Neither.
+            'text_channel' => $data['text_channel'],
+        ), array( '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ) );
 
         if ( $inserted ) {
             /*

@@ -622,6 +622,12 @@ class SFAF_Reminders {
             }
         }
 
+        // TEXT AND WHATSAPP (3.130.0): as well as the email, in the same run,
+        // claimed in this ledger under "text|" and the number.
+        if ( class_exists( 'SFAF_Texts' ) ) {
+            $result['texts'] = SFAF_Texts::send_reminders( $event_id );
+        }
+
         update_post_meta( $event_id, self::EVENT_DONE_META, time() );
 
         return $result;

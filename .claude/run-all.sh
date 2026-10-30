@@ -49,7 +49,7 @@ done
 screen_patterns() { # name -> extended regex over the check's source
   case "$1" in
     editor)      echo "render_event_form" ;;
-    rsvps)       echo "'render_rsvps'|render_registrant_mail" ;;
+    rsvps)       echo "'render_rsvps'|render_registrant_mail|render_text_registrants" ;;
     rsvp-form)   echo "sfaf_rsvp_block|calendar\\.js|uc-rsvp" ;;
     everyaction) echo "SFAF_EveryAction|everyaction" ;;
     embed)       echo "embed\\.js|render_calendar_block|render_sidebar|render_month_|calendar\\.css" ;;

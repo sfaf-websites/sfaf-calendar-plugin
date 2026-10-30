@@ -244,8 +244,8 @@ class SFAF_Waitlist {
             // The sign-up boxes (3.124.0), recorded by admit() once confirmed.
             'lists'      => isset( $data['lists'] ) ? (string) $data['lists'] : '',
         );
-        // The agreement and the text opt-in travel with a waitlist join (3.110.0).
-        foreach ( array( 'agreed_at', 'text_opt_in' ) as $k ) {
+        // The agreement (3.110.0) and Text or WhatsApp (3.130.0) travel with a waitlist join.
+        foreach ( array( 'agreed_at', 'text_channel' ) as $k ) {
             if ( isset( $data[ $k ] ) && '' !== (string) $data[ $k ] ) {
                 $row[ $k ] = $data[ $k ];
             }

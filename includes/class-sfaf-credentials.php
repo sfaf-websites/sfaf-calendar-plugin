@@ -128,6 +128,19 @@ class SFAF_Credentials {
             'everyaction_username'     => 'text',
             'everyaction_password'     => 'password',
             'everyaction_tracker_id'   => 'text',
+
+            // Twilio, for texts and WhatsApp (3.130.0). The Auth Token is a
+            // secret, and SFAF_Texts seals it before it arrives here; the rest
+            // are identifiers. None is in the settings form, so absorb() never
+            // meets them: SFAF_Texts::save() writes them.
+            'twilio_account_sid'       => 'text',
+            'twilio_auth_token'        => 'secret',
+            'twilio_messaging_sid'     => 'text',
+            'twilio_whatsapp_from'     => 'text',
+            'twilio_wa_reminder_en'    => 'text',
+            'twilio_wa_reminder_es'    => 'text',
+            'twilio_wa_update_en'      => 'text',
+            'twilio_wa_update_es'      => 'text',
         );
     }
 

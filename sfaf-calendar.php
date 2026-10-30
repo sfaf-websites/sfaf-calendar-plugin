@@ -24,7 +24,7 @@ define( 'SFAF_VERSION', '3.129.0' );
  * hook — still gets its new tables, instead of throwing "table doesn't exist"
  * the first time the runner looks for one.
  */
-define( 'SFAF_DB_VERSION', '17' );
+define( 'SFAF_DB_VERSION', '18' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -109,6 +109,9 @@ $sfaf_includes = array(
     // A team's Mailchimp list from the RSVP form (3.124.0). After SFAF_Optins,
     // whose record of each tick it sends from.
     'includes/class-sfaf-mailchimp.php',
+    // Texts and WhatsApp through Twilio (3.130.0). After SFAF_Mailchimp, whose
+    // seal() keeps the Auth Token.
+    'includes/class-sfaf-texts.php',
     'includes/class-sfaf-privacy.php',
     // A draft's or a scheduled event's page, for the staff who can edit it (3.122.0).
     'includes/class-sfaf-preview.php',
@@ -258,6 +261,8 @@ function sfaf_init() {
     SFAF_Preview::register();
     // A team's Mailchimp list from the RSVP form, and its send queue (3.124.0).
     SFAF_Mailchimp::register();
+    // Texts and WhatsApp: the settings, Test connection, and replies and STOP (3.130.0).
+    SFAF_Texts::register();
 
     // The public event request form. A front-end query var, like the cancel
     // link, so no rewrite rule and no REST route: see the note in the class.
@@ -513,6 +518,14 @@ function sfaf_enqueue_admin_assets( $hook ) {
     wp_enqueue_script(
         'sfaf-mailchimp',
         SFAF_PLUGIN_URL . 'admin/js/mailchimp.js',
+        array( 'sfaf-calendar-admin' ),
+        SFAF_VERSION,
+        true
+    );
+    // The Twilio panel's Test connection (3.130.0). Same arrangement.
+    wp_enqueue_script(
+        'sfaf-twilio',
+        SFAF_PLUGIN_URL . 'admin/js/twilio.js',
         array( 'sfaf-calendar-admin' ),
         SFAF_VERSION,
         true
@@ -1017,6 +1030,11 @@ function sfaf_install_tables() {
      * when a waitlisted row is confirmed, which is when its sign-ups count
      * (SFAF_Optins::record_ticks()). '' is every row before, so nothing is
      * sent for a registration made before 3.124.0.
+     *
+     * SCHEMA 18 (3.130.0): text_channel, how somebody chose to get updates
+     * besides email, 'sms', 'whatsapp' or '' for Neither. '' is every row
+     * before, those that ticked the old text_opt_in included: that column is
+     * kept as it was and sends nothing. See SFAF_Texts.
      */
     $sql[] = "CREATE TABLE $rsvps (
         id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -1041,6 +1059,7 @@ function sfaf_install_tables() {
         checked_in_at datetime NULL,
         lang varchar(5) NOT NULL DEFAULT '',
         lists varchar(255) NOT NULL DEFAULT '',
+        text_channel varchar(10) NOT NULL DEFAULT '',
         PRIMARY KEY (id),
         KEY event_id (event_id),
         KEY email (email),
@@ -1218,6 +1237,20 @@ function sfaf_install_tables() {
         PRIMARY KEY (id),
         KEY rsvp_id (rsvp_id),
         KEY event_question (event_id, question_id)
+    ) $charset;";
+
+    // NUMBERS THAT SENT STOP (schema 18, 3.130.0). One row per number, in
+    // +15551234567 form, whichever channel it came on: nothing is texted or
+    // sent by WhatsApp to it again until it sends START. See SFAF_Texts.
+    $stops = $wpdb->prefix . 'uc_text_stops';
+    $sql[] = "CREATE TABLE $stops (
+        id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+        phone varchar(20) NOT NULL,
+        channel varchar(10) NOT NULL DEFAULT '',
+        word varchar(20) NOT NULL DEFAULT '',
+        stopped_at datetime NULL,
+        PRIMARY KEY (id),
+        UNIQUE KEY phone (phone)
     ) $charset;";
 
     require_once ABSPATH . 'wp-admin/includes/upgrade.php';

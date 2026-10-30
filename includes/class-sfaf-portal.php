@@ -2466,6 +2466,17 @@ class SFAF_Portal {
                 $this->registrant_mail_route( $user, $event_id, true );
                 break;
 
+            /* ---- Text registrants (3.130.0). See SFAF_Texts. ------------- */
+            case 'text_registrants_send':
+                $event_id = isset( $_POST['event_id'] ) ? (int) $_POST['event_id'] : 0;
+                $post     = $event_id ? get_post( $event_id ) : null;
+                if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
+                    wp_die( 'Denied' );
+                }
+                set_transient( 'sfaf_tr_said_' . $user->ID, SFAF_Texts::send_update( $event_id, wp_unslash( $_POST['tr_message'] ?? '' ), (int) $user->ID ), 5 * MINUTE_IN_SECONDS );
+                $this->redirect( 'rsvps', array( 'event_id' => $event_id ) );
+                break;
+
             /* ---- Teams. A name and a set of users, and nothing else. ------ */
             case 'save_team':
                 if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
@@ -19063,7 +19074,7 @@ class SFAF_Portal {
                 </form>
             </details>
             <?php endif; ?>
-            <?php if ( $this->can_edit_event( $user, $event ) ) { $this->render_registrant_mail( $user, $event_id ); } ?>
+            <?php if ( $this->can_edit_event( $user, $event ) ) { $this->render_registrant_mail( $user, $event_id ); $this->render_text_registrants( $user, $event_id ); } ?>
         <?php elseif ( $orphans ) : ?>
             <p class="uc-hint">
                 Registrations whose event has been deleted. The name shown is the title the event had when it was
@@ -19116,7 +19127,8 @@ class SFAF_Portal {
             $ck_mode  = SFAF_Checkin::mode( $event_id );
             $ck_n     = SFAF_Checkin::checked_in_count( $event_id );
             $ck_edit  = $this->can_edit_event( $user, $event );
-            $texts_n  = count( array_filter( $rsvps, function ( $r ) { return 'confirmed' === (string) $r->status && ! empty( $r->text_opt_in ); } ) );
+            // Text or WhatsApp (3.130.0). The old "Text me about this event" is not counted.
+            $texts_n  = count( array_filter( $rsvps, function ( $r ) { return 'confirmed' === (string) $r->status && '' !== (string) ( $r->text_channel ?? '' ); } ) );
             $attended = SFAF_Checkin::attendance( $event_id );
             ?>
             <p class="uc-rsvp-counts" data-uc-rsvp-counts>
@@ -19127,7 +19139,7 @@ class SFAF_Portal {
                 <span><strong><?php echo (int) $waiting_n; ?></strong> waitlisted</span>
                 <?php if ( $texts_n ) : ?>
                     <span aria-hidden="true">&middot;</span>
-                    <span data-uc-texts-count><strong><?php echo (int) $texts_n; ?></strong> want texts</span>
+                    <span data-uc-texts-count><strong><?php echo (int) $texts_n; ?></strong> chose Text or WhatsApp</span>
                 <?php endif; ?>
             </p>
             <?php
@@ -19274,7 +19286,7 @@ class SFAF_Portal {
                                 echo '' !== $last ? esc_html( $last ) : '<span class="uc-muted">&ndash;</span>';
                             ?></td>
                             <td><?php echo '' !== (string) $r->email ? esc_html( $r->email ) : '<span class="uc-muted">&ndash;</span>'; ?></td>
-                            <td><?php echo esc_html( $r->phone ); ?><?php if ( ! empty( $r->text_opt_in ) ) : ?> <span class="uc-texts-mark" data-uc-texts-mark title="Ticked &quot;Text me about this event&quot;">Texts</span><?php endif; ?></td>
+                            <td><?php echo esc_html( $r->phone ); ?><?php if ( '' !== (string) ( $r->text_channel ?? '' ) ) : ?> <span class="uc-texts-mark" data-uc-texts-mark="<?php echo esc_attr( $r->text_channel ); ?>"><?php echo esc_html( SFAF_Texts::channel_label( $r->text_channel ) ); ?></span><?php elseif ( ! empty( $r->text_opt_in ) ) : ?> <span class="uc-texts-mark uc-texts-mark-old" data-uc-texts-mark="old" title="Ticked &quot;Text me about this event&quot; before 3.130.0. Gets no texts.">Old text tick</span><?php endif; ?></td>
                             <td><?php
                                 $opted = isset( $consented[ strtolower( trim( (string) $r->email ) ) . '|' . (int) $r->event_id ] );
                                 if ( $opted ) {
@@ -19530,6 +19542,106 @@ class SFAF_Portal {
                             <td><?php echo esc_html( sfaf_ap_datetime( (string) $entry['at'] ) ); ?></td>
                             <td><?php echo esc_html( (string) $entry['subject'] ); ?></td>
                             <td><?php echo esc_html( SFAF_Registrant_Mail::said( $entry, false ) ); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
+            </div>
+        </details>
+        <?php
+    }
+
+    /**
+     * TEXT REGISTRANTS (3.130.0): beside Email registrants and drawn by the same
+     * component, for whoever may edit the event. Who it reaches, and how, is
+     * listed before the box, and the button counts only those it can send to.
+     * Absent until Twilio can send and nobody on the list chose a channel.
+     * See SFAF_Texts.
+     */
+    private function render_text_registrants( $user, $event_id ) {
+        $plan = SFAF_Texts::plan( $event_id );
+        if ( ! $plan && ! SFAF_Texts::sms_on() ) {
+            return;
+        }
+        $said = get_transient( 'sfaf_tr_said_' . $user->ID );
+        if ( false !== $said ) {
+            delete_transient( 'sfaf_tr_said_' . $user->ID );
+        }
+        $how = array(
+            'sms'          => 'Text',
+            'whatsapp'     => 'WhatsApp',
+            'whatsapp_off' => "Email only: WhatsApp isn't active yet",
+            'sms_off'      => "Email only: texts aren't set up",
+            'stopped'      => 'Nothing: this number sent STOP',
+            'no_number'    => 'Nothing: no number',
+        );
+        $to      = count( array_filter( $plan, function ( $p ) { return in_array( $p['state'], array( 'sms', 'whatsapp' ), true ); } ) );
+        $wa_off  = count( array_filter( $plan, function ( $p ) { return 'whatsapp_off' === $p['state']; } ) );
+        $log     = SFAF_Texts::log( $event_id );
+        ?>
+        <details class="uc-card uc-rsvp-settings uc-registrant-mail uc-text-registrants" data-uc-disclosure data-uc-text-registrants<?php echo is_array( $said ) ? ' open' : ''; ?>>
+            <summary class="uc-rsvp-settings-toggle" aria-expanded="<?php echo is_array( $said ) ? 'true' : 'false'; ?>">
+                <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '18px' ) ); ?></span>
+                <span class="uc-rsvp-settings-id">
+                    <span class="uc-rsvp-settings-name"><strong>Text registrants</strong></span>
+                    <span class="uc-muted">Send a text or WhatsApp message to everyone who chose one.</span>
+                </span>
+            </summary>
+            <div class="uc-rsvp-settings-form uc-registrant-mail-body">
+                <?php if ( is_array( $said ) && ! empty( $said['error'] ) ) : ?>
+                    <p class="uc-notice uc-notice-error" role="alert"><?php echo esc_html( $said['error'] ); ?></p>
+                <?php elseif ( is_array( $said ) ) : ?>
+                    <p class="uc-notice" role="status" data-uc-tr-said><?php echo esc_html( SFAF_Texts::said( $said ) ); ?></p>
+                <?php endif; ?>
+                <?php if ( $wa_off ) : ?>
+                    <p class="uc-notice" data-uc-tr-wa-off><?php echo esc_html( sprintf( "WhatsApp isn't active yet. %d %s chose WhatsApp and %s email only.", $wa_off, 1 === $wa_off ? 'person' : 'people', 1 === $wa_off ? 'gets' : 'get' ) ); ?></p>
+                <?php endif; ?>
+                <?php if ( ! $plan ) : ?>
+                    <p class="uc-hint" data-uc-tr-nobody>Nobody on this list chose Text or WhatsApp.</p>
+                <?php else : ?>
+                    <table class="uc-table uc-table-cards" data-uc-tr-who>
+                        <thead><tr><th>Name</th><th>Number</th><th>Gets it by</th></tr></thead>
+                        <tbody>
+                        <?php foreach ( $plan as $p ) : ?>
+                            <tr data-uc-tr-state="<?php echo esc_attr( $p['state'] ); ?>">
+                                <td><?php echo esc_html( SFAF_RSVP::display_name( $p['row'] ) ); ?></td>
+                                <td><?php echo esc_html( (string) $p['row']->phone ); ?></td>
+                                <td><?php echo esc_html( isset( $how[ $p['state'] ] ) ? $how[ $p['state'] ] : '' ); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <form method="post" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>" class="uc-registrant-mail-form" data-uc-tr-form>
+                        <input type="hidden" name="uc_action" value="text_registrants_send" />
+                        <?php wp_nonce_field( 'uc_portal_text_registrants_send', 'uc_nonce' ); ?>
+                        <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
+                        <label class="uc-field">
+                            <span class="uc-field-label">Message</span>
+                            <textarea name="tr_message" rows="3" maxlength="<?php echo (int) SFAF_Texts::MAX_MESSAGE; ?>" required data-uc-tr-message></textarea>
+                            <span class="uc-hint"><?php echo esc_html( sprintf( 'Up to %d characters. It arrives as "Update from SFAF about %s:", then the message and where to email.', SFAF_Texts::MAX_MESSAGE, html_entity_decode( get_the_title( $event_id ), ENT_QUOTES, 'UTF-8' ) ) ); ?></span>
+                        </label>
+                        <div class="uc-form-actions">
+                            <button type="submit" class="uc-btn uc-btn-go" data-uc-tr-send<?php disabled( 0 === $to ); ?>
+                                    data-uc-confirm="<?php echo esc_attr( sprintf( 'Send to %d %s? A text cannot be recalled.', $to, 1 === $to ? 'person' : 'people' ) ); ?>"><span class="uc-rm-send-icon" aria-hidden="true"><?php echo sfaf_icon( 'speech', array( 'size' => '16px' ) ); ?></span><span class="uc-rm-send-label">Send</span></button>
+                        </div>
+                    </form>
+                <?php endif; ?>
+        <?php if ( $log ) : ?>
+            <div class="uc-registrant-mail-log" data-uc-tr-log>
+                <h3 class="uc-subhead">Texts sent from this list</h3>
+                <table class="uc-table uc-table-cards">
+                    <thead><tr><th>Sent by</th><th>When</th><th>Message</th><th>Recipients</th></tr></thead>
+                    <tbody>
+                    <?php foreach ( $log as $entry ) :
+                        $who = get_userdata( (int) $entry['by'] );
+                        ?>
+                        <tr>
+                            <td><?php echo esc_html( $who && '' !== (string) $who->display_name ? $who->display_name : 'A former user' ); ?></td>
+                            <td><?php echo esc_html( sfaf_ap_datetime( (string) $entry['at'] ) ); ?></td>
+                            <td><?php echo esc_html( (string) $entry['message'] ); ?></td>
+                            <td><?php echo esc_html( SFAF_Texts::said( $entry ) ); ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>

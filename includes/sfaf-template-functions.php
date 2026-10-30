@@ -1330,8 +1330,10 @@ function sfaf_rsvp_block( $post_id ) {
                 'data-uc-questions' => ( $qd = SFAF_Questions::form_data( $post_id ) ) ? wp_json_encode( $qd ) : '',
                 // The registration agreement's dialog, '' when the event does not ask (3.110.0).
                 'data-uc-agreement' => ( $ad = SFAF_Agreement::form_data( $post_id ) ) ? wp_json_encode( $ad ) : '',
-                // "Text me about this event", in the event's language (3.110.0).
-                'data-uc-text-label' => SFAF_Agreement::line( 'text_opt_in', sfaf_event_language( $post_id ) ),
+                // Text and WhatsApp, offered once a number is typed, '' until
+                // Twilio can send (3.130.0); and the privacy policy beside them.
+                'data-uc-texts'   => implode( ',', SFAF_Texts::form_channels() ),
+                'data-uc-privacy' => SFAF_Texts::PRIVACY_URL,
                 // The language the form opens in, the event's (3.113.6).
                 'data-uc-lang'    => sfaf_event_language( $post_id ),
                 'data-uc-full'    => implode( ',', array_values( array_filter(

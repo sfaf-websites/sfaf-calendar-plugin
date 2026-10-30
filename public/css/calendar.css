@@ -5302,6 +5302,14 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
 .uc-agree-dialog .uc-rsvp-optin { display: flex; align-items: flex-start; gap: 8px; margin: 0; font-size: 15px; line-height: 1.45; color: var(--uc-text); cursor: pointer; }
 .uc-agree-dialog .uc-agree-actions { display: flex; flex-direction: column; gap: 8px; }
 .uc-rsvp-form .uc-rsvp-texts[hidden] { display: none; }
+/* TEXT, WHATSAPP OR NEITHER (3.130.0): a fieldset drawn as the questions are. */
+.uc-rsvp-form .uc-rsvp-texts { border: 0; padding: 0; margin: 8px 0 0; min-width: 0; }
+.uc-rsvp-form .uc-rsvp-texts > legend {
+    padding: 0; margin-bottom: 4px;
+    font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--uc-text);
+}
+.uc-rsvp-form .uc-rsvp-texts .uc-rsvp-optin[hidden] { display: none; }
+.uc-rsvp-form .uc-rsvp-texts .uc-rsvp-note a { color: var(--uc-teal-text); text-decoration: underline; }
 /* ---------------------------------------------------------------------------
    THE REGISTRATION FORM UNDER A FINGER (3.110.0)
 
