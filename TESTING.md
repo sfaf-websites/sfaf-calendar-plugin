@@ -5548,8 +5548,10 @@ the checks recorded the request and never sent it.
 Register for an event taking place tomorrow, choosing Text, with your own
 number. On the morning, at the reminder time, the email and the text arrive
 together: "Reminder from SFAF: [event] is today at [time], at [place]. Event
-details: [link] Reply STOP to opt out." The next scheduled run sends nothing
-more.
+details: [link] Can't make it? Cancel here: [link] Reply STOP to opt out."
+Tap the cancel link: it opens the same cancel page as the confirmation
+email's link, for your registration (do not confirm unless you mean to). The
+next scheduled run sends nothing more. (Cancel line from 3.131.0.)
 
 **Why it needs a person:** the real scheduled job on the site on the event's
 day, and a real phone.
@@ -5573,7 +5575,8 @@ WhatsApp number against SFAF's Meta Business account, and set its webhook for
 incoming messages to the panel's **Incoming message address**, HTTP POST.
 Messaging > Content Template Builder: create **sfaf_event_reminder** and
 **sfaf_event_update**, each in English and Spanish, category Utility, with the
-words and the {{1}} to {{4}} in the order of Mark's instruction (`PROJECT.md`
+words and the {{1}} to {{4}} in the order of Mark's instruction, and from
+3.131.0 the reminder's {{5}}, the cancel link (`PROJECT.md`
 3), and submit each for WhatsApp approval. Once all four are approved, paste
 their four Content SIDs (HX...) and the WhatsApp number into Settings >
 Twilio. The note above the template boxes says WhatsApp is on.

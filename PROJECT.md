@@ -5600,6 +5600,15 @@ Until then a person who chose WhatsApp gets email only, and Text
 registrants says so. A text says the same words as the template, with
 "Reply STOP to opt out." added, which the template leaves to WhatsApp.
 
+**The reminder's cancel link (3.131.0)** is the person's own, the one their
+confirmation email carries: `SFAF_Reminders::cancel_url()` of the
+registration's token (`cancel_link()`). It is the reminder template's {{5}},
+and a text's "Can't make it? Cancel here:" line, in Mark's words in both
+languages; the Spanish is his informal "¿No puedes venir? Cancela aquí:",
+where the rest of the calendar's Spanish is formal. A registration with no
+token has no link: the text drops the line, and {{5}} falls back to the
+event page, because a template refuses an empty variable.
+
 **What is sent**: the morning-of reminder, inside
 `SFAF_Reminders::send_for_event()` after the emails and before the event is
 marked done, claimed in the reminder ledger under `text|` and the number, so

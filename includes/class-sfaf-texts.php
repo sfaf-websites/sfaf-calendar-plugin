@@ -10,7 +10,8 @@
  * WHAT IS SENT:
  *   - the morning-of reminder, by SFAF_Reminders::send_for_event(), in the
  *     same run as the email, claimed in the same ledger under "text|" and the
- *     number, so a second run cannot send it twice;
+ *     number, so a second run cannot send it twice; it ends with the
+ *     person's own cancel link, their confirmation email's (3.131.0);
  *   - "Text registrants" from the RSVP list: one message the team types,
  *     wrapped in the person's language, logged on the event like Email
  *     registrants.
@@ -350,6 +351,12 @@ class SFAF_Texts {
             $s = $es
                 ? sprintf( 'Recordatorio de SFAF: %s es hoy a las %s, en %s. Detalles del evento: %s', $v['name'], $v['time'], $v['place'], $v['link'] )
                 : sprintf( 'Reminder from SFAF: %s is today at %s, at %s. Event details: %s', $v['name'], $v['time'], $v['place'], $v['link'] );
+            // The person's own cancel link, as the template's {{5}} (3.131.0), in Mark's words.
+            if ( ! empty( $v['cancel'] ) ) {
+                $s .= $es
+                    ? sprintf( ' ¿No puedes venir? Cancela aquí: %s', $v['cancel'] )
+                    : sprintf( " Can't make it? Cancel here: %s", $v['cancel'] );
+            }
         } elseif ( 'update' === $kind ) {
             $s = $es
                 ? sprintf( 'Novedad de SFAF sobre %s: %s Si tiene preguntas, escriba a %s.', $v['name'], $v['message'], $v['reply'] )
@@ -377,9 +384,20 @@ class SFAF_Texts {
 
     /** The template's variables, in the order Mark's templates number them. */
     public static function variables( $kind, $v ) {
+        // {{5}} is the cancel link (3.131.0). A registration with no token has
+        // none, and a template refuses an empty variable, so it is the event page.
         return 'reminder' === $kind
-            ? array( '1' => $v['name'], '2' => $v['time'], '3' => $v['place'], '4' => $v['link'] )
+            ? array( '1' => $v['name'], '2' => $v['time'], '3' => $v['place'], '4' => $v['link'], '5' => ! empty( $v['cancel'] ) ? $v['cancel'] : $v['link'] )
             : array( '1' => $v['name'], '2' => self::ended( $v['message'] ), '3' => $v['reply'] );
+    }
+
+    /**
+     * The person's own cancel link, the one in their confirmation email
+     * (SFAF_Notifications, from the registration's token), or '' without one.
+     */
+    public static function cancel_link( $row ) {
+        $token = isset( $row->token ) ? trim( (string) $row->token ) : '';
+        return '' !== $token ? SFAF_Reminders::cancel_url( $token ) : '';
     }
 
     /** The typed message ends a sentence: "For questions" follows it. */
@@ -441,7 +459,7 @@ class SFAF_Texts {
             return false;
         }
         $lang = self::lang_of( $row );
-        $v    = array_merge( self::facts( (int) $row->event_id, $lang ), $extra );
+        $v    = array_merge( self::facts( (int) $row->event_id, $lang ), array( 'cancel' => self::cancel_link( $row ) ), $extra );
         if ( 'sms' === $reach['state'] ) {
             $r = self::api( 'POST', '/Messages.json', array(
                 'MessagingServiceSid' => self::setting( self::SERVICE ),

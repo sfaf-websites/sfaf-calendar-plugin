@@ -20,7 +20,8 @@
  *   C. The morning-of reminder: a text and a WhatsApp message beside the
  *      email, once per number however many runs, nothing to a stopped number,
  *      nothing by WhatsApp until it is on; each in the person's language; the
- *      template's four variables, none empty.
+ *      template's variables, none empty (five from 3.131.0, the cancel link,
+ *      release-31310-test.php).
  *   D. Text registrants: who gets it and how, listed before the box; the
  *      button counts only those it can reach; "WhatsApp isn't active yet";
  *      the send is logged; an empty message sends nothing.
@@ -298,7 +299,7 @@ $wb = $GLOBALS['tw_calls'][0]['args']['body'];
 rt( 'C: from and to as WhatsApp numbers', 'whatsapp:+14155550100' === $wb['From'] && 'whatsapp:+14155550102' === $wb['To'] );
 rt( "C: the Spanish reminder template for a Spanish registrant", tw_hx( 'd' ) === $wb['ContentSid'] );
 $vars = json_decode( $wb['ContentVariables'], true );
-rt( 'C: four variables, none empty', is_array( $vars ) && array( '1', '2', '3', '4' ) === array_map( 'strval', array_keys( $vars ) ) && 4 === count( array_filter( $vars, 'strlen' ) ) );
+rt( 'C: five variables, none empty', is_array( $vars ) && array( '1', '2', '3', '4', '5' ) === array_map( 'strval', array_keys( $vars ) ) && 5 === count( array_filter( $vars, 'strlen' ) ) );
 rt( 'C: the variables are name, time, place, link', 'Coffee & Conversation' === $vars['1'] && 'https://resources.sfaf.org/events/900/' === $vars['4'] );
 delete_post_meta( 900, '_uc_location' );
 delete_post_meta( 900, '_uc_start_time' );

@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.130.0
+Stable tag: 3.131.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,15 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.131.0 =
+
+**The morning-of reminder by text and WhatsApp carries the person's cancel link. Every embed answer and header is 3.130.0's, proved by embed-identity-test.php.**
+
+**WHAT CHANGES ON PUBLIC PAGES:** nothing.
+
+* **WhatsApp reminder**: the templates' new fifth blank, {{5}}, is the person's own cancel link, the same one as in their confirmation email.
+* **Text reminder**: ends "Can't make it? Cancel here: [link]", in Spanish "¿No puedes venir? Cancela aquí: [link]", before "Reply STOP to opt out." A registration with no cancel link of its own gets no cancel line by text, and the event page in {{5}} on WhatsApp.
 
 = 3.130.0 =
 
