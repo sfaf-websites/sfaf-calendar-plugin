@@ -75,7 +75,7 @@ and from 3.111.0 `calendar-files/` for PDFs, beside them.
 
 ## In flight
 
-- **3.130.0 is built.** Twilio is not set up on the site yet; `TESTING.md` 1.333 first, then 2.72 says what to set in Twilio. **Mark decides** what happens to the registrations that ticked the old box (1.335).
+- **3.130.0 is released** (2026-10-30), not yet installed. Twilio is not set up on the site yet; `TESTING.md` 1.333 first, then 2.72 says what to set in Twilio. **Mark decides** what happens to the registrations that ticked the old box (1.335).
 - **Following a series is half built.** 3.53.0 established the followers; nothing
   sends them. `PROJECT.md` 8, then `TESTING.md` 1.22.
 - **Automated fetching is ON and its own copy says it should not be**, and only
