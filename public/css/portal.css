@@ -5316,7 +5316,7 @@ body.uc-modal-open { overflow: hidden; }
 .uc-recipients .uc-rcp-list .uc-check { flex-wrap: wrap; margin-bottom: 4px; }
 .uc-recipients .uc-rcp-name { font-weight: 600; }
 .uc-recipients [data-uc-rcp-count] { margin: 0; }
-.uc-rcp-who summary { cursor: pointer; }
+.uc-rcp-who summary { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
 .uc-rsvp-table .uc-checkin-form { display: inline; margin: 0; }
 .uc-rsvp-table .uc-checkin-btn[aria-pressed="true"] { border-color: var(--uc-accent-text); color: var(--uc-accent-text); background: var(--uc-band); }
 .uc-texts-mark {

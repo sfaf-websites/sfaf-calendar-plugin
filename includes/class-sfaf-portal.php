@@ -19709,7 +19709,7 @@ class SFAF_Portal {
                             <td><?php echo esc_html( (string) $entry['subject'] ); ?></td>
                             <td><?php echo esc_html( SFAF_Registrant_Mail::said( $entry, false ) ); ?>
                                 <?php $who = self::received_names( $entry, $rm_names ); if ( '' !== $who ) : // Who received it (3.131.0). ?>
-                                    <details class="uc-rcp-who" data-uc-rcp-who><summary>Who</summary><?php echo esc_html( $who ); ?></details>
+                                    <details class="uc-rcp-who" data-uc-rcp-who><summary><span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '14px' ) ); ?></span>Who</summary><?php echo esc_html( $who ); ?></details>
                                 <?php endif; ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -19813,7 +19813,7 @@ class SFAF_Portal {
                             <td><?php echo esc_html( (string) $entry['message'] ); ?></td>
                             <td><?php echo esc_html( SFAF_Texts::said( $entry ) ); ?>
                                 <?php $who = self::received_names( $entry, $tr_names ); if ( '' !== $who ) : // Who received it (3.131.0). ?>
-                                    <details class="uc-rcp-who" data-uc-rcp-who><summary>Who</summary><?php echo esc_html( $who ); ?></details>
+                                    <details class="uc-rcp-who" data-uc-rcp-who><summary><span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '14px' ) ); ?></span>Who</summary><?php echo esc_html( $who ); ?></details>
                                 <?php endif; ?></td>
                         </tr>
                     <?php endforeach; ?>

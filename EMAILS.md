@@ -280,10 +280,13 @@ Labels, buttons and the calendar file's words. These are not edited on the Templ
 | You will not get a confirmation, a reminder, or notice of changes. | No recibirá una confirmación, un recordatorio ni avisos de cambios. |
 | Joining online needs an email address for the meeting link. | Para participar en línea se necesita un correo electrónico para el enlace de la reunión. |
 | Phone (optional) | Teléfono (opcional) |
-| Get updates by | Recibir novedades por |
-| Text | Mensaje de texto |
+| Phone number, for event updates by text or WhatsApp (optional) | Teléfono, para recibir avisos del evento por texto o WhatsApp (opcional) |
+| Get event updates by: | Recibir avisos del evento por: |
+| Text | Texto |
 | WhatsApp | WhatsApp |
-| Neither | Ninguno |
+| Enter a phone number to get updates by text or WhatsApp. | Escribe un número de teléfono para recibir avisos por texto o WhatsApp. |
+| We'll also text you at %s. | También le enviaremos mensajes de texto al %s. |
+| We'll also send WhatsApp messages to %s. | También le enviaremos mensajes de WhatsApp al %s. |
 | Text me updates about this event. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. | Envíenme novedades sobre este evento. La frecuencia de los mensajes varía. Pueden aplicarse tarifas de mensajes y datos. Responda STOP para cancelar, HELP para obtener ayuda. |
 | Privacy policy | Política de privacidad |
 | Stay in touch | Sigamos en contacto |
@@ -325,3 +328,4 @@ Labels, buttons and the calendar file's words. These are not edited on the Templ
 | in person | en persona |
 | online | en línea |
 | This event is at capacity. | Este evento está lleno. |
+| Enter a phone number to get updates by text or WhatsApp. | Escribe un número de teléfono para recibir avisos por texto o WhatsApp. |

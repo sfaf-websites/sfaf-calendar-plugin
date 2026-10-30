@@ -584,8 +584,10 @@ window.addEventListener('load', function () { setTimeout(function () {
   var settings = q('details.uc-rsvp-settings:not(.uc-registrant-mail)');
   var mail = q('details.uc-registrant-mail');
   if (settings || q('[data-uc-reg-elsewhere]')) {
-    out.searchBoxes = qa('input[type="search"]').filter(seen).length;
-    out.searchLabel = (q('input[type="search"]') || {}).placeholder || '';
+    /* The RSVP list's own search. Email registrants' and Text registrants'
+       recipient lists have a search of their own, for their own list (3.131.0). */
+    out.searchBoxes = qa('input[type="search"]:not([data-uc-rcp-search])').filter(seen).length;
+    out.searchLabel = (q('input[type="search"]:not([data-uc-rcp-search])') || {}).placeholder || '';
     var bar = q('form.uc-filters-bar');
     out.searchButtonShown = bar ? seen(q('button[type="submit"]', bar)) : null;
     var card = qa('.uc-card').filter(function (c) { return q('[data-uc-rsvp-row]', c); })[0];
