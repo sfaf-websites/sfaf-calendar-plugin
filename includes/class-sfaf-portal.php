@@ -2473,7 +2473,11 @@ class SFAF_Portal {
                 if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
                     wp_die( 'Denied' );
                 }
-                set_transient( 'sfaf_tr_said_' . $user->ID, SFAF_Texts::send_update( $event_id, wp_unslash( $_POST['tr_message'] ?? '' ), (int) $user->ID ), 5 * MINUTE_IN_SECONDS );
+                // The people ticked (3.131.0); the list is always on the form.
+                $tr_only = self::picked_ids( 'tr' );
+                set_transient( 'sfaf_tr_said_' . $user->ID, ( null !== $tr_only && ! $tr_only )
+                    ? array( 'error' => 'Tick at least one person to send to.' )
+                    : SFAF_Texts::send_update( $event_id, wp_unslash( $_POST['tr_message'] ?? '' ), (int) $user->ID, $tr_only ), 5 * MINUTE_IN_SECONDS );
                 $this->redirect( 'rsvps', array( 'event_id' => $event_id ) );
                 break;
 
@@ -19400,9 +19404,13 @@ class SFAF_Portal {
         $rm_wait    = ! empty( $_POST['rm_waitlist'] );
         $rm_team    = ! empty( $_POST['rm_team'] );
         $rm_bad     = SFAF_Registrant_Mail::unknown_tokens( $rm_subject . ' ' . $rm_body );
+        // The people ticked (3.131.0): null when the list was not posted.
+        $rm_only    = self::picked_ids( 'rm' );
         $rm_error   = '';
         if ( '' === $rm_subject || '' === $rm_body ) {
             $rm_error = 'Write a subject and a message first.';
+        } elseif ( null !== $rm_only && ! $rm_only ) {
+            $rm_error = 'Tick at least one person to send to.';
         } elseif ( $rm_bad ) {
             $rm_error = 'Remove {' . implode( '}, {', $rm_bad ) . '}: the message cannot fill it.';
         }
@@ -19410,7 +19418,7 @@ class SFAF_Portal {
             if ( '' !== $rm_error ) {
                 wp_send_json_error( array( 'message' => $rm_error ) );
             }
-            $pv = SFAF_Registrant_Mail::preview( $event_id, $rm_subject, $rm_body, $rm_wait, $rm_team );
+            $pv = SFAF_Registrant_Mail::preview( $event_id, $rm_subject, $rm_body, $rm_wait, $rm_team, $rm_only );
             if ( ! $pv ) {
                 wp_send_json_error( array( 'message' => 'Nobody on this list has an email address to send to.' ) );
             }
@@ -19420,8 +19428,140 @@ class SFAF_Portal {
             set_transient( 'sfaf_rm_said_' . $user->ID, array( 'error' => $rm_error ), 5 * MINUTE_IN_SECONDS );
             $this->redirect( 'rsvps', array( 'event_id' => $event_id ) );
         }
-        set_transient( 'sfaf_rm_said_' . $user->ID, SFAF_Registrant_Mail::send( $event_id, $rm_subject, $rm_body, $rm_wait, (int) $user->ID, $rm_team ), 5 * MINUTE_IN_SECONDS );
+        set_transient( 'sfaf_rm_said_' . $user->ID, SFAF_Registrant_Mail::send( $event_id, $rm_subject, $rm_body, $rm_wait, (int) $user->ID, $rm_team, $rm_only ), 5 * MINUTE_IN_SECONDS );
         $this->redirect( 'rsvps', array( 'event_id' => $event_id ) );
+    }
+
+    /**
+     * WHO GETS IT (3.131.0): the one recipient list Email registrants and Text
+     * registrants both draw, under the message. Every person it can reach is
+     * ticked; a search box narrows what is shown, never who is ticked; By
+     * answer and Didn't get tick exactly the people who match; Clear all and
+     * Tick all. The count under it says who gets it and how. It posts
+     * {prefix}_ids[] and {prefix}_picked, read by picked_ids().
+     *
+     * @param string  $prefix    'rm' or 'tr'
+     * @param int     $event_id
+     * @param array[] $people    each { id, name, detail, how, how_key, reach, wait }
+     * @param array[] $log       the section's send log, newest first
+     * @param string  $log_label 'subject' or 'message', what names a log entry
+     */
+    private function render_recipient_picker( $prefix, $event_id, $people, $log, $log_label ) {
+        $answers = SFAF_Questions::option_ids_for_rows( wp_list_pluck( $people, 'id' ) );
+        $qs      = SFAF_Questions::for_event( $event_id );
+        $past    = array();
+        foreach ( $log as $i => $entry ) {
+            if ( isset( $entry['ids'] ) && is_array( $entry['ids'] ) ) {
+                $words = trim( (string) ( $entry[ $log_label ] ?? '' ) );
+                $past[ $i ] = sfaf_ap_datetime( (string) $entry['at'] ) . ': ' . ( strlen( $words ) > 60 ? substr( $words, 0, 57 ) . '...' : $words );
+            }
+        }
+        $ticked = array_filter( $people, function ( $p ) { return $p['reach'] && ! $p['wait']; } );
+        ?>
+        <div class="uc-recipients" data-uc-rcp data-uc-rcp-kind="<?php echo 'tr' === $prefix ? 'text' : 'email'; ?>">
+            <input type="hidden" name="<?php echo esc_attr( $prefix ); ?>_picked" value="1" />
+            <span class="uc-field-label">Recipients</span>
+            <div class="uc-rcp-tools">
+                <label class="uc-field uc-rcp-search">
+                    <span class="uc-field-label">Search</span>
+                    <input type="search" data-uc-rcp-search placeholder="Name, email or phone" autocomplete="off" />
+                </label>
+                <?php if ( $qs ) : ?>
+                    <label class="uc-field">
+                        <span class="uc-field-label">By answer</span>
+                        <select data-uc-rcp-answer>
+                            <option value="">Choose an answer</option>
+                            <?php foreach ( $qs as $q ) : ?>
+                                <optgroup label="<?php echo esc_attr( $q['text'] ); ?>">
+                                    <?php foreach ( $q['options'] as $o ) : ?>
+                                        <option value="<?php echo esc_attr( $q['id'] . ':' . $o['id'] ); ?>"><?php echo esc_html( $o['text'] ); ?></option>
+                                    <?php endforeach; ?>
+                                </optgroup>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                <?php endif; ?>
+                <?php if ( $past ) : ?>
+                    <label class="uc-field">
+                        <span class="uc-field-label">Didn't get</span>
+                        <select data-uc-rcp-missed>
+                            <option value="">Choose a past message</option>
+                            <?php foreach ( $past as $i => $label ) : ?>
+                                <option value="<?php echo (int) $i; ?>"><?php echo esc_html( $label ); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                <?php endif; ?>
+                <div class="uc-rcp-bulk">
+                    <button type="button" class="uc-btn" data-uc-rcp-all>Tick all</button>
+                    <button type="button" class="uc-btn" data-uc-rcp-none>Clear all</button>
+                </div>
+            </div>
+            <ul class="uc-rcp-list" data-uc-rcp-list>
+                <?php foreach ( $people as $p ) :
+                    $got = array();
+                    foreach ( $past as $i => $unused ) {
+                        if ( in_array( (int) $p['id'], array_map( 'intval', (array) $log[ $i ]['ids'] ), true ) ) { $got[] = $i; }
+                    }
+                    $find = strtolower( $p['name'] . ' ' . $p['detail'] . ' ' . preg_replace( '/\D/', '', $p['detail'] ) );
+                    ?>
+                    <li data-uc-rcp-row data-uc-rcp-how="<?php echo esc_attr( $p['how_key'] ); ?>" data-uc-rcp-find="<?php echo esc_attr( $find ); ?>"
+                        data-uc-rcp-answers="<?php echo esc_attr( implode( ' ', isset( $answers[ (int) $p['id'] ] ) ? $answers[ (int) $p['id'] ] : array() ) ); ?>"
+                        data-uc-rcp-got="<?php echo esc_attr( implode( ' ', $got ) ); ?>"<?php echo $p['wait'] ? ' data-uc-rcp-wait hidden' : ''; ?>>
+                        <label class="uc-check">
+                            <input type="checkbox" name="<?php echo esc_attr( $prefix ); ?>_ids[]" value="<?php echo (int) $p['id']; ?>"<?php checked( $p['reach'] ); ?><?php disabled( ! $p['reach'] ); ?> />
+                            <span class="uc-rcp-name"><?php echo esc_html( '' !== $p['name'] ? $p['name'] : 'No name' ); ?></span>
+                            <span class="uc-muted"><?php echo esc_html( implode( ' · ', array_filter( array( $p['detail'], $p['how'] ) ) ) ); ?></span>
+                        </label>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+            <p class="uc-hint" data-uc-rcp-count aria-live="polite"><?php echo esc_html( self::recipient_count_words( $prefix, $ticked ) ); ?></p>
+        </div>
+        <?php
+    }
+
+    /** "Sending to 4 people: 3 by text, 1 by WhatsApp." or "Sending to 4 people by email." The script says the same. */
+    private static function recipient_count_words( $prefix, $ticked ) {
+        $n = count( $ticked );
+        if ( ! $n ) {
+            return 'Nobody is ticked.';
+        }
+        $who = $n . ' ' . ( 1 === $n ? 'person' : 'people' );
+        if ( 'tr' !== $prefix ) {
+            return 'Sending to ' . $who . ' by email.';
+        }
+        $sms = count( array_filter( $ticked, function ( $p ) { return 'sms' === $p['how_key']; } ) );
+        $bits = array();
+        if ( $sms ) { $bits[] = $sms . ' by text'; }
+        if ( $n - $sms ) { $bits[] = ( $n - $sms ) . ' by WhatsApp'; }
+        return 'Sending to ' . $who . ': ' . implode( ', ', $bits ) . '.';
+    }
+
+    /** The names of who received a logged send, from its ids (3.131.0). */
+    private static function received_names( $entry, $names ) {
+        if ( empty( $entry['ids'] ) || ! is_array( $entry['ids'] ) ) {
+            return '';
+        }
+        $out = array();
+        foreach ( $entry['ids'] as $id ) {
+            $out[] = isset( $names[ (int) $id ] ) ? $names[ (int) $id ] : 'A removed registration';
+        }
+        return implode( ', ', $out );
+    }
+
+    /**
+     * The registration ids ticked in a recipient list (3.131.0), or null when
+     * the list was not on the form that posted. $prefix is 'rm' or 'tr'.
+     *
+     * @return int[]|null
+     */
+    private static function picked_ids( $prefix ) {
+        if ( empty( $_POST[ $prefix . '_picked' ] ) ) {
+            return null;
+        }
+        $ids = isset( $_POST[ $prefix . '_ids' ] ) ? (array) wp_unslash( $_POST[ $prefix . '_ids' ] ) : array();
+        return array_values( array_unique( array_filter( array_map( 'intval', $ids ) ) ) );
     }
 
     /**
@@ -19444,6 +19584,30 @@ class SFAF_Portal {
             }
         }
         $to_reg = $rm_counts['00'];
+        // The copies beside the registrants (3.131.0): the team's and the
+        // organizer's, by the team tick, for the button's question.
+        $rm_copies = array();
+        foreach ( array( 0, 1 ) as $tm ) {
+            $pl = SFAF_Registrant_Mail::plan( $event_id, false, (bool) $tm );
+            $rm_copies[ (string) $tm ] = count( $pl['team'] ) + ( $pl['organizer'] ? 1 : 0 );
+        }
+        // Everybody the list can show: registered, and waiting for the
+        // waitlist tick; a registration with no email is shown, not ticked.
+        $rm_r      = SFAF_Registrant_Mail::recipients( $event_id, true );
+        $rm_wait   = SFAF_Waitlist::waiting_statuses();
+        $rm_people = array();
+        $rm_names  = array();
+        foreach ( array_merge( $rm_r['to'], $rm_r['unreachable'] ) as $row ) {
+            $email = trim( (string) $row->email );
+            $rm_people[] = array(
+                'id' => (int) $row->id, 'name' => SFAF_RSVP::display_name( $row ),
+                'detail' => implode( ' · ', array_filter( array( $email, trim( (string) $row->phone ) ) ) ),
+                'how' => '' === $email ? 'No email' : '', 'how_key' => 'email',
+                'reach' => '' !== $email && is_email( $email ), 'wait' => in_array( (string) $row->status, $rm_wait, true ),
+            );
+            $rm_names[ (int) $row->id ] = SFAF_RSVP::display_name( $row );
+        }
+        usort( $rm_people, function ( $a, $b ) { return strcasecmp( $a['name'], $b['name'] ); } );
         $labels  = SFAF_Messages::tokens();
         $tokens  = array();
         foreach ( SFAF_Registrant_Mail::tokens() as $tk ) {
@@ -19477,6 +19641,7 @@ class SFAF_Portal {
                 <?php endif; ?>
                 <form method="post" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>" class="uc-registrant-mail-form" data-uc-rm-form
                       data-uc-rm-counts="<?php echo esc_attr( wp_json_encode( $rm_counts ) ); ?>"
+                      data-uc-rcp-extra="<?php echo esc_attr( wp_json_encode( $rm_copies ) ); ?>"
                       data-uc-rm-url="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>"
                       data-uc-rm-preview-nonce="<?php echo esc_attr( wp_create_nonce( 'uc_portal_registrant_mail_preview' ) ); ?>"
                       data-uc-rm-tokens="<?php echo esc_attr( wp_json_encode( $tokens ) ); ?>">
@@ -19516,6 +19681,7 @@ class SFAF_Portal {
                             Include event team
                         </label>
                     </div>
+                    <?php $this->render_recipient_picker( 'rm', $event_id, $rm_people, $log, 'subject' ); ?>
                     <div class="uc-form-actions">
                         <button type="button" class="uc-btn" data-uc-rm-preview>Preview</button>
                         <button type="submit" class="uc-btn uc-btn-go uc-rm-send" data-uc-rm-send
@@ -19541,7 +19707,10 @@ class SFAF_Portal {
                             <td><?php echo esc_html( $who && '' !== (string) $who->display_name ? $who->display_name : 'A former user' ); ?></td>
                             <td><?php echo esc_html( sfaf_ap_datetime( (string) $entry['at'] ) ); ?></td>
                             <td><?php echo esc_html( (string) $entry['subject'] ); ?></td>
-                            <td><?php echo esc_html( SFAF_Registrant_Mail::said( $entry, false ) ); ?></td>
+                            <td><?php echo esc_html( SFAF_Registrant_Mail::said( $entry, false ) ); ?>
+                                <?php $who = self::received_names( $entry, $rm_names ); if ( '' !== $who ) : // Who received it (3.131.0). ?>
+                                    <details class="uc-rcp-who" data-uc-rcp-who><summary>Who</summary><?php echo esc_html( $who ); ?></details>
+                                <?php endif; ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -19580,6 +19749,18 @@ class SFAF_Portal {
         $to      = count( array_filter( $plan, function ( $p ) { return in_array( $p['state'], array( 'sms', 'whatsapp' ), true ); } ) );
         $wa_off  = count( array_filter( $plan, function ( $p ) { return 'whatsapp_off' === $p['state']; } ) );
         $log     = SFAF_Texts::log( $event_id );
+        // The list (3.131.0): only who chose Text or WhatsApp, ticked when it
+        // can reach them, otherwise shown with why not.
+        $tr_people = array();
+        $tr_names  = array();
+        foreach ( $plan as $p ) {
+            $tr_people[] = array(
+                'id' => (int) $p['row']->id, 'name' => SFAF_RSVP::display_name( $p['row'] ),
+                'detail' => trim( (string) $p['row']->phone ), 'how' => isset( $how[ $p['state'] ] ) ? $how[ $p['state'] ] : '',
+                'how_key' => $p['state'], 'reach' => in_array( $p['state'], array( 'sms', 'whatsapp' ), true ), 'wait' => false,
+            );
+            $tr_names[ (int) $p['row']->id ] = SFAF_RSVP::display_name( $p['row'] );
+        }
         ?>
         <details class="uc-card uc-rsvp-settings uc-registrant-mail uc-text-registrants" data-uc-disclosure data-uc-text-registrants<?php echo is_array( $said ) ? ' open' : ''; ?>>
             <summary class="uc-rsvp-settings-toggle" aria-expanded="<?php echo is_array( $said ) ? 'true' : 'false'; ?>">
@@ -19601,18 +19782,6 @@ class SFAF_Portal {
                 <?php if ( ! $plan ) : ?>
                     <p class="uc-hint" data-uc-tr-nobody>Nobody on this list chose Text or WhatsApp.</p>
                 <?php else : ?>
-                    <table class="uc-table uc-table-cards" data-uc-tr-who>
-                        <thead><tr><th>Name</th><th>Number</th><th>Gets it by</th></tr></thead>
-                        <tbody>
-                        <?php foreach ( $plan as $p ) : ?>
-                            <tr data-uc-tr-state="<?php echo esc_attr( $p['state'] ); ?>">
-                                <td><?php echo esc_html( SFAF_RSVP::display_name( $p['row'] ) ); ?></td>
-                                <td><?php echo esc_html( (string) $p['row']->phone ); ?></td>
-                                <td><?php echo esc_html( isset( $how[ $p['state'] ] ) ? $how[ $p['state'] ] : '' ); ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                        </tbody>
-                    </table>
                     <form method="post" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>" class="uc-registrant-mail-form" data-uc-tr-form>
                         <input type="hidden" name="uc_action" value="text_registrants_send" />
                         <?php wp_nonce_field( 'uc_portal_text_registrants_send', 'uc_nonce' ); ?>
@@ -19622,6 +19791,7 @@ class SFAF_Portal {
                             <textarea name="tr_message" rows="3" maxlength="<?php echo (int) SFAF_Texts::MAX_MESSAGE; ?>" required data-uc-tr-message></textarea>
                             <span class="uc-hint"><?php echo esc_html( sprintf( 'Up to %d characters. It arrives as "Update from SFAF about %s:", then the message and where to email.', SFAF_Texts::MAX_MESSAGE, html_entity_decode( get_the_title( $event_id ), ENT_QUOTES, 'UTF-8' ) ) ); ?></span>
                         </label>
+                        <?php $this->render_recipient_picker( 'tr', $event_id, $tr_people, $log, 'message' ); ?>
                         <div class="uc-form-actions">
                             <button type="submit" class="uc-btn uc-btn-go" data-uc-tr-send<?php disabled( 0 === $to ); ?>
                                     data-uc-confirm="<?php echo esc_attr( sprintf( 'Send to %d %s? A text cannot be recalled.', $to, 1 === $to ? 'person' : 'people' ) ); ?>"><span class="uc-rm-send-icon" aria-hidden="true"><?php echo sfaf_icon( 'speech', array( 'size' => '16px' ) ); ?></span><span class="uc-rm-send-label">Send</span></button>
@@ -19641,7 +19811,10 @@ class SFAF_Portal {
                             <td><?php echo esc_html( $who && '' !== (string) $who->display_name ? $who->display_name : 'A former user' ); ?></td>
                             <td><?php echo esc_html( sfaf_ap_datetime( (string) $entry['at'] ) ); ?></td>
                             <td><?php echo esc_html( (string) $entry['message'] ); ?></td>
-                            <td><?php echo esc_html( SFAF_Texts::said( $entry ) ); ?></td>
+                            <td><?php echo esc_html( SFAF_Texts::said( $entry ) ); ?>
+                                <?php $who = self::received_names( $entry, $tr_names ); if ( '' !== $who ) : // Who received it (3.131.0). ?>
+                                    <details class="uc-rcp-who" data-uc-rcp-who><summary>Who</summary><?php echo esc_html( $who ); ?></details>
+                                <?php endif; ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>

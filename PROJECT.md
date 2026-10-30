@@ -5585,9 +5585,24 @@ what it builds.
 Account SID, the Auth Token and a Messaging Service SID). Until then the form
 offers no choice, and the Register button's `data-uc-texts` is empty.
 
+**The form, when Twilio is on (3.131.0, Mark's words)**: the phone is "Phone
+number, for event updates by text or WhatsApp (optional)", and "Get event
+updates by:" Text and WhatsApp shows from the moment the form opens, as two
+boxes of which at most one is ticked, neither at first; pressing the ticked
+one again clears it. One ticked makes the phone required and shows the
+consent line and the privacy policy under them. With one ticked, a number
+`e164()` cannot read (a US one, or + and a country code) is refused, in the
+form and again by `submit()` (`needs_number()`), with "Enter a phone number to
+get updates by text or WhatsApp."; a number with nothing ticked is kept as
+typed, for the organizer, and nothing is sent to it. The confirmation screen
+says "We'll also text you at [number]." or "We'll also send WhatsApp messages
+to [number]." with the number as stored. Twilio off, the form is as before
+3.130.0 but for the old tick. Mark's Spanish lines are informal ("Escribe");
+the confirmation line, written here, is formal like the rest of the form.
+
 **The choice is on the registration**, `text_channel` (schema 18): `sms`,
-`whatsapp` or `''` for Neither, kept only with a number and only when the
-form offered it (`clean_channel()`). A waitlist join carries it. The old
+`whatsapp` or `''` for neither, kept only with a number Twilio can use and
+only when the form offered it (`clean_channel()`). A waitlist join carries it. The old
 3.110.0 tick, `text_opt_in`, is kept on every row it was set on and sends
 nothing: it promised nothing about frequency, rates or STOP. Whether those
 people are asked again is Mark's decision; the panel counts them.
@@ -6846,6 +6861,25 @@ phone: `submit()` drops a tick with no number. The RSVP list marks a row that
 opted in with "Texts" and counts them at the top. **Nothing sends texts.** The
 column is there for whatever sending is built later, which will also need the
 consent wording reviewed.
+
+### Who gets it: the recipient list (3.131.0)
+
+**Email registrants and Text registrants share one recipient list**, under the
+message (`SFAF_Portal::render_recipient_picker()`, `initRecipientList()` in
+portal.js): every registrant it can reach is ticked, Text registrants listing
+only who chose Text or WhatsApp and showing why anybody unticked cannot be
+reached; a search box over name, email and phone that hides rows and never
+unticks them; **By answer**, an option of one of the event's questions, and
+**Didn't get**, one of the sends in the log, each ticking exactly the people
+who match and unticking the rest; Tick all and Clear all; and the count of
+who and how, "Sending to 4 people: 3 by text, 1 by WhatsApp.", which Send's
+question follows. The form posts `rm_ids[]` or `tr_ids[]` with `rm_picked` or
+`tr_picked`; `picked_ids()` reads null for a form without the list (everybody,
+as before) and an empty list for nobody ticked, which both routes refuse. The
+team and the organizer's copy are not registrants and are not narrowed.
+**Every send logs who received it**, as registration ids (`ids`), which Didn't
+get reads and the log shows as names under Who. A send from before 3.131.0
+has no `ids` and is not offered under Didn't get.
 
 ### Email registrants (3.110.0; the team and the organizer's copy since 3.110.2)
 

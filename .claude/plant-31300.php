@@ -34,9 +34,7 @@ $plants = array(
     'a channel is kept without a number' => array( $T, 'FAIL  B: a channel without a number is dropped', array(
         array( $X, "        return ( '' !== trim( (string) \$phone ) && in_array(", "        return ( in_array(" ),
     ) ),
-    'the form opens on Text, not Neither' => array( $T, 'FAIL  B: three radios, Neither chosen', array(
-        array( $C, "value=\"\" checked /><span data-uc-w=\"by_none\">", "value=\"\" /><span data-uc-w=\"by_none\">" ),
-    ) ),
+
     "the consent line is not Mark's" => array( $T, "FAIL  B: Mark's consent line", array(
         array( $M, "'Text me updates about this event. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.'", "'Text me updates about this event. Reply STOP to opt out.'" ),
     ) ),

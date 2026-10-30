@@ -399,6 +399,11 @@ class SFAF_RSVP {
         $data['name']  = trim( $data['first_name'] . ' ' . $data['last_name'] );
         // Text or WhatsApp means nothing without a number (3.130.0). The old
         // "Text me about this event" is no longer on the form.
+        // Text or WhatsApp picked needs a number Twilio can use: a US one, or
+        // one written with + and a country code (3.131.0).
+        if ( class_exists( 'SFAF_Texts' ) && SFAF_Texts::needs_number( isset( $data['text_channel'] ) ? $data['text_channel'] : '', $data['phone'] ) ) {
+            return array( 'success' => false, 'message' => SFAF_Messages::label( 'e_need_phone', $say ) );
+        }
         $data['text_channel'] = class_exists( 'SFAF_Texts' ) ? SFAF_Texts::clean_channel( isset( $data['text_channel'] ) ? $data['text_channel'] : '', $data['phone'] ) : '';
         /*
          * THE SIGN-UP BOXES (3.124.0), kept as one string on the row: the SFAF
@@ -526,6 +531,10 @@ class SFAF_RSVP {
                 // modal draws only what it is given.
                 'gcal'       => sfaf_google_calendar_url( $data['event_id'] ),
                 'ics'        => sfaf_ics_url( $data['event_id'] ),
+                // How they will also hear from us (3.131.0): the channel kept
+                // and the number as stored, for the screen to say back.
+                'text_channel' => $data['text_channel'],
+                'text_phone'   => '' !== $data['text_channel'] ? $data['phone'] : '',
             );
         }
 

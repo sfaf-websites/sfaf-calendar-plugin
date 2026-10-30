@@ -14,9 +14,9 @@
  *        the dialog, Confirm RSVP is off until the tick is on, Esc closes it
  *        with nothing sent and focus back on Register Now, Confirm sends
  *        agreed=1; an event without it sends straight away
- *   C    Text, WhatsApp or Neither shows once a phone is typed, beside the
- *        consent line, and the choice is sent as text_channel (3.130.0; it
- *        was "Text me about this event" and text_opt_in)
+ *   C    Text or WhatsApp shows from the moment the form opens (3.131.0;
+ *        once a phone was typed in 3.130.0, "Text me about this event"
+ *        before), and the choice is sent as text_channel
  *   D    Email registrants is a closed accordion on the RSVP list
  *   F    the RSVP list by name: Check in turns into "Checked in [time]", the
  *        search box narrows the rows; by count: People attended and Save
@@ -188,7 +188,7 @@ window.addEventListener('load', function () { setTimeout(function () {
     if (ph) { ph.value = '(415) 555-0199'; ph.dispatchEvent(new Event('input', { bubbles: true })); }
     out.textAfter = seen(q('#uc-rsvp-text-wrap'));
     out.textLabel = text(q('#uc-rsvp-text-wrap [data-uc-w="text_consent"]'));
-    var tb = q('input[name="uc-rsvp-text-channel"][value="whatsapp"]'); if (tb) { tb.checked = true; }
+    var tb = q('input[name="uc-rsvp-text-channel"][value="whatsapp"]'); if (tb) { tb.checked = true; tb.dispatchEvent(new Event('change', { bubbles: true })); }
     q('#uc-rsvp-submit-btn').click();
     var d = q('#uc-agree');
     out.formHeading = text(q('#uc-rsvp-heading'));
@@ -329,8 +329,8 @@ foreach ( array( 'desktop', 'phone', 'wide', 'wait' ) as $wn ) {
     rx_check( true === $v( $t, 'confirmOnAfterTick' ), "B.2: $t: ticking does not turn Confirm RSVP on" );
     $c = (array) $v( $t, 'afterConfirm' );
     rx_check( $c && false === $c['open'] && 1 === $c['sent'] && '1' === $c['agreed'] && 'whatsapp' === $c['text'], "B.2: $t: Confirm RSVP did not send the form once with agreed=1 and text_channel=whatsapp: " . json_encode( $c ) );
-    rx_check( false === $v( $t, 'textBefore' ) && true === $v( $t, 'textAfter' ) && 'Text me updates about this event. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.' === $v( $t, 'textLabel' ),
-        "C: $t: Text, WhatsApp or Neither is not hidden until a phone is typed, beside the consent line: " . json_encode( array( $v( $t, 'textBefore' ), $v( $t, 'textAfter' ), $v( $t, 'textLabel' ) ) ) );
+    rx_check( true === $v( $t, 'textBefore' ) && true === $v( $t, 'textAfter' ) && 'Text me updates about this event. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.' === $v( $t, 'textLabel' ),
+        "C: $t: Text or WhatsApp is not there from the moment the form opens, with the consent line: " . json_encode( array( $v( $t, 'textBefore' ), $v( $t, 'textAfter' ), $v( $t, 'textLabel' ) ) ) );
     if ( in_array( $wn, array( 'phone', 'wide' ), true ) ) {
         rx_check( array() === $v( $t, 'dialogSmall' ), "H: $t: tap targets under 44px in the dialog: " . json_encode( $v( $t, 'dialogSmall' ) ) );
         rx_check( array() === $v( $t, 'dialogPast' ), "H: $t: the dialog runs past the screen: " . json_encode( $v( $t, 'dialogPast' ) ) );

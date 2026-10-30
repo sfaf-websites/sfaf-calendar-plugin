@@ -88,10 +88,20 @@ class SFAF_Texts {
         return self::sms_on() ? array( 'sms', 'whatsapp' ) : array();
     }
 
-    /** A posted choice as stored: one the form offered, with a number, else ''. */
+    /** A posted choice as stored: one the form offered, with a number Twilio can use, else ''. */
     public static function clean_channel( $channel, $phone ) {
         $channel = (string) $channel;
-        return ( '' !== trim( (string) $phone ) && in_array( $channel, self::form_channels(), true ) ) ? $channel : '';
+        return ( '' !== self::e164( $phone ) && in_array( $channel, self::form_channels(), true ) ) ? $channel : '';
+    }
+
+    /**
+     * Text or WhatsApp was picked on a form that offers it, and the number is
+     * missing or not one Twilio can use: the registration is refused with
+     * "Enter a phone number..." (3.131.0). A number with nothing picked is
+     * kept as typed, for the organizer.
+     */
+    public static function needs_number( $channel, $phone ) {
+        return in_array( (string) $channel, self::form_channels(), true ) && '' === self::e164( $phone );
     }
 
     /** How the RSVP list names a channel. */
@@ -542,22 +552,29 @@ class SFAF_Texts {
     }
 
     /**
-     * Text registrants: send the message to everybody the plan reaches, and log it.
+     * Text registrants: send the message to everybody the plan reaches, or
+     * only the registration ids in $only (3.131.0), and log it with who got it.
      *
      * @return array{sms:int,whatsapp:int,failed:int,error?:string}
      */
-    public static function send_update( $event_id, $message, $by_user_id ) {
+    public static function send_update( $event_id, $message, $by_user_id, $only = null ) {
         $message = self::clean_message( $message );
         if ( '' === $message ) {
             return array( 'sms' => 0, 'whatsapp' => 0, 'failed' => 0, 'error' => 'Write the message first.' );
         }
-        $out = array( 'sms' => 0, 'whatsapp' => 0, 'failed' => 0 );
+        $keep = null === $only ? null : array_flip( array_map( 'intval', (array) $only ) );
+        $out  = array( 'sms' => 0, 'whatsapp' => 0, 'failed' => 0 );
+        $ids  = array();
         foreach ( self::plan( $event_id ) as $p ) {
             if ( ! in_array( $p['state'], array( 'sms', 'whatsapp' ), true ) ) {
                 continue;
             }
+            if ( null !== $keep && ! isset( $keep[ (int) $p['row']->id ] ) ) {
+                continue;
+            }
             if ( self::send( $p['row'], 'update', array( 'message' => $message ) ) ) {
                 $out[ $p['state'] ]++;
+                $ids[] = (int) $p['row']->id;
             } else {
                 $out['failed']++;
             }
@@ -570,6 +587,8 @@ class SFAF_Texts {
             'sms'      => $out['sms'],
             'whatsapp' => $out['whatsapp'],
             'failed'   => $out['failed'],
+            // Who received it, as registration ids (3.131.0).
+            'ids'      => $ids,
         ) );
         update_post_meta( (int) $event_id, self::LOG_META, $log );
         return $out;

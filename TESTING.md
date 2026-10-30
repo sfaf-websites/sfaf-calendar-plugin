@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 411 items.** Quick 333, needs real conditions 73, blocked on other
+**Outstanding: 412 items.** Quick 333, needs real conditions 74, blocked on other
 people 5.
 
 ---
@@ -4514,17 +4514,22 @@ accept them, and the message does not contain what you typed. The panel's
 **Why it needs a person:** a real Twilio account; the checks recorded the
 requests and never sent one.
 
-### 1.334 The RSVP form's Text, WhatsApp or Neither (3.130.0)
+### 1.334 The RSVP form's Text or WhatsApp (3.130.0, as changed in 3.131.0)
 
-Once 1.333 is done, open an event's RSVP form. Nothing about texts shows until
-a phone number is typed; then Get updates by **Text**, **WhatsApp**, **Neither**,
-Neither chosen, with "Text me updates about this event. Message frequency
-varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help." and
-**Privacy policy**, which opens sfaf.org's privacy policy in a new tab. Press
-Español: all of it is in Spanish, and the form does not change height. Clear
-the number: the choice goes and is back on Neither. Register once choosing
-Text: on the RSVP list the row shows **Text** beside the number, and the
-counts say 1 chose Text or WhatsApp. Do it once on a phone.
+Once 1.333 is done, open an event's RSVP form. From the moment it opens: the
+phone is "Phone number, for event updates by text or WhatsApp (optional)", and
+under it "Get event updates by:" **Text** and **WhatsApp**, neither ticked.
+Tick Text: "Text me updates about this event. Message frequency varies. Msg &
+data rates may apply. Reply STOP to opt out, HELP for help." and **Privacy
+policy** appear under them, and the privacy link opens sfaf.org's policy in a
+new tab. Press Text again: it clears and the line goes. Tick WhatsApp with the
+phone empty and press Register: "Enter a phone number to get updates by text
+or WhatsApp." Type +52 55 1234 5678 and register: the screen says "We'll also
+send WhatsApp messages to +52 55 1234 5678." Register again with a number and
+nothing ticked: accepted, and the screen says nothing about texts. Press
+Español: all of it is in Spanish, and the form does not change height. On the
+RSVP list the rows show **Text** or **WhatsApp** beside the number. Do it once
+on a phone.
 
 **Why it needs a person:** the form on the real site, on a real phone; the
 checks drew it in Chrome with invented events.
@@ -5533,8 +5538,10 @@ in its Sender Pool, and that number's A2P 10DLC registration (or toll-free
 verification) approved, or carriers drop the texts.
 
 **Then:** register for a test event with your own mobile number, choosing
-Text. On its RSVP list open **Text registrants**: you are listed, Gets it by
-Text. Type a line without a full stop at the end and Send: your phone gets
+Text. On its RSVP list open **Text registrants**: you are in the list under the
+message, ticked, with your number and Text. Type a line without a full stop at
+the end; the line under the list says "Sending to 1 person: 1 by text." Send:
+your phone gets
 "Update from SFAF about [event]: [your line]. For questions, please email
 [Replies go to]. Reply STOP to opt out." within a minute, and the log under
 the box says Sent by text to 1. Register a second time with Español chosen:
@@ -5542,6 +5549,23 @@ that one comes in Spanish.
 
 **Why it needs a person:** a real phone, a real Twilio number and carriers;
 the checks recorded the request and never sent it.
+
+### 2.76 Choosing who gets an email or a text (3.131.0)
+
+On an event with a few real registrations (your own addresses), one of them
+waitlisted, and a question with options: open its RSVP list, then **Email
+registrants**. Everyone registered is ticked in the list under the message;
+the waitlisted one shows only once Include the waitlist is ticked. Type part
+of a name, an address and a phone number in Search: the list narrows and the
+count under it does not change. Clear all: Send is greyed out. Pick an answer
+in **By answer**: only the people who gave it are ticked. Send with two
+ticked: only those two get it, and the log under it lists them under **Who**.
+Send another to everyone, then pick the first send in **Didn't get**: only the
+people who did not get it are ticked. Do the same in Text registrants with
+two numbers that chose Text or WhatsApp.
+
+**Why it needs a person:** real mail and texts arriving, and the real
+registrations and answers; the checks rendered the lists with invented ones.
 
 ### 2.73 The morning-of reminder by text (3.130.0)
 

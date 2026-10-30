@@ -54,7 +54,9 @@ const BASE_NAME = '3.130.0';
    why. Probe A still compares every embed answer, so none of these can reach
    the embed unseen. */
 const ALLOWED_FILES = array(
-    // None in 3.131.0. 3.130.0 named public/js/calendar.js and public/css/calendar.css, the RSVP form.
+    // 3.131.0: the event page's RSVP form, Text or WhatsApp from the moment it opens. The embed never loads calendar.js.
+    'public/js/calendar.js' => 'the RSVP form on the event page: Text or WhatsApp, the phone label, the confirmation line (3.131.0)',
+    // 3.130.0 named public/js/calendar.js and public/css/calendar.css, the RSVP form.
     // None in 3.129.0, 3.128.0 or 3.127.0. 3.126.0 named public/js/calendar.js and templates/taxonomy-uc_series.php.
 );
 

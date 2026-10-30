@@ -278,6 +278,30 @@ class SFAF_Questions {
     }
 
     /**
+     * Each registration's answers as "question id:option id" (3.131.0), for
+     * the recipient lists' By answer filter: rsvp id => list of strings.
+     *
+     * @param int[] $rsvp_ids
+     * @return array<int,string[]>
+     */
+    public static function option_ids_for_rows( $rsvp_ids ) {
+        global $wpdb;
+        $ids = array_values( array_filter( array_map( 'intval', (array) $rsvp_ids ) ) );
+        if ( ! $ids ) {
+            return array();
+        }
+        $rows = $wpdb->get_results( $wpdb->prepare(
+            'SELECT rsvp_id, question_id, option_id FROM ' . self::table() . ' WHERE rsvp_id IN (' . implode( ',', array_fill( 0, count( $ids ), '%s' ) ) . ')',
+            array_map( 'strval', $ids )
+        ) );
+        $out = array();
+        foreach ( (array) $rows as $r ) {
+            $out[ (int) $r->rsvp_id ][] = (string) $r->question_id . ':' . (string) $r->option_id;
+        }
+        return $out;
+    }
+
+    /**
      * The totals strip on the registrations list: for each current question,
      * how many confirmed registrants answered it, of how many it was asked of,
      * and the count for each current option. Confirmed only. An answer to a

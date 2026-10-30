@@ -12,6 +12,12 @@
 $root = dirname( __DIR__ );
 $X    = 'includes/class-sfaf-texts.php';
 $T    = 'release-31310-test.php';
+$L    = 'release-31310-live.php';
+$C    = 'public/js/calendar.js';
+$J    = 'public/js/portal.js';
+$P    = 'includes/class-sfaf-portal.php';
+$M    = 'includes/class-sfaf-messages.php';
+$R    = 'includes/class-sfaf-registrant-mail.php';
 
 $plants = array(
     '{{5}} is the event page, not the cancel link' => array( $T, "FAIL  A: {{5}} is Beto's own cancel link", array(
@@ -35,6 +41,59 @@ $plants = array(
     'the update gets a fourth variable' => array( $T, 'FAIL  C: the update template keeps three variables', array(
         array( $X, ": array( '1' => \$v['name'], '2' => self::ended( \$v['message'] ), '3' => \$v['reply'] );", ": array( '1' => \$v['name'], '2' => self::ended( \$v['message'] ), '3' => \$v['reply'], '4' => \$v['cancel'] );" ),
     ) ),
+    /* ---- F. The RSVP form ---- */
+    'the choice waits for a number again' => array( $L, 'PLANT F:', array(
+        array( $C, "            \$('#uc-rsvp-text-wrap').prop('hidden', !currentTexts.length);", "            \$('#uc-rsvp-text-wrap').prop('hidden', true);" ),
+    ) ),
+    'the phone keeps its old label' => array( $L, "PLANT F:", array(
+        array( $C, "attr('data-uc-w', currentTexts.length ? 'phone_texts' : 'phone')", "attr('data-uc-w', 'phone')" ),
+    ) ),
+    'both boxes can be ticked' => array( $L, 'Text then WhatsApp leaves', array(
+        array( $C, "            if (this.checked) { \$('input[name=\"uc-rsvp-text-channel\"]').not(this).prop('checked', false); }", "            if (false) { \$('input[name=\"uc-rsvp-text-channel\"]').not(this).prop('checked', false); }" ),
+    ) ),
+    'a box ticked with no number is sent' => array( $L, 'WhatsApp with no number', array(
+        array( $C, "        if (textChannel() && !phoneUsable(phone)) {", "        if (false) {" ),
+    ) ),
+    'the confirmation screen says nothing' => array( $L, 'the confirmation screen says', array(
+        array( $C, ".replace('%s', response.text_phone)).show();", ".replace('%s', response.text_phone));" ),
+    ) ),
+    'the consent line shows before a box is ticked' => array( $L, 'it opens with', array(
+        array( $C, "        \$('#uc-rsvp-text-consent').prop('hidden', !on);", "        \$('#uc-rsvp-text-consent').prop('hidden', false);" ),
+    ) ),
+    'a number with nothing ticked is refused' => array( $T, 'FAIL  F: a number with nothing ticked is never refused', array(
+        array( 'includes/class-sfaf-texts.php', "        return in_array( (string) \$channel, self::form_channels(), true ) && '' === self::e164( \$phone );", "        return '' === self::e164( \$phone );" ),
+    ) ),
+    "the phone's label is not Mark's" => array( $T, "FAIL  F: 'phone_texts' in Mark's words", array(
+        array( $M, "'Phone number, for event updates by text or WhatsApp (optional)', 'Teléfono", "'Phone number for texts (optional)', 'Teléfono" ),
+    ) ),
+    /* ---- G. Who gets it ---- */
+    'searching unticks who it hides' => array( $L, 'PLANT G:', array(
+        array( $J, "                    r.hidden = waitOff(r) || !hit;", "                    r.hidden = waitOff(r) || !hit; if (!hit) { boxOf(r).checked = false; }" ),
+    ) ),
+    'a filter adds to the ticks instead of setting them' => array( $L, "Didn't get the logged send", array(
+        array( $J, "rows.forEach(function (r) { var b = boxOf(r); if (b && !b.disabled) { b.checked = test(r); } });", "rows.forEach(function (r) { var b = boxOf(r); if (b && !b.disabled) { b.checked = b.checked || test(r); } });" ),
+    ) ),
+    'Send stays on with nobody ticked' => array( $L, 'Clear all:', array(
+        array( $J, "                    send.disabled = !n;", "                    send.disabled = false;" ),
+    ) ),
+    'the new list reuses the 3.129.0 initialiser name' => array( $L, 'PLANT G:', array(
+        array( $J, "    function initRecipientList() {", "    function initRecipients() {" ),
+    ) ),
+    'a text send ignores the ticks' => array( $T, 'FAIL  G: a send reaches only who is ticked', array(
+        array( 'includes/class-sfaf-texts.php', "            if ( null !== \$keep && ! isset( \$keep[ (int) \$p['row']->id ] ) ) {\n                continue;\n            }\n", "" ),
+    ) ),
+    'an email send ignores the ticks' => array( $T, 'FAIL  G: an email send keeps only who is ticked', array(
+        array( $R, "        if ( null !== \$only ) {\n            \$keep = array_flip(", "        if ( false ) {\n            \$keep = array_flip(" ),
+    ) ),
+    'the text log forgets who received it' => array( $T, 'FAIL  G: the text log keeps who received it', array(
+        array( 'includes/class-sfaf-texts.php', "            'ids'      => \$ids,\n", "" ),
+    ) ),
+    'nobody ticked sends to everybody' => array( $T, 'FAIL  G: nobody ticked is an empty list', array(
+        array( $P, "        return array_values( array_unique( array_filter( array_map( 'intval', \$ids ) ) ) );", "        return \$ids ? array_values( array_unique( array_filter( array_map( 'intval', \$ids ) ) ) ) : null;" ),
+    ) ),
+    'Text registrants lists everybody' => array( $T, 'FAIL  G: Text registrants lists only who chose a channel', array(
+        array( $P, "                'how_key' => \$p['state'], 'reach' => in_array( \$p['state'], array( 'sms', 'whatsapp' ), true ), 'wait' => false,", "                'how_key' => \$p['state'], 'reach' => false, 'wait' => false," ),
+    ) ),
 );
 $missed = 0;
 $only = isset( $argv[1] ) ? $argv[1] : '';
@@ -54,7 +113,8 @@ foreach ( $plants as $name => $p ) {
         }
         file_put_contents( $path, str_replace( $from, $to, $now ) );
     }
-    $out = shell_exec( 'cd ' . escapeshellarg( $root ) . ' && php ' . escapeshellarg( __DIR__ . '/' . $check ) . ' 2>&1' );
+    $args = ( false !== strpos( $check, '-live' ) ) ? ' --run' : '';
+    $out = shell_exec( 'cd ' . escapeshellarg( $root ) . ' && php ' . escapeshellarg( __DIR__ . '/' . $check ) . $args . ' 2>&1' );
     foreach ( $saved as $sp => $orig ) { file_put_contents( $sp, $orig ); }
     $caught = ( false !== strpos( (string) $out, $want ) );
     echo ( $caught ? 'caught  ' : 'MISSED  ' ) . $name . "\n";

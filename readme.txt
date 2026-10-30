@@ -533,12 +533,17 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 = 3.131.0 =
 
-**The morning-of reminder by text and WhatsApp carries the person's cancel link. Every embed answer and header is 3.130.0's, proved by embed-identity-test.php.**
+**The reminder's cancel link, the RSVP form's Text or WhatsApp, and choosing who gets an email or a text. Every embed answer and header is 3.130.0's, proved by embed-identity-test.php; the embed never loads the form's script.**
 
-**WHAT CHANGES ON PUBLIC PAGES:** nothing.
+**WHAT CHANGES ON PUBLIC PAGES:** the RSVP form on the event page and the site's own calendar, once Twilio is set up; with Twilio off it is as before. And the text and WhatsApp reminders.
 
 * **WhatsApp reminder**: the templates' new fifth blank, {{5}}, is the person's own cancel link, the same one as in their confirmation email.
 * **Text reminder**: ends "Can't make it? Cancel here: [link]", in Spanish "¿No puedes venir? Cancela aquí: [link]", before "Reply STOP to opt out." A registration with no cancel link of its own gets no cancel line by text, and the event page in {{5}} on WhatsApp.
+* **RSVP form, when Twilio is on**: the phone is "Phone number, for event updates by text or WhatsApp (optional)" (Spanish "Teléfono, para recibir avisos del evento por texto o WhatsApp (opcional)"), and "Get event updates by:" Text and WhatsApp shows from the moment the form opens, neither ticked; pressing the ticked one again clears it. There is no Neither.
+* Ticking Text or WhatsApp makes the phone required and shows the consent line and the privacy policy under them. With one ticked and no usable number: "Enter a phone number to get updates by text or WhatsApp." A US number or one written with + and a country code will do. A number with nothing ticked is kept, and nothing is sent to it.
+* **The confirmation screen** says "We'll also text you at [number]." or "We'll also send WhatsApp messages to [number].", in the form's language.
+* **Email registrants and Text registrants: choose who gets it.** Under the message, everyone it can reach is ticked; untick anyone, Clear all, or Tick all. Search by name, email or phone. **By answer** ticks the people who gave one answer to one of the event's questions; **Didn't get** ticks the people a past send did not reach. Text registrants lists only who chose Text or WhatsApp. The line under the list says who gets it and how: "Sending to 4 people: 3 by text, 1 by WhatsApp."
+* **Every send now records who received it**, and the log shows them under Who. Sends from before 3.131.0 did not record it and are not offered under Didn't get.
 
 = 3.130.0 =
 

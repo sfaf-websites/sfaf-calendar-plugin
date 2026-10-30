@@ -15,6 +15,17 @@
  *      then "Reply STOP to opt out."; without a token, no cancel line.
  *   C. Nothing else moves: Text registrants' update has no cancel line and
  *      its WhatsApp template keeps three variables.
+ *   F. The RSVP form when Twilio is on, in Mark's words: the phone's label;
+ *      "Get event updates by:" Text and WhatsApp as two boxes, neither
+ *      ticked, no Neither; a box ticked needs a usable number, US or + and a
+ *      country code, else "Enter a phone number..."; a number with nothing
+ *      ticked is kept; the confirmation screen says how they will hear.
+ *   G. Who gets it: one recipient list for Email registrants and Text
+ *      registrants, everybody it can reach ticked, Text registrants only who
+ *      chose a channel; By answer and Didn't get from the log; the count of
+ *      who and how; the sends go only to who is ticked, and the log keeps
+ *      their ids and shows their names. The script half is
+ *      release-31310-live.php.
  *
  * PLANTs in plant-31310.php.
  */
@@ -203,6 +214,126 @@ $ub = array();
 foreach ( $GLOBALS['tw_calls'] as $c ) { $ub[ str_replace( 'whatsapp:', '', $c['args']['body']['To'] ) ] = $c['args']['body']; }
 rt( 'C: the update has no cancel line', isset( $ub['+14155550101'] ) && false === strpos( $ub['+14155550101']['Body'], 'Cancel' ) );
 rt( 'C: the update template keeps three variables', isset( $ub['+14155550102'] ) && array( '1', '2', '3' ) === array_map( 'strval', array_keys( (array) json_decode( $ub['+14155550102']['ContentVariables'], true ) ) ) );
+
+/* ---- F. The RSVP form ---- */
+tw_fresh();
+rt( 'F: a number is not needed while texts are off', ! SFAF_Texts::needs_number( 'sms', '' ) );
+tw_texts_on();
+rt( 'F: Text with no number needs one', SFAF_Texts::needs_number( 'sms', '' ) );
+rt( 'F: WhatsApp with half a number needs one', SFAF_Texts::needs_number( 'whatsapp', '415 555' ) );
+rt( 'F: a US number will do', ! SFAF_Texts::needs_number( 'sms', '(415) 555-0123' ) && ! SFAF_Texts::needs_number( 'sms', '1-415-555-0123' ) );
+rt( 'F: + and a country code will do', ! SFAF_Texts::needs_number( 'whatsapp', '+52 55 1234 5678' ) && 'whatsapp' === SFAF_Texts::clean_channel( 'whatsapp', '+52 55 1234 5678' ) );
+rt( 'F: a number with nothing ticked is never refused', ! SFAF_Texts::needs_number( '', '' ) && ! SFAF_Texts::needs_number( '', '12' ) );
+$rs = file_get_contents( dirname( __DIR__ ) . '/includes/class-sfaf-rsvp.php' );
+rt( 'F: the registration is refused with Mark\'s line', false !== strpos( $rs, "return array( 'success' => false, 'message' => SFAF_Messages::label( 'e_need_phone', \$say ) );" ) );
+rt( 'F: the answer says the channel and the number kept', false !== strpos( $rs, "'text_channel' => \$data['text_channel']," ) && false !== strpos( $rs, "'text_phone'   => '' !== \$data['text_channel'] ? \$data['phone'] : ''," ) );
+$fw = SFAF_Messages::form_words();
+$want = array(
+    'phone_texts'   => array( 'Phone number, for event updates by text or WhatsApp (optional)', 'Teléfono, para recibir avisos del evento por texto o WhatsApp (opcional)' ),
+    'updates_by'    => array( 'Get event updates by:', 'Recibir avisos del evento por:' ),
+    'by_sms'        => array( 'Text', 'Texto' ),
+    'by_whatsapp'   => array( 'WhatsApp', 'WhatsApp' ),
+    'need_phone'    => array( 'Enter a phone number to get updates by text or WhatsApp.', 'Escribe un número de teléfono para recibir avisos por texto o WhatsApp.' ),
+    'also_sms'      => array( "We'll also text you at %s.", 'También le enviaremos mensajes de texto al %s.' ),
+    'also_whatsapp' => array( "We'll also send WhatsApp messages to %s.", 'También le enviaremos mensajes de WhatsApp al %s.' ),
+);
+foreach ( $want as $k => $pair ) {
+    rt( "F: '$k' in Mark's words, both languages", isset( $fw['en'][ $k ], $fw['es'][ $k ] ) && $pair[0] === $fw['en'][ $k ] && $pair[1] === $fw['es'][ $k ] );
+}
+rt( 'F: no Neither or Email only', ! isset( $fw['en']['by_none'] ) && false === stripos( implode( ' ', $fw['en'] ), 'Email only' ) );
+rt( 'F: the server says it in the form\'s words', $want['need_phone'][0] === SFAF_Messages::label( 'e_need_phone', 'en' ) && $want['need_phone'][1] === SFAF_Messages::label( 'e_need_phone', 'es' ) );
+$js = file_get_contents( dirname( __DIR__ ) . '/public/js/calendar.js' );
+rt( 'F: two boxes, Text then WhatsApp, neither ticked', 1 === preg_match( '/<input type="checkbox" name="uc-rsvp-text-channel" value="sms" \/>.*<input type="checkbox" name="uc-rsvp-text-channel" value="whatsapp" \/>/s', $js ) && false === strpos( $js, 'value="" checked' ) );
+rt( 'F: the consent line starts hidden, under the boxes', 1 === preg_match( '/value="whatsapp" \/>.*?<p class="uc-rsvp-note" id="uc-rsvp-text-consent" hidden>/s', $js ) );
+rt( 'F: the confirmation screen has its line', false !== strpos( $js, 'id="uc-rsvp-success-texts"' ) );
+rt( 'F: the script in plain ASCII, as the 3.129.0 lesson asks', ! preg_match( '/[^\x00-\x7F]/', substr( $js, strpos( $js, 'function textChannel()' ), 900 ) ) );
+
+/* ---- G. Who gets it ---- */
+class Tw_Db_G extends Tw_Db {
+    public $answers = array();
+    function get_results( $sql ) {
+        if ( preg_match( "/uc_rsvps WHERE event_id = (\d+)\s*$/", $sql, $m ) ) {
+            return array_values( array_filter( $this->rsvps, function ( $r ) use ( $m ) { return (int) $r->event_id === (int) $m[1]; } ) );
+        }
+        if ( false !== strpos( $sql, 'uc_rsvp_answers' ) ) {
+            return $this->answers;
+        }
+        return parent::get_results( $sql );
+    }
+}
+tw_fresh();
+tw_texts_on();
+tw_wa_on();
+$GLOBALS['wpdb'] = new Tw_Db_G();
+$db = $GLOBALS['wpdb'];
+$ana  = tw_row( 1, 900, '(415) 555-0101', 'sms', 'en', 'Ana' );
+$beto = tw_row( 2, 900, '+52 55 1234 5678', 'whatsapp', 'es', 'Beto' );
+$cruz = tw_row( 3, 900, '(415) 555-0103', 'sms', 'en', 'Cruz' );
+$dee  = tw_row( 4, 900, '', '', 'en', 'Dee' );
+$eve  = tw_row( 5, 900, '', '', 'en', 'Eve' ); $eve->status = 'waitlisted';
+$fay  = tw_row( 6, 900, '(415) 555-0106', '', 'en', 'Fay' ); $fay->email = '';
+foreach ( array( $ana, $beto, $cruz, $dee, $eve, $fay ) as $r ) { $r->token = 't' . $r->id; }
+$db->rsvps = array( $ana, $beto, $cruz, $dee, $eve, $fay );
+$db->answers = array( (object) array( 'rsvp_id' => 1, 'question_id' => 'qaaaaaaaaaa', 'option_id' => 'oaaaaaaaaa1' ), (object) array( 'rsvp_id' => 3, 'question_id' => 'qaaaaaaaaaa', 'option_id' => 'oaaaaaaaaa2' ) );
+update_post_meta( 900, SFAF_Questions::META, array( array( 'id' => 'qaaaaaaaaaa', 'text' => 'Dietary needs?', 'options' => array( array( 'id' => 'oaaaaaaaaa1', 'text' => 'Vegetarian' ), array( 'id' => 'oaaaaaaaaa2', 'text' => 'None' ) ) ) ) );
+update_post_meta( 900, SFAF_Texts::LOG_META, array( array( 'by' => 1, 'at' => '2026-10-29 09:00:00', 'message' => 'Doors at 9:45', 'sms' => 1, 'whatsapp' => 0, 'failed' => 0, 'ids' => array( 1 ) ) ) );
+$portal = ( new ReflectionClass( 'SFAF_Portal' ) )->newInstanceWithoutConstructor();
+$me     = new WP_User();
+$th = rt_cap( function () use ( $portal, $me ) { kit_call( 'SFAF_Portal', 'render_text_registrants', $portal, array( $me, 900 ) ); } );
+rt( 'G: Text registrants renders', false === strpos( $th, 'THREW' ) && false !== strpos( $th, 'data-uc-rcp' ) );
+$x = rt_x( $th );
+$rows = array();
+foreach ( $x->query( '//li[@data-uc-rcp-row]' ) as $li ) {
+    $b = $x->query( './/input[@type="checkbox"]', $li )->item( 0 );
+    $rows[] = rt_text( $x->query( './/span[@class="uc-rcp-name"]', $li )->item( 0 ) ) . ':' . $li->getAttribute( 'data-uc-rcp-how' ) . ':' . ( $b->hasAttribute( 'checked' ) ? 'on' : 'off' );
+}
+rt( 'G: Text registrants lists only who chose a channel, all ticked (' . implode( ' | ', $rows ) . ')', array( 'Ana:sms:on', 'Beto:whatsapp:on', 'Cruz:sms:on' ) === $rows );
+rt( 'G: the boxes post tr_ids[] with tr_picked', 3 === $x->query( '//input[@name="tr_ids[]"]' )->length && 1 === $x->query( '//input[@type="hidden" and @name="tr_picked" and @value="1"]' )->length );
+rt( 'G: a search box, Clear all and Tick all', 1 === $x->query( '//input[@type="search" and @data-uc-rcp-search]' )->length && 'Clear all' === rt_text( $x->query( '//button[@data-uc-rcp-none]' )->item( 0 ) ) && 'Tick all' === rt_text( $x->query( '//button[@data-uc-rcp-all]' )->item( 0 ) ) );
+rt( 'G: who and how, in Mark\'s shape', 'Sending to 3 people: 2 by text, 1 by WhatsApp.' === rt_text( $x->query( '//*[@data-uc-rcp-count]' )->item( 0 ) ) );
+$opts = array(); foreach ( $x->query( '//select[@data-uc-rcp-answer]//option[@value!=""]' ) as $o ) { $opts[] = $o->getAttribute( 'value' ) . '=' . rt_text( $o ); }
+rt( 'G: By answer offers each question\'s options', array( 'qaaaaaaaaaa:oaaaaaaaaa1=Vegetarian', 'qaaaaaaaaaa:oaaaaaaaaa2=None' ) === $opts && 'Dietary needs?' === $x->query( '//select[@data-uc-rcp-answer]//optgroup' )->item( 0 )->getAttribute( 'label' ) );
+$ans = array(); foreach ( $x->query( '//li[@data-uc-rcp-row]' ) as $li ) { $ans[] = $li->getAttribute( 'data-uc-rcp-answers' ); }
+rt( 'G: each row carries its answers', array( 'qaaaaaaaaaa:oaaaaaaaaa1', '', 'qaaaaaaaaaa:oaaaaaaaaa2' ) === $ans );
+$got = array(); foreach ( $x->query( '//li[@data-uc-rcp-row]' ) as $li ) { $got[] = $li->getAttribute( 'data-uc-rcp-got' ); }
+rt( 'G: Didn\'t get offers the logged send, and each row knows if it got it', 1 === $x->query( '//select[@data-uc-rcp-missed]/option[@value="0"]' )->length && array( '0', '', '' ) === $got );
+rt( 'G: the log names who received it', false !== strpos( rt_text( $x->query( '//details[@data-uc-rcp-who]' )->item( 0 ) ), 'Ana' ) );
+rt( 'G: the list is inside the form, under the message', 1 === $x->query( '//form[@data-uc-tr-form]//textarea[@name="tr_message"]/following::div[@data-uc-rcp][1][ancestor::form[@data-uc-tr-form]]' )->length );
+$GLOBALS['tw_calls'] = array();
+$r = SFAF_Texts::send_update( 900, 'Room 2 today.', 1, array( 2 ) );
+rt( 'G: a send reaches only who is ticked', 1 === $r['whatsapp'] && 0 === $r['sms'] && 1 === count( $GLOBALS['tw_calls'] ) && 'whatsapp:+525512345678' === $GLOBALS['tw_calls'][0]['args']['body']['To'] );
+$log = SFAF_Texts::log( 900 );
+rt( 'G: the text log keeps who received it', array( 2 ) === $log[0]['ids'] );
+$GLOBALS['tw_calls'] = array();
+SFAF_Texts::send_update( 900, 'Room 3 today.', 1 );
+rt( 'G: no list posted is everybody, as before', 3 === count( $GLOBALS['tw_calls'] ) );
+
+$eh = rt_cap( function () use ( $portal, $me ) { kit_call( 'SFAF_Portal', 'render_registrant_mail', $portal, array( $me, 900 ) ); } );
+rt( 'G: Email registrants renders', false === strpos( $eh, 'THREW' ) && false !== strpos( $eh, 'data-uc-rcp' ) );
+$x = rt_x( $eh );
+$rows = array();
+foreach ( $x->query( '//li[@data-uc-rcp-row]' ) as $li ) {
+    $b = $x->query( './/input[@type="checkbox"]', $li )->item( 0 );
+    $rows[] = rt_text( $x->query( './/span[@class="uc-rcp-name"]', $li )->item( 0 ) ) . ':' . ( $b->hasAttribute( 'checked' ) ? 'on' : 'off' ) . ( $b->hasAttribute( 'disabled' ) ? ':no-email' : '' ) . ( $li->hasAttribute( 'data-uc-rcp-wait' ) ? ':wait' : '' );
+}
+rt( 'G: Email registrants lists every registrant, waiting ones for the waitlist tick (' . implode( ' | ', $rows ) . ')', array( 'Ana:on', 'Beto:on', 'Cruz:on', 'Dee:on', 'Eve:on:wait', 'Fay:off:no-email' ) === $rows );
+rt( 'G: who, by email', 'Sending to 4 people by email.' === rt_text( $x->query( '//*[@data-uc-rcp-count]' )->item( 0 ) ) );
+rt( 'G: the boxes post rm_ids[] with rm_picked, in the form', 6 === $x->query( '//form[@data-uc-rm-form]//input[@name="rm_ids[]"]' )->length && 1 === $x->query( '//form[@data-uc-rm-form]//input[@name="rm_picked"]' )->length );
+rt( 'G: the copies are told to the script', null !== json_decode( (string) $x->query( '//form[@data-uc-rm-form]' )->item( 0 )->getAttribute( 'data-uc-rcp-extra' ), true ) );
+$plan = SFAF_Registrant_Mail::plan( 900, false, false, array( 1, 3 ) );
+rt( 'G: an email send keeps only who is ticked', array( 1, 3 ) === array_map( function ( $p ) { return (int) $p->rsvp_id; }, $plan['participants'] ) );
+$plan = SFAF_Registrant_Mail::plan( 900, false, false );
+rt( 'G: and everybody without a list, as before', 4 === count( $plan['participants'] ) );
+$rm = file_get_contents( dirname( __DIR__ ) . '/includes/class-sfaf-registrant-mail.php' );
+rt( 'G: the email log keeps who received it', false !== strpos( $rm, "if ( \$go( \$p ) ) { \$sent++; \$ids[] = (int) \$p->rsvp_id; }" ) && false !== strpos( $rm, "            'ids'       => \$ids," ) );
+$_POST = array( 'tr_picked' => '1', 'tr_ids' => array( '2', '2', 'x', '5' ) );
+rt( 'G: picked_ids reads the ticks', array( 2, 5 ) === kit_call( 'SFAF_Portal', 'picked_ids', null, array( 'tr' ) ) );
+$_POST = array( 'tr_picked' => '1' );
+rt( 'G: nobody ticked is an empty list, not everybody', array() === kit_call( 'SFAF_Portal', 'picked_ids', null, array( 'tr' ) ) );
+$_POST = array();
+rt( 'G: no list posted is null', null === kit_call( 'SFAF_Portal', 'picked_ids', null, array( 'tr' ) ) );
+$pt = file_get_contents( dirname( __DIR__ ) . '/includes/class-sfaf-portal.php' );
+rt( 'G: nobody ticked is refused at both routes', 2 === substr_count( $pt, "'Tick at least one person to send to.'" ) );
 
 echo "release-31310: $ran checks\n";
 if ( $fails ) {

@@ -436,12 +436,17 @@ class SFAF_Messages {
                 'f_noemail_note'   => array( 'You will not get a confirmation, a reminder, or notice of changes.', 'No recibirá una confirmación, un recordatorio ni avisos de cambios.' ),
                 'f_online_email'   => array( 'Joining online needs an email address for the meeting link.', 'Para participar en línea se necesita un correo electrónico para el enlace de la reunión.' ),
                 'f_phone'          => array( 'Phone (optional)', 'Teléfono (opcional)' ),
-                // Text, WhatsApp or Neither, once a number is typed (3.130.0),
-                // and Mark's consent line beside it.
-                'f_updates_by'     => array( 'Get updates by', 'Recibir novedades por' ),
-                'f_by_sms'         => array( 'Text', 'Mensaje de texto' ),
+                // WHEN TWILIO IS ON (3.131.0, Mark's words): the phone's label,
+                // Text or WhatsApp from the moment the form opens, neither
+                // picked, and the consent line under them once one is.
+                'f_phone_texts'    => array( 'Phone number, for event updates by text or WhatsApp (optional)', 'Teléfono, para recibir avisos del evento por texto o WhatsApp (opcional)' ),
+                'f_updates_by'     => array( 'Get event updates by:', 'Recibir avisos del evento por:' ),
+                'f_by_sms'         => array( 'Text', 'Texto' ),
                 'f_by_whatsapp'    => array( 'WhatsApp', 'WhatsApp' ),
-                'f_by_none'        => array( 'Neither', 'Ninguno' ),
+                'f_need_phone'     => array( 'Enter a phone number to get updates by text or WhatsApp.', 'Escribe un número de teléfono para recibir avisos por texto o WhatsApp.' ),
+                // The confirmation screen, %s the number as stored.
+                'f_also_sms'       => array( "We'll also text you at %s.", 'También le enviaremos mensajes de texto al %s.' ),
+                'f_also_whatsapp'  => array( "We'll also send WhatsApp messages to %s.", 'También le enviaremos mensajes de WhatsApp al %s.' ),
                 'f_text_consent'   => array( 'Text me updates about this event. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.', 'Envíenme novedades sobre este evento. La frecuencia de los mensajes varía. Pueden aplicarse tarifas de mensajes y datos. Responda STOP para cancelar, HELP para obtener ayuda.' ),
                 'f_privacy'        => array( 'Privacy policy', 'Política de privacidad' ),
                 // The "Stay in touch" group at the end of the form (3.124.0): the
@@ -486,6 +491,7 @@ class SFAF_Messages {
                 'e_in_person'      => array( 'in person', 'en persona' ),
                 'e_online'         => array( 'online', 'en línea' ),
                 'e_full'           => array( 'This event is at capacity.', 'Este evento está lleno.' ),
+                'e_need_phone'     => array( 'Enter a phone number to get updates by text or WhatsApp.', 'Escribe un número de teléfono para recibir avisos por texto o WhatsApp.' ),
             );
         }
         return $t;

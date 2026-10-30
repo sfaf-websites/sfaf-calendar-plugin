@@ -277,6 +277,9 @@ class SFAF_Waitlist {
             'first_name' => $data['first_name'],
             'no_email'   => ( '' === (string) $data['email'] ),
             'message'    => sprintf( 'You are on the waitlist. You are number %d.', $position ),
+            // How they will also hear from us (3.131.0), as a registration says it.
+            'text_channel' => isset( $data['text_channel'] ) ? (string) $data['text_channel'] : '',
+            'text_phone'   => ! empty( $data['text_channel'] ) ? (string) $data['phone'] : '',
         );
     }
 

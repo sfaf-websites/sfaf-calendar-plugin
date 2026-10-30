@@ -5304,6 +5304,19 @@ body.uc-modal-open { overflow: hidden; }
     .uc-rm-send .uc-rm-send-icon { transition: none; transform: none; }
 }
 .uc-registrant-mail .uc-rm-format { min-width: 40px; }
+/* WHO GETS IT (3.131.0): the recipient list under the message. The tools
+   wrap; the list scrolls past a dozen rows; each row is the .uc-check it is. */
+.uc-recipients { display: flex; flex-direction: column; gap: 8px; }
+.uc-recipients .uc-rcp-tools { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 16px; }
+.uc-recipients .uc-rcp-tools .uc-field { margin: 0; flex: 1 1 200px; min-width: 0; }
+.uc-recipients .uc-rcp-bulk { display: flex; gap: 8px; }
+.uc-recipients .uc-rcp-list { list-style: none; margin: 0; padding: 8px 12px; max-height: 360px; overflow-y: auto; border: 1px solid var(--p-border); border-radius: 8px; }
+.uc-recipients .uc-rcp-list li { margin: 0; }
+.uc-recipients .uc-rcp-list li[hidden] { display: none; }
+.uc-recipients .uc-rcp-list .uc-check { flex-wrap: wrap; margin-bottom: 4px; }
+.uc-recipients .uc-rcp-name { font-weight: 600; }
+.uc-recipients [data-uc-rcp-count] { margin: 0; }
+.uc-rcp-who summary { cursor: pointer; }
 .uc-rsvp-table .uc-checkin-form { display: inline; margin: 0; }
 .uc-rsvp-table .uc-checkin-btn[aria-pressed="true"] { border-color: var(--uc-accent-text); color: var(--uc-accent-text); background: var(--uc-band); }
 .uc-texts-mark {

@@ -130,8 +130,17 @@ class SFAF_Registrant_Mail {
      *
      * @return array{participants:object[],team:object[],organizer:?object,unreachable:object[]}
      */
-    public static function plan( $event_id, $include_waitlist, $include_team ) {
+    public static function plan( $event_id, $include_waitlist, $include_team, $only = null ) {
         $r    = self::recipients( $event_id, $include_waitlist );
+        // THE PEOPLE TICKED (3.131.0): null is everybody, as before; a list of
+        // registration ids keeps only those. The team and the organizer's copy
+        // are not registrants and are not narrowed.
+        if ( null !== $only ) {
+            $keep = array_flip( array_map( 'intval', (array) $only ) );
+            $pick = function ( $row ) use ( $keep ) { return isset( $keep[ (int) $row->id ] ); };
+            $r['to']          = array_values( array_filter( $r['to'], $pick ) );
+            $r['unreachable'] = array_values( array_filter( $r['unreachable'], $pick ) );
+        }
         $seen = array();
         $participants = array();
         foreach ( $r['to'] as $row ) {
@@ -186,8 +195,8 @@ class SFAF_Registrant_Mail {
      *
      * @return array|null subject, html, text, and to: the address it is for.
      */
-    public static function preview( $event_id, $subject, $body, $include_waitlist, $include_team = false ) {
-        $plan  = self::plan( $event_id, $include_waitlist, $include_team );
+    public static function preview( $event_id, $subject, $body, $include_waitlist, $include_team = false, $only = null ) {
+        $plan  = self::plan( $event_id, $include_waitlist, $include_team, $only );
         $first = $plan['participants'] ? $plan['participants'][0] : ( $plan['team'] ? $plan['team'][0] : $plan['organizer'] );
         if ( ! $first ) {
             return null;
@@ -206,17 +215,17 @@ class SFAF_Registrant_Mail {
      * @return array{sent:int,team:int,organizer:string,unreachable:string[]}
      *         sent: participants; organizer: the name the copy went to, or ''.
      */
-    public static function send( $event_id, $subject, $body, $include_waitlist, $by_user_id, $include_team = false ) {
+    public static function send( $event_id, $subject, $body, $include_waitlist, $by_user_id, $include_team = false, $only = null ) {
         $event_id = (int) $event_id;
-        $plan     = self::plan( $event_id, $include_waitlist, $include_team );
+        $plan     = self::plan( $event_id, $include_waitlist, $include_team, $only );
         $reply    = SFAF_Reminders::reply_to_for( $event_id );
         $go = function ( $person ) use ( $event_id, $subject, $body, $reply ) {
             $built = self::build( $event_id, $person, $subject, $body );
             return $built && SFAF_Email::send( (string) $person->email, $built['subject'], $built['html'], $built['text'], $reply );
         };
-        $sent = 0; $team = 0; $org = '';
+        $sent = 0; $team = 0; $org = ''; $ids = array();
         foreach ( $plan['participants'] as $p ) {
-            if ( $go( $p ) ) { $sent++; }
+            if ( $go( $p ) ) { $sent++; $ids[] = (int) $p->rsvp_id; }
         }
         foreach ( $plan['team'] as $p ) {
             if ( $go( $p ) ) { $team++; }
@@ -238,6 +247,9 @@ class SFAF_Registrant_Mail {
             'sent'      => $sent,
             'team'      => $team,
             'organizer' => $org,
+            // Who received it, as registration ids (3.131.0): the list's
+            // "Didn't get" filter and the log's names read this.
+            'ids'       => $ids,
         ) );
         update_post_meta( $event_id, self::LOG_META, $log );
         return array( 'sent' => $sent, 'team' => $team, 'organizer' => $org, 'unreachable' => $names );

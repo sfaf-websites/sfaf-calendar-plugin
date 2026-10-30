@@ -1,0 +1,326 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="../public/css/portal.css"></head><body class="uc-portal-body" style="margin:0"><div class="uc-portal"><main class="uc-portal-main">                <details open class="uc-card uc-rsvp-settings uc-registrant-mail" data-uc-disclosure-off data-uc-registrant-mail>
+            <summary class="uc-rsvp-settings-toggle" aria-expanded="false">
+                <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                <span class="uc-rsvp-settings-id">
+                    <span class="uc-rsvp-settings-name"><strong>Email registrants</strong></span>
+                    <span class="uc-muted">Send a message to everyone registered.</span>
+                </span>
+            </summary>
+            <div class="uc-rsvp-settings-form uc-registrant-mail-body">
+                                <form method="post" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-registrant-mail-form" data-uc-rm-form
+                      data-uc-rm-counts="{&quot;00&quot;:5,&quot;01&quot;:5,&quot;10&quot;:6,&quot;11&quot;:6}"
+                      data-uc-rcp-extra="[1,1]"
+                      data-uc-rm-url="https://resources.sfaf.org/caladmin/rsvps"
+                      data-uc-rm-preview-nonce="nonce"
+                      data-uc-rm-tokens="{&quot;first_name&quot;:&quot;First name&quot;,&quot;title&quot;:&quot;Event title&quot;,&quot;date&quot;:&quot;Date&quot;,&quot;time&quot;:&quot;Time&quot;,&quot;location&quot;:&quot;Location&quot;,&quot;event_link&quot;:&quot;Event page link&quot;}">
+                    <input type="hidden" name="uc_action" value="registrant_mail_send" />
+                    <input type="hidden" name="uc_nonce" value="nonce" />                    <input type="hidden" name="event_id" value="501" />
+                    <div class="uc-tpl-tokens" role="group" aria-label="Insert a token">
+                        <span class="uc-field-label">Insert</span>
+                                                    <button type="button" class="uc-tpl-token" data-uc-tpl-token="first_name">First name</button>
+                                                    <button type="button" class="uc-tpl-token" data-uc-tpl-token="title">Event title</button>
+                                                    <button type="button" class="uc-tpl-token" data-uc-tpl-token="date">Date</button>
+                                                    <button type="button" class="uc-tpl-token" data-uc-tpl-token="time">Time</button>
+                                                    <button type="button" class="uc-tpl-token" data-uc-tpl-token="location">Location</button>
+                                                    <button type="button" class="uc-tpl-token" data-uc-tpl-token="event_link">Event page link</button>
+                                            </div>
+                    <label class="uc-field">
+                        <span class="uc-field-label">Subject</span>
+                        <textarea name="rm_subject" rows="1" data-uc-tpl-text="subject"></textarea>
+                    </label>
+                                        <div class="uc-field uc-rm-body" data-uc-rm-body>
+                        <label class="uc-field-label" for="uc-rm-body">Message</label>
+                        <textarea name="rm_body" id="uc-rm-body"></textarea>                        <span class="uc-hint">Type the message under the subject, which is its heading.</span>
+                    </div>
+                    <div class="uc-rm-ticks">
+                        <label class="uc-check">
+                            <input type="checkbox" name="rm_waitlist" value="1" data-uc-rm-waitlist />
+                            Include the waitlist
+                        </label>
+                        <label class="uc-check">
+                            <input type="checkbox" name="rm_team" value="1" data-uc-rm-team />
+                            Include event team
+                        </label>
+                    </div>
+                            <div class="uc-recipients" data-uc-rcp data-uc-rcp-kind="email">
+            <input type="hidden" name="rm_picked" value="1" />
+            <span class="uc-field-label">Recipients</span>
+            <div class="uc-rcp-tools">
+                <label class="uc-field uc-rcp-search">
+                    <span class="uc-field-label">Search</span>
+                    <input type="search" data-uc-rcp-search placeholder="Name, email or phone" autocomplete="off" />
+                </label>
+                                    <label class="uc-field">
+                        <span class="uc-field-label">By answer</span>
+                        <select data-uc-rcp-answer>
+                            <option value="">Choose an answer</option>
+                                                            <optgroup label="Dietary needs?">
+                                                                            <option value="qaaaaaaaaaa:oaaaaaaaaa1">Vegetarian</option>
+                                                                            <option value="qaaaaaaaaaa:oaaaaaaaaa2">None</option>
+                                                                    </optgroup>
+                                                    </select>
+                    </label>
+                                                <div class="uc-rcp-bulk">
+                    <button type="button" class="uc-btn" data-uc-rcp-all>Tick all</button>
+                    <button type="button" class="uc-btn" data-uc-rcp-none>Clear all</button>
+                </div>
+            </div>
+            <ul class="uc-rcp-list" data-uc-rcp-list>
+                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="ana ana@example.org · (415) 555-0101 4155550101"
+                        data-uc-rcp-answers="qaaaaaaaaaa:oaaaaaaaaa1"
+                        data-uc-rcp-got="">
+                        <label class="uc-check">
+                            <input type="checkbox" name="rm_ids[]" value="1" checked="checked" />
+                            <span class="uc-rcp-name">Ana</span>
+                            <span class="uc-muted">ana@example.org · (415) 555-0101</span>
+                        </label>
+                    </li>
+                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="beto beto@example.org · +52 55 1234 5678 525512345678"
+                        data-uc-rcp-answers=""
+                        data-uc-rcp-got="">
+                        <label class="uc-check">
+                            <input type="checkbox" name="rm_ids[]" value="2" checked="checked" />
+                            <span class="uc-rcp-name">Beto</span>
+                            <span class="uc-muted">beto@example.org · +52 55 1234 5678</span>
+                        </label>
+                    </li>
+                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="cruz cruz@example.org · (415) 555-0103 4155550103"
+                        data-uc-rcp-answers="qaaaaaaaaaa:oaaaaaaaaa2"
+                        data-uc-rcp-got="">
+                        <label class="uc-check">
+                            <input type="checkbox" name="rm_ids[]" value="3" checked="checked" />
+                            <span class="uc-rcp-name">Cruz</span>
+                            <span class="uc-muted">cruz@example.org · (415) 555-0103</span>
+                        </label>
+                    </li>
+                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="dee dee@example.org "
+                        data-uc-rcp-answers=""
+                        data-uc-rcp-got="">
+                        <label class="uc-check">
+                            <input type="checkbox" name="rm_ids[]" value="4" checked="checked" />
+                            <span class="uc-rcp-name">Dee</span>
+                            <span class="uc-muted">dee@example.org</span>
+                        </label>
+                    </li>
+                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="eve eve@example.org "
+                        data-uc-rcp-answers=""
+                        data-uc-rcp-got="" data-uc-rcp-wait hidden>
+                        <label class="uc-check">
+                            <input type="checkbox" name="rm_ids[]" value="5" checked="checked" />
+                            <span class="uc-rcp-name">Eve</span>
+                            <span class="uc-muted">eve@example.org</span>
+                        </label>
+                    </li>
+                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="fay (415) 555-0106 4155550106"
+                        data-uc-rcp-answers=""
+                        data-uc-rcp-got="">
+                        <label class="uc-check">
+                            <input type="checkbox" name="rm_ids[]" value="6" disabled="disabled" />
+                            <span class="uc-rcp-name">Fay</span>
+                            <span class="uc-muted">(415) 555-0106 · No email</span>
+                        </label>
+                    </li>
+                            </ul>
+            <p class="uc-hint" data-uc-rcp-count aria-live="polite">Sending to 4 people by email.</p>
+        </div>
+                            <div class="uc-form-actions">
+                        <button type="button" class="uc-btn" data-uc-rm-preview>Preview</button>
+                        <button type="submit" class="uc-btn uc-btn-go uc-rm-send" data-uc-rm-send
+                                data-uc-confirm="Send to 5 people?"><span class="uc-rm-send-icon" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-mail" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/></svg></span><span class="uc-rm-send-label">Send</span></button>
+                    </div>
+                    <p class="uc-notice uc-notice-error" role="alert" data-uc-rm-error hidden></p>
+                    <div class="uc-rm-preview" data-uc-rm-preview-box hidden>
+                        <p class="uc-hint" data-uc-rm-preview-to></p>
+                        <p class="uc-rm-preview-subject"><strong data-uc-rm-preview-subject></strong></p>
+                        <iframe class="uc-rm-preview-frame" title="Preview of the message" data-uc-rm-preview-frame></iframe>
+                    </div>
+                </form>
+                    </div>
+        </details>
+                <details open class="uc-card uc-rsvp-settings uc-registrant-mail uc-text-registrants" data-uc-disclosure-off data-uc-text-registrants>
+            <summary class="uc-rsvp-settings-toggle" aria-expanded="false">
+                <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                <span class="uc-rsvp-settings-id">
+                    <span class="uc-rsvp-settings-name"><strong>Text registrants</strong></span>
+                    <span class="uc-muted">Send a text or WhatsApp message to everyone who chose one.</span>
+                </span>
+            </summary>
+            <div class="uc-rsvp-settings-form uc-registrant-mail-body">
+                                                                    <form method="post" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-registrant-mail-form" data-uc-tr-form>
+                        <input type="hidden" name="uc_action" value="text_registrants_send" />
+                        <input type="hidden" name="uc_nonce" value="nonce" />                        <input type="hidden" name="event_id" value="501" />
+                        <label class="uc-field">
+                            <span class="uc-field-label">Message</span>
+                            <textarea name="tr_message" rows="3" maxlength="300" required data-uc-tr-message></textarea>
+                            <span class="uc-hint">Up to 300 characters. It arrives as &quot;Update from SFAF about Support group:&quot;, then the message and where to email.</span>
+                        </label>
+                                <div class="uc-recipients" data-uc-rcp data-uc-rcp-kind="text">
+            <input type="hidden" name="tr_picked" value="1" />
+            <span class="uc-field-label">Recipients</span>
+            <div class="uc-rcp-tools">
+                <label class="uc-field uc-rcp-search">
+                    <span class="uc-field-label">Search</span>
+                    <input type="search" data-uc-rcp-search placeholder="Name, email or phone" autocomplete="off" />
+                </label>
+                                    <label class="uc-field">
+                        <span class="uc-field-label">By answer</span>
+                        <select data-uc-rcp-answer>
+                            <option value="">Choose an answer</option>
+                                                            <optgroup label="Dietary needs?">
+                                                                            <option value="qaaaaaaaaaa:oaaaaaaaaa1">Vegetarian</option>
+                                                                            <option value="qaaaaaaaaaa:oaaaaaaaaa2">None</option>
+                                                                    </optgroup>
+                                                    </select>
+                    </label>
+                                                    <label class="uc-field">
+                        <span class="uc-field-label">Didn't get</span>
+                        <select data-uc-rcp-missed>
+                            <option value="">Choose a past message</option>
+                                                            <option value="0">Oct 29, 2026 at 9 am: Doors at 9:45</option>
+                                                    </select>
+                    </label>
+                                <div class="uc-rcp-bulk">
+                    <button type="button" class="uc-btn" data-uc-rcp-all>Tick all</button>
+                    <button type="button" class="uc-btn" data-uc-rcp-none>Clear all</button>
+                </div>
+            </div>
+            <ul class="uc-rcp-list" data-uc-rcp-list>
+                                    <li data-uc-rcp-row data-uc-rcp-how="sms" data-uc-rcp-find="ana (415) 555-0101 4155550101"
+                        data-uc-rcp-answers="qaaaaaaaaaa:oaaaaaaaaa1"
+                        data-uc-rcp-got="0">
+                        <label class="uc-check">
+                            <input type="checkbox" name="tr_ids[]" value="1" checked="checked" />
+                            <span class="uc-rcp-name">Ana</span>
+                            <span class="uc-muted">(415) 555-0101 · Text</span>
+                        </label>
+                    </li>
+                                    <li data-uc-rcp-row data-uc-rcp-how="whatsapp" data-uc-rcp-find="beto +52 55 1234 5678 525512345678"
+                        data-uc-rcp-answers=""
+                        data-uc-rcp-got="">
+                        <label class="uc-check">
+                            <input type="checkbox" name="tr_ids[]" value="2" checked="checked" />
+                            <span class="uc-rcp-name">Beto</span>
+                            <span class="uc-muted">+52 55 1234 5678 · WhatsApp</span>
+                        </label>
+                    </li>
+                                    <li data-uc-rcp-row data-uc-rcp-how="sms" data-uc-rcp-find="cruz (415) 555-0103 4155550103"
+                        data-uc-rcp-answers="qaaaaaaaaaa:oaaaaaaaaa2"
+                        data-uc-rcp-got="">
+                        <label class="uc-check">
+                            <input type="checkbox" name="tr_ids[]" value="3" checked="checked" />
+                            <span class="uc-rcp-name">Cruz</span>
+                            <span class="uc-muted">(415) 555-0103 · Text</span>
+                        </label>
+                    </li>
+                            </ul>
+            <p class="uc-hint" data-uc-rcp-count aria-live="polite">Sending to 3 people: 2 by text, 1 by WhatsApp.</p>
+        </div>
+                                <div class="uc-form-actions">
+                            <button type="submit" class="uc-btn uc-btn-go" data-uc-tr-send                                    data-uc-confirm="Send to 3 people? A text cannot be recalled."><span class="uc-rm-send-icon" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-speech" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20.5 12.5a7.5 7.5 0 0 1-7.5 7.5 8.4 8.4 0 0 1-3.3-.66L4 21l1.7-4.6A7.3 7.3 0 0 1 5 12.5 7.5 7.5 0 0 1 12.5 5 7.5 7.5 0 0 1 20.5 12.5z"/></svg></span><span class="uc-rm-send-label">Send</span></button>
+                        </div>
+                    </form>
+                                    <div class="uc-registrant-mail-log" data-uc-tr-log>
+                <h3 class="uc-subhead">Texts sent from this list</h3>
+                <table class="uc-table uc-table-cards">
+                    <thead><tr><th>Sent by</th><th>When</th><th>Message</th><th>Recipients</th></tr></thead>
+                    <tbody>
+                                            <tr>
+                            <td>Admin</td>
+                            <td>Oct 29, 2026 at 9 am</td>
+                            <td>Doors at 9:45</td>
+                            <td>Sent by text to 1.                                                                    <details open class="uc-rcp-who" data-uc-rcp-who><summary>Who</summary>Ana</details>
+                                </td>
+                        </tr>
+                                        </tbody>
+                </table>
+            </div>
+                    </div>
+        </details>
+        </main></div><script src="../public/js/portal.js"></script><script>window.RL_PAGE="lists-desktop";(function () {
+var P = window.RL_PAGE, out = { page: P, errors: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function q(s, r) { return (r || document).querySelector(s); }
+function qa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function text(el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }
+/* The words on show: the form keeps the other language in a hidden twin (3.113.8). */
+function vt(el) { var w = el && el.querySelector('.uc-w2'); return w ? text(w.firstElementChild) : text(el); }
+function seen(el) { if (!el || el.closest('[hidden]') || !el.getClientRects().length) { return false; } var cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden'; }
+function finish() { out.pageWidth = document.documentElement.scrollWidth; window.parent.postMessage(JSON.stringify(out), '*'); }
+function tick(el, on) { el.checked = on; el.dispatchEvent(new Event('change', { bubbles: true })); }
+function press(el) { el.click(); }
+function boxes(name) { return qa('input[name="uc-rsvp-text-channel"]').filter(function (b) { return b.checked; }).map(function (b) { return b.value; }); }
+
+window.addEventListener('load', function () { setTimeout(function () {
+  if (P.indexOf('form') === 0) {
+    var sent = [];
+    jQuery.ajax = function (o) { sent.push(o && o.data ? o.data : null); if (o && o.success && window.RL_RESP) { o.success(window.RL_RESP(o.data)); } return { done: function () { return this; }, fail: function () { return this; } }; };
+    q('.uc-rsvp-btn').click();
+    var wrap = q('#uc-rsvp-text-wrap'), phone = q('#uc-rsvp-phone'), consent = q('#uc-rsvp-text-consent');
+    var sms = q('input[name="uc-rsvp-text-channel"][value="sms"]'), wa = q('input[name="uc-rsvp-text-channel"][value="whatsapp"]');
+    out.open = { shown: seen(wrap), label: vt(q('#uc-rsvp-phone-label')), legend: vt(q('#uc-rsvp-text-wrap legend')),
+      options: qa('#uc-rsvp-text-wrap .uc-rsvp-optin').filter(seen).map(vt), ticked: boxes(), consent: seen(consent), required: phone.required };
+    if (P.indexOf('form-off') === 0) { finish(); return; }
+    press(sms);
+    out.afterText = { ticked: boxes(), consent: seen(consent), required: phone.required, aria: phone.getAttribute('aria-required') };
+    press(sms);
+    out.afterTextAgain = { ticked: boxes(), consent: seen(consent), required: phone.required };
+    press(sms); press(wa);
+    out.afterBoth = boxes();
+    q('#uc-rsvp-first-name').value = 'Lee';
+    q('#uc-rsvp-email').value = 'lee@example.org';
+    q('#uc-rsvp-submit-btn').click();
+    out.noNumber = { error: seen(q('#uc-rsvp-error')) ? text(q('#uc-rsvp-error')) : '', sent: sent.length };
+    phone.value = '+52 55 1234 5678';
+    window.RL_RESP = function (d) { return { success: true, first_name: 'Lee', text_channel: d.text_channel, text_phone: d.phone }; };
+    q('#uc-rsvp-submit-btn').click();
+    out.withNumber = { sent: sent.length, channel: sent.length ? sent[sent.length - 1].text_channel : null, phone: sent.length ? sent[sent.length - 1].phone : null,
+      line: text(q('#uc-rsvp-success-texts')), lineShown: seen(q('#uc-rsvp-success-texts')) };
+    /* Again, with a number and nothing ticked. */
+    q('.uc-rsvp-btn').click();
+    out.reopened = { ticked: boxes(), line: seen(q('#uc-rsvp-success-texts')) };
+    q('#uc-rsvp-first-name').value = 'Mo';
+    q('#uc-rsvp-email').value = 'mo@example.org';
+    phone.value = '12';
+    window.RL_RESP = function (d) { return { success: true, first_name: 'Mo', text_channel: '', text_phone: '' }; };
+    q('#uc-rsvp-submit-btn').click();
+    out.numberOnly = { sent: sent.length, channel: sent.length ? sent[sent.length - 1].text_channel : null, phone: sent.length ? sent[sent.length - 1].phone : null, line: seen(q('#uc-rsvp-success-texts')) };
+    /* Spanish. */
+    q('.uc-rsvp-btn').click();
+    var es = q('[data-uc-lang-pick="es"]'); if (es) { es.click(); }
+    out.spanish = { label: text(q('#uc-rsvp-phone-label .uc-w2 > span:first-child')) || text(q('#uc-rsvp-phone-label')),
+      legend: text(q('#uc-rsvp-text-wrap legend .uc-w2 > span:first-child')) || text(q('#uc-rsvp-text-wrap legend')),
+      sms: text(q('[data-uc-w="by_sms"] .uc-w2 > span:first-child')) || text(q('[data-uc-w="by_sms"]')) };
+    press(q('input[name="uc-rsvp-text-channel"][value="sms"]'));
+    q('#uc-rsvp-first-name').value = 'Ana'; q('#uc-rsvp-email').value = 'ana@example.org'; phone.value = '';
+    q('#uc-rsvp-submit-btn').click();
+    out.spanishError = text(q('#uc-rsvp-error'));
+    finish(); return;
+  }
+  /* Who gets it. */
+  var tbox = q('[data-uc-rcp][data-uc-rcp-kind="text"]'), ebox = q('[data-uc-rcp][data-uc-rcp-kind="email"]');
+  var tsend = q('[data-uc-tr-send]'), esend = q('[data-uc-rm-send]');
+  function count(b) { return text(q('[data-uc-rcp-count]', b)); }
+  function shownNames(b) { return qa('[data-uc-rcp-row]', b).filter(seen).map(function (r) { return text(q('.uc-rcp-name', r)); }); }
+  function tickedNames(b) { return qa('[data-uc-rcp-row]', b).filter(function (r) { var x = q('input', r); return x.checked && !x.disabled; }).map(function (r) { return text(q('.uc-rcp-name', r)); }); }
+  out.textStart = { count: count(tbox), ticked: tickedNames(tbox), confirm: tsend.getAttribute('data-uc-confirm') };
+  var s = q('[data-uc-rcp-search]', tbox); s.value = 'beto'; s.dispatchEvent(new Event('input', { bubbles: true }));
+  out.search = { shown: shownNames(tbox), count: count(tbox) };
+  s.value = '5550103'; s.dispatchEvent(new Event('input', { bubbles: true }));
+  out.searchPhone = shownNames(tbox);
+  s.value = ''; s.dispatchEvent(new Event('input', { bubbles: true }));
+  press(q('[data-uc-rcp-none]', tbox));
+  out.cleared = { count: count(tbox), ticked: tickedNames(tbox), sendOff: tsend.disabled };
+  var a = q('[data-uc-rcp-answer]', tbox); a.value = 'qaaaaaaaaaa:oaaaaaaaaa1'; a.dispatchEvent(new Event('change', { bubbles: true }));
+  out.byAnswer = { ticked: tickedNames(tbox), count: count(tbox), sendOn: !tsend.disabled };
+  var m = q('[data-uc-rcp-missed]', tbox); m.value = '0'; m.dispatchEvent(new Event('change', { bubbles: true }));
+  out.missed = { ticked: tickedNames(tbox), count: count(tbox), confirm: tsend.getAttribute('data-uc-confirm'), answerReset: a.value };
+  press(q('[data-uc-rcp-all]', tbox));
+  out.all = count(tbox);
+  out.emailStart = { count: count(ebox), shown: shownNames(ebox), confirm: esend.getAttribute('data-uc-confirm') };
+  tick(q('[data-uc-rm-waitlist]'), true);
+  out.waitOn = { count: count(ebox), shown: shownNames(ebox) };
+  tick(q('[data-uc-rm-team]'), true);
+  out.teamOn = esend.getAttribute('data-uc-confirm');
+  finish();
+}, 300); });
+})();</script></body></html>

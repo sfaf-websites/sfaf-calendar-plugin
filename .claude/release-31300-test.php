@@ -234,17 +234,16 @@ rt( 'B: WhatsApp with a number is kept', 'whatsapp' === SFAF_Texts::clean_channe
 $fw = SFAF_Messages::form_words();
 rt( "B: Mark's consent line, word for word", 'Text me updates about this event. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.' === $fw['en']['text_consent'] );
 rt( 'B: the consent line in Spanish names STOP and HELP', false !== strpos( $fw['es']['text_consent'], 'STOP' ) && false !== strpos( $fw['es']['text_consent'], 'HELP' ) && $fw['es']['text_consent'] !== $fw['en']['text_consent'] );
-foreach ( array( 'updates_by', 'by_sms', 'by_whatsapp', 'by_none', 'privacy' ) as $k ) {
+// 3.131.0 took Neither away and showed the choice from the start: release-31310-test.php.
+foreach ( array( 'updates_by', 'by_sms', 'by_whatsapp', 'privacy' ) as $k ) {
     rt( "B: the form has '$k' in both languages", isset( $fw['en'][ $k ], $fw['es'][ $k ] ) && '' !== $fw['en'][ $k ] && '' !== $fw['es'][ $k ] );
 }
 rt( 'B: the old line is gone from the form words', ! isset( $fw['en']['text_opt_in'] ) );
 rt( 'B: the old line is gone from Email Templates', ! isset( SFAF_Messages::catalog()['text_opt_in'] ) );
 $js = file_get_contents( dirname( __DIR__ ) . '/public/js/calendar.js' );
-rt( 'B: three radios, Neither chosen', 1 === preg_match( '/name="uc-rsvp-text-channel" value="sms" \/>.*name="uc-rsvp-text-channel" value="whatsapp" \/>.*name="uc-rsvp-text-channel" value="" checked \/>/s', $js ) );
-rt( 'B: the choice is hidden until a number is typed', false !== strpos( $js, '<fieldset class="uc-rsvp-texts" id="uc-rsvp-text-wrap" hidden>' ) && false !== strpos( $js, "if (\$(this).val().trim() && currentTexts.length)" ) );
+rt( 'B: the choice is hidden in the markup, for the button to show', false !== strpos( $js, '<fieldset class="uc-rsvp-texts" id="uc-rsvp-text-wrap" hidden>' ) );
 rt( 'B: the privacy policy is linked beside the choice', false !== strpos( $js, 'id="uc-rsvp-privacy" href="https://www.sfaf.org/privacy-policy/"' ) && 'https://www.sfaf.org/privacy-policy/' === SFAF_Texts::PRIVACY_URL );
-rt( 'B: the form posts text_channel, not text_opt_in', false !== strpos( $js, 'text_channel: (phone && currentTexts.length)' ) && false === strpos( $js, 'text_opt_in' ) );
-rt( 'B: opening the form chooses Neither again', false !== strpos( $js, "\$('input[name=\"uc-rsvp-text-channel\"][value=\"\"]').prop('checked', true);\n            \$('#uc-rsvp-text-wrap').attr('hidden', 'hidden');" ) );
+rt( 'B: the form posts text_channel, not text_opt_in', false !== strpos( $js, 'text_channel: textChannel(),' ) && false === strpos( $js, 'text_opt_in' ) );
 $tf = file_get_contents( dirname( __DIR__ ) . '/includes/sfaf-template-functions.php' );
 rt( 'B: the button carries what the server offers', false !== strpos( $tf, "'data-uc-texts'   => implode( ',', SFAF_Texts::form_channels() )," ) && false === strpos( $tf, 'data-uc-text-label' ) );
 $GLOBALS['wpdb']->rsvps = array( tw_row( 1, 900, '(415) 555-0101', '', '', 'Old', 1 ), tw_row( 2, 901, '(415) 555-0102', '', '', 'Older', 1 ), tw_row( 3, 900, '(415) 555-0103', 'sms' ) );
@@ -326,8 +325,9 @@ rt( 'D: the section renders', false === strpos( $html, 'THREW' ) && false !== st
 $x = rt_x( $html );
 rt( 'D: it is the Email registrants component', 1 === $x->query( '//details[contains(@class,"uc-card") and contains(@class,"uc-rsvp-settings")]' )->length && 'Text registrants' === rt_text( $x->query( '//summary//strong' )->item( 0 ) ) );
 $states = array();
-foreach ( $x->query( '//tr[@data-uc-tr-state]' ) as $tr ) { $states[] = $tr->getAttribute( 'data-uc-tr-state' ) . ':' . rt_text( $tr->getElementsByTagName( 'td' )->item( 2 ) ); }
-rt( 'D: who gets it and how, one row a number (' . implode( ' | ', $states ) . ')', array( 'sms:Text', "whatsapp_off:Email only: WhatsApp isn't active yet", 'stopped:Nothing: this number sent STOP' ) === $states );
+// From 3.131.0 the list is the recipient list's rows, each saying how.
+foreach ( $x->query( '//li[@data-uc-rcp-row]' ) as $li ) { $states[] = $li->getAttribute( 'data-uc-rcp-how' ) . ':' . rt_text( $x->query( './/span[@class="uc-muted"]', $li )->item( 0 ) ); }
+rt( 'D: who gets it and how, one row a number (' . implode( ' | ', $states ) . ')', array( 'sms:(415) 555-0101 · Text', "whatsapp_off:(415) 555-0102 · Email only: WhatsApp isn't active yet", 'stopped:(415) 555-0103 · Nothing: this number sent STOP' ) === $states );
 rt( "D: the page says WhatsApp isn't active yet", 1 === $x->query( '//*[@data-uc-tr-wa-off]' )->length && false !== strpos( rt_text( $x->query( '//*[@data-uc-tr-wa-off]' )->item( 0 ) ), "WhatsApp isn't active yet. 1 person chose WhatsApp and gets email only." ) );
 $btn = $x->query( '//button[@data-uc-tr-send]' )->item( 0 );
 rt( 'D: the button counts only those it can reach', $btn && 'Send to 1 person? A text cannot be recalled.' === $btn->getAttribute( 'data-uc-confirm' ) && ! $btn->hasAttribute( 'disabled' ) );
