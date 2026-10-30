@@ -215,7 +215,7 @@
                     <h2 class="uc-bento-title">Schedule</h2>
                                         <label class="uc-field">
                         <span class="uc-field-label">Date<span class="uc-req" aria-hidden="true">*</span> </span>
-                        <input type="date" name="date" value="2026-11-07" />
+                        <input type="date" name="date" value="2026-11-08" />
                                                                     </label>
                     <div class="uc-field-row">
                         <label class="uc-field">
@@ -323,7 +323,7 @@
                     </div>
 
                                         
-                                                                                <div class="uc-repeat" data-uc-repeat data-uc-repeat-date="2026-11-07">
+                                                                                <div class="uc-repeat" data-uc-repeat data-uc-repeat-date="2026-11-08">
 
             <span class="uc-field-label">Repeats
                 <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-repeat-501" aria-label="More about repeating">?</button><span class="uc-help-body" id="uc-help-repeat-501" data-uc-help-body>Saving creates one event per date; edit the schedule on the series after that.</span>            </span>
@@ -366,7 +366,7 @@
                 <div class="uc-days" role="group" aria-label="Which days of the week">
                                             <label class="uc-day">
                             <input type="checkbox" name="repeat_days[]" value="0"
-                                    data-uc-repeat-day />
+                                    checked="checked" data-uc-repeat-day />
                             <span aria-hidden="true">S</span>
                             <span class="uc-visually-hidden">Sunday</span>
                         </label>
@@ -402,7 +402,7 @@
                         </label>
                                             <label class="uc-day">
                             <input type="checkbox" name="repeat_days[]" value="6"
-                                    checked="checked" data-uc-repeat-day />
+                                    data-uc-repeat-day />
                             <span aria-hidden="true">S</span>
                             <span class="uc-visually-hidden">Saturday</span>
                         </label>
@@ -413,7 +413,7 @@
                         <div class="uc-repeat-panel" data-uc-repeat-panel="monthly">
                 <label class="uc-radio-row">
                     <input type="radio" name="repeat_monthly_mode" value="date"  checked="checked" data-uc-repeat-monthly />
-                    <span>On <strong>day 7</strong> of each month</span>
+                    <span>On <strong>day 8</strong> of each month</span>
                 </label>
                 <label class="uc-radio-row">
                     <input type="radio" name="repeat_monthly_mode" value="nth"  data-uc-repeat-monthly />
@@ -421,20 +421,20 @@
                 </label>
                 <div class="uc-repeat-nth">
                     <select name="repeat_nth" aria-label="Which occurrence in the month">
-                                                    <option value="1"  selected="selected">first</option>
-                                                    <option value="2" >second</option>
+                                                    <option value="1" >first</option>
+                                                    <option value="2"  selected="selected">second</option>
                                                     <option value="3" >third</option>
                                                     <option value="4" >fourth</option>
                                                     <option value="-1" >last</option>
                                             </select>
                     <select name="repeat_nth_dow" aria-label="Which weekday">
-                                                    <option value="0" >Sunday</option>
+                                                    <option value="0"  selected="selected">Sunday</option>
                                                     <option value="1" >Monday</option>
                                                     <option value="2" >Tuesday</option>
                                                     <option value="3" >Wednesday</option>
                                                     <option value="4" >Thursday</option>
                                                     <option value="5" >Friday</option>
-                                                    <option value="6"  selected="selected">Saturday</option>
+                                                    <option value="6" >Saturday</option>
                                             </select>
                     <span>of each month</span>
                 </div>
