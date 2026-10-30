@@ -38,6 +38,7 @@
     var agreedNow = false;            // Confirm RSVP pressed for this submit (3.110.0)
     var currentFull = [];      // the formats with no place left: the waitlist (3.106.0)
     var currentLang = 'en';    // the form's English | Español toggle (3.113.6)
+    var currentTexts = [];     // 'sms' and 'whatsapp' when the form offers them (3.130.0)
 
     /**
      * Run one initialiser without letting it take the others down.
@@ -1618,13 +1619,19 @@
                         // extension is kept exactly as entered.
                         '<div><label for="uc-rsvp-phone" data-uc-w="phone">Phone (optional)</label>' +
                             '<input type="tel" id="uc-rsvp-phone" autocomplete="tel" placeholder="(555) 000-0000" />' +
-                            // TEXT ME ABOUT THIS EVENT (3.110.0): off, and only once a
-                            // number is typed. Its words are the event's language,
-                            // from the button. Nothing sends texts yet.
-                            '<label class="uc-rsvp-optin uc-rsvp-texts" id="uc-rsvp-text-wrap" hidden>' +
-                                '<input type="checkbox" id="uc-rsvp-text" value="1" />' +
-                                '<span id="uc-rsvp-text-label">Text me about this event</span>' +
-                            '</label></div>' +
+                            // TEXT, WHATSAPP OR NEITHER (3.130.0): only once a
+                            // number is typed, and only when the button says
+                            // texts can go. Neither is chosen every time the form
+                            // opens. Mark's consent line and the privacy policy
+                            // sit beside the choice.
+                            '<fieldset class="uc-rsvp-texts" id="uc-rsvp-text-wrap" hidden>' +
+                                '<legend data-uc-w="updates_by">Get updates by</legend>' +
+                                '<label class="uc-rsvp-optin"><input type="radio" name="uc-rsvp-text-channel" value="sms" /><span data-uc-w="by_sms">Text</span></label>' +
+                                '<label class="uc-rsvp-optin" id="uc-rsvp-text-wa"><input type="radio" name="uc-rsvp-text-channel" value="whatsapp" /><span data-uc-w="by_whatsapp">WhatsApp</span></label>' +
+                                '<label class="uc-rsvp-optin"><input type="radio" name="uc-rsvp-text-channel" value="" checked /><span data-uc-w="by_none">Neither</span></label>' +
+                                '<p class="uc-rsvp-note"><span data-uc-w="text_consent">Text me updates about this event. Message frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help.</span> ' +
+                                    '<a id="uc-rsvp-privacy" href="https://www.sfaf.org/privacy-policy/" target="_blank" rel="noopener" data-uc-w="privacy">Privacy policy</a></p>' +
+                            '</fieldset></div>' +
                         // STAY IN TOUCH (3.124.0): the SFAF box, then one per
                         // team whose Mailchimp sign-up this event shows, drawn
                         // by renderLists() from the button. SEPARATE FROM THE
@@ -1721,9 +1728,12 @@
             currentAgreement = null;
             agreedNow = false;
             try { currentAgreement = JSON.parse($(this).attr('data-uc-agreement') || 'null'); } catch (err) { currentAgreement = null; }
-            $('#uc-rsvp-text-label').text($(this).attr('data-uc-text-label') || 'Text me about this event').data('ucEn', $('#uc-rsvp-text-label').text());
             currentLang = startLang($(this).attr('data-uc-lang'));
-            $('#uc-rsvp-text').prop('checked', false);
+            // Text and WhatsApp (3.130.0): what the server offers, Neither chosen.
+            currentTexts = ($(this).attr('data-uc-texts') || '').split(',').filter(Boolean);
+            if ($(this).attr('data-uc-privacy')) { $('#uc-rsvp-privacy').attr('href', $(this).attr('data-uc-privacy')); }
+            $('#uc-rsvp-text-wa').prop('hidden', currentTexts.indexOf('whatsapp') < 0);
+            $('input[name="uc-rsvp-text-channel"][value=""]').prop('checked', true);
             $('#uc-rsvp-text-wrap').attr('hidden', 'hidden');
 
             // Reset form. The opt-in is cleared with everything else: it must
@@ -1761,12 +1771,13 @@
             if (e.key === 'Escape' && !agreementOpen()) closeModal();
         });
 
-        // The text opt-in shows once a number is typed, and goes, unticked, when it is cleared.
+        // Text, WhatsApp or Neither shows once a number is typed, when texts
+        // can go, and goes back to Neither when the number is cleared (3.130.0).
         $(document).on('input', '#uc-rsvp-phone', function () {
-            if ($(this).val().trim()) {
+            if ($(this).val().trim() && currentTexts.length) {
                 $('#uc-rsvp-text-wrap').removeAttr('hidden');
             } else {
-                $('#uc-rsvp-text').prop('checked', false);
+                $('input[name="uc-rsvp-text-channel"][value=""]').prop('checked', true);
                 $('#uc-rsvp-text-wrap').attr('hidden', 'hidden');
             }
         });
@@ -2025,7 +2036,6 @@
             $('#uc-rsvp-questions .uc-rsvp-q-heading').html(WW('q_heading', currentQuestions.heading));
             $('#uc-rsvp-questions .uc-rsvp-q-more-label').html(WW('q_more', currentQuestions.more));
         }
-        $('#uc-rsvp-text-label').html(WW('text_opt_in', $('#uc-rsvp-text-label').data('ucEn') || 'Text me about this event'));
         $('#uc-rsvp-lists [data-uc-team]').each(function () {
             var name = $(this).attr('data-uc-team'), en = 'Sign me up for %s email updates';
             $(this).html(twin(W('team_optin', en).replace('%s', name), Wl(otherLang(), 'team_optin', en).replace('%s', name)));
@@ -2332,7 +2342,9 @@
                 answers_more: JSON.stringify(qa.more),
                 // Confirm RSVP was pressed in the agreement dialog (3.110.0).
                 agreed:       agreedNow ? '1' : '',
-                text_opt_in:  (phone && $('#uc-rsvp-text').is(':checked')) ? '1' : '',
+                // Text, WhatsApp or '' for Neither (3.130.0). The server keeps
+                // only a channel it offered, with a number.
+                text_channel: (phone && currentTexts.length) ? ($('input[name="uc-rsvp-text-channel"]:checked').val() || '') : '',
                 // The toggle (3.113.6): every message to this person speaks it.
                 lang:         currentLang
             },

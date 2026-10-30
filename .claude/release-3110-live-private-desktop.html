@@ -1402,8 +1402,8 @@ window.addEventListener('load', function () { setTimeout(function () {
     var ph = q('#uc-rsvp-phone');
     if (ph) { ph.value = '(415) 555-0199'; ph.dispatchEvent(new Event('input', { bubbles: true })); }
     out.textAfter = seen(q('#uc-rsvp-text-wrap'));
-    out.textLabel = text(q('#uc-rsvp-text-label'));
-    var tb = q('#uc-rsvp-text'); if (tb) { tb.checked = true; }
+    out.textLabel = text(q('#uc-rsvp-text-wrap [data-uc-w="text_consent"]'));
+    var tb = q('input[name="uc-rsvp-text-channel"][value="whatsapp"]'); if (tb) { tb.checked = true; }
     q('#uc-rsvp-submit-btn').click();
     var d = q('#uc-agree');
     out.formHeading = text(q('#uc-rsvp-heading'));
@@ -1425,9 +1425,9 @@ window.addEventListener('load', function () { setTimeout(function () {
       var t = q('#uc-agree-tick'); t.checked = true; t.dispatchEvent(new Event('change', { bubbles: true }));
       out.confirmOnAfterTick = !q('#uc-agree-confirm').disabled;
       q('#uc-agree-confirm').click();
-      out.afterConfirm = { open: d.open, sent: sent.length, agreed: sent.length ? sent[sent.length - 1].agreed : null, text: sent.length ? sent[sent.length - 1].text_opt_in : null };
+      out.afterConfirm = { open: d.open, sent: sent.length, agreed: sent.length ? sent[sent.length - 1].agreed : null, text: sent.length ? sent[sent.length - 1].text_channel : null };
     } else {
-      out.sentNoDialog = sent.length ? { agreed: sent[0].agreed, text: sent[0].text_opt_in } : null;
+      out.sentNoDialog = sent.length ? { agreed: sent[0].agreed, text: sent[0].text_channel } : null;
     }
     out.small = small(q('.uc-rsvp-modal-overlay.active') || document);
     finish(); return;

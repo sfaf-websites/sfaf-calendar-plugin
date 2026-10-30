@@ -332,7 +332,9 @@ $at_stay = strpos( $js, '<fieldset class="uc-rsvp-stay" id="uc-rsvp-stay">' );
 rt( 'E: Stay in touch is a group on the form', false !== $at_stay && false !== strpos( $js, '<legend data-uc-w="stay">Stay in touch</legend>' ), true );
 rt( 'E: at the end, after the phone and before the button', false !== $at_stay && $at_stay > strpos( $js, 'id="uc-rsvp-phone"' ) && $at_stay < strpos( $js, 'id="uc-rsvp-submit-btn"' ), true );
 rt( 'E: the SFAF box in it, in Mark\'s words', false !== strpos( $js, '<span data-uc-w="optin">Sign me up for SFAF Newsletter and Updates</span>' ), true );
-rt( 'E: no box is drawn ticked', ! preg_match( '/type="checkbox"[^>]*\bchecked\b/', substr( $js, (int) $at_stay, 3000 ) ) && false === strpos( $js, "prop('checked', true)" ), true );
+// Choosing Neither on Text / WhatsApp / Neither (3.130.0) is the one
+// prop('checked', true) allowed: it is the no-consent answer, not a box.
+rt( 'E: no box is drawn ticked', ! preg_match( '/type="checkbox"[^>]*\bchecked\b/', substr( $js, (int) $at_stay, 3000 ) ) && false === strpos( str_replace( "\$('input[name=\"uc-rsvp-text-channel\"][value=\"\"]').prop('checked', true)", '', $js ), "prop('checked', true)" ), true );
 rt( 'E: every box is cleared when the form opens', false !== strpos( $js, "\$('#uc-rsvp-optin').prop('checked', false);" ) && false !== strpos( $js, "var box = \$('#uc-rsvp-lists').empty()" ), true );
 rt( 'E: a team\'s box, one per list on the button', false !== strpos( $js, "JSON.parse(\$(btn).attr('data-uc-lists') || '[]')" ) && false !== strpos( $js, 'name="uc_rsvp_list"' ), true );
 rt( 'E: and sent as lists', false !== strpos( $js, 'lists:      lists,' ), true );

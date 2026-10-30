@@ -30,8 +30,10 @@
  *     channel, from any event. START (or UNSTOP, or YES) takes it off.
  *     On WhatsApp each is answered with a line saying so; on a text, Twilio's
  *     Messaging Service sends its own, so nothing is added.
- *   - HELP (or INFO, or AYUDA) is answered every time: who is texting, where
- *     to write, and how to stop. The form's consent line promises it.
+ *   - HELP (or INFO, or AYUDA) on WhatsApp is answered every time: who is
+ *     writing, where to write, and how to stop. On a text the Messaging
+ *     Service answers HELP itself, with the reply set in Twilio, so nothing
+ *     is added. The form's consent line promises it.
  *   - anything else gets one automatic reply, at most once a day per number:
  *     "This number isn't monitored. For questions about [event name], please
  *     contact [email]." with the event's Replies go to address, else the site
@@ -493,6 +495,10 @@ class SFAF_Texts {
         $seen = array();
         foreach ( self::chose( $event_id ) as $row ) {
             $reach = self::reach( $row );
+            // Neither is nobody's to list, whatever the query handed back.
+            if ( 'none' === $reach['state'] ) {
+                continue;
+            }
             if ( '' !== $reach['phone'] && isset( $seen[ $reach['phone'] ] ) ) {
                 continue;
             }
@@ -621,7 +627,8 @@ class SFAF_Texts {
             $v['reply'] = self::site_reply_to();
         }
         if ( in_array( $word, self::HELP_WORDS, true ) ) {
-            return self::words( 'help', $lang, $v );
+            // On a text, the Messaging Service answers HELP itself, as it does STOP.
+            return 'whatsapp' === $channel ? self::words( 'help', $lang, $v ) : '';
         }
         // One automatic reply a day per number, so two machines cannot talk forever.
         $key = 'sfaf_text_reply_' . md5( $phone );

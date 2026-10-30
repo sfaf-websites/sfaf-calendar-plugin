@@ -14,7 +14,8 @@
  *   B.4  RSVPs off, or a third-party event, never asks, whatever the meta says
  *   B.1  the series text is inherited until the event has its own; the save
  *        keeps the box as the event's own only when it differs; off by default
- *   C    text_opt_in is stored only with a phone to text
+ *   C    the old "Text me about this event" is no longer stored (3.130.0):
+ *        Text or WhatsApp replaced it, release-31300-test.php
  */
 
 require __DIR__ . '/mail-kit.php';
@@ -98,12 +99,12 @@ ag( 'an unticked box turns it off', SFAF_Agreement::is_on( $child ), false );
 SFAF_Agreement::save_from_post( $child, array( 'title' => 'another screen' ) );
 ag( 'a screen without the section leaves it alone', get_post_meta( $child, SFAF_Agreement::META_ON, true ), '0' );
 
-/* ---- C: the text opt-in --------------------------------------------------- */
+/* ---- C: the old text opt-in, no longer stored (3.130.0) ------------------- */
 $T = ag_event( array( '_uc_capacity' => '20' ) );
 ag_reg( $T, 'Eve', false, '(415) 555-0100', true );
 ag_reg( $T, 'Fay', false, '', true );
 ag_reg( $T, 'Gil', false, '(415) 555-0101', false );
-ag( 'ticked with a phone is stored', (int) ag_row( 'Eve' )['text_opt_in'], 1 );
+ag( 'the old tick with a phone is not stored any more', (int) ag_row( 'Eve' )['text_opt_in'], 0 );
 ag( 'ticked with no phone is not', (int) ag_row( 'Fay' )['text_opt_in'], 0 );
 ag( 'unticked is not', (int) ag_row( 'Gil' )['text_opt_in'], 0 );
 

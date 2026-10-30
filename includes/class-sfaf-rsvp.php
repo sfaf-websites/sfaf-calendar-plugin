@@ -399,7 +399,7 @@ class SFAF_RSVP {
         $data['name']  = trim( $data['first_name'] . ' ' . $data['last_name'] );
         // Text or WhatsApp means nothing without a number (3.130.0). The old
         // "Text me about this event" is no longer on the form.
-        $data['text_channel'] = SFAF_Texts::clean_channel( isset( $data['text_channel'] ) ? $data['text_channel'] : '', $data['phone'] );
+        $data['text_channel'] = class_exists( 'SFAF_Texts' ) ? SFAF_Texts::clean_channel( isset( $data['text_channel'] ) ? $data['text_channel'] : '', $data['phone'] ) : '';
         /*
          * THE SIGN-UP BOXES (3.124.0), kept as one string on the row: the SFAF
          * one, and a team's for each connection this event offers. A waitlist

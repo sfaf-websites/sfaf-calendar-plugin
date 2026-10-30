@@ -73,8 +73,14 @@ $plants = array(
     'the automatic reply is not once a day' => array( $T, 'FAIL  E: once a day per number', array(
         array( $X, "        if ( get_transient( \$key ) ) {\n            return '';", "        if ( false ) {\n            return '';" ),
     ) ),
-    'HELP gets the not-monitored line' => array( $T, 'FAIL  E: HELP is answered', array(
+    'HELP gets the not-monitored line' => array( $T, 'FAIL  E: HELP on WhatsApp is answered', array(
         array( $X, "    const HELP_WORDS  = array( 'HELP', 'INFO', 'AYUDA' );", "    const HELP_WORDS  = array();" ),
+    ) ),
+    'HELP on a text gets a second answer' => array( $T, 'FAIL  E: HELP on a text is left to the Messaging Service', array(
+        array( $X, "            return 'whatsapp' === \$channel ? self::words( 'help', \$lang, \$v ) : '';", "            return self::words( 'help', \$lang, \$v );" ),
+    ) ),
+    'Neither is listed' => array( $T, 'FAIL  D: Neither is never listed', array(
+        array( $X, "            if ( 'none' === \$reach['state'] ) {\n                continue;\n            }\n", "" ),
     ) ),
     'an unsigned request is answered' => array( $T, 'FAIL  E: an unsigned request is refused', array(
         array( $X, "        if ( '' === (string) \$token || '' === (string) \$sig ) {\n            return false;", "        if ( '' === (string) \$sig ) {\n            return true;" ),

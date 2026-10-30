@@ -9,8 +9,8 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 403 items.** Quick 330, needs real conditions 69, blocked on other
-people 4.
+**Outstanding: 411 items.** Quick 333, needs real conditions 73, blocked on other
+people 5.
 
 ---
 
@@ -4500,6 +4500,45 @@ in two groups, Sent to registrants and Sent to the people above.
 **Why it needs a person:** real calendar people and teams, a real save, and the
 editor on a phone; the checks used invented ones.
 
+### 1.333 The Twilio panel and Test connection (3.130.0)
+
+WP admin > Events > Settings > Twilio. Paste the Account SID and Auth Token
+from the Twilio Console's home page, press **Test connection**: it says
+Connected to the account's name. Paste the Messaging Service SID (MG...) and
+Save. The heading says Texts on; the token box is empty and reads "Saved,
+ending" and four characters; View Source on the page and search for the token:
+it is not there. Type a wrong token, Test connection: it says Twilio did not
+accept them, and the message does not contain what you typed. The panel's
+**Incoming message address** is the one 2.72 asks for.
+
+**Why it needs a person:** a real Twilio account; the checks recorded the
+requests and never sent one.
+
+### 1.334 The RSVP form's Text, WhatsApp or Neither (3.130.0)
+
+Once 1.333 is done, open an event's RSVP form. Nothing about texts shows until
+a phone number is typed; then Get updates by **Text**, **WhatsApp**, **Neither**,
+Neither chosen, with "Text me updates about this event. Message frequency
+varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help." and
+**Privacy policy**, which opens sfaf.org's privacy policy in a new tab. Press
+Español: all of it is in Spanish, and the form does not change height. Clear
+the number: the choice goes and is back on Neither. Register once choosing
+Text: on the RSVP list the row shows **Text** beside the number, and the
+counts say 1 chose Text or WhatsApp. Do it once on a phone.
+
+**Why it needs a person:** the form on the real site, on a real phone; the
+checks drew it in Chrome with invented events.
+
+### 1.335 The old "Text me about this event" registrations (3.130.0)
+
+Settings > Twilio, at the bottom: how many registrations on how many events
+ticked the old box (absent when there are none). On the RSVP list of one of
+those events, the row says **Old text tick** and Text registrants does not list
+them. Decide whether they are asked again; until then they get email only.
+
+**Why it needs a person:** the site's own registrations; the decision is
+Mark's.
+
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -5482,6 +5521,77 @@ browser's Network tab).
 **Why it needs a person:** the real LiteSpeed Cache on resources.sfaf.org; the
 build only has a stand-in that records what it is told.
 
+### 2.72 A real text, from Text registrants (3.130.0)
+
+**Set up, in Twilio** (Console > Messaging > Services > the service whose SID
+is in Settings): under **Integration**, choose "Send a webhook" and paste the
+panel's **Incoming message address** as the Request URL, method **HTTP POST**.
+Under **Opt-Out Management**, leave STOP, START and HELP on, and set the HELP
+reply to something like "SFAF event updates. For help, email
+events@sfaf.org. Reply STOP to opt out." The service needs its sending number
+in its Sender Pool, and that number's A2P 10DLC registration (or toll-free
+verification) approved, or carriers drop the texts.
+
+**Then:** register for a test event with your own mobile number, choosing
+Text. On its RSVP list open **Text registrants**: you are listed, Gets it by
+Text. Type a line without a full stop at the end and Send: your phone gets
+"Update from SFAF about [event]: [your line]. For questions, please email
+[Replies go to]. Reply STOP to opt out." within a minute, and the log under
+the box says Sent by text to 1. Register a second time with Español chosen:
+that one comes in Spanish.
+
+**Why it needs a person:** a real phone, a real Twilio number and carriers;
+the checks recorded the request and never sent it.
+
+### 2.73 The morning-of reminder by text (3.130.0)
+
+Register for an event taking place tomorrow, choosing Text, with your own
+number. On the morning, at the reminder time, the email and the text arrive
+together: "Reminder from SFAF: [event] is today at [time], at [place]. Event
+details: [link] Reply STOP to opt out." The next scheduled run sends nothing
+more.
+
+**Why it needs a person:** the real scheduled job on the site on the event's
+day, and a real phone.
+
+### 2.74 Replies, HELP and STOP (3.130.0)
+
+From the phone in 2.72, reply "What time do doors open?": one answer, "This
+number isn't monitored. For questions about [event], please contact
+[Replies go to].", and a second question the same day gets nothing. Reply
+HELP: Twilio's HELP reply set in 2.72. Reply STOP: Twilio confirms; on the RSVP
+list's Text registrants you now show "Nothing: this number sent STOP", and a
+Send does not reach you. Reply START: you are listed as Text again.
+
+**Why it needs a person:** Twilio posting a real reply to the site, signed
+with the real Auth Token; the checks signed requests themselves.
+
+### 2.75 A real WhatsApp message, once Meta approves the templates (3.130.0)
+
+**Set up, in Twilio:** Messaging > Senders > WhatsApp senders: register the
+WhatsApp number against SFAF's Meta Business account, and set its webhook for
+incoming messages to the panel's **Incoming message address**, HTTP POST.
+Messaging > Content Template Builder: create **sfaf_event_reminder** and
+**sfaf_event_update**, each in English and Spanish, category Utility, with the
+words and the {{1}} to {{4}} in the order of Mark's instruction (`PROJECT.md`
+3), and submit each for WhatsApp approval. Once all four are approved, paste
+their four Content SIDs (HX...) and the WhatsApp number into Settings >
+Twilio. The note above the template boxes says WhatsApp is on.
+
+**Then:** register with your own WhatsApp number choosing WhatsApp. Text
+registrants lists you as WhatsApp; Send a line: it arrives on WhatsApp in the
+template's words. Reply with a question: Mark's line comes back. Reply PARAR:
+"No recibirá más mensajes de SFAF sobre eventos..." comes back in the language
+you registered in, and Text registrants shows you stopped. Then the morning-of
+reminder for an event the next day, as 2.73.
+
+**Before the templates are approved**, a registration that chose WhatsApp
+shows "Email only: WhatsApp isn't active yet" in Text registrants, with the
+line above the list saying how many.
+
+**Why it needs a person:** Meta's approval of the templates and a real
+WhatsApp account; nothing in the build can send one.
+
 ## 3. Blocked on other people
 
 Nothing here can move until somebody outside the build answers.
@@ -5490,7 +5600,8 @@ Nothing here can move until somebody outside the build answers.
 |---|---|---|
 | **Aaron** | DNS records for `calendar.sfaf.org` so `events@calendar.sfaf.org` can send | Asked. From stays `websites@sfaf.org` meanwhile. It is a setting, so nothing needs deploying when the mailbox exists. |
 | **Val** | Remove the tracker's duplicates: **the 2027 Saturdays under two runs of UUIDs**, and **the coffee social under two names** ("50-Plus Saturday AM Coffee Social" and "Saturday AM Coffee Social") | Before Auto-Import goes on. The import copies what the tracker holds and de-duplicates nothing. `PROJECT.md` 3. |
-| **A Spanish-speaking reviewer**, chosen by Mark | Read `EMAILS.md`: every registrant message in English and Spanish side by side, in formal usted, including **Event cancelled, waitlist** (3.106.1), **Offer link, event off** and the three form labels under Additional information (3.106.2); from 3.112.0 also "Qué incluye" for What's included and the date range "del 21 al 23 de mayo de 2027"; from 3.124.0 also the RSVP form's email line, "Sigamos en contacto" and its two sign-up boxes. Corrections go into the Email Templates screen or `class-sfaf-messages.php`, never into `EMAILS.md` | Not asked. The Spanish was written without a native reader. |
+| **A Spanish-speaking reviewer**, chosen by Mark | Read `EMAILS.md`: every registrant message in English and Spanish side by side, in formal usted, including **Event cancelled, waitlist** (3.106.1), **Offer link, event off** and the three form labels under Additional information (3.106.2); from 3.112.0 also "Qué incluye" for What's included and the date range "del 21 al 23 de mayo de 2027"; from 3.124.0 also the RSVP form's email line, "Sigamos en contacto" and its two sign-up boxes; from 3.130.0 also the RSVP form's consent line for texts and every text in `SFAF_Texts::words()`. Corrections go into the Email Templates screen or `class-sfaf-messages.php`, never into `EMAILS.md` | Not asked. The Spanish was written without a native reader. |
+| **Meta, through Twilio** | Approve the two WhatsApp templates, `sfaf_event_reminder` and `sfaf_event_update`, each in English and Spanish, category Utility | Mark is submitting them. WhatsApp stays off until all four Content SIDs are in Settings > Twilio (2.75). |
 | **Salesforce admin** | Pardot connected app: client ID and secret, Business Unit ID, service user, OAuth flow | Asked. Campaign IDs store; nothing talks to Pardot. |
 
 ---

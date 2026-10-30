@@ -357,6 +357,39 @@
                 </form>
                     </div>
         </details>
+                <details class="uc-card uc-rsvp-settings uc-registrant-mail uc-text-registrants" data-uc-disclosure data-uc-text-registrants>
+            <summary class="uc-rsvp-settings-toggle" aria-expanded="false">
+                <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                <span class="uc-rsvp-settings-id">
+                    <span class="uc-rsvp-settings-name"><strong>Text registrants</strong></span>
+                    <span class="uc-muted">Send a text or WhatsApp message to everyone who chose one.</span>
+                </span>
+            </summary>
+            <div class="uc-rsvp-settings-form uc-registrant-mail-body">
+                                                                    <table class="uc-table uc-table-cards" data-uc-tr-who>
+                        <thead><tr><th>Name</th><th>Number</th><th>Gets it by</th></tr></thead>
+                        <tbody>
+                                                    <tr data-uc-tr-state="none">
+                                <td>Gil Gray</td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                                                </tbody>
+                    </table>
+                    <form method="post" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-registrant-mail-form" data-uc-tr-form>
+                        <input type="hidden" name="uc_action" value="text_registrants_send" />
+                        <input type="hidden" name="uc_nonce" value="nonce" />                        <input type="hidden" name="event_id" value="505" />
+                        <label class="uc-field">
+                            <span class="uc-field-label">Message</span>
+                            <textarea name="tr_message" rows="3" maxlength="300" required data-uc-tr-message></textarea>
+                            <span class="uc-hint">Up to 300 characters. It arrives as &quot;Update from SFAF about Coffee social:&quot;, then the message and where to email.</span>
+                        </label>
+                        <div class="uc-form-actions">
+                            <button type="submit" class="uc-btn uc-btn-go" data-uc-tr-send disabled="disabled"                                    data-uc-confirm="Send to 0 people? A text cannot be recalled."><span class="uc-rm-send-icon" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-speech" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20.5 12.5a7.5 7.5 0 0 1-7.5 7.5 8.4 8.4 0 0 1-3.3-.66L4 21l1.7-4.6A7.3 7.3 0 0 1 5 12.5 7.5 7.5 0 0 1 12.5 5 7.5 7.5 0 0 1 20.5 12.5z"/></svg></span><span class="uc-rm-send-label">Send</span></button>
+                        </div>
+                    </form>
+                                    </div>
+        </details>
                 
         <form method="get" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-filters-bar">
             <label class="uc-visually-hidden" for="uc-rsvp-search">Search name or email</label>
@@ -490,8 +523,8 @@ window.addEventListener('load', function () { setTimeout(function () {
     var ph = q('#uc-rsvp-phone');
     if (ph) { ph.value = '(415) 555-0199'; ph.dispatchEvent(new Event('input', { bubbles: true })); }
     out.textAfter = seen(q('#uc-rsvp-text-wrap'));
-    out.textLabel = text(q('#uc-rsvp-text-label'));
-    var tb = q('#uc-rsvp-text'); if (tb) { tb.checked = true; }
+    out.textLabel = text(q('#uc-rsvp-text-wrap [data-uc-w="text_consent"]'));
+    var tb = q('input[name="uc-rsvp-text-channel"][value="whatsapp"]'); if (tb) { tb.checked = true; }
     q('#uc-rsvp-submit-btn').click();
     var d = q('#uc-agree');
     out.formHeading = text(q('#uc-rsvp-heading'));
@@ -513,9 +546,9 @@ window.addEventListener('load', function () { setTimeout(function () {
       var t = q('#uc-agree-tick'); t.checked = true; t.dispatchEvent(new Event('change', { bubbles: true }));
       out.confirmOnAfterTick = !q('#uc-agree-confirm').disabled;
       q('#uc-agree-confirm').click();
-      out.afterConfirm = { open: d.open, sent: sent.length, agreed: sent.length ? sent[sent.length - 1].agreed : null, text: sent.length ? sent[sent.length - 1].text_opt_in : null };
+      out.afterConfirm = { open: d.open, sent: sent.length, agreed: sent.length ? sent[sent.length - 1].agreed : null, text: sent.length ? sent[sent.length - 1].text_channel : null };
     } else {
-      out.sentNoDialog = sent.length ? { agreed: sent[0].agreed, text: sent[0].text_opt_in } : null;
+      out.sentNoDialog = sent.length ? { agreed: sent[0].agreed, text: sent[0].text_channel } : null;
     }
     out.small = small(q('.uc-rsvp-modal-overlay.active') || document);
     finish(); return;

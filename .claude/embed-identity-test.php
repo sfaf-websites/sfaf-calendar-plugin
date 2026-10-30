@@ -19,7 +19,8 @@
  *      except embed.js's EMBED_JS_VERSION line, and the caladmin files in
  *      CALADMIN_ONLY, which no public calendar page loads.
  *
- * BASE is the release compared against: 3.128.0's released commit from 3.129.0
+ * BASE is the release compared against: 3.129.0's released commit from 3.130.0
+ * (3.128.0's, 1cc62a0, for 3.129.0)
  * (3.127.0's, d52b86e, for 3.128.0)
  * (3.126.0's, b64aa3a, for 3.127.0)
  * (3.125.0's, 22fb9e0, for 3.126.0)
@@ -45,13 +46,16 @@
  * name, in ALLOWED or ALLOWED_FILES.
  */
 
-const BASE      = '1cc62a0';
-const BASE_NAME = '3.128.0';
+const BASE      = '7e31d8d';
+const BASE_NAME = '3.129.0';
 
 /* Files under public/ and templates/ a release means to change, as path =>
    why. Probe A still compares every embed answer, so none of these can reach
    the embed unseen. */
 const ALLOWED_FILES = array(
+    // 3.130.0: the RSVP form's Text, WhatsApp or Neither, in place of "Text me about this event".
+    'public/js/calendar.js'   => 'the RSVP form: Text, WhatsApp or Neither, the consent line and the privacy policy (3.130.0)',
+    'public/css/calendar.css' => 'the RSVP form: the Text, WhatsApp or Neither fieldset (3.130.0)',
     // None in 3.129.0, 3.128.0 or 3.127.0. 3.126.0 named public/js/calendar.js and templates/taxonomy-uc_series.php.
 );
 
@@ -61,6 +65,8 @@ const CALADMIN_ONLY = array( 'public/css/portal.css', 'public/js/portal.js', 'pu
 
 /* Differences a release means to make, as 'key path' => why. None in 3.113.0 to 3.113.2. */
 const ALLOWED = array(
+    // 3.130.0: where Twilio posts replies and STOP, refused unless Twilio signed it.
+    'rest > sfaf-calendar/v1/twilio/incoming' => 'replies and STOP from Twilio (3.130.0)',
     // None in 3.113.8. 3.113.6 named 'localized > sfaf-calendar-public ucData',
     // the form's words in both languages.
 );

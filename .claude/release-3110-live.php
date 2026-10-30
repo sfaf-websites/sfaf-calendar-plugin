@@ -14,8 +14,9 @@
  *        the dialog, Confirm RSVP is off until the tick is on, Esc closes it
  *        with nothing sent and focus back on Register Now, Confirm sends
  *        agreed=1; an event without it sends straight away
- *   C    "Text me about this event" shows once a phone is typed, and its tick
- *        is sent as text_opt_in
+ *   C    Text, WhatsApp or Neither shows once a phone is typed, beside the
+ *        consent line, and the choice is sent as text_channel (3.130.0; it
+ *        was "Text me about this event" and text_opt_in)
  *   D    Email registrants is a closed accordion on the RSVP list
  *   F    the RSVP list by name: Check in turns into "Checked in [time]", the
  *        search box narrows the rows; by count: People attended and Save
@@ -59,10 +60,10 @@ function rx_row( $id, $event, $first, $last, $email, $phone, $status, $extra = a
     return array_merge( array( 'id' => $id, 'event_id' => $event, 'name' => "$first $last", 'first_name' => $first, 'last_name' => $last, 'email' => $email,
         'phone' => $phone, 'status' => $status, 'token' => "t$id", 'format' => '', 'created_at' => '2026-09-2' . $id . ' 10:00:00', 'cancelled_at' => null,
         'removed_by' => 0, 'offer_token' => null, 'offered_at' => null, 'offer_expires' => null, 'agreed_at' => '2026-09-2' . $id . ' 10:00:00',
-        'text_opt_in' => 0, 'checked_in_at' => null, 'answers' => '', 'optin' => 0 ), $extra );
+        'text_opt_in' => 0, 'text_channel' => '', 'checked_in_at' => null, 'answers' => '', 'optin' => 0 ), $extra );
 }
 $GLOBALS['rx_rows'] = array(
-    rx_row( 1, $agree, 'Ana', 'Alvarez-Montenegro', 'ana@example.org', '(415) 555-0101', 'confirmed', array( 'checked_in_at' => '2026-11-20 17:55:00', 'text_opt_in' => 1 ) ),
+    rx_row( 1, $agree, 'Ana', 'Alvarez-Montenegro', 'ana@example.org', '(415) 555-0101', 'confirmed', array( 'checked_in_at' => '2026-11-20 17:55:00', 'text_channel' => 'sms' ) ),
     rx_row( 2, $agree, 'Ben', 'Brooks', 'ben@example.org', '', 'confirmed' ),
     rx_row( 3, $agree, 'Dee', 'Diaz', '', '(415) 555-0100', 'confirmed', array( 'text_opt_in' => 1 ) ),
     rx_row( 4, $agree, 'Eve', 'Evans', 'eve@example.org', '', 'waitlisted' ),
@@ -93,6 +94,8 @@ $GLOBALS['kit_db'] = function ( $method, $sql ) {
     if ( 'get_row' === $method ) { $rows = array_values( $rows ); return $rows ? (object) $rows[0] : null; }
     return null;
 };
+// Twilio can send, so the form offers Text and WhatsApp (3.130.0).
+SFAF_Texts::save( array( 'twilio_account_sid' => 'AC' . str_repeat( 'a', 32 ), 'twilio_messaging_sid' => 'MG' . str_repeat( 'b', 32 ) ), 'token0123456789' );
 update_post_meta( $agree, SFAF_Registrant_Mail::LOG_META, array( array( 'by' => 1, 'at' => '2026-10-01 09:30:00', 'subject' => 'Meeting point moved to the Castro', 'count' => 2 ) ) );
 
 $portal = ( new ReflectionClass( 'SFAF_Portal' ) )->newInstanceWithoutConstructor();
@@ -184,8 +187,8 @@ window.addEventListener('load', function () { setTimeout(function () {
     var ph = q('#uc-rsvp-phone');
     if (ph) { ph.value = '(415) 555-0199'; ph.dispatchEvent(new Event('input', { bubbles: true })); }
     out.textAfter = seen(q('#uc-rsvp-text-wrap'));
-    out.textLabel = text(q('#uc-rsvp-text-label'));
-    var tb = q('#uc-rsvp-text'); if (tb) { tb.checked = true; }
+    out.textLabel = text(q('#uc-rsvp-text-wrap [data-uc-w="text_consent"]'));
+    var tb = q('input[name="uc-rsvp-text-channel"][value="whatsapp"]'); if (tb) { tb.checked = true; }
     q('#uc-rsvp-submit-btn').click();
     var d = q('#uc-agree');
     out.formHeading = text(q('#uc-rsvp-heading'));
@@ -207,9 +210,9 @@ window.addEventListener('load', function () { setTimeout(function () {
       var t = q('#uc-agree-tick'); t.checked = true; t.dispatchEvent(new Event('change', { bubbles: true }));
       out.confirmOnAfterTick = !q('#uc-agree-confirm').disabled;
       q('#uc-agree-confirm').click();
-      out.afterConfirm = { open: d.open, sent: sent.length, agreed: sent.length ? sent[sent.length - 1].agreed : null, text: sent.length ? sent[sent.length - 1].text_opt_in : null };
+      out.afterConfirm = { open: d.open, sent: sent.length, agreed: sent.length ? sent[sent.length - 1].agreed : null, text: sent.length ? sent[sent.length - 1].text_channel : null };
     } else {
-      out.sentNoDialog = sent.length ? { agreed: sent[0].agreed, text: sent[0].text_opt_in } : null;
+      out.sentNoDialog = sent.length ? { agreed: sent[0].agreed, text: sent[0].text_channel } : null;
     }
     out.small = small(q('.uc-rsvp-modal-overlay.active') || document);
     finish(); return;
@@ -325,9 +328,9 @@ foreach ( array( 'desktop', 'phone', 'wide', 'wait' ) as $wn ) {
     rx_check( $e && false === $e['open'] && 0 === $e['sent'] && 'uc-rsvp-submit-btn' === $e['focus'], "B.2: $t: Esc did not close with nothing sent and focus back on Register Now: " . json_encode( $e ) );
     rx_check( true === $v( $t, 'confirmOnAfterTick' ), "B.2: $t: ticking does not turn Confirm RSVP on" );
     $c = (array) $v( $t, 'afterConfirm' );
-    rx_check( $c && false === $c['open'] && 1 === $c['sent'] && '1' === $c['agreed'] && '1' === $c['text'], "B.2: $t: Confirm RSVP did not send the form once with agreed=1 and text_opt_in=1: " . json_encode( $c ) );
-    rx_check( false === $v( $t, 'textBefore' ) && true === $v( $t, 'textAfter' ) && 'Text me about this event' === $v( $t, 'textLabel' ),
-        "C: $t: the text opt-in is not hidden until a phone is typed: " . json_encode( array( $v( $t, 'textBefore' ), $v( $t, 'textAfter' ), $v( $t, 'textLabel' ) ) ) );
+    rx_check( $c && false === $c['open'] && 1 === $c['sent'] && '1' === $c['agreed'] && 'whatsapp' === $c['text'], "B.2: $t: Confirm RSVP did not send the form once with agreed=1 and text_channel=whatsapp: " . json_encode( $c ) );
+    rx_check( false === $v( $t, 'textBefore' ) && true === $v( $t, 'textAfter' ) && 'Text me updates about this event. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.' === $v( $t, 'textLabel' ),
+        "C: $t: Text, WhatsApp or Neither is not hidden until a phone is typed, beside the consent line: " . json_encode( array( $v( $t, 'textBefore' ), $v( $t, 'textAfter' ), $v( $t, 'textLabel' ) ) ) );
     if ( in_array( $wn, array( 'phone', 'wide' ), true ) ) {
         rx_check( array() === $v( $t, 'dialogSmall' ), "H: $t: tap targets under 44px in the dialog: " . json_encode( $v( $t, 'dialogSmall' ) ) );
         rx_check( array() === $v( $t, 'dialogPast' ), "H: $t: the dialog runs past the screen: " . json_encode( $v( $t, 'dialogPast' ) ) );
@@ -353,8 +356,8 @@ foreach ( array( 'desktop', 'phone', 'wide' ) as $wn ) {
     rx_check( 'Checked in 6:05 pm' === $v( $t, 'afterCheckin' ) && '2' === $v( $t, 'countAfter' ), "F.1: $t: Check in did not turn into the time and move the count: " . json_encode( array( $v( $t, 'afterCheckin' ), $v( $t, 'countAfter' ) ) ) );
     rx_check( true === $v( $t, 'filter' ) && array( 'ben brooks' ) === $v( $t, 'filtered' ), "F.2: $t: the search box does not narrow the rows to Ben: " . json_encode( $v( $t, 'filtered' ) ) );
     $counts = (string) $v( $t, 'counts' );
-    rx_check( false !== strpos( $counts, 'registered' ) && false !== strpos( $counts, 'checked in' ) && false !== strpos( $counts, 'waitlisted' ) && false !== strpos( $counts, 'text' ),
-        "F.2/C: $t: the counts strip does not carry registered, checked in, waitlisted and want texts: $counts" );
+    rx_check( false !== strpos( $counts, 'registered' ) && false !== strpos( $counts, 'checked in' ) && false !== strpos( $counts, 'waitlisted' ) && false !== strpos( $counts, 'Text or WhatsApp' ),
+        "F.2/C: $t: the counts strip does not carry registered, checked in, waitlisted and Text or WhatsApp: $counts" );
     $m = (array) $v( $t, 'mail' );
     rx_check( $m && false === $m['open'] && 'Email registrants Send a message to everyone registered.' === $m['summary'] &&   /* the panel's muted line since 3.110.1 */ 1 === $m['log'] && true === $m['send'], "D.1: $t: Email registrants is not a closed accordion with its log and Send: " . json_encode( $m ) );
     if ( 'desktop' !== $wn ) {

@@ -195,13 +195,13 @@ rt( '6: both languages', array_keys( $fw ), array( 'en', 'es' ) );
 rt( '6: the same keys in each', array_keys( $fw['en'] ), array_keys( $fw['es'] ) );
 $empty = array(); $dash = array(); $same = array();
 foreach ( array( 'en', 'es' ) as $l ) { foreach ( $fw[ $l ] as $k => $v ) { if ( '' === trim( $v ) ) { $empty[] = "$l.$k"; } if ( false !== strpos( $v, "\u{2014}" ) ) { $dash[] = "$l.$k"; } } }
-foreach ( $fw['en'] as $k => $v ) { if ( $v === $fw['es'][ $k ] && ! in_array( $k, array( 'email_ph' ), true ) ) { $same[] = $k; } }
+foreach ( $fw['en'] as $k => $v ) { if ( $v === $fw['es'][ $k ] && ! in_array( $k, array( 'email_ph', 'by_whatsapp' ), true ) ) { $same[] = $k; } }
 rt( '6: nothing empty', $empty, array() );
 rt( '6: no em dash', $dash, array() );
 rt( '6: every Spanish word is Spanish', $same, array() );
 foreach ( array( 'heading', 'first', 'last', 'email', 'email_use', 'noemail', 'phone', 'optin', 'submit', 'cancel', 'attend', 'in_person', 'online',
     'registered', 'registered_name', 'on_waitlist', 'position', 'inbox', 'q_heading', 'q_more', 'q_required', 'agreement_heading', 'agreement_tick',
-    'agreement_confirm', 'agreement_cancel', 'text_opt_in' ) as $k ) {
+    'agreement_confirm', 'agreement_cancel', 'text_consent' ) as $k ) {
     rt( "6: the form has \"$k\"", isset( $fw['en'][ $k ], $fw['es'][ $k ] ), true );
 }
 rt( '6: one %s where a value goes in', array( substr_count( $fw['es']['position'], '%s' ), substr_count( $fw['es']['registered_name'], '%s' ) ), array( 1, 1 ) );

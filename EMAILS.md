@@ -175,12 +175,6 @@ Words in a message that come from the event, such as its title, location and org
 |---|---|---|
 | Text | Cancel | Cancelar |
 
-## Text opt-in
-
-| | English | Spanish |
-|---|---|---|
-| Text | Text me about this event | Envíenme mensajes de texto sobre este evento |
-
 ## Cancel your place page
 
 ### Asking
@@ -286,6 +280,12 @@ Labels, buttons and the calendar file's words. These are not edited on the Templ
 | You will not get a confirmation, a reminder, or notice of changes. | No recibirá una confirmación, un recordatorio ni avisos de cambios. |
 | Joining online needs an email address for the meeting link. | Para participar en línea se necesita un correo electrónico para el enlace de la reunión. |
 | Phone (optional) | Teléfono (opcional) |
+| Get updates by | Recibir novedades por |
+| Text | Mensaje de texto |
+| WhatsApp | WhatsApp |
+| Neither | Ninguno |
+| Text me updates about this event. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. | Envíenme novedades sobre este evento. La frecuencia de los mensajes varía. Pueden aplicarse tarifas de mensajes y datos. Responda STOP para cancelar, HELP para obtener ayuda. |
+| Privacy policy | Política de privacidad |
 | Stay in touch | Sigamos en contacto |
 | Sign me up for SFAF Newsletter and Updates | Quiero recibir el boletín y las novedades de SFAF |
 | Sign me up for %s email updates | Quiero recibir las novedades por correo de %s |

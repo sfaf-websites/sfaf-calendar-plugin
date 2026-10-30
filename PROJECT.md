@@ -5575,6 +5575,60 @@ Tested by `.claude/release-31240-test.php` (the fake API's five member states,
 the retries, the encryption) and `.claude/release-31240-live.php` (the form and
 the card in Chrome); faults in `.claude/plant-31240.php`.
 
+### Text and WhatsApp, through Twilio (3.130.0)
+
+Somebody registering can ask for updates by Text or WhatsApp as well as by
+email. `SFAF_Texts` is the whole of it; Mark's instruction of 2026-10-30 is
+what it builds.
+
+**Nothing shows or sends until texts can go** (`SFAF_Texts::sms_on()`: an
+Account SID, the Auth Token and a Messaging Service SID). Until then the form
+offers no choice, and the Register button's `data-uc-texts` is empty.
+
+**The choice is on the registration**, `text_channel` (schema 18): `sms`,
+`whatsapp` or `''` for Neither, kept only with a number and only when the
+form offered it (`clean_channel()`). A waitlist join carries it. The old
+3.110.0 tick, `text_opt_in`, is kept on every row it was set on and sends
+nothing: it promised nothing about frequency, rates or STOP. Whether those
+people are asked again is Mark's decision; the panel counts them.
+
+**WhatsApp is offered before it can send.** Outside a conversation the person
+opened, WhatsApp takes only a Meta-approved template, so there is no
+free-text fallback: `whatsapp_on()` wants the sender and all four template
+SIDs (`sfaf_event_reminder` and `sfaf_event_update`, English and Spanish).
+Until then a person who chose WhatsApp gets email only, and Text
+registrants says so. A text says the same words as the template, with
+"Reply STOP to opt out." added, which the template leaves to WhatsApp.
+
+**What is sent**: the morning-of reminder, inside
+`SFAF_Reminders::send_for_event()` after the emails and before the event is
+marked done, claimed in the reminder ledger under `text|` and the number, so
+no second run sends it again; and **Text registrants**, a typed line of up to
+300 characters, logged in `_uc_registrant_text_log`. One message per number,
+confirmed registrations only, in the person's form language, else the
+event's.
+
+**Replies and STOP** come to the REST route `sfaf-calendar/v1/twilio/incoming`,
+refused unless Twilio's signature checks with the Auth Token, against both the
+address the panel gives and the one the request arrived at. A stop word
+(Twilio's, and PARAR) puts the number in `uc_text_stops`, one row a number on
+either channel, which `reach()` consults before every send; START, UNSTOP or
+YES takes it out. On WhatsApp both are confirmed by us; on a text, Twilio's
+Messaging Service confirms them itself, so we add nothing. HELP, INFO or
+AYUDA is the same: answered by us on WhatsApp, by the Messaging Service's own
+HELP reply on a text. Anything else gets Mark's line at most once a
+day per number, so two automatic responders cannot talk forever; the address
+is `SFAF_Reminders::reply_to_for()`, the event's own, then its creator's, then
+the site's.
+
+**The Auth Token** is sealed with `SFAF_Mailchimp::seal()` before it reaches
+`sfaf_credentials`, never put in a page, and taken out of every error Twilio
+returns (`scrub()`).
+
+Tested by `.claude/release-31300-test.php` (Twilio recorded, never reached,
+including Twilio's own signature example) and the RSVP form in
+`.claude/release-3110-live.php`; faults in `.claude/plant-31300.php`.
+
 ### Where credentials live
 
 Every platform credential is in the **`sfaf_credentials`** option, never in
@@ -8643,37 +8697,6 @@ IIFE, a new function name is grepped for in the whole file before it is used.
 Decisions settled in conversation that have no code yet. They live here because
 a chat ends and this file does not. Move an entry into the body of this document
 when it ships, and delete it here.
-
-### Text and WhatsApp through Twilio, 3.130.0 (agreed 2026-10-30)
-
-Mark's instruction, in full in the 2026-10-30 chat; the parts that decide the
-build:
-
-- **Settings in WP admin, administrators only**: Account SID, Auth Token,
-  Messaging Service SID (MG...), the WhatsApp sender, the WhatsApp template
-  SIDs, and Test connection. The token never shown in full, logged, put in a
-  page or an email.
-- **The RSVP form**: once a phone is entered, Text, WhatsApp or Neither,
-  Neither by default, beside "Text me updates about this event. Message
-  frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for
-  help." in English and Spanish, with a link to SFAF's privacy policy.
-  Registrations that ticked the old "Text me about this event" are left as they
-  are and reported, for Mark to decide.
-- **What is sent**: the morning-of reminder, as well as the email and at the
-  same time; and **Text registrants** beside Email registrants, one typed
-  message, showing who gets it and how before it goes, every send logged. Each
-  in the language the person chose on the form.
-- **Replies**: one automatic answer, "This number isn't monitored. For
-  questions about [event name], please contact [email].", from the event's
-  Replies go to, else the site default. Nothing is forwarded. **STOP** is
-  honoured on both channels and recorded.
-- **WhatsApp stays off until its template SIDs are entered**; texts work
-  without them. Until then a person who chose WhatsApp gets email, and the RSVP
-  page says WhatsApp isn't active yet. The two Utility templates, each in
-  English and Spanish: `sfaf_event_reminder` "Reminder from SFAF: {{1}} is today
-  at {{2}}, at {{3}}. Event details: {{4}}" (name, time, place, link) and
-  `sfaf_event_update` "Update from SFAF about {{1}}: {{2}} For questions, please
-  email {{3}}." (name, the typed message, Replies go to).
 
 ### Left to decide after the event-page alignment (2026-10-25)
 

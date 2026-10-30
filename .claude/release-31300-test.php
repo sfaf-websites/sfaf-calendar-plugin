@@ -25,7 +25,8 @@
  *      button counts only those it can reach; "WhatsApp isn't active yet";
  *      the send is logged; an empty message sends nothing.
  *   E. Replies and STOP: STOP and PARAR recorded on either channel and
- *      honoured on both; START takes it off; HELP answered; anything else
+ *      honoured on both; START takes it off; HELP answered on WhatsApp and
+ *      left to Twilio on a text; anything else
  *      gets Mark's line once a day, with Replies go to, else the site
  *      default; an unsigned request refused, Twilio's own example accepted.
  *   F. The wiring: schema 18, the column and the table, the route behind the
@@ -347,6 +348,9 @@ rt( 'D: the log is shown under the box', false !== strpos( $html, 'Texts sent fr
 tw_fresh();
 $html = rt_cap( function () use ( $portal, $me ) { kit_call( 'SFAF_Portal', 'render_text_registrants', $portal, array( $me, 900 ) ); } );
 rt( 'D: absent while texts are off and nobody chose', '' === trim( $html ) );
+$GLOBALS['wpdb']->rsvps = array( tw_row( 7, 900, '(415) 555-0107', 'sms', 'en', 'Neve' ) );
+$GLOBALS['wpdb']->rsvps[0]->text_channel = '';
+rt( 'D: Neither is never listed, whatever the query returns', array() === SFAF_Texts::plan( 900 ) );
 $pt = file_get_contents( dirname( __DIR__ ) . '/includes/class-sfaf-portal.php' );
 rt( 'D: the route asks the event gate', 1 === preg_match( "/case 'text_registrants_send':\s*\\\$event_id = [^;]+;\s*\\\$post\s*= [^;]+;\s*if \( ! \\\$post \|\| 'uc_event' !== \\\$post->post_type \|\| ! \\\$this->can_edit_event\( \\\$user, \\\$post \) \) \{\s*wp_die\( 'Denied' \);/", $pt ) );
 rt( 'D: shown only to whoever may edit the event, beside Email registrants', false !== strpos( $pt, '<?php if ( $this->can_edit_event( $user, $event ) ) { $this->render_registrant_mail( $user, $event_id ); $this->render_text_registrants( $user, $event_id ); } ?>' ) );
@@ -365,8 +369,9 @@ rt( 'E: a stopped number gets nothing on either channel', 'stopped' === SFAF_Tex
 rt( 'E: START takes it off', '' === SFAF_Texts::answer( '+14155550101', 'START' ) && ! SFAF_Texts::is_stopped( '+14155550101' ) );
 $a = SFAF_Texts::answer( 'whatsapp:+14155550102', 'PARAR' );
 rt( 'E: PARAR on WhatsApp: recorded and confirmed in Spanish', SFAF_Texts::is_stopped( '+14155550102' ) && 0 === strpos( $a, 'No recibirá más mensajes' ) );
-$h = SFAF_Texts::answer( '+14155550101', 'help' );
-rt( 'E: HELP is answered, with the Replies go to address', false !== strpos( $h, 'events@sfaf.org' ) && false !== strpos( $h, 'STOP' ) );
+$h = SFAF_Texts::answer( 'whatsapp:+14155550101', 'help' );
+rt( 'E: HELP on WhatsApp is answered, with the Replies go to address', false !== strpos( $h, 'events@sfaf.org' ) && false !== strpos( $h, 'STOP' ) );
+rt( 'E: HELP on a text is left to the Messaging Service', '' === SFAF_Texts::answer( '+14155550101', 'HELP' ) );
 $auto = SFAF_Texts::answer( '+14155550101', 'Is there parking?' );
 rt( "E: Mark's line, word for word", "This number isn't monitored. For questions about Coffee & Conversation, please contact events@sfaf.org." === $auto );
 rt( 'E: once a day per number', '' === SFAF_Texts::answer( '+14155550101', 'Hello?' ) );
@@ -381,7 +386,7 @@ $good   = SFAF_Texts::signature( SFAF_Texts::incoming_url(), $params, $TOKEN );
 rt( 'E: a request signed for the address is accepted', SFAF_Texts::signed( $params, $TOKEN, $good ) );
 rt( 'E: a changed body is refused', ! SFAF_Texts::signed( array( 'From' => '+14155550101', 'Body' => 'START' ), $TOKEN, $good ) );
 // Twilio's own worked example (twilio.com/docs/usage/security).
-rt( "E: Twilio's example signature", 'GvWf1cFY/Q7PnoempGyD5oXAezc=' === SFAF_Texts::signature( 'https://mycompany.com/myapp.php?foo=1&bar=2', array( 'CallSid' => 'CA1234567890ABCDE', 'Caller' => '+14158675310', 'Digits' => '1234', 'From' => '+14158675310', 'To' => '+18005551212' ), '12345' ) );
+rt( "E: Twilio's example signature", 'GvWf1cFY/Q7PnoempGyD5oXAezc=' === SFAF_Texts::signature( 'https://mycompany.com/myapp.php?foo=1&bar=2', array( 'Digits' => '1234', 'To' => '+18005551212', 'From' => '+14158675310', 'Caller' => '+14158675310', 'CallSid' => 'CA1234567890ABCDE' ), '12345' ) );
 rt( 'E: the route is sfaf-calendar/v1/twilio/incoming, POST, checked by signature', 'sfaf-calendar/v1' === SFAF_Texts::REST_NAMESPACE && '/twilio/incoming' === SFAF_Texts::REST_ROUTE && false !== strpos( $src = file_get_contents( dirname( __DIR__ ) . '/includes/class-sfaf-texts.php' ), "'methods'             => 'POST'," ) && false !== strpos( $src, 'if ( ! self::signed( $params, $token, $sig ) ) {' ) );
 rt( 'E: a typed message without an ending gets one', 'Doors open at 9:45.' === SFAF_Texts::ended( 'Doors open at 9:45' ) && 'Bring a friend!' === SFAF_Texts::ended( 'Bring a friend!' ) );
 

@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.129.0
+Stable tag: 3.130.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,22 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.130.0 =
+
+**Text and WhatsApp through Twilio. Nothing is sent and nothing new shows on the RSVP form until Twilio is set up in WP admin Settings.**
+
+**WHAT CHANGES ON PUBLIC PAGES:** the RSVP form, once Twilio is set up. Before then, the "Text me about this event" tick is gone and nothing takes its place.
+
+* **Twilio settings in WP admin Settings**, administrators only: Account SID, Auth Token, Messaging Service SID, the WhatsApp sender and the four WhatsApp template SIDs, with Test connection. The token is never shown: the box is always empty and the line in it gives its last four characters. The panel gives the incoming message address to set in Twilio.
+* **The RSVP form**: once a phone number is typed, Get updates by Text, WhatsApp or Neither, Neither chosen, beside "Text me updates about this event. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help." and a link to the privacy policy, in English and Spanish. **Schema 18** adds the choice to each registration and a table of numbers that sent STOP.
+* **The morning-of reminder** goes by text or WhatsApp as well as by email, in the same run, once per number. Reminders switched off in Settings switch these off too.
+* **Text registrants** on the RSVP list, under Email registrants: who gets the message and how is listed above the box, the button counts only those it can reach, and every send is logged under it. Up to 300 characters, sent as "Update from SFAF about [event]: [message] For questions, please email [Replies go to]."
+* **Replies**: STOP, PARAR and Twilio's other stop words stop every text and WhatsApp message to that number, from every event, until START. HELP or AYUDA is answered: on WhatsApp by the calendar, on a text by the HELP reply set in Twilio. Anything else gets "This number isn't monitored. For questions about [event name], please contact [email].", at most once a day per number, with the event's Replies go to address, else the site default. Nothing is forwarded.
+* **WhatsApp stays off until all four template SIDs and the sender are in.** Until then, anyone who chose WhatsApp gets email only, and Text registrants says WhatsApp isn't active yet.
+* Each message goes in the language the person chose on the form.
+* **Registrations that ticked the old "Text me about this event" are unchanged** and get no texts. The RSVP list marks them "Old text tick", and the Twilio panel counts them.
+* "Text opt-in" leaves Email Templates, with the line it edited.
 
 = 3.129.0 =
 
