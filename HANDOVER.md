@@ -4,7 +4,7 @@
 is true right now": `PROJECT.md` is what the plugin IS, `DESIGN.md` is color and
 layout, `TESTING.md` needs a person, `CLAUDE.md` is the working rules.
 
-**Last updated:** 2026-10-30, at 3.131.0, **built from 3.130.0, from 3.129.0, from 3.128.0, from 3.127.0, from 3.126.0, from 3.125.0, from 3.124.0, from 3.123.0, from 3.122.0, from 3.121.0, from 3.120.0, from 3.119.0, from 3.118.0, from 3.117.0, from 3.116.0, from 3.115.0, from 3.114.0, from 3.113.8, from 3.113.7, from 3.113.6, from 3.113.5, from 3.113.4, from 3.113.3, from 3.113.2, from 3.113.1, from 3.113.0, from 3.111.0.** **The live site runs 3.113.7** (sfaf.org/calendar loads its calendar.css, 2026-10-22).
+**Last updated:** 2026-11-02, at 3.131.0, **released (https://github.com/sfaf-websites/sfaf-calendar-plugin/releases/tag/3.131.0), built from 3.130.0, from 3.129.0, from 3.128.0, from 3.127.0, from 3.126.0, from 3.125.0, from 3.124.0, from 3.123.0, from 3.122.0, from 3.121.0, from 3.120.0, from 3.119.0, from 3.118.0, from 3.117.0, from 3.116.0, from 3.115.0, from 3.114.0, from 3.113.8, from 3.113.7, from 3.113.6, from 3.113.5, from 3.113.4, from 3.113.3, from 3.113.2, from 3.113.1, from 3.113.0, from 3.111.0.** **The live site runs 3.113.7** (sfaf.org/calendar loads its calendar.css, 2026-10-22).
 
 ---
 
@@ -75,7 +75,7 @@ and from 3.111.0 `calendar-files/` for PDFs, beside them.
 
 ## In flight
 
-- **3.131.0 is built** (2026-10-30), from 3.130.0, which Mark has installed with Twilio set up: Settings says "Texts and WhatsApp on" because all four template boxes hold Content SIDs, though Meta has approved none, so **a WhatsApp message today cannot be delivered, while the email still goes** (the 3.131.0 report). **Mark decides** what happens to the registrations that ticked the old box (1.335).
+- **3.131.0 is released** (2026-11-02), not yet installed; built from 3.130.0, which Mark has installed with Twilio set up: Settings says "Texts and WhatsApp on" because all four template boxes hold Content SIDs, though Meta has approved none, so **a WhatsApp message today cannot be delivered, while the email still goes** (the 3.131.0 report). **Mark decides** what happens to the registrations that ticked the old box (1.335).
 - **Following a series is half built.** 3.53.0 established the followers; nothing
   sends them. `PROJECT.md` 8, then `TESTING.md` 1.22.
 - **Automated fetching is ON and its own copy says it should not be**, and only
