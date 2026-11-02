@@ -4514,7 +4514,7 @@ accept them, and the message does not contain what you typed. The panel's
 **Why it needs a person:** a real Twilio account; the checks recorded the
 requests and never sent one.
 
-### 1.334 The RSVP form's Text or WhatsApp (3.130.0, as changed in 3.131.0)
+### 1.334 The RSVP form's Text or WhatsApp (3.130.0, as changed in 3.131.0 and 3.132.0)
 
 Once 1.333 is done, open an event's RSVP form. From the moment it opens: the
 phone is "Phone number, for event updates by text or WhatsApp (optional)", and
@@ -4522,12 +4522,17 @@ under it "Get event updates by:" **Text** and **WhatsApp**, neither ticked.
 Tick Text: "Text me updates about this event. Message frequency varies. Msg &
 data rates may apply. Reply STOP to opt out, HELP for help." and **Privacy
 policy** appear under them, and the privacy link opens sfaf.org's policy in a
-new tab. Press Text again: it clears and the line goes. Tick WhatsApp with the
-phone empty and press Register: "Enter a phone number to get updates by text
+new tab. Press Text again: it clears and the line goes. Tick WhatsApp: the
+line is "Send me WhatsApp updates about this event. Message frequency varies.
+Data rates may apply. Reply STOP to opt out, HELP for help." instead, and only
+that one shows. With WhatsApp ticked and the phone empty, press Register: "Enter a phone number to get updates by text
 or WhatsApp." Type +52 55 1234 5678 and register: the screen says "We'll also
 send WhatsApp messages to +52 55 1234 5678." Register again with a number and
 nothing ticked: accepted, and the screen says nothing about texts. Press
-Español: all of it is in Spanish, and the form does not change height. On the
+Español: all of it is in Spanish, WhatsApp's line "Envíenme avisos de este
+evento por WhatsApp. ..." and the empty-phone error "Escriba un número de
+teléfono para recibir avisos por texto o WhatsApp.", and the form does not
+change height. On the
 RSVP list the rows show **Text** or **WhatsApp** beside the number. Do it once
 on a phone.
 
@@ -5627,7 +5632,7 @@ Nothing here can move until somebody outside the build answers.
 |---|---|---|
 | **Aaron** | DNS records for `calendar.sfaf.org` so `events@calendar.sfaf.org` can send | Asked. From stays `websites@sfaf.org` meanwhile. It is a setting, so nothing needs deploying when the mailbox exists. |
 | **Val** | Remove the tracker's duplicates: **the 2027 Saturdays under two runs of UUIDs**, and **the coffee social under two names** ("50-Plus Saturday AM Coffee Social" and "Saturday AM Coffee Social") | Before Auto-Import goes on. The import copies what the tracker holds and de-duplicates nothing. `PROJECT.md` 3. |
-| **A Spanish-speaking reviewer**, chosen by Mark | Read `EMAILS.md`: every registrant message in English and Spanish side by side, in formal usted, including **Event cancelled, waitlist** (3.106.1), **Offer link, event off** and the three form labels under Additional information (3.106.2); from 3.112.0 also "Qué incluye" for What's included and the date range "del 21 al 23 de mayo de 2027"; from 3.124.0 also the RSVP form's email line, "Sigamos en contacto" and its two sign-up boxes; from 3.130.0 also the RSVP form's consent line for texts and every text in `SFAF_Texts::words()`. Corrections go into the Email Templates screen or `class-sfaf-messages.php`, never into `EMAILS.md` | Not asked. The Spanish was written without a native reader. |
+| **A Spanish-speaking reviewer**, chosen by Mark | Read `EMAILS.md`: every registrant message in English and Spanish side by side, in formal usted, including **Event cancelled, waitlist** (3.106.1), **Offer link, event off** and the three form labels under Additional information (3.106.2); from 3.112.0 also "Qué incluye" for What's included and the date range "del 21 al 23 de mayo de 2027"; from 3.124.0 also the RSVP form's email line, "Sigamos en contacto" and its two sign-up boxes; from 3.130.0 also the RSVP form's consent line for texts and every text in `SFAF_Texts::words()`; from 3.132.0 also the RSVP form's WhatsApp consent line "Envíenme avisos de este evento por WhatsApp. ...", its error "Escriba un número de teléfono para recibir avisos por texto o WhatsApp.", and the text reminder's "¿No puede asistir? Cancele aquí: [link]" (in `SFAF_Texts::words()`, not in `EMAILS.md`). Corrections go into the Email Templates screen or `class-sfaf-messages.php`, never into `EMAILS.md` | Not asked. The Spanish was written without a native reader. |
 | **Meta, through Twilio** | Approve the two WhatsApp templates, `sfaf_event_reminder` and `sfaf_event_update`, each in English and Spanish, category Utility | Mark is submitting them. WhatsApp stays off until all four Content SIDs are in Settings > Twilio (2.75). |
 | **Salesforce admin** | Pardot connected app: client ID and secret, Business Unit ID, service user, OAuth flow | Asked. Campaign IDs store; nothing talks to Pardot. |
 

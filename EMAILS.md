@@ -284,10 +284,11 @@ Labels, buttons and the calendar file's words. These are not edited on the Templ
 | Get event updates by: | Recibir avisos del evento por: |
 | Text | Texto |
 | WhatsApp | WhatsApp |
-| Enter a phone number to get updates by text or WhatsApp. | Escribe un número de teléfono para recibir avisos por texto o WhatsApp. |
+| Enter a phone number to get updates by text or WhatsApp. | Escriba un número de teléfono para recibir avisos por texto o WhatsApp. |
 | We'll also text you at %s. | También le enviaremos mensajes de texto al %s. |
 | We'll also send WhatsApp messages to %s. | También le enviaremos mensajes de WhatsApp al %s. |
 | Text me updates about this event. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. | Envíenme novedades sobre este evento. La frecuencia de los mensajes varía. Pueden aplicarse tarifas de mensajes y datos. Responda STOP para cancelar, HELP para obtener ayuda. |
+| Send me WhatsApp updates about this event. Message frequency varies. Data rates may apply. Reply STOP to opt out, HELP for help. | Envíenme avisos de este evento por WhatsApp. La frecuencia de los mensajes varía. Pueden aplicarse cargos por datos. Responda STOP para cancelar, HELP para ayuda. |
 | Privacy policy | Política de privacidad |
 | Stay in touch | Sigamos en contacto |
 | Sign me up for SFAF Newsletter and Updates | Quiero recibir el boletín y las novedades de SFAF |
@@ -328,4 +329,4 @@ Labels, buttons and the calendar file's words. These are not edited on the Templ
 | in person | en persona |
 | online | en línea |
 | This event is at capacity. | Este evento está lleno. |
-| Enter a phone number to get updates by text or WhatsApp. | Escribe un número de teléfono para recibir avisos por texto o WhatsApp. |
+| Enter a phone number to get updates by text or WhatsApp. | Escriba un número de teléfono para recibir avisos por texto o WhatsApp. |

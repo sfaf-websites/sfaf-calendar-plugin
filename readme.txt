@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.131.0
+Stable tag: 3.132.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,16 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.132.0 =
+
+**WhatsApp's own consent line on the RSVP form, and two Spanish lines in usted. Every embed answer and header is 3.131.0's, proved by embed-identity-test.php; the embed never loads the form's script.**
+
+**WHAT CHANGES ON PUBLIC PAGES:** the RSVP form on the event page and the site's own calendar, once Twilio is set up, and the Spanish text reminder.
+
+* **RSVP form, WhatsApp ticked**: the line under the choice is "Send me WhatsApp updates about this event. Message frequency varies. Data rates may apply. Reply STOP to opt out, HELP for help.", in Spanish "Envíenme avisos de este evento por WhatsApp. La frecuencia de los mensajes varía. Pueden aplicarse cargos por datos. Responda STOP para cancelar, HELP para ayuda." With Text ticked the line is as before.
+* **RSVP form, Spanish**: with Texto or WhatsApp ticked and no phone, "Escriba un número de teléfono para recibir avisos por texto o WhatsApp."
+* **Text reminder, Spanish**: the cancel line is "¿No puede asistir? Cancele aquí: [link]".
 
 = 3.131.0 =
 

@@ -5590,15 +5590,17 @@ number, for event updates by text or WhatsApp (optional)", and "Get event
 updates by:" Text and WhatsApp shows from the moment the form opens, as two
 boxes of which at most one is ticked, neither at first; pressing the ticked
 one again clears it. One ticked makes the phone required and shows the
-consent line and the privacy policy under them. With one ticked, a number
+consent line and the privacy policy under them: Text's line "Text me updates
+about this event. ...", WhatsApp's its own "Send me WhatsApp updates about
+this event. ..." (3.132.0), `f_text_consent` and `f_wa_consent`. With one ticked, a number
 `e164()` cannot read (a US one, or + and a country code) is refused, in the
 form and again by `submit()` (`needs_number()`), with "Enter a phone number to
 get updates by text or WhatsApp."; a number with nothing ticked is kept as
 typed, for the organizer, and nothing is sent to it. The confirmation screen
 says "We'll also text you at [number]." or "We'll also send WhatsApp messages
 to [number]." with the number as stored. Twilio off, the form is as before
-3.130.0 but for the old tick. Mark's Spanish lines are informal ("Escribe");
-the confirmation line, written here, is formal like the rest of the form.
+3.130.0 but for the old tick. All of its Spanish is in usted, like the
+rest of the form, since 3.132.0 ("Escriba un número de teléfono ...").
 
 **The choice is on the registration**, `text_channel` (schema 18): `sms`,
 `whatsapp` or `''` for neither, kept only with a number Twilio can use and
@@ -5619,8 +5621,8 @@ registrants says so. A text says the same words as the template, with
 confirmation email carries: `SFAF_Reminders::cancel_url()` of the
 registration's token (`cancel_link()`). It is the reminder template's {{5}},
 and a text's "Can't make it? Cancel here:" line, in Mark's words in both
-languages; the Spanish is his informal "¿No puedes venir? Cancela aquí:",
-where the rest of the calendar's Spanish is formal. A registration with no
+languages; the Spanish is "¿No puede asistir? Cancele aquí:", in usted like
+the rest of the calendar's Spanish (3.132.0). A registration with no
 token has no link: the text drops the line, and {{5}} falls back to the
 event page, because a template refuses an empty variable.
 

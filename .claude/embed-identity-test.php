@@ -19,7 +19,8 @@
  *      except embed.js's EMBED_JS_VERSION line, and the caladmin files in
  *      CALADMIN_ONLY, which no public calendar page loads.
  *
- * BASE is the release compared against: 3.130.0's released commit from 3.131.0
+ * BASE is the release compared against: 3.131.0's released commit from 3.132.0
+ * (3.130.0's, d39f9ec, for 3.131.0)
  * (3.129.0's, 7e31d8d, for 3.130.0)
  * (3.128.0's, 1cc62a0, for 3.129.0)
  * (3.127.0's, d52b86e, for 3.128.0)
@@ -47,15 +48,16 @@
  * name, in ALLOWED or ALLOWED_FILES.
  */
 
-const BASE      = 'd39f9ec';
-const BASE_NAME = '3.130.0';
+const BASE      = 'b982f9e';
+const BASE_NAME = '3.131.0';
 
 /* Files under public/ and templates/ a release means to change, as path =>
    why. Probe A still compares every embed answer, so none of these can reach
    the embed unseen. */
 const ALLOWED_FILES = array(
-    // 3.131.0: the event page's RSVP form, Text or WhatsApp from the moment it opens. The embed never loads calendar.js.
-    'public/js/calendar.js' => 'the RSVP form on the event page: Text or WhatsApp, the phone label, the confirmation line (3.131.0)',
+    // 3.132.0: the event page's RSVP form, WhatsApp's own consent line. The embed never loads calendar.js.
+    'public/js/calendar.js' => 'the RSVP form on the event page: WhatsApp\'s own consent line (3.132.0)',
+    // 3.131.0 named public/js/calendar.js, Text or WhatsApp from the moment the form opens.
     // 3.130.0 named public/js/calendar.js and public/css/calendar.css, the RSVP form.
     // None in 3.129.0, 3.128.0 or 3.127.0. 3.126.0 named public/js/calendar.js and templates/taxonomy-uc_series.php.
 );
@@ -66,7 +68,7 @@ const CALADMIN_ONLY = array( 'public/css/portal.css', 'public/js/portal.js', 'pu
 
 /* Differences a release means to make, as 'key path' => why. None in 3.113.0 to 3.113.2. */
 const ALLOWED = array(
-    // None in 3.131.0. 3.130.0 named 'rest > sfaf-calendar/v1/twilio/incoming', replies and STOP.
+    // None in 3.132.0 or 3.131.0. 3.130.0 named 'rest > sfaf-calendar/v1/twilio/incoming', replies and STOP.
     // None in 3.113.8. 3.113.6 named 'localized > sfaf-calendar-public ucData',
     // the form's words in both languages.
 );

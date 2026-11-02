@@ -22,6 +22,8 @@
  *     send WhatsApp messages to +52 55 1234 5678."
  *   - a number with nothing ticked is sent with no channel
  *   - Español: the label, the heading and the boxes in Mark's Spanish
+ *   - WhatsApp ticked shows WhatsApp's own consent line, Text Text's, in
+ *     English and Spanish (3.132.0); the Spanish error in usted (3.132.0)
  * The form, Twilio off: "Phone (optional)" and no choice.
  * Who gets it:
  *   - Text registrants: "Sending to 3 people: 2 by text, 1 by WhatsApp.";
@@ -124,6 +126,7 @@ function seen(el) { if (!el || el.closest('[hidden]') || !el.getClientRects().le
 function finish() { out.pageWidth = document.documentElement.scrollWidth; window.parent.postMessage(JSON.stringify(out), '*'); }
 function tick(el, on) { el.checked = on; el.dispatchEvent(new Event('change', { bubbles: true })); }
 function press(el) { el.click(); }
+function consentShown() { return qa('#uc-rsvp-text-consent span[data-uc-w]').filter(seen).map(vt); }
 function boxes(name) { return qa('input[name="uc-rsvp-text-channel"]').filter(function (b) { return b.checked; }).map(function (b) { return b.value; }); }
 
 window.addEventListener('load', function () { setTimeout(function () {
@@ -137,11 +140,12 @@ window.addEventListener('load', function () { setTimeout(function () {
       options: qa('#uc-rsvp-text-wrap .uc-rsvp-optin').filter(seen).map(vt), ticked: boxes(), consent: seen(consent), required: phone.required };
     if (P.indexOf('form-off') === 0) { finish(); return; }
     press(sms);
-    out.afterText = { ticked: boxes(), consent: seen(consent), required: phone.required, aria: phone.getAttribute('aria-required') };
+    out.afterText = { ticked: boxes(), consent: seen(consent), required: phone.required, aria: phone.getAttribute('aria-required'), lines: consentShown() };
     press(sms);
     out.afterTextAgain = { ticked: boxes(), consent: seen(consent), required: phone.required };
     press(sms); press(wa);
     out.afterBoth = boxes();
+    out.waLines = consentShown();
     q('#uc-rsvp-first-name').value = 'Lee';
     q('#uc-rsvp-email').value = 'lee@example.org';
     q('#uc-rsvp-submit-btn').click();
@@ -170,6 +174,9 @@ window.addEventListener('load', function () { setTimeout(function () {
     q('#uc-rsvp-first-name').value = 'Ana'; q('#uc-rsvp-email').value = 'ana@example.org'; phone.value = '';
     q('#uc-rsvp-submit-btn').click();
     out.spanishError = text(q('#uc-rsvp-error'));
+    out.spanishSmsLines = consentShown();
+    press(q('input[name="uc-rsvp-text-channel"][value="whatsapp"]'));
+    out.spanishWaLines = consentShown();
     finish(); return;
   }
   /* Who gets it. */
@@ -233,6 +240,9 @@ foreach ( $files as $name => $file ) {
 }
 
 $consent = 'Text me updates about this event. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.';
+$consent_es = SFAF_Messages::form_words()['es']['text_consent'];
+$wa_consent = 'Send me WhatsApp updates about this event. Message frequency varies. Data rates may apply. Reply STOP to opt out, HELP for help.';
+$wa_consent_es = 'Envíenme avisos de este evento por WhatsApp. La frecuencia de los mensajes varía. Pueden aplicarse cargos por datos. Responda STOP para cancelar, HELP para ayuda.';
 foreach ( $g as $name => $r ) {
     if ( 0 === strpos( $name, 'form-off' ) ) {
         rl( false === $r['open']['shown'] && 'Phone (optional)' === $r['open']['label'], "PLANT F: $name: with Twilio off the form is not as before: " . json_encode( $r['open'] ) );
@@ -259,7 +269,11 @@ foreach ( $g as $name => $r ) {
             "PLANT F: $name: a number with nothing ticked was not accepted as it is: " . json_encode( $r['numberOnly'] ) );
         rl( array( 'label' => 'Teléfono, para recibir avisos del evento por texto o WhatsApp (opcional)', 'legend' => 'Recibir avisos del evento por:', 'sms' => 'Texto' ) === $r['spanish'],
             "$name: Español reads " . json_encode( $r['spanish'], JSON_UNESCAPED_UNICODE ) );
-        rl( 'Escribe un número de teléfono para recibir avisos por texto o WhatsApp.' === $r['spanishError'], "$name: the Spanish error reads " . json_encode( $r['spanishError'], JSON_UNESCAPED_UNICODE ) );
+        rl( 'Escriba un número de teléfono para recibir avisos por texto o WhatsApp.' === $r['spanishError'], "PLANT H: $name: the Spanish error reads " . json_encode( $r['spanishError'], JSON_UNESCAPED_UNICODE ) );
+        rl( array( $consent ) === $r['afterText']['lines'], "PLANT H: $name: Text ticked shows " . json_encode( $r['afterText']['lines'] ) );
+        rl( array( $wa_consent ) === $r['waLines'], "PLANT H: $name: WhatsApp ticked shows " . json_encode( $r['waLines'] ) );
+        rl( array( $consent_es ) === $r['spanishSmsLines'], "PLANT H: $name: Texto ticked shows " . json_encode( $r['spanishSmsLines'], JSON_UNESCAPED_UNICODE ) );
+        rl( array( $wa_consent_es ) === $r['spanishWaLines'], "PLANT H: $name: WhatsApp ticked in Spanish shows " . json_encode( $r['spanishWaLines'], JSON_UNESCAPED_UNICODE ) );
         continue;
     }
     rl( 'Sending to 3 people: 2 by text, 1 by WhatsApp.' === $r['textStart']['count'] && array( 'Ana', 'Beto', 'Cruz' ) === $r['textStart']['ticked']
@@ -279,5 +293,5 @@ foreach ( $g as $name => $r ) {
 
 echo "\n3.131.0: the RSVP form's Text or WhatsApp, and who gets it, in Chrome\n" . str_repeat( '=', 72 ) . "\n";
 if ( $fails ) { echo count( $fails ) . " problem(s):\n  - " . implode( "\n  - ", $fails ) . "\n"; exit( 1 ); }
-echo "Text or WhatsApp from the moment the form opens, in Mark's words in both languages, the number required only with a box ticked and\nthe line on the confirmation screen; the recipient lists search, clear, tick by answer and by a missed send, and count who and how,\nat 1280px and 390px.\n";
+echo "Text or WhatsApp from the moment the form opens, in Mark's words in both languages, each box's own consent line (3.132.0), the number required only with a box ticked and\nthe line on the confirmation screen; the recipient lists search, clear, tick by answer and by a missed send, and count who and how,\nat 1280px and 390px.\n";
 exit( 0 );

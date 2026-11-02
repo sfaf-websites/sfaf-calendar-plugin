@@ -443,11 +443,12 @@ class SFAF_Messages {
                 'f_updates_by'     => array( 'Get event updates by:', 'Recibir avisos del evento por:' ),
                 'f_by_sms'         => array( 'Text', 'Texto' ),
                 'f_by_whatsapp'    => array( 'WhatsApp', 'WhatsApp' ),
-                'f_need_phone'     => array( 'Enter a phone number to get updates by text or WhatsApp.', 'Escribe un número de teléfono para recibir avisos por texto o WhatsApp.' ),
+                'f_need_phone'     => array( 'Enter a phone number to get updates by text or WhatsApp.', 'Escriba un número de teléfono para recibir avisos por texto o WhatsApp.' ),
                 // The confirmation screen, %s the number as stored.
                 'f_also_sms'       => array( "We'll also text you at %s.", 'También le enviaremos mensajes de texto al %s.' ),
                 'f_also_whatsapp'  => array( "We'll also send WhatsApp messages to %s.", 'También le enviaremos mensajes de WhatsApp al %s.' ),
                 'f_text_consent'   => array( 'Text me updates about this event. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.', 'Envíenme novedades sobre este evento. La frecuencia de los mensajes varía. Pueden aplicarse tarifas de mensajes y datos. Responda STOP para cancelar, HELP para obtener ayuda.' ),
+                'f_wa_consent'     => array( 'Send me WhatsApp updates about this event. Message frequency varies. Data rates may apply. Reply STOP to opt out, HELP for help.', 'Envíenme avisos de este evento por WhatsApp. La frecuencia de los mensajes varía. Pueden aplicarse cargos por datos. Responda STOP para cancelar, HELP para ayuda.' ),
                 'f_privacy'        => array( 'Privacy policy', 'Política de privacidad' ),
                 // The "Stay in touch" group at the end of the form (3.124.0): the
                 // SFAF box, and one per team with a Mailchimp connection, %s its name.
@@ -491,7 +492,7 @@ class SFAF_Messages {
                 'e_in_person'      => array( 'in person', 'en persona' ),
                 'e_online'         => array( 'online', 'en línea' ),
                 'e_full'           => array( 'This event is at capacity.', 'Este evento está lleno.' ),
-                'e_need_phone'     => array( 'Enter a phone number to get updates by text or WhatsApp.', 'Escribe un número de teléfono para recibir avisos por texto o WhatsApp.' ),
+                'e_need_phone'     => array( 'Enter a phone number to get updates by text or WhatsApp.', 'Escriba un número de teléfono para recibir avisos por texto o WhatsApp.' ),
             );
         }
         return $t;

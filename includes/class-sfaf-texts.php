@@ -361,10 +361,10 @@ class SFAF_Texts {
             $s = $es
                 ? sprintf( 'Recordatorio de SFAF: %s es hoy a las %s, en %s. Detalles del evento: %s', $v['name'], $v['time'], $v['place'], $v['link'] )
                 : sprintf( 'Reminder from SFAF: %s is today at %s, at %s. Event details: %s', $v['name'], $v['time'], $v['place'], $v['link'] );
-            // The person's own cancel link, as the template's {{5}} (3.131.0), in Mark's words.
+            // The person's own cancel link, as the template's {{5}} (3.131.0), in Mark's words, the Spanish in usted (3.132.0).
             if ( ! empty( $v['cancel'] ) ) {
                 $s .= $es
-                    ? sprintf( ' ¿No puedes venir? Cancela aquí: %s', $v['cancel'] )
+                    ? sprintf( ' ¿No puede asistir? Cancele aquí: %s', $v['cancel'] )
                     : sprintf( " Can't make it? Cancel here: %s", $v['cancel'] );
             }
         } elseif ( 'update' === $kind ) {

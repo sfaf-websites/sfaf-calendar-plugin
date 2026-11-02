@@ -11,7 +11,7 @@
  *      one their confirmation email carries (SFAF_Reminders::cancel_url() of
  *      the registration's token), never another person's; never empty.
  *   B. Text: the reminder ends "Can't make it? Cancel here: [link]", in
- *      Spanish "¿No puedes venir? Cancela aquí: [link]", in Mark's words,
+ *      Spanish "¿No puede asistir? Cancele aquí: [link]" (usted from 3.132.0),
  *      then "Reply STOP to opt out."; without a token, no cancel line.
  *   C. Nothing else moves: Text registrants' update has no cancel line and
  *      its WhatsApp template keeps three variables.
@@ -203,7 +203,7 @@ rt( 'A: without a token, {{5}} is never empty', '' !== (string) $vf['5'] && 'htt
 
 /* ---- B. Text ---- */
 rt( 'B: the English reminder ends with the cancel line, then STOP', 'Reminder from SFAF: Coffee & Conversation is today at 10 am, at 1035 Market St. Event details: https://resources.sfaf.org/events/900/ Can\'t make it? Cancel here: ' . $link( $ana->token ) . ' Reply STOP to opt out.' === $by['+14155550101']['Body'] );
-rt( 'B: the Spanish reminder in Mark\'s words', false !== strpos( $by['+14155550104']['Body'], ' ¿No puedes venir? Cancela aquí: ' . $link( $dee->token ) . ' Responda STOP' ) && 0 === strpos( $by['+14155550104']['Body'], 'Recordatorio de SFAF: ' ) );
+rt( 'B: the Spanish reminder in Mark\'s words', false !== strpos( $by['+14155550104']['Body'], ' ¿No puede asistir? Cancele aquí: ' . $link( $dee->token ) . ' Responda STOP' ) && 0 === strpos( $by['+14155550104']['Body'], 'Recordatorio de SFAF: ' ) );
 rt( 'B: each text carries its own link', false === strpos( $by['+14155550101']['Body'], $dee->token ) && false === strpos( $by['+14155550104']['Body'], $ana->token ) );
 rt( 'B: without a token, no cancel line', false === strpos( $by['+14155550105']['Body'], 'Cancel here' ) && false !== strpos( $by['+14155550105']['Body'], 'Event details: https://resources.sfaf.org/events/900/ Reply STOP' ) );
 
@@ -233,7 +233,7 @@ $want = array(
     'updates_by'    => array( 'Get event updates by:', 'Recibir avisos del evento por:' ),
     'by_sms'        => array( 'Text', 'Texto' ),
     'by_whatsapp'   => array( 'WhatsApp', 'WhatsApp' ),
-    'need_phone'    => array( 'Enter a phone number to get updates by text or WhatsApp.', 'Escribe un número de teléfono para recibir avisos por texto o WhatsApp.' ),
+    'need_phone'    => array( 'Enter a phone number to get updates by text or WhatsApp.', 'Escriba un número de teléfono para recibir avisos por texto o WhatsApp.' ),
     'also_sms'      => array( "We'll also text you at %s.", 'También le enviaremos mensajes de texto al %s.' ),
     'also_whatsapp' => array( "We'll also send WhatsApp messages to %s.", 'También le enviaremos mensajes de WhatsApp al %s.' ),
 );

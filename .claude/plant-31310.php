@@ -36,7 +36,7 @@ $plants = array(
         array( $X, "\" Can't make it? Cancel here: %s\"", "\" To cancel: %s\"" ),
     ) ),
     "the Spanish line is not Mark's" => array( $T, "FAIL  B: the Spanish reminder in Mark's words", array(
-        array( $X, "' ¿No puedes venir? Cancela aquí: %s'", "' ¿No puede venir? Cancele aquí: %s'" ),
+        array( $X, "' ¿No puede asistir? Cancele aquí: %s'", "' ¿No puedes venir? Cancela aquí: %s'" ),
     ) ),
     'the update gets a fourth variable' => array( $T, 'FAIL  C: the update template keeps three variables', array(
         array( $X, ": array( '1' => \$v['name'], '2' => self::ended( \$v['message'] ), '3' => \$v['reply'] );", ": array( '1' => \$v['name'], '2' => self::ended( \$v['message'] ), '3' => \$v['reply'], '4' => \$v['cancel'] );" ),

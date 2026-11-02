@@ -248,6 +248,7 @@ function seen(el) { if (!el || el.closest('[hidden]') || !el.getClientRects().le
 function finish() { out.pageWidth = document.documentElement.scrollWidth; window.parent.postMessage(JSON.stringify(out), '*'); }
 function tick(el, on) { el.checked = on; el.dispatchEvent(new Event('change', { bubbles: true })); }
 function press(el) { el.click(); }
+function consentShown() { return qa('#uc-rsvp-text-consent span[data-uc-w]').filter(seen).map(vt); }
 function boxes(name) { return qa('input[name="uc-rsvp-text-channel"]').filter(function (b) { return b.checked; }).map(function (b) { return b.value; }); }
 
 window.addEventListener('load', function () { setTimeout(function () {
@@ -261,11 +262,12 @@ window.addEventListener('load', function () { setTimeout(function () {
       options: qa('#uc-rsvp-text-wrap .uc-rsvp-optin').filter(seen).map(vt), ticked: boxes(), consent: seen(consent), required: phone.required };
     if (P.indexOf('form-off') === 0) { finish(); return; }
     press(sms);
-    out.afterText = { ticked: boxes(), consent: seen(consent), required: phone.required, aria: phone.getAttribute('aria-required') };
+    out.afterText = { ticked: boxes(), consent: seen(consent), required: phone.required, aria: phone.getAttribute('aria-required'), lines: consentShown() };
     press(sms);
     out.afterTextAgain = { ticked: boxes(), consent: seen(consent), required: phone.required };
     press(sms); press(wa);
     out.afterBoth = boxes();
+    out.waLines = consentShown();
     q('#uc-rsvp-first-name').value = 'Lee';
     q('#uc-rsvp-email').value = 'lee@example.org';
     q('#uc-rsvp-submit-btn').click();
@@ -294,6 +296,9 @@ window.addEventListener('load', function () { setTimeout(function () {
     q('#uc-rsvp-first-name').value = 'Ana'; q('#uc-rsvp-email').value = 'ana@example.org'; phone.value = '';
     q('#uc-rsvp-submit-btn').click();
     out.spanishError = text(q('#uc-rsvp-error'));
+    out.spanishSmsLines = consentShown();
+    press(q('input[name="uc-rsvp-text-channel"][value="whatsapp"]'));
+    out.spanishWaLines = consentShown();
     finish(); return;
   }
   /* Who gets it. */
