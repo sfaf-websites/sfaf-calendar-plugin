@@ -245,6 +245,11 @@ for f in .claude/*.php; do
     plant-31280.php) continue ;;       # a fault planter for the 3.128.0 check, not a check
     plant-31290.php) continue ;;       # a fault planter for the 3.129.0 checks, not a check
     release-31290-live.php) continue ;;  # run below with --run
+    # 3.131.0's was in the glob until 3.133.0, which ran it without --run: it
+    # wrote its pages and drove nothing. Its planter ran it, faults planted.
+    release-31310-live.php) continue ;;  # run below with --run
+    release-31330-live.php) continue ;;  # run below with --run
+    plant-31330.php) continue ;;       # a fault planter for the 3.133.0 check, not a check
     release-31260-live.php) continue ;;  # run below with --run
     release-31240-live.php) continue ;;  # run below with --run
     release-31138-live.php) continue ;;  # run below with --run
@@ -562,6 +567,9 @@ run "release-31240-live --run" php .claude/release-31240-live.php --run
 # The RSVP form's language pill against 3.125.0's, and the language it opens in (3.126.0).
 run "release-31260-live --run" php .claude/release-31260-live.php --run
 run "release-31290-live --run" php .claude/release-31290-live.php --run
+run "release-31310-live --run" php .claude/release-31310-live.php --run
+# The RSVP list at 390, 768, 1024 and 1280px (3.133.0).
+run "release-31330-live --run" php .claude/release-31330-live.php --run
 # The embed in its shadow root under a hostile host stylesheet, and the combined
 # sidebar ending at its content (3.111.0 J and K), at 1280px and 390px.
 run "embed-isolation-live --run" php .claude/embed-isolation-live.php --run

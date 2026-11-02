@@ -4822,7 +4822,7 @@ class SFAF_Portal {
 </body></html><?php
     }
 
-    private function chrome_open( $user, $active ) {
+    private function chrome_open( $user, $active, $wide = false ) {
         $this->head( ucfirst( $active ) );
         $role     = self::get_role( $user->ID );
         $is_admin = $this->is_admin_role( $user );
@@ -5003,7 +5003,7 @@ class SFAF_Portal {
                     // sidebar is a drawer behind the menu button beside this.
                     ?>
                 </header>
-                <main class="uc-portal-content">
+                <main class="uc-portal-content<?php echo $wide ? ' uc-portal-content-wide' : ''; ?>">
         <?php
         $this->flash();
         $this->render_held();
@@ -18903,7 +18903,8 @@ class SFAF_Portal {
             $this->load_editor = true;
             SFAF_Rich_Text::enqueue();
         }
-        $this->chrome_open( $user, 'events' );
+        // The full width of the screen, for the registrations table (3.133.0).
+        $this->chrome_open( $user, 'events', true );
         $search   = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
         $rsvps    = SFAF_RSVP::get_all_rsvps( array(
             'event_id' => $event_id,
@@ -19249,17 +19250,24 @@ class SFAF_Portal {
                 <?php
                 // Each person's answers, for their Details toggle (3.106.2).
                 $answers = SFAF_Questions::answers_for_rows( array_map( function ( $r ) { return (int) $r->id; }, $rsvps ) );
-                $columns = $event ? 8 : 9;
+                $columns = $event ? 7 : 8;
+                /*
+                 * ONE NAME COLUMN AND A SHORT DATE (3.133.0), so the table fits a
+                 * laptop with Remove and Check in on screen. At 1024px and under
+                 * each row is a card (portal.css): the name with Check in beside
+                 * it, then how to reach them, then Details and Remove at the foot.
+                 */
+                $this_year = substr( current_time( 'mysql' ), 0, 4 );
                 ?>
-                <table class="uc-table<?php echo $event ? ' uc-rsvp-table' : ''; ?>">
-                    <thead><tr><?php if ( ! $event ) : ?><th>Event</th><?php endif; ?><th>First name</th><th>Last name</th><th>Email</th><th>Phone</th><th>Updates</th><th>Status</th><th>Registered</th><th><span class="uc-visually-hidden">Actions</span></th></tr></thead>
+                <table class="uc-table uc-rsvp-table<?php echo $event ? '' : ' uc-rsvp-table-all'; ?>">
+                    <thead><tr><?php if ( ! $event ) : ?><th class="uc-rc-event">Event</th><?php endif; ?><th class="uc-rc-name">Name</th><th class="uc-rc-email">Email</th><th class="uc-rc-phone">Phone</th><th class="uc-rc-updates">Updates</th><th class="uc-rc-status">Status</th><th class="uc-rc-registered">Registered</th><th class="uc-rsvp-actions"><span class="uc-visually-hidden">Actions</span></th></tr></thead>
                     <tbody>
                     <?php foreach ( $rsvps as $r ) :
                         $has_details = ! empty( $answers[ (int) $r->id ] ) || ! empty( $r->agreed_at );
                         ?>
                         <tr data-uc-rsvp-row data-uc-rsvp-name="<?php echo esc_attr( strtolower( trim( $r->first_name . ' ' . $r->last_name ) ) ); ?>" data-uc-rsvp-email="<?php echo esc_attr( strtolower( trim( (string) $r->email ) ) ); ?>">
                             <?php if ( ! $event ) : ?>
-                                <td><?php
+                                <td class="uc-rc-event"><?php
                                     // Linked when the event still exists, plain
                                     // text when it does not. event_label() is
                                     // what appends "(deleted)".
@@ -19272,7 +19280,6 @@ class SFAF_Portal {
                                     }
                                 ?></td>
                             <?php endif; ?>
-                            <td><strong><?php echo esc_html( $r->first_name ); ?></strong></td>
                             <?php
                             /*
                              * AN EMPTY LAST NAME IS A NORMAL ROW, NOT A GAP.
@@ -19280,19 +19287,19 @@ class SFAF_Portal {
                              * The field is optional on the form for people
                              * registering for testing and for trans health
                              * groups, so a blank cell here is somebody
-                             * exercising that. A dash says "nothing was given",
-                             * which is the fact; leaving the cell empty reads
-                             * as a column that failed to render.
+                             * exercising that. Since 3.133.0 first and last
+                             * share one Name column, so the first name alone
+                             * is the whole of it.
                              */
                             ?>
-                            <td><?php
+                            <td class="uc-rc-name"><strong><?php echo esc_html( $r->first_name ); ?></strong><?php
                                 $last = trim( (string) $r->last_name );
-                                echo '' !== $last ? esc_html( $last ) : '<span class="uc-muted">&ndash;</span>';
+                                echo '' !== $last ? ' ' . esc_html( $last ) : '';
                             ?></td>
-                            <td><?php echo '' !== (string) $r->email ? esc_html( $r->email ) : '<span class="uc-muted">&ndash;</span>'; ?></td>
-                            <td><?php echo esc_html( $r->phone ); ?><?php if ( '' !== (string) ( $r->text_channel ?? '' ) ) : ?> <span class="uc-texts-mark" data-uc-texts-mark="<?php echo esc_attr( $r->text_channel ); ?>"><?php echo esc_html( SFAF_Texts::channel_label( $r->text_channel ) ); ?></span><?php elseif ( ! empty( $r->text_opt_in ) ) : ?> <span class="uc-texts-mark uc-texts-mark-old" data-uc-texts-mark="old" title="Ticked &quot;Text me about this event&quot; before 3.130.0. Gets no texts.">Old text tick</span><?php endif; ?></td>
-                            <td><?php
-                                $opted = isset( $consented[ strtolower( trim( (string) $r->email ) ) . '|' . (int) $r->event_id ] );
+                            <td class="uc-rc-email<?php echo '' === (string) $r->email ? ' uc-rc-none' : ''; ?>"><?php echo '' !== (string) $r->email ? esc_html( $r->email ) : '<span class="uc-muted">&ndash;</span>'; ?></td>
+                            <td class="uc-rc-phone<?php echo '' === trim( (string) $r->phone ) ? ' uc-rc-none' : ''; ?>"><?php echo esc_html( $r->phone ); ?><?php if ( '' !== (string) ( $r->text_channel ?? '' ) ) : ?> <span class="uc-texts-mark" data-uc-texts-mark="<?php echo esc_attr( $r->text_channel ); ?>"><?php echo esc_html( SFAF_Texts::channel_label( $r->text_channel ) ); ?></span><?php elseif ( ! empty( $r->text_opt_in ) ) : ?> <span class="uc-texts-mark uc-texts-mark-old" data-uc-texts-mark="old" title="Ticked &quot;Text me about this event&quot; before 3.130.0. Gets no texts.">Old text tick</span><?php endif; ?></td>
+                            <?php $opted = isset( $consented[ strtolower( trim( (string) $r->email ) ) . '|' . (int) $r->event_id ] ); ?>
+                            <td class="uc-rc-updates<?php echo $opted ? '' : ' uc-rc-none'; ?>"><?php
                                 if ( $opted ) {
                                     // Said in words as well as marked, because a
                                     // tick on its own does not say what it is a
@@ -19303,7 +19310,7 @@ class SFAF_Portal {
                                     echo '<span class="uc-muted">&ndash;</span>';
                                 }
                             ?></td>
-                            <td>
+                            <td class="uc-rc-status">
                                 <span class="uc-pill uc-pill-<?php echo esc_attr( $r->status ); ?>"><?php echo esc_html( sfaf_rsvp_status_label( $r->status ) ); ?></span>
                                 <?php
                                 /* Who released it, when it was not the registrant (3.105.0). */
@@ -19315,8 +19322,37 @@ class SFAF_Portal {
                                     <span class="uc-rsvp-removed-by">Removed by <?php echo esc_html( $by_name ); ?>, <?php echo esc_html( sfaf_ap_datetime( $r->cancelled_at ) ); ?></span>
                                 <?php endif; ?>
                             </td>
-                            <td><?php echo esc_html( sfaf_ap_datetime( $r->created_at ) ); ?></td>
+                            <td class="uc-rc-registered"><span class="uc-rc-registered-label">Registered </span><time datetime="<?php echo esc_attr( (string) $r->created_at ); ?>" title="<?php echo esc_attr( sfaf_ap_datetime( $r->created_at ) ); ?>"><?php
+                                // "Nov 2, 11:48 am"; the year only when it is not this one.
+                                $made = (string) $r->created_at;
+                                echo esc_html( sfaf_ap_date( substr( $made, 0, 10 ), substr( $made, 0, 4 ) === $this_year ? 'short' : 'short_year' ) . ', ' . sfaf_ap_time( substr( $made, 11, 5 ) ) );
+                            ?></time></td>
                             <td class="uc-rsvp-actions">
+                                <?php
+                                /*
+                                 * CHECK IN FIRST, THEN DETAILS AND REMOVE UNDER IT (3.133.0):
+                                 * Remove at the far side, away from Check in, in the table
+                                 * and in the cards alike.
+                                 *
+                                 * CHECK IN BY NAME (3.110.0): a registered row, a press each way.
+                                 */
+                                if ( $event && ! empty( $ck_edit ) && 'name' === $ck_mode && 'confirmed' === $r->status ) :
+                                    $in = ! empty( $r->checked_in_at );
+                                    ?>
+                                    <form method="post" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>" class="uc-checkin-form" data-uc-checkin-form>
+                                        <input type="hidden" name="uc_action" value="checkin_toggle" />
+                                        <?php wp_nonce_field( 'uc_portal_checkin_toggle', 'uc_nonce' ); ?>
+                                        <input type="hidden" name="rsvp_id" value="<?php echo (int) $r->id; ?>" />
+                                        <button type="submit" class="uc-btn uc-btn-sm uc-checkin-btn" aria-pressed="<?php echo $in ? 'true' : 'false'; ?>" data-uc-checkin><?php
+                                            echo esc_html( $in ? 'Checked in ' . sfaf_ap_time( substr( (string) $r->checked_in_at, 11, 5 ) ) : 'Check in' );
+                                        ?></button>
+                                    </form>
+                                <?php endif; ?>
+                                <span class="uc-rc-tools">
+                                <?php if ( $has_details ) : ?>
+                                    <button type="button" class="uc-link-btn uc-btn-sm" data-uc-rsvp-details
+                                            aria-expanded="false" aria-controls="uc-rsvp-details-<?php echo (int) $r->id; ?>">Details</button>
+                                <?php endif; ?>
                                 <?php if ( 'confirmed' === $r->status && ! empty( $may_remove[ (int) $r->event_id ] ) ) :
                                     $who = SFAF_RSVP::display_name( $r );
                                     $who = '' !== $who ? $who : 'this person';
@@ -19331,24 +19367,7 @@ class SFAF_Portal {
                                                 data-uc-confirm="<?php echo esc_attr( 'Remove ' . $who . '\'s registration? Their place is released, and nothing puts it back.' ); ?>">Remove</button>
                                     </form>
                                 <?php endif; ?>
-                                <?php if ( $has_details ) : ?>
-                                    <button type="button" class="uc-link-btn uc-btn-sm" data-uc-rsvp-details
-                                            aria-expanded="false" aria-controls="uc-rsvp-details-<?php echo (int) $r->id; ?>">Details</button>
-                                <?php endif; ?>
-                                <?php
-                                /* CHECK IN BY NAME (3.110.0): a registered row, a press each way. */
-                                if ( $event && ! empty( $ck_edit ) && 'name' === $ck_mode && 'confirmed' === $r->status ) :
-                                    $in = ! empty( $r->checked_in_at );
-                                    ?>
-                                    <form method="post" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>" class="uc-checkin-form" data-uc-checkin-form>
-                                        <input type="hidden" name="uc_action" value="checkin_toggle" />
-                                        <?php wp_nonce_field( 'uc_portal_checkin_toggle', 'uc_nonce' ); ?>
-                                        <input type="hidden" name="rsvp_id" value="<?php echo (int) $r->id; ?>" />
-                                        <button type="submit" class="uc-btn uc-btn-sm uc-checkin-btn" aria-pressed="<?php echo $in ? 'true' : 'false'; ?>" data-uc-checkin><?php
-                                            echo esc_html( $in ? 'Checked in ' . sfaf_ap_time( substr( (string) $r->checked_in_at, 11, 5 ) ) : 'Check in' );
-                                        ?></button>
-                                    </form>
-                                <?php endif; ?>
+                                </span>
                             </td>
                         </tr>
                         <?php if ( $has_details ) : ?>

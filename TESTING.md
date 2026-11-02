@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 412 items.** Quick 333, needs real conditions 74, blocked on other
+**Outstanding: 413 items.** Quick 334, needs real conditions 74, blocked on other
 people 5.
 
 ---
@@ -4548,6 +4548,21 @@ them. Decide whether they are asked again; until then they get email only.
 
 **Why it needs a person:** the site's own registrations; the decision is
 Mark's.
+
+### 1.336 The RSVP list at the door, on a tablet and a phone (3.133.0)
+
+Open a real event's RSVP list with a few dozen registrations, on a laptop,
+then on a tablet held both ways, then on a phone. On the laptop every column
+shows, Check in and Remove included, with nothing cut off at the right and no
+sideways scrolling. On the tablet and the phone each person is a card: check
+someone in with Check in beside their name and see it read "Checked in
+[time]"; press it again to undo. Remove is at the foot of the card and asks
+before it does anything; press Cancel. Switch to Enter a count and save a
+number. Search for a name.
+
+**Why it needs a person:** real devices, with a finger, at a real door; the
+check drew the page in Chrome at 390, 768, 1024 and 1280px with invented
+registrations.
 
 ## 2. Needs real conditions
 

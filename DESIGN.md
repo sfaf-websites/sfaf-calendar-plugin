@@ -1369,12 +1369,20 @@ a small "Texts" mark beside the phone: 12px/400 `--p-muted` on `--p-bg`, 1px
 reads "Checked in [time]" in `--uc-accent-text` on `--uc-band` with an accent
 edge, `aria-pressed="true"`.
 
-**On a phone (600px and under) the RSVP list is one column.** A row is the
-name and Check in on one line, the name taking what the button leaves and
-breaking anywhere if it has to; then email, phone and status in 13px
-`--p-muted`; then Remove and Details. The header row, Updates and Registered go.
-The waitlist table stacks the same way, losing Joined. Every button in a row is
-44px tall.
+**The RSVP list at every width (3.133.0; 600px and under from 3.110.0).** The
+page is `.uc-portal-content-wide`, the full width beside the sidebar, because
+`.uc-card` clips what overflows it and the table was losing Remove and Check
+in off its right edge. Above 1024px it is the table: one Name column, the
+short date, name 20%, email 25% and phone 13% of the width and wrapping
+anywhere, and Check in above Details and Remove in the last cell. At 1024px
+and under, a tablet either way up and a phone, each person is a card: the
+name and Check in (48px, at least 128px wide) on one line, the name taking
+what the button leaves; then email and phone in 14px `--p-muted`; status,
+the updates mark and "Registered [date]"; then Details, and Remove at the
+far side. The header row goes, and so does any empty cell. The waitlist
+table stacks the same way, losing Joined. Every button in a row is 44px
+tall. `.claude/release-31330-live.php` measures it at 390, 768, 1024 and
+1280px.
 
 **The phone pass.** Add event, Edit event, the RSVP list and the event page
 with the dialog open were measured at 390px and 430px: no element past the

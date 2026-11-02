@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.132.0
+Stable tag: 3.133.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,15 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.133.0 =
+
+**The RSVP list works at every width, with Check in and Remove always on screen. Staff screens only: nothing on public pages changes, and every embed answer and header is 3.132.0's, proved by embed-identity-test.php.**
+
+* **The RSVP list takes the full width** beside the menu, instead of the narrow column it sat in. The table ran off the card's right edge, which cut off Remove and Check in.
+* **On a laptop or desktop**, every column fits: first and last name are one **Name** column, Registered is short ("Nov 2, 11:48 am", with the year only when it is not this one), and Check in sits above Details and Remove. Long names and email addresses wrap.
+* **On a tablet (1024px and under, either way up) and a phone**, each person is a card: the name with **Check in** beside it, large and at least 44px tall; email and phone; status and when they registered; then Details, and **Remove** at the foot on the far side, away from Check in. The waitlist stacks the same way.
+* The list of every registration on the site has the same layout, with the event's name in its own column.
 
 = 3.132.0 =
 

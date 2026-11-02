@@ -6945,8 +6945,10 @@ event (`_uc_checkin_mode`, `name` by default):
 - **Who may**: anybody who can edit the event, contributors included, through
   the event gate on the three routes (`checkin_mode`, `checkin_toggle`,
   `attendance_save`), asserted in `.claude/event-access-test.php`.
-- **On a phone** the list is one column; the page's one search box, "Search
-  name or email", filters the rows as you type (3.110.1); see `DESIGN.md`.
+- **At 1024px and under** each person is a card with Check in beside the
+  name, and above that the full table fits the screen (3.133.0); the page's
+  one search box, "Search name or email", filters the rows as you type
+  (3.110.1); see `DESIGN.md`.
 - `.claude/checkin-test.php` runs it; plant F.1 makes the second press not
   revert.
 ### Cancellation tokens

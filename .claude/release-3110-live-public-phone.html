@@ -105,7 +105,7 @@ window.addEventListener('load', function () { setTimeout(function () {
     var strip = q('.uc-rsvp-counts');
     out.counts = strip ? text(strip) : null;
     out.rows = rows.map(function (r) {
-      var nm = q('td:nth-child(2)', r), b = q('[data-uc-checkin]', r);
+      var nm = q('.uc-rc-name', r), b = q('[data-uc-checkin]', r);  /* one Name column since 3.133.0 */
       return { name: r.getAttribute('data-uc-rsvp-name'), texts: !!q('[data-uc-texts-mark]', r), btn: b ? text(b) : null,
         nameBox: rect(nm), btnBox: rect(b), rowBox: rect(r), others: qa('.uc-rsvp-actions button:not([data-uc-checkin])', r).map(function (o) { return rect(o).h; }) };
     });

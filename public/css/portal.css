@@ -5326,39 +5326,78 @@ body.uc-modal-open { overflow: hidden; }
 .uc-rsvp-table tr[hidden] { display: none; }
 
 /* ---------------------------------------------------------------------------
-   THE RSVP LIST ON A PHONE (3.110.0)
+   THE RSVP LIST AT EVERY WIDTH (3.133.0; on a phone since 3.110.0)
 
-   One column. A row is the name and its buttons on one line, the name taking
-   what the buttons leave, then email, phone and status on a small line under
-   it. Every button is at least 44px tall. The header row goes; Updates and
-   Registered go, being the desk's columns.
+   Check-in happens at the door, on a tablet or a phone, so nothing on this
+   page may be cut off at any width. .uc-card clips what overflows it, which
+   is how a table too wide for its card lost Remove and Check in off its right
+   edge: the page now takes the whole width beside the sidebar, and the table
+   is tightened to fit a laptop, with one Name column and a short date.
+
+   At 1024px and under, which is a tablet either way up and a phone, each
+   person is a card: the name with Check in beside it, 44px tall; email and
+   phone under it; status, the updates mark and when they registered; then
+   Details and Remove at the foot, Remove at the far side from Check in.
+   Every button is at least 44px tall. The waitlist does the same.
+   .claude/release-31330-live.php measures it at 390, 768, 1024 and 1280px.
    ------------------------------------------------------------------------ */
-@media (max-width: 600px) {
+.uc-portal-content.uc-portal-content-wide { max-width: none; }
+.uc-rsvp-table th { padding: 10px 8px; }
+.uc-rsvp-table td { padding: 10px 8px; }
+.uc-rsvp-table .uc-rc-name,
+.uc-rsvp-table .uc-rc-email,
+.uc-rsvp-table .uc-rc-event { overflow-wrap: anywhere; }
+/* What the room goes to: the name, the email and the phone, which wrap; the
+   rest keep to their words. */
+.uc-rsvp-table th.uc-rc-name { width: 20%; }
+.uc-rsvp-table th.uc-rc-email { width: 25%; }
+.uc-rsvp-table th.uc-rc-phone { width: 13%; }
+/* Every registration on the site: the event's name takes its share. */
+.uc-rsvp-table-all th.uc-rc-event { width: 16%; }
+.uc-rsvp-table-all th.uc-rc-name { width: 15%; }
+.uc-rsvp-table-all th.uc-rc-email { width: 19%; }
+.uc-rsvp-table-all th.uc-rc-phone { width: 11%; }
+.uc-rsvp-table .uc-rc-registered { white-space: nowrap; }
+.uc-rsvp-table .uc-rc-registered-label { display: none; }
+/* Check in, then Details and Remove on a line under it. */
+.uc-rsvp-table td.uc-rsvp-actions { white-space: nowrap; text-align: right; }
+.uc-rsvp-table .uc-rsvp-actions > .uc-checkin-form { display: block; }
+.uc-rsvp-table .uc-rc-tools { display: flex; justify-content: flex-end; align-items: center; gap: 14px; }
+.uc-rsvp-table .uc-checkin-form + .uc-rc-tools { margin-top: 6px; }
+.uc-rsvp-table .uc-rc-tools:empty { display: none; }
+
+@media (max-width: 1024px) {
     .uc-rsvp-table thead { display: none; }
     .uc-rsvp-table, .uc-rsvp-table tbody { display: block; width: 100%; }
     .uc-rsvp-table tr[data-uc-rsvp-row] {
-        display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px;
-        padding: 12px 0; border-bottom: 1px solid var(--p-border);
+        display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px;
+        padding: 14px 0; border-bottom: 1px solid var(--p-border);
     }
     .uc-rsvp-table tr[data-uc-rsvp-row] > td { display: block; padding: 0; border: 0; min-width: 0; }
-    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(1) { order: 1; font-size: 16px; }
-    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(2) { order: 2; flex: 1 1 0; font-size: 16px; font-weight: 600; }
-    /* The actions cell lets go of its three: Check in stays on the name's line,
-       Details and Remove go to a line of their own at the bottom. */
-    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(8) { display: contents; }
-    .uc-rsvp-table tr[data-uc-rsvp-row] .uc-rsvp-actions > form,
-    .uc-rsvp-table tr[data-uc-rsvp-row] .uc-rsvp-actions > button { order: 5; margin: 0; }
-    .uc-rsvp-table tr[data-uc-rsvp-row] .uc-rsvp-actions > .uc-checkin-form { order: 3; display: block; }
-    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(2) { overflow-wrap: anywhere; }
-    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(3),
-    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(4),
-    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(6) { order: 4; font-size: 13px; color: var(--p-muted); overflow-wrap: anywhere; }
-    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(3) { flex: 1 1 100%; }
-    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(5),
-    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(7) { display: none; }
-    .uc-rsvp-table td:nth-child(2) .uc-muted { display: none; }
-    /* The line under the name breaks before the buttons at the bottom. */
-    .uc-rsvp-table tr[data-uc-rsvp-row] > td:nth-child(6) { flex: 1 1 100%; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] > td.uc-rc-none { display: none; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] > .uc-rc-event { order: 0; flex: 1 1 100%; font-size: 13px; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] > .uc-rc-name { order: 1; flex: 1 1 0; min-width: 0; font-size: 16px; }
+    /* The actions cell lets go of its three: Check in beside the name,
+       Details and Remove at the foot. */
+    .uc-rsvp-table tr[data-uc-rsvp-row] > .uc-rsvp-actions { display: contents; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] .uc-rsvp-actions > .uc-checkin-form { order: 2; display: block; margin: 0; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] .uc-checkin-btn { min-height: 48px; min-width: 128px; padding: 8px 16px; font-size: 15px; justify-content: center; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] > .uc-rc-email,
+    .uc-rsvp-table tr[data-uc-rsvp-row] > .uc-rc-phone { flex: 1 1 100%; font-size: 14px; color: var(--p-muted); overflow-wrap: anywhere; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] > .uc-rc-email { order: 3; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] > .uc-rc-phone { order: 4; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] > .uc-rc-status { order: 5; flex: 0 1 auto; overflow-wrap: anywhere; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] > .uc-rc-updates { order: 6; flex: 0 0 auto; font-size: 13px; }
+    /* Registered takes the rest of its line, so Details and Remove start one of their own. */
+    .uc-rsvp-table tr[data-uc-rsvp-row] > .uc-rc-registered { order: 7; flex: 1 1 auto; font-size: 13px; color: var(--p-muted); white-space: normal; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] .uc-rc-registered-label { display: inline; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] .uc-rc-tools { order: 8; flex: 1 1 100%; justify-content: space-between; margin: 0; }
+    .uc-rsvp-table tr[data-uc-rsvp-row] .uc-rc-tools > form { margin: 0 0 0 auto; }
+    .uc-rsvp-table .uc-rsvp-actions .uc-btn,
+    .uc-rsvp-table .uc-rsvp-actions button { min-height: 44px; display: inline-flex; align-items: center; }
+    .uc-rsvp-table tr.uc-rsvp-details { display: block; }
+    .uc-rsvp-table tr.uc-rsvp-details[hidden] { display: none; }
+    .uc-rsvp-table tr.uc-rsvp-details > td { display: block; padding: 8px 0 12px; }
     /* The waitlist, the same way: position and name, then email and status,
        then Confirm and Remove. Joined goes. */
     .uc-waitlist .uc-table thead { display: none; }
@@ -5375,14 +5414,11 @@ body.uc-modal-open { overflow: hidden; }
     .uc-waitlist .uc-table tr > td:nth-child(6) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex: 1 1 100%; }
     .uc-waitlist .uc-table .uc-rsvp-actions form { margin: 0; }
     .uc-waitlist .uc-table .uc-rsvp-actions button { min-height: 44px; }
+}
+@media (max-width: 600px) {
     /* Who gets these emails (3.129.0): every chip, and every suggestion, a 44px tap. */
     .uc-rcpt-field .uc-email-pill, .uc-sl-option { min-height: 44px; box-sizing: border-box; }
     .uc-sl-option { display: flex; align-items: center; }
-    .uc-rsvp-table .uc-rsvp-actions .uc-btn,
-    .uc-rsvp-table .uc-rsvp-actions button { min-height: 44px; display: inline-flex; align-items: center; }
-    .uc-rsvp-table tr.uc-rsvp-details { display: block; }
-    .uc-rsvp-table tr.uc-rsvp-details[hidden] { display: none; }
-    .uc-rsvp-table tr.uc-rsvp-details > td { display: block; padding: 8px 0 12px; }
     .uc-checkin-bar .uc-seg-opt-btn { min-height: 44px; }
     .uc-checkin-bar .uc-attendance-form .uc-btn { min-height: 44px; }
 }

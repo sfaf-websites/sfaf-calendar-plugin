@@ -19,7 +19,8 @@
  *      except embed.js's EMBED_JS_VERSION line, and the caladmin files in
  *      CALADMIN_ONLY, which no public calendar page loads.
  *
- * BASE is the release compared against: 3.131.0's released commit from 3.132.0
+ * BASE is the release compared against: 3.132.0's released commit from 3.133.0
+ * (3.131.0's, b982f9e, for 3.132.0)
  * (3.130.0's, d39f9ec, for 3.131.0)
  * (3.129.0's, 7e31d8d, for 3.130.0)
  * (3.128.0's, 1cc62a0, for 3.129.0)
@@ -48,15 +49,15 @@
  * name, in ALLOWED or ALLOWED_FILES.
  */
 
-const BASE      = 'b982f9e';
-const BASE_NAME = '3.131.0';
+const BASE      = 'a0c4606';
+const BASE_NAME = '3.132.0';
 
 /* Files under public/ and templates/ a release means to change, as path =>
    why. Probe A still compares every embed answer, so none of these can reach
    the embed unseen. */
 const ALLOWED_FILES = array(
-    // 3.132.0: the event page's RSVP form, WhatsApp's own consent line. The embed never loads calendar.js.
-    'public/js/calendar.js' => 'the RSVP form on the event page: WhatsApp\'s own consent line (3.132.0)',
+    // None in 3.133.0: the RSVP list is portal.css and portal.js, CALADMIN_ONLY.
+    // 3.132.0 named public/js/calendar.js, WhatsApp's own consent line.
     // 3.131.0 named public/js/calendar.js, Text or WhatsApp from the moment the form opens.
     // 3.130.0 named public/js/calendar.js and public/css/calendar.css, the RSVP form.
     // None in 3.129.0, 3.128.0 or 3.127.0. 3.126.0 named public/js/calendar.js and templates/taxonomy-uc_series.php.
