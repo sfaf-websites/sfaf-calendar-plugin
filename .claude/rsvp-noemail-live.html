@@ -1630,7 +1630,8 @@
                                 '<legend data-uc-w="updates_by">Get event updates by:</legend>' +
                                 '<label class="uc-rsvp-optin"><input type="checkbox" name="uc-rsvp-text-channel" value="sms" /><span data-uc-w="by_sms">Text</span></label>' +
                                 '<label class="uc-rsvp-optin" id="uc-rsvp-text-wa"><input type="checkbox" name="uc-rsvp-text-channel" value="whatsapp" /><span data-uc-w="by_whatsapp">WhatsApp</span></label>' +
-                                '<p class="uc-rsvp-note" id="uc-rsvp-text-consent" hidden><span data-uc-w="text_consent">Text me updates about this event. Message frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help.</span> ' +
+                                '<p class="uc-rsvp-note" id="uc-rsvp-text-consent" hidden><span id="uc-rsvp-sms-consent" data-uc-w="text_consent">Text me updates about this event. Message frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help.</span>' +
+                                    '<span id="uc-rsvp-wa-consent" data-uc-w="wa_consent" hidden>Send me WhatsApp updates about this event. Message frequency varies. Data rates may apply. Reply STOP to opt out, HELP for help.</span> ' +
                                     '<a id="uc-rsvp-privacy" href="https://www.sfaf.org/privacy-policy/" target="_blank" rel="noopener" data-uc-w="privacy">Privacy policy</a></p>' +
                             '</fieldset></div>' +
                         // STAY IN TOUCH (3.124.0): the SFAF box, then one per
@@ -2013,6 +2014,9 @@
     function syncTexts() {
         var on = !!textChannel();
         $('#uc-rsvp-text-consent').prop('hidden', !on);
+        // WhatsApp has its own consent line (3.132.0).
+        $('#uc-rsvp-sms-consent').prop('hidden', textChannel() === 'whatsapp');
+        $('#uc-rsvp-wa-consent').prop('hidden', textChannel() !== 'whatsapp');
         $('#uc-rsvp-phone').prop('required', on).attr('aria-required', on ? 'true' : null);
     }
     function phoneUsable(raw) {
