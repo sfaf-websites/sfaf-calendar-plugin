@@ -188,7 +188,6 @@ $date_en = sfaf_ap_date( '2026-12-01', 'full', 'en' );
 $date_es = sfaf_ap_date( '2026-12-01', 'full', 'es' );
 $time_en = sfaf_ap_time( '10:00', true, 'en' );
 $time_es = sfaf_ap_time( '10:00', true, 'es' );
-rt( 'A: the date has its weekday', 0 === strpos( $date_en, 'Tuesday, ' ) && 0 === strpos( $date_es, 'martes, ' ) );
 rt( "A: the English text in Mark's words",
     "SFAF: You're registered for Coffee & Conversation on $date_en at $time_en, 1035 Market St. Details: https://resources.sfaf.org/events/900/ Can't make it? Cancel here: " . $cancel( $ana->token ) . ' Reply STOP to opt out.'
     === ( $by['+14155550101']['Body'] ?? '' ) );
@@ -201,6 +200,9 @@ $vc = json_decode( (string) ( $by['+14155550103']['ContentVariables'] ?? '' ), t
 rt( 'A: WhatsApp has the six blanks', is_array( $vb ) && array( '1', '2', '3', '4', '5', '6' ) === array_map( 'strval', array_keys( $vb ) ) );
 rt( 'A: {{1}} name, {{2}} date with weekday, {{3}} time, {{4}} place, {{5}} event page',
     is_array( $vc ) && 'Coffee & Conversation' === $vc['1'] && $date_en === $vc['2'] && $time_en === $vc['3'] && '1035 Market St' === $vc['4'] && 'https://resources.sfaf.org/events/900/' === $vc['5'] );
+rt( 'A: the date has its weekday, in the text and in {{2}}', 0 === strpos( $date_en, 'Tuesday, ' ) && 0 === strpos( $date_es, 'martes, ' )
+    && is_array( $vc ) && 0 === strpos( (string) $vc['2'], 'Tuesday, ' ) && is_array( $vb ) && 0 === strpos( (string) $vb['2'], 'martes, ' )
+    && false !== strpos( $by['+14155550101']['Body'] ?? '', ' on Tuesday, ' ) );
 rt( "A: {{6}} is the person's own cancel link", is_array( $vb ) && $cancel( $beto->token ) === $vb['6'] && $cancel( $cruz->token ) === $vc['6'] );
 rt( 'A: Spanish in the Spanish template, English in the English', tw_hx( '2' ) === ( $by['+14155550102']['ContentSid'] ?? '' ) && tw_hx( '1' ) === ( $by['+14155550103']['ContentSid'] ?? '' ) );
 rt( 'A: the Spanish blanks are Spanish', is_array( $vb ) && $date_es === $vb['2'] && $time_es === $vb['3'] );
@@ -284,7 +286,8 @@ rt( 'B: the panel has the two confirmation boxes', 2 === $px->query( '//input[@d
     && 1 === $px->query( '//input[@name="twilio_wa_confirmation_en"]' )->length && 1 === $px->query( '//input[@name="twilio_wa_confirmation_es"]' )->length );
 rt( 'B: labelled with the template names', false !== strpos( $panel, 'sfaf_event_confirmation, English' ) && false !== strpos( $panel, 'sfaf_event_confirmation, Spanish' ) );
 rt( 'B: and say they are on', false !== strpos( $panel, 'WhatsApp confirmations are on.' ) );
-rt( 'B: the boxes keep what was saved', tw_hx( '1' ) === $px->query( '//input[@name="twilio_wa_confirmation_en"]' )->item( 0 )->getAttribute( 'value' ) );
+$saved_box = $px->query( '//input[@name="twilio_wa_confirmation_en"]' )->item( 0 );
+rt( 'B: the boxes keep what was saved', $saved_box && tw_hx( '1' ) === $saved_box->getAttribute( 'value' ) );
 rt( 'B: both are credentials, never uc_settings', 'text' === SFAF_Credentials::type( 'twilio_wa_confirmation_en' ) && 'text' === SFAF_Credentials::type( 'twilio_wa_confirmation_es' ) );
 tw_wa( false );
 $panel = rt_cap( function () { SFAF_Texts::render_panel(); } );
@@ -375,7 +378,10 @@ $side_html = $side ? $side->ownerDocument->saveHTML( $side ) : '';
 rt( 'E: the page drew (' . substr( $html, 0, 80 ) . ')', '' !== $side_html );
 rt( 'E: "This event has ended." in the sidebar card', 1 === $xp->query( '//aside//*[@data-uc-ended]//p[contains(@class,"uc-ended-line") and normalize-space(.)="This event has ended."]' )->length );
 rt( 'E: no Register button and no RSVP form', 0 === $xp->query( '//*[contains(@class,"uc-rsvp-btn")]' )->length && false === strpos( $html, 'data-event-id' ) );
-rt( 'E: no Add to Calendar', false === strpos( $html, 'uc-addcal' ) );
+/* Add to Calendar shows only without RSVPs, so it is asked of an event without them. */
+$cal_past = ev( array( '_uc_event_date' => '2026-01-08', '_uc_start_time' => '18:00' ), 'publish', 'Open house' );
+$cal_soon = ev( array( '_uc_event_date' => date( 'Y-m-d', strtotime( '+8 days' ) ), '_uc_start_time' => '18:00' ), 'publish', 'Open house' );
+rt( 'E: no Add to Calendar', false === strpos( rt_page( $cal_past ), 'uc-addcal' ) && false !== strpos( rt_page( $cal_soon ), 'uc-addcal' ) );
 $links = $xp->query( '//aside//*[@data-uc-ended-dates]//a' );
 $hrefs = array();
 $words = array();
