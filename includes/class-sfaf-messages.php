@@ -984,7 +984,8 @@ class SFAF_Messages {
         if ( ! empty( $parts['calendar'] ) ) {
             $c       = $parts['calendar'];
             $buttons = array();
-            if ( ! empty( $c['gcal'] ) ) { $buttons[] = SFAF_Email::button( $c['gcal'], self::label( 'google', $lang ), 'primary', true, true ); }
+            // Outlined once Join the event holds the one yellow (3.135.0).
+            if ( ! empty( $c['gcal'] ) ) { $buttons[] = SFAF_Email::button( $c['gcal'], self::label( 'google', $lang ), SFAF_Email::has_primary( $html ) ? 'outline' : 'primary', true, true ); }
             if ( ! empty( $c['ics'] ) )  { $buttons[] = SFAF_Email::button( $c['ics'], self::label( 'apple', $lang ), 'outline', true, true ); }
             if ( $buttons ) {
                 $html .= SFAF_Email::label( self::label( $c['label'], $lang ) );
@@ -997,7 +998,7 @@ class SFAF_Messages {
 
         if ( ! empty( $parts['event_url'] ) ) {
             if ( ! empty( $parts['event_button'] ) ) {
-                $html .= SFAF_Email::button( $parts['event_url'], self::label( 'see_event', $lang ), 'primary' );
+                $html .= SFAF_Email::button( $parts['event_url'], self::label( 'see_event', $lang ), SFAF_Email::has_primary( $html ) ? 'outline' : 'primary' );
             } else {
                 $html .= SFAF_Email::link_para( $parts['event_url'], self::label( 'see_event', $lang ) );
             }

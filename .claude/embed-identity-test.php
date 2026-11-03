@@ -19,7 +19,8 @@
  *      except embed.js's EMBED_JS_VERSION line, and the caladmin files in
  *      CALADMIN_ONLY, which no public calendar page loads.
  *
- * BASE is the release compared against: 3.133.0's released commit from 3.134.0
+ * BASE is the release compared against: 3.134.0's released commit from 3.135.0
+ * (3.133.0's, 87d3fc0, for 3.134.0)
  * (3.132.0's, a0c4606, for 3.133.0)
  * (3.131.0's, b982f9e, for 3.132.0)
  * (3.130.0's, d39f9ec, for 3.131.0)
@@ -50,15 +51,15 @@
  * name, in ALLOWED or ALLOWED_FILES.
  */
 
-const BASE      = '87d3fc0';
-const BASE_NAME = '3.133.0';
+const BASE      = '9b2eaa4';
+const BASE_NAME = '3.134.0';
 
 /* Files under public/ and templates/ a release means to change, as path =>
    why. Probe A still compares every embed answer, so none of these can reach
    the embed unseen. */
 const ALLOWED_FILES = array(
-    'public/js/calendar.js'         => '3.134.0: the Terms link beside the privacy policy on the RSVP form',
-    'templates/single-uc_event.php' => '3.134.0: an ended event\'s page says so in place of registering',
+    // None in 3.135.0: its changes are caladmin, WP admin, the request form and email.
+    // 3.134.0 named public/js/calendar.js, the Terms link, and templates/single-uc_event.php, an ended event's page.
     // None in 3.133.0: the RSVP list is portal.css and portal.js, CALADMIN_ONLY.
     // 3.132.0 named public/js/calendar.js, WhatsApp's own consent line.
     // 3.131.0 named public/js/calendar.js, Text or WhatsApp from the moment the form opens.

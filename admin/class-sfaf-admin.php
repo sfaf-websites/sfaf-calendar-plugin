@@ -575,7 +575,7 @@ class SFAF_Admin {
                     <?php // Slow: it does the real work synchronously, so the
                           // button says it is working rather than sitting there
                           // looking unpressed. ?>
-                    <button type="submit" class="button button-primary" data-uc-busy="Running&hellip;">Run now</button>
+                    <button type="submit" class="button" data-uc-busy="Running&hellip;">Run now</button>
                 </form>
             </div>
 
@@ -839,7 +839,7 @@ class SFAF_Admin {
                             <input type="email" name="uc_test_to" id="uc_test_to" class="regular-text"
                                    value="<?php echo esc_attr( wp_get_current_user()->user_email ); ?>" required />
                         </p>
-                        <p><button type="submit" class="button button-primary" data-uc-busy="Sending&hellip;">Send it</button></p>
+                        <p><button type="submit" class="button" data-uc-busy="Sending&hellip;">Send it</button></p>
                     </form>
 
                     <p class="description">

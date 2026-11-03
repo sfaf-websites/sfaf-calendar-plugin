@@ -5319,10 +5319,25 @@ body.uc-modal-open { overflow: hidden; }
 .uc-rcp-who summary { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
 .uc-rsvp-table .uc-checkin-form { display: inline; margin: 0; }
 .uc-rsvp-table .uc-checkin-btn[aria-pressed="true"] { border-color: var(--uc-accent-text); color: var(--uc-accent-text); background: var(--uc-band); }
-.uc-texts-mark {
+/* The EN or ES beside a registrant (3.135.0) is the same small mark. */
+.uc-texts-mark,
+.uc-lang-tag {
     display: inline-block; margin-left: 6px; padding: 0 6px; border: 1px solid var(--p-border); border-radius: 99px;
     font-size: 12px; font-weight: 400; line-height: 1.5; color: var(--p-muted); background: var(--p-bg);
 }
+.uc-lang-tag { font-weight: 600; letter-spacing: .04em; }
+/* The Events list's RSVP count as a button (3.135.0). */
+.uc-rsvp-count-btn { white-space: nowrap; }
+/* Text registrants: the count under the box and what WhatsApp takes (3.135.0). */
+.uc-tr-count { margin: 0; }
+.uc-tr-wa-help > summary { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--uc-accent-text); list-style: none; }
+.uc-tr-wa-help > summary::-webkit-details-marker { display: none; }
+.uc-tr-wa-help > summary:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; border-radius: 4px; }
+.uc-tr-wa-help-body { margin-top: 8px; padding: 12px 14px; border: 1px solid var(--p-border); border-radius: 8px; font-size: 13px; line-height: 1.5; }
+.uc-tr-wa-help-body p { margin: 0 0 4px; }
+.uc-tr-wa-help-body .uc-tr-wa-help-head { font-weight: 600; }
+.uc-tr-wa-help-body ul { margin: 0 0 10px; padding-left: 18px; }
+.uc-tr-wa-help-body p:last-child { margin: 0; }
 .uc-rsvp-table tr[hidden] { display: none; }
 
 /* ---------------------------------------------------------------------------

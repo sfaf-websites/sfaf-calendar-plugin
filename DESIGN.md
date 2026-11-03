@@ -179,6 +179,25 @@ states rather than brand, for the reason the block above gives: what a visitor
 sees on the public calendar is the palette's business, and caladmin is a set of
 controls for one person doing a job. **Nothing on the public side changes**, and
 yellow stays the single primary action there.
+
+**A contributor's draft row (3.135.0)** ends in Submit for Review where it would
+end in Publish, so it takes Publish's green and size; Save draft keeps the
+in-between yellow.
+
+#### The yellow audit (3.135.0), Mark's call on each
+
+- **A dialog's confirming button takes its trigger's colour.** Publish, Approve
+  and Save and email them confirm in green `.uc-btn-go`; Reject in red. Mail
+  that goes with a cancellation is red `.uc-btn-danger` on both steps: Cancel and
+  email them, and the series' Cancel these and email the N people. Reassign and
+  remove is red. Put it back on and tell them stays yellow.
+- **One yellow per screen; the rest are the grey secondary.** Grey since 3.135.0:
+  the Save on every Venues and Users row, Preferences' password Save, the RSVP
+  list's Export CSV, Save settings and Save attendance, the Events list's bulk
+  buttons, Organizers' Add organizer and row Save, FAQ sets' Create set and Save
+  set, Add event's Fill these in and Restore, the form links' Done, and the
+  request form's Fill these in. In WP admin the plain `.button`: Save Twilio
+  settings, Mailchimp's Save connection, and Automation's Run now and Send it.
 ### Teal is the single structural accent
 
 One accent, used for structure: focus rings, the active indicator, heading
@@ -1748,6 +1767,17 @@ secondary button and Delete as the red text link, and the new-tag form in
 `.uc-cat-new` with Add tag the primary yellow in its own action row, 14px under
 the field. `component-sweep.php` holds every screen to this (CLAUDE.md 7).
 
+### The language tag, the RSVP count button and Text registrants' count (3.135.0)
+
+Built from components already on the page; nothing here is a new colour.
+
+| Part | What it is | Values |
+|---|---|---|
+| EN or ES | `.uc-lang-tag`, the `.uc-texts-mark` pill, after the name on the RSVP list, its waitlist and both recipient lists | 12px/600, `--p-muted` on `--p-bg`, `--p-border` edge, .04em tracking; "English" or "Spanish" for a screen reader |
+| 12 RSVPs, View RSVPs | the Events list's RSVP cell, `.uc-btn.uc-btn-sm`, on one line | the standard grey secondary; 44px tall on a phone |
+| 0 of 600 characters. By text, about 1 piece. | `.uc-hint.uc-tr-count` under the message box | the hint's type |
+| What can I send by WhatsApp? | a closed `details` under the count, the chevron then the words | 13px/600 `--uc-accent-text`; open, a `--p-border` box, 8px radius, 12px by 14px |
+
 ---
 
 ## 5. CSS discipline
@@ -1951,7 +1981,9 @@ which builds every message and fails on any of it.
   client shows an empty message without one, and it scores badly with filters.
   The test checks that every fact in the HTML is also in the text.
 - **One yellow button per message**, and `#373433` is the only text color on it.
-  Links and the outline button are `#0E7680`. The palette is closed, and the
+  Links and the outline button are `#0E7680`. An online event's Join the event
+  is the yellow; Add to Google and See the event page after it are outlined
+  (3.135.0, `SFAF_Email::has_primary()`). The palette is closed, and the
   test rejects any hex outside it.
 - **A picture of the event does not go in.** Two large images push the date,
   the time and the address below the fold on a phone, which is the part

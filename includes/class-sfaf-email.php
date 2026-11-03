@@ -337,6 +337,14 @@ class SFAF_Email {
     }
 
     /**
+     * Whether $html already holds a yellow button (3.135.0), so a later one is
+     * drawn outlined: an online event's Join the event keeps the one yellow.
+     */
+    public static function has_primary( $html ) {
+        return false !== strpos( (string) $html, 'bgcolor="' . self::C_YELLOW . '" style="background-color:' . self::C_YELLOW . '; border:2px solid ' . self::C_YELLOW . ';"' );
+    }
+
+    /**
      * Two buttons side by side and the SAME WIDTH AS EACH OTHER.
      *
      * WHY EQUAL WIDTH IS A METHOD AND NOT A STYLE ON A CALLER. The pair used to

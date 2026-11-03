@@ -335,7 +335,7 @@ $btn = $x->query( '//button[@data-uc-tr-send]' )->item( 0 );
 rt( 'D: the button counts only those it can reach', $btn && 'Send to 1 person? A text cannot be recalled.' === $btn->getAttribute( 'data-uc-confirm' ) && ! $btn->hasAttribute( 'disabled' ) );
 $form = $x->query( '//form[@data-uc-tr-form]' )->item( 0 );
 rt( 'D: the form posts text_registrants_send with its nonce', $form && 1 === $x->query( './/input[@name="uc_action" and @value="text_registrants_send"]', $form )->length && 1 === $x->query( './/input[@name="uc_nonce"]', $form )->length );
-rt( 'D: the box is limited to 300 characters', 1 === $x->query( '//textarea[@name="tr_message" and @maxlength="300"]' )->length );
+rt( 'D: the box is limited to 600 characters (3.135.0)', 1 === $x->query( '//textarea[@name="tr_message" and @maxlength="600"]' )->length );
 $GLOBALS['tw_calls'] = array();
 $empty = SFAF_Texts::send_update( 900, "   \n ", 1 );
 rt( 'D: an empty message sends nothing and logs nothing', ! empty( $empty['error'] ) && 0 === count( $GLOBALS['tw_calls'] ) && array() === SFAF_Texts::log( 900 ) );
@@ -345,7 +345,7 @@ rt( 'D: the update reads as the template does', 'SFAF: Update about Coffee & Con
 $log = SFAF_Texts::log( 900 );
 rt( 'D: the send is logged with who, the message and the counts', 1 === count( $log ) && 1 === $log[0]['by'] && 'Doors open at 9:45. Bring a friend!' === $log[0]['message'] && 1 === $log[0]['sms'] );
 rt( 'D: the log says what happened', 'Sent by text to 1.' === SFAF_Texts::said( $log[0] ) );
-rt( 'D: a long message is cut at 300', 300 === strlen( SFAF_Texts::clean_message( str_repeat( 'a', 400 ) ) ) );
+rt( 'D: a long message is cut at 600 (3.135.0)', 600 === strlen( SFAF_Texts::clean_message( str_repeat( 'a', 700 ) ) ) );
 $html = rt_cap( function () use ( $portal, $me ) { kit_call( 'SFAF_Portal', 'render_text_registrants', $portal, array( $me, 900 ) ); } );
 rt( 'D: the log is shown under the box', false !== strpos( $html, 'Texts sent from this list' ) && false !== strpos( $html, 'Doors open at 9:45. Bring a friend!' ) );
 tw_fresh();

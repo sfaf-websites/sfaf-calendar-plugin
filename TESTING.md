@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 418 items.** Quick 337, needs real conditions 76, blocked on other
+**Outstanding: 422 items.** Quick 340, needs real conditions 77, blocked on other
 people 5.
 
 ---
@@ -4608,6 +4608,52 @@ reminder arrives by email and text.
 **Why it needs a person:** the real site's statuses, caches, mail and Twilio;
 the check ran the real code on invented events.
 
+### 1.340 One yellow per screen, and the dialogs' colours (3.135.0)
+
+Signed in to caladmin as an administrator, open Venues, Users, Preferences,
+an event's RSVP list (with Registration settings open), the Events list with
+two events ticked, Organizers with one row's Edit open, FAQ sets, and Add
+event with a series picked: each shows at most one yellow button, the rest
+grey. On an event with people registered, press **Cancel event**: "Cancel and
+email them" is red, and red again on the next step. On a series' remove
+screen with people registered, "Cancel these and email the N people" is red.
+Change an event's time with people registered and save: "Save and email them"
+is green. Press **Publish** on a draft missing a field: the dialog's Publish
+is green. Approve a community submission: the dialog's Approve is green. In
+WP admin, Settings and Automation: only Save All Settings is yellow. Signed in
+as a contributor, a new draft ends in a green **Submit for Review**. Open the
+public request form with a series picked: Fill these in is grey. Register for
+an online event with your own address: in the confirmation, Join the event is
+the only yellow and Add to Google is outlined; the morning-of reminder's See
+the event page is outlined too.
+
+**Why it needs a person:** the real screens with the site's own brand colour
+setting and real mail clients; the checks rendered them with the default.
+
+### 1.341 Text registrants' count and "What can I send by WhatsApp?" (3.135.0)
+
+On an event where somebody chose Text, open **Text registrants** and type:
+under the box, "N of 600 characters." counts as you type, and "By text, about
+1 piece." becomes 2 once the whole text passes 160 characters (the event's
+name and the words around the message are counted too). Add one á: the pieces
+go up. The box stops at 600. With WhatsApp on, **What can I send by
+WhatsApp?** under the count opens the OK to send and Not OK lists and the line
+about blocking; with WhatsApp off it is not there.
+
+**Why it needs a person:** the live Twilio settings decide what shows.
+
+### 1.342 EN and ES beside each registrant, and the RSVP button (3.135.0)
+
+On an event with somebody who registered in Spanish: the RSVP list shows ES
+beside their name and EN beside the others, and so do the lists in **Email
+registrants** and **Text registrants**, and the waitlist. On the Events list,
+the RSVP column of an event that takes RSVPs reads "12 RSVPs" (its count) or
+"View RSVPs" as a small grey button that opens its list; an event with
+registration switched off, or on another site, shows the plain number.
+
+**Why it needs a person:** real registrations from before 3.135.0, some with
+no language stored, which show the event's.
+
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -5716,6 +5762,17 @@ WhatsApp: the confirmation arrives on WhatsApp with your own cancel link in
 the last blank.
 
 **Why it needs a person:** Meta's approval and a real WhatsApp account.
+
+### 2.79 A long Text registrants message, by text and by WhatsApp (3.135.0)
+
+With your own number registered twice, once choosing Text and once (another
+number) WhatsApp, send a Text registrants message of about 500 characters.
+By text it arrives as one message on the phone, in about the number of pieces
+the count said (Twilio's log shows the segments); by WhatsApp it arrives whole
+in the update template, not cut and not refused by Meta.
+
+**Why it needs a person:** real carriers join the pieces, and Meta decides
+whether a long variable is accepted.
 
 ## 3. Blocked on other people
 

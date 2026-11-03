@@ -72,7 +72,8 @@ class SFAF_Texts {
     const REST_NAMESPACE = 'sfaf-calendar/v1';
     const REST_ROUTE     = '/twilio/incoming';
     const API_BASE       = 'https://api.twilio.com/2010-04-01/Accounts/';
-    const MAX_MESSAGE    = 300;
+    /** Text registrants' box: WhatsApp's 600 (3.135.0, 300 before). A text goes as more pieces. */
+    const MAX_MESSAGE    = 600;
     const PRIVACY_URL    = 'https://www.sfaf.org/privacy-policy/';
 
     /** Settings, as credential keys. The token is sealed; the rest are identifiers. */
@@ -684,6 +685,69 @@ class SFAF_Texts {
         return $out;
     }
 
+    /**
+     * How many pieces a text goes as (3.135.0), roughly: 160 characters to one
+     * piece and 153 to each of several, or 70 and 67 once one character is
+     * outside the GSM alphabet, an accented letter like á or an emoji. portal.js
+     * counts the same way under the box.
+     */
+    public static function pieces( $text ) {
+        $text = (string) $text;
+        if ( '' === $text ) {
+            return 0;
+        }
+        $basic = '@£$¥èéùìòÇØøÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !"#¤%&\'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà' . "\n\r";
+        $ext   = '^{}\\[~]|€';
+        // No mbstring: WordPress does not need it. A whole UTF-8 character
+        // can only match itself, so strpos() is enough.
+        $chars = preg_split( '//u', $text, -1, PREG_SPLIT_NO_EMPTY );
+        $n     = 0;
+        $gsm   = true;
+        foreach ( $chars as $c ) {
+            if ( false !== strpos( $basic, $c ) ) {
+                $n++;
+            } elseif ( false !== strpos( $ext, $c ) ) {
+                $n += 2;
+            } else {
+                $gsm = false;
+                break;
+            }
+        }
+        if ( $gsm ) {
+            return $n <= 160 ? 1 : (int) ceil( $n / 153 );
+        }
+        // UCS-2 counts UTF-16 units, so an emoji, four bytes, is two.
+        $u = 0;
+        foreach ( $chars as $c ) {
+            $u += strlen( $c ) > 3 ? 2 : 1;
+        }
+        return $u <= 70 ? 1 : (int) ceil( $u / 67 );
+    }
+
+    /**
+     * What Text registrants puts around the typed words in a text, one pair
+     * per language of the people it texts (3.135.0), for the counter.
+     *
+     * @return array<int,array{0:string,1:string}>
+     */
+    public static function sms_wrap( $event_id ) {
+        $langs = array();
+        foreach ( self::plan( $event_id ) as $p ) {
+            if ( 'sms' === $p['state'] ) {
+                $langs[ self::lang_of( $p['row'] ) ] = true;
+            }
+        }
+        $out  = array();
+        $mark = 'SFAFTYPEDWORDS.';
+        foreach ( array_keys( $langs ) as $lang ) {
+            $v     = array_merge( self::facts( (int) $event_id, $lang ), array( 'message' => $mark ) );
+            $full  = self::sms( self::words( 'update', $lang, $v ), $lang );
+            $at    = strpos( $full, $mark );
+            $out[] = array( substr( $full, 0, $at ), substr( $full, $at + strlen( $mark ) ) );
+        }
+        return $out;
+    }
+
     /** A typed message: one line of plain text, at most MAX_MESSAGE characters. */
     public static function clean_message( $raw ) {
         $s = trim( preg_replace( '/\s+/u', ' ', wp_strip_all_tags( (string) $raw ) ) );
@@ -974,7 +1038,7 @@ class SFAF_Texts {
                     </div>
                     <p class="description">In Twilio, set this as the Messaging Service's incoming message webhook, and the WhatsApp sender's, with HTTP POST.</p>
                     <p class="uc-mc-buttons">
-                        <button type="submit" class="button button-primary">Save Twilio settings</button>
+                        <button type="submit" class="button">Save Twilio settings</button>
                     </p>
                 </form>
                 <?php if ( $old['rows'] ) : ?>

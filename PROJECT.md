@@ -5666,9 +5666,21 @@ reminder's fallbacks (`facts()`), {{6}} the event page without a token.
 `SFAF_Reminders::send_for_event()` after the emails and before the event is
 marked done, claimed in the reminder ledger under `text|` and the number, so
 no second run sends it again; and **Text registrants**, a typed line of up to
-300 characters, logged in `_uc_registrant_text_log`. One message per number,
-confirmed registrations only, in the person's form language, else the
-event's.
+600 characters (`MAX_MESSAGE`, 300 until 3.135.0: WhatsApp's limit, and a
+text goes as more pieces), logged in `_uc_registrant_text_log`. One message
+per number, confirmed registrations only, in the person's form language, else
+the event's.
+
+**The count under Text registrants' box (3.135.0)** says the characters of
+600 and, when anybody it texts chose Text, about how many pieces the whole
+text goes as, from `sms_wrap()`, the words around the message as `sms()`
+sends them, once per language of those texted, the larger. `pieces()` is the
+arithmetic, and `initTextCount()` in portal.js does the same: 160 GSM
+characters to one piece and 153 each past that; one character outside the GSM
+alphabet (á, í, ó, ú or an emoji; é and ñ are inside it) makes it 70 and 67,
+counted in UTF-16 units. No mbstring: WordPress does not require it. With
+WhatsApp on, **What can I send by WhatsApp?** under the count opens Mark's
+list of what WhatsApp takes and what it treats as promotional.
 
 **Replies and STOP** come to the REST route `sfaf-calendar/v1/twilio/incoming`,
 refused unless Twilio's signature checks with the Auth Token, against both the
@@ -6937,7 +6949,10 @@ unticks them; **By answer**, an option of one of the event's questions, and
 **Didn't get**, one of the sends in the log, each ticking exactly the people
 who match and unticking the rest; Tick all and Clear all; and the count of
 who and how, "Sending to 4 people: 3 by text, 1 by WhatsApp.", which Send's
-question follows. The form posts `rm_ids[]` or `tr_ids[]` with `rm_picked` or
+question follows. **Each row, and each name on the RSVP list and its
+waitlist, carries EN or ES (3.135.0)**, `SFAF_Portal::lang_tag()` from
+`SFAF_Texts::lang_of()`: the language the person registered in, else the
+event's, which is the language their messages go in. The form posts `rm_ids[]` or `tr_ids[]` with `rm_picked` or
 `tr_picked`; `picked_ids()` reads null for a form without the list (everybody,
 as before) and an empty list for nobody ticked, which both routes refuse. The
 team and the organizer's copy are not registrants and are not narrowed.

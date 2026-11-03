@@ -1076,7 +1076,7 @@ class SFAF_Mailchimp {
                         </div>
                         <p class="description">Optional. Separate tags with commas.</p>
                         <p class="uc-mc-buttons">
-                            <button type="submit" class="button button-primary">Save connection</button>
+                            <button type="submit" class="button">Save connection</button>
                             <a class="button" href="<?php echo esc_url( remove_query_arg( 'mc_edit' ) . '#uc-mailchimp' ); ?>">Cancel</a>
                         </p>
                     </form>

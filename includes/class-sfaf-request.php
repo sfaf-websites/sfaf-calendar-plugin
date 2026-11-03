@@ -1881,7 +1881,7 @@ class SFAF_Request {
                             </p>
                             <div class="uc-prefill-opts" data-uc-prefill-opts></div>
                             <div class="uc-prefill-actions">
-                                <button type="button" class="uc-btn uc-btn-sm uc-btn-primary" data-uc-prefill-apply>Fill these in</button>
+                                <button type="button" class="uc-btn uc-btn-sm" data-uc-prefill-apply>Fill these in</button>
                                 <button type="button" class="uc-btn uc-btn-sm" data-uc-prefill-none>Start from scratch</button>
                             </div>
                             <p class="uc-flash uc-prefill-said" data-uc-prefill-said role="status" hidden></p>

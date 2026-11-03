@@ -7622,7 +7622,7 @@ class SFAF_Portal {
                      * a sentence.
                      */
                     ?>
-                    <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary"
+                    <button type="submit" class="uc-btn uc-btn-sm"
                             name="uc_do" value="categorize"
                             data-uc-tick-submit
                             data-uc-confirm="Add that category to the ticked events? They keep the categories they already have."
@@ -7665,7 +7665,7 @@ class SFAF_Portal {
                      * a rule nobody wrote.
                      */
                     ?>
-                    <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary"
+                    <button type="submit" class="uc-btn uc-btn-sm"
                             name="uc_do" value="publish" formnovalidate
                             data-uc-tick-submit data-uc-tick-eligible
                             data-uc-confirm="<?php echo esc_attr(
@@ -7704,7 +7704,7 @@ class SFAF_Portal {
                         <input type="hidden" name="bulk_access_present" value="1" />
                         <?php $this->render_access_choices( SFAF_Teams::all(), $this->access_people_choices(), array(), array(), 'bulk_access' ); ?>
                         <div class="uc-bulk-cat-go">
-                            <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary"
+                            <button type="submit" class="uc-btn uc-btn-sm"
                                     name="uc_do" value="team" formnovalidate
                                     data-uc-tick-submit
                                     data-uc-confirm="Set this team and access on the ticked events? It replaces what each of them had."
@@ -7896,10 +7896,16 @@ class SFAF_Portal {
                          * explains itself.
                          */
                         $rsvp_n = (int) sfaf_get_rsvp_count( $id );
-                        if ( $this->can_edit_event( $user, $id ) ) {
-                            echo '<a class="uc-tlink" href="'
+                        /*
+                         * A SMALL SECONDARY BUTTON FROM 3.135.0, "12 RSVPs" or
+                         * "View RSVPs" at none, on an event that takes RSVPs
+                         * here, for whoever may open its list. Anything else
+                         * keeps the plain number.
+                         */
+                        if ( sfaf_event_takes_rsvps( $id ) && $this->can_edit_event( $user, $id ) ) {
+                            echo '<a class="uc-btn uc-btn-sm uc-rsvp-count-btn" data-uc-rsvp-count-btn href="'
                                 . esc_url( add_query_arg( 'event_id', $id, $this->url( 'rsvps' ) ) ) . '">'
-                                . (int) $rsvp_n . '</a>';
+                                . esc_html( $rsvp_n ? sprintf( '%d %s', $rsvp_n, 1 === $rsvp_n ? 'RSVP' : 'RSVPs' ) : 'View RSVPs' ) . '</a>';
                         } else {
                             echo (int) $rsvp_n;
                         }
@@ -8759,7 +8765,7 @@ class SFAF_Portal {
                 </p>
                 <div class="uc-prefill-opts" data-uc-prefill-opts></div>
                 <div class="uc-prefill-actions">
-                    <button type="button" class="uc-btn uc-btn-sm uc-btn-primary" data-uc-prefill-apply>Fill these in</button>
+                    <button type="button" class="uc-btn uc-btn-sm" data-uc-prefill-apply>Fill these in</button>
                     <button type="button" class="uc-btn uc-btn-sm" data-uc-prefill-none>Start from scratch</button>
                 </div>
                 <p class="uc-notice" data-uc-prefill-said role="status" hidden></p>
@@ -11571,7 +11577,7 @@ class SFAF_Portal {
                     </p>
 
                     <div class="uc-form-actions">
-                        <button type="submit" name="notify_choice" value="send" class="uc-btn uc-btn-primary">
+                        <button type="submit" name="notify_choice" value="send" class="uc-btn uc-btn-danger">
                             Cancel these and email the <?php echo (int) $told_n; ?>
                             <?php echo esc_html( 1 === $told_n ? 'person' : 'people' ); ?>
                         </button>
@@ -11846,7 +11852,7 @@ class SFAF_Portal {
                     </label>
                     <?php $this->render_review_team_field( '' ); ?>
                     <div class="uc-form-actions">
-                        <button type="submit" class="uc-btn uc-btn-primary">Add organizer</button>
+                        <button type="submit" class="uc-btn">Add organizer</button>
                     </div>
                 </form>
             </div>
@@ -11928,7 +11934,7 @@ class SFAF_Portal {
                                     <?php $this->render_review_team_field( SFAF_Submissions::organizer_review_team( $org->term_id ) ); ?>
                                     <?php $this->render_slug_field( 'organizer_slug', $org->slug ); ?>
                                     <div class="uc-form-actions">
-                                        <button type="submit" class="uc-btn uc-btn-primary">Save</button>
+                                        <button type="submit" class="uc-btn">Save</button>
                                     </div>
                                 </form>
 
@@ -13046,7 +13052,7 @@ class SFAF_Portal {
                 <?php endif; ?>
 
                 <div class="uc-venue-actions">
-                    <button class="uc-btn uc-btn-sm uc-btn-primary" type="submit"><?php echo $venue ? 'Save venue' : 'Add venue'; ?></button>
+                    <button class="uc-btn uc-btn-sm" type="submit"><?php echo $venue ? 'Save venue' : 'Add venue'; ?></button>
                     <?php if ( $venue ) : ?>
                         <span class="uc-muted">
                             <?php echo (int) $count; ?> <?php echo esc_html( _n( 'event', 'events', $count ) ); ?> here
@@ -15699,7 +15705,7 @@ class SFAF_Portal {
                      */
                     ?>
                     <?php if ( $role === 'contributor' && $this->contributor_status( $user ) === 'pending' ) : ?>
-                        <button type="submit" form="<?php echo esc_attr( $form_id ); ?>" name="save_mode" value="review" class="uc-btn uc-btn-primary">Submit for Review</button>
+                        <button type="submit" form="<?php echo esc_attr( $form_id ); ?>" name="save_mode" value="review" class="uc-btn uc-btn-go uc-editor-publish">Submit for Review</button>
                     <?php else : ?>
                         <?php
                         /*
@@ -18941,7 +18947,7 @@ class SFAF_Portal {
                     <a href="<?php echo esc_url( $this->url( 'events/edit/' . (int) $event_id ) ); ?>" class="uc-btn">Edit event</a>
                 <?php endif; ?>
                 <a href="<?php echo esc_url( $this->url( 'events' ) ); ?>" class="uc-btn">&larr; Events</a>
-                <a href="<?php echo esc_url( $export ); ?>" class="uc-btn uc-btn-primary">Export CSV</a>
+                <a href="<?php echo esc_url( $export ); ?>" class="uc-btn">Export CSV</a>
             </div>
         </div>
 
@@ -19077,7 +19083,7 @@ class SFAF_Portal {
                     ?>
                     <div class="uc-form-actions">
                         <a class="uc-btn" href="<?php echo esc_url( $this->url( 'events/edit/' . (int) $event_id ) ); ?>">Edit the whole event</a>
-                        <button type="submit" class="uc-btn uc-btn-primary">Save settings</button>
+                        <button type="submit" class="uc-btn">Save settings</button>
                     </div>
                 </form>
             </details>
@@ -19190,7 +19196,7 @@ class SFAF_Portal {
                                 <span class="uc-field-label">People attended</span>
                                 <input type="number" name="attendance" min="0" step="1" inputmode="numeric" value="<?php echo null === $attended ? '' : (int) $attended; ?>" />
                             </label>
-                            <button type="submit" class="uc-btn uc-btn-primary">Save</button>
+                            <button type="submit" class="uc-btn">Save</button>
                         </form>
                     <?php endif; ?>
                 </div>
@@ -19298,6 +19304,7 @@ class SFAF_Portal {
                             <td class="uc-rc-name"><strong><?php echo esc_html( $r->first_name ); ?></strong><?php
                                 $last = trim( (string) $r->last_name );
                                 echo '' !== $last ? ' ' . esc_html( $last ) : '';
+                                echo self::lang_tag( SFAF_Texts::lang_of( $r ) );
                             ?></td>
                             <td class="uc-rc-email<?php echo '' === (string) $r->email ? ' uc-rc-none' : ''; ?>"><?php echo '' !== (string) $r->email ? esc_html( $r->email ) : '<span class="uc-muted">&ndash;</span>'; ?></td>
                             <td class="uc-rc-phone<?php echo '' === trim( (string) $r->phone ) ? ' uc-rc-none' : ''; ?>"><?php echo esc_html( $r->phone ); ?><?php if ( '' !== (string) ( $r->text_channel ?? '' ) ) : ?> <span class="uc-texts-mark" data-uc-texts-mark="<?php echo esc_attr( $r->text_channel ); ?>"><?php echo esc_html( SFAF_Texts::channel_label( $r->text_channel ) ); ?></span><?php elseif ( ! empty( $r->text_opt_in ) ) : ?> <span class="uc-texts-mark uc-texts-mark-old" data-uc-texts-mark="old" title="Ticked &quot;Text me about this event&quot; before 3.130.0. Gets no texts.">Old text tick</span><?php endif; ?></td>
@@ -19468,6 +19475,16 @@ class SFAF_Portal {
      * @param array[] $log       the section's send log, newest first
      * @param string  $log_label 'subject' or 'message', what names a log entry
      */
+    /**
+     * The small EN or ES beside a registrant (3.135.0): the language they
+     * registered in, which is the language their messages go in.
+     */
+    private static function lang_tag( $lang ) {
+        $name = 'es' === $lang ? 'Spanish' : 'English';
+        return ' <span class="uc-lang-tag" data-uc-lang-tag="' . esc_attr( 'es' === $lang ? 'es' : 'en' ) . '" title="' . esc_attr( $name ) . '">'
+            . '<span aria-hidden="true">' . ( 'es' === $lang ? 'ES' : 'EN' ) . '</span><span class="uc-visually-hidden">' . esc_html( $name ) . '</span></span>';
+    }
+
     private function render_recipient_picker( $prefix, $event_id, $people, $log, $log_label ) {
         $answers = SFAF_Questions::option_ids_for_rows( wp_list_pluck( $people, 'id' ) );
         $qs      = SFAF_Questions::for_event( $event_id );
@@ -19532,7 +19549,7 @@ class SFAF_Portal {
                         data-uc-rcp-got="<?php echo esc_attr( implode( ' ', $got ) ); ?>"<?php echo $p['wait'] ? ' data-uc-rcp-wait hidden' : ''; ?>>
                         <label class="uc-check">
                             <input type="checkbox" name="<?php echo esc_attr( $prefix ); ?>_ids[]" value="<?php echo (int) $p['id']; ?>"<?php checked( $p['reach'] ); ?><?php disabled( ! $p['reach'] ); ?> />
-                            <span class="uc-rcp-name"><?php echo esc_html( '' !== $p['name'] ? $p['name'] : 'No name' ); ?></span>
+                            <span class="uc-rcp-name"><?php echo esc_html( '' !== $p['name'] ? $p['name'] : 'No name' ); ?></span><?php echo isset( $p['lang'] ) ? self::lang_tag( $p['lang'] ) : ''; ?>
                             <span class="uc-muted"><?php echo esc_html( implode( ' · ', array_filter( array( $p['detail'], $p['how'] ) ) ) ); ?></span>
                         </label>
                     </li>
@@ -19626,6 +19643,7 @@ class SFAF_Portal {
                 'detail' => implode( ' · ', array_filter( array( $email, trim( (string) $row->phone ) ) ) ),
                 'how' => '' === $email ? 'No email' : '', 'how_key' => 'email',
                 'reach' => '' !== $email && is_email( $email ), 'wait' => in_array( (string) $row->status, $rm_wait, true ),
+                'lang' => SFAF_Texts::lang_of( $row ),
             );
             $rm_names[ (int) $row->id ] = SFAF_RSVP::display_name( $row );
         }
@@ -19780,6 +19798,7 @@ class SFAF_Portal {
                 'id' => (int) $p['row']->id, 'name' => SFAF_RSVP::display_name( $p['row'] ),
                 'detail' => trim( (string) $p['row']->phone ), 'how' => isset( $how[ $p['state'] ] ) ? $how[ $p['state'] ] : '',
                 'how_key' => $p['state'], 'reach' => in_array( $p['state'], array( 'sms', 'whatsapp' ), true ), 'wait' => false,
+                'lang' => SFAF_Texts::lang_of( $p['row'] ),
             );
             $tr_names[ (int) $p['row']->id ] = SFAF_RSVP::display_name( $p['row'] );
         }
@@ -19810,9 +19829,49 @@ class SFAF_Portal {
                         <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
                         <label class="uc-field">
                             <span class="uc-field-label">Message</span>
-                            <textarea name="tr_message" rows="3" maxlength="<?php echo (int) SFAF_Texts::MAX_MESSAGE; ?>" required data-uc-tr-message></textarea>
-                            <span class="uc-hint"><?php echo esc_html( sprintf( 'Up to %d characters. It arrives by text as "SFAF: Update about %s:", then the message and where to email.', SFAF_Texts::MAX_MESSAGE, html_entity_decode( get_the_title( $event_id ), ENT_QUOTES, 'UTF-8' ) ) ); ?></span>
+                            <textarea name="tr_message" rows="3" maxlength="<?php echo (int) SFAF_Texts::MAX_MESSAGE; ?>" required data-uc-tr-message aria-describedby="uc-tr-count-<?php echo (int) $event_id; ?>"></textarea>
+                            <span class="uc-hint"><?php echo esc_html( sprintf( 'It arrives by text as "SFAF: Update about %s:", then the message and where to email.', html_entity_decode( get_the_title( $event_id ), ENT_QUOTES, 'UTF-8' ) ) ); ?></span>
                         </label>
+                        <?php
+                        /*
+                         * THE COUNT UNDER THE BOX (3.135.0): characters against
+                         * the 600, and for texts about how many pieces, from the
+                         * whole text as sent. portal.js keeps it; SFAF_Texts::
+                         * pieces() is the same arithmetic.
+                         */
+                        $tr_wrap = SFAF_Texts::sms_wrap( $event_id );
+                        $tr_none = $tr_wrap ? max( array_map( function ( $w ) { return SFAF_Texts::pieces( $w[0] . $w[1] ); }, $tr_wrap ) ) : 0;
+                        ?>
+                        <p class="uc-hint uc-tr-count" id="uc-tr-count-<?php echo (int) $event_id; ?>" data-uc-tr-count data-uc-tr-max="<?php echo (int) SFAF_Texts::MAX_MESSAGE; ?>" data-uc-tr-wrap="<?php echo esc_attr( wp_json_encode( $tr_wrap ) ); ?>">
+                            <span data-uc-tr-chars><?php echo esc_html( sprintf( '0 of %d characters.', SFAF_Texts::MAX_MESSAGE ) ); ?></span>
+                            <?php if ( $tr_wrap ) : ?>
+                                <span data-uc-tr-pieces><?php echo esc_html( sprintf( 'By text, about %d %s.', $tr_none, 1 === $tr_none ? 'piece' : 'pieces' ) ); ?></span>
+                                <span>Accented letters make each piece shorter.</span>
+                            <?php endif; ?>
+                        </p>
+                        <?php if ( SFAF_Texts::whatsapp_on() ) : ?>
+                            <details class="uc-tr-wa-help" data-uc-tr-wa-help>
+                                <summary><span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '14px' ) ); ?></span>What can I send by WhatsApp?</summary>
+                                <div class="uc-tr-wa-help-body">
+                                    <p class="uc-tr-wa-help-head">OK to send:</p>
+                                    <ul>
+                                        <li>Changes to the time, date or location</li>
+                                        <li>Cancellations or postponements</li>
+                                        <li>What to bring, what to expect, accessibility or parking info</li>
+                                        <li>Check-in details or directions on the day</li>
+                                    </ul>
+                                    <p class="uc-tr-wa-help-head">Not OK:</p>
+                                    <ul>
+                                        <li>Promoting other events or programs</li>
+                                        <li>Donations or fundraising</li>
+                                        <li>Surveys, feedback or &ldquo;rate this event&rdquo;</li>
+                                        <li>Newsletters or general SFAF announcements</li>
+                                        <li>&ldquo;Don&rsquo;t miss,&rdquo; &ldquo;join us for,&rdquo; or offers of any kind</li>
+                                    </ul>
+                                    <p>If WhatsApp decides a message is promotional, it may block it, and future messages too.</p>
+                                </div>
+                            </details>
+                        <?php endif; ?>
                         <?php $this->render_recipient_picker( 'tr', $event_id, $tr_people, $log, 'message' ); ?>
                         <div class="uc-form-actions">
                             <button type="submit" class="uc-btn uc-btn-go" data-uc-tr-send<?php disabled( 0 === $to ); ?>
@@ -19884,7 +19943,7 @@ class SFAF_Portal {
                         ?>
                         <tr data-uc-waitlist-row="<?php echo (int) $r->id; ?>">
                             <td><?php echo $waiting ? (int) ++$place : '<span class="uc-muted">&ndash;</span>'; ?></td>
-                            <td><strong><?php echo esc_html( SFAF_RSVP::display_name( $r ) ); ?></strong></td>
+                            <td><strong><?php echo esc_html( SFAF_RSVP::display_name( $r ) ); ?></strong><?php echo self::lang_tag( SFAF_Texts::lang_of( $r ) ); ?></td>
                             <td><?php echo '' !== (string) $r->email ? esc_html( $r->email ) : '<span class="uc-muted">No email</span>'; ?></td>
                             <td><?php echo esc_html( sfaf_ap_datetime( $r->created_at ) ); ?></td>
                             <td><span class="uc-pill uc-pill-<?php echo esc_attr( $waiting ? SFAF_Waitlist::WAITING : (string) $r->status ); ?>"><?php echo esc_html( $status[ (string) $r->status ] ); ?></span></td>
@@ -22150,7 +22209,7 @@ class SFAF_Portal {
                     </div>
 
                     <div class="uc-form-actions">
-                        <button type="submit" class="uc-btn uc-btn-primary">Create set</button>
+                        <button type="submit" class="uc-btn">Create set</button>
                     </div>
                     <p class="uc-hint">
                         Blank rows are ignored. Applying a set to an event copies its rows rather than linking
@@ -22224,7 +22283,7 @@ class SFAF_Portal {
                             </label>
                             <?php $this->faq_repeater( 'faq_set_rows', $set['rows'] ); ?>
                             <div class="uc-form-actions">
-                                <button type="submit" class="uc-btn uc-btn-primary">Save set</button>
+                                <button type="submit" class="uc-btn">Save set</button>
                             </div>
                         </form>
 
@@ -22358,7 +22417,7 @@ class SFAF_Portal {
                 <input type="password" name="confirm_password" autocomplete="new-password" required />
             </label>
             <div class="uc-form-actions">
-                <button type="submit" class="uc-btn uc-btn-primary">Save</button>
+                <button type="submit" class="uc-btn">Save</button>
             </div>
         </form>
         <?php
@@ -22732,7 +22791,7 @@ class SFAF_Portal {
                                 <?php endif; ?>
                             </td>
                             <td class="uc-user-actions">
-                                <button class="uc-btn uc-btn-sm uc-btn-primary" type="submit" form="<?php echo esc_attr( $fid ); ?>" data-uc-user-save>Save</button>
+                                <button class="uc-btn uc-btn-sm" type="submit" form="<?php echo esc_attr( $fid ); ?>" data-uc-user-save>Save</button>
                                 <?php if ( ! $is_self ) : ?>
                                     <button type="submit" class="uc-link-danger uc-btn-sm"
                                             form="uc-remove-user-<?php echo (int) $m->ID; ?>"
@@ -22789,7 +22848,7 @@ class SFAF_Portal {
                                             <?php endforeach; ?>
                                         </select>
                                     </label>
-                                    <button type="submit" class="uc-btn uc-btn-primary">Reassign and remove</button>
+                                    <button type="submit" class="uc-btn uc-btn-danger">Reassign and remove</button>
                                 </form>
                             </div>
                             </td></tr>

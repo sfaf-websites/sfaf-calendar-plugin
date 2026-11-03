@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.134.0
+Stable tag: 3.135.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,21 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.135.0 =
+
+**The yellow audit applied, what WhatsApp takes, EN or ES beside each registrant, the RSVP count as a button, and 600 characters with a count under Text registrants. Every embed answer and header is 3.134.0's, proved by embed-identity-test.php.**
+
+**WHAT CHANGES ON PUBLIC PAGES:** the public request form's "Fill these in" is grey, and in an online event's confirmation and reminder email, Add to Google and See the event page are outlined. Nothing else public changes.
+
+* **To red**: "Cancel and email them" (both steps of Cancel event), the series' "Cancel these and email the N people", and Users' "Reassign and remove".
+* **To green**: Submit for Review (a contributor's draft, the size of Publish), and the confirming button of the Approve, "Save and email them" and Publish dialogs; any green button that asks first now asks in green, Send in Email and Text registrants included.
+* **To grey**: the Save on every Venues and Users row, Preferences' password Save, the RSVP list's Export CSV, Save settings and Save attendance, the Events list's bulk buttons, Organizers' Add organizer and row Save, FAQ sets' Create set and Save set, Add event's "Fill these in" and Restore, the form links' Done, and the request form's "Fill these in". In WP admin: Save Twilio settings, Mailchimp's Save connection, and Automation's Run now and Send it.
+* **Emails**: an online event's confirmation keeps Join the event as its one yellow, with Add to Google outlined; its reminder outlines See the event page.
+* **"What can I send by WhatsApp?"** under Text registrants' box, only with WhatsApp on: what is OK to send, what is not, and that WhatsApp may block a message it decides is promotional, and later ones too.
+* **EN or ES** beside each registrant on the RSVP list, its waitlist, and Email registrants' and Text registrants' lists: the language they registered in, or the event's when none was stored.
+* **Events list**: the RSVP count is a small grey button, "12 RSVPs" or "View RSVPs" at none, on events that take RSVPs here, for whoever can open the list. Anything else shows the plain number.
+* **Text registrants** takes 600 characters (was 300), WhatsApp's limit. Under the box: "N of 600 characters.", and when anybody chose Text, "By text, about N pieces." for the whole text as sent, with "Accented letters make each piece shorter." The hint no longer repeats the limit.
 
 = 3.134.0 =
 

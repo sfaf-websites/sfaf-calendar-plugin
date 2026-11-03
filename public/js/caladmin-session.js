@@ -276,7 +276,7 @@
         acts.className = 'uc-draft-prompt-actions';
         var yes = document.createElement('button');
         yes.type = 'button';
-        yes.className = 'uc-btn uc-btn-primary';
+        yes.className = 'uc-btn';
         yes.setAttribute('data-uc-draft-restore', '');
         yes.textContent = 'Restore';
         var no = document.createElement('button');
