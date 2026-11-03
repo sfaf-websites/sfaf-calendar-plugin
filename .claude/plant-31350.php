@@ -61,7 +61,7 @@ $plants = array(
         array( $P, '<a href="<?php echo esc_url( $export ); ?>" class="uc-btn">Export CSV</a>', '<a href="<?php echo esc_url( $export ); ?>" class="uc-btn uc-btn-primary">Export CSV</a>' ),
     ) ),
     'a bulk button is yellow' => array( $T, 'FAIL  A: the Events list bulk buttons are grey', array(
-        array( $P, "                            <button type=\"submit\" class=\"uc-btn uc-btn-sm\"\n", "                            <button type=\"submit\" class=\"uc-btn uc-btn-sm uc-btn-primary\"\n" ),
+        array( $P, "<button type=\"submit\" class=\"uc-btn uc-btn-sm\"\n                            name=\"uc_do\" value=\"publish\"", "<button type=\"submit\" class=\"uc-btn uc-btn-sm uc-btn-primary\"\n                            name=\"uc_do\" value=\"publish\"" ),
     ) ),
     'Done is yellow' => array( $T, 'FAIL  A: the form-links Done is grey', array(
         array( $J, "done.className = 'uc-btn uc-btn-sm';", "done.className = 'uc-btn uc-btn-sm uc-btn-primary';" ),

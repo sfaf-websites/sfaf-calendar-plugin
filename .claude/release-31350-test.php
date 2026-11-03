@@ -231,8 +231,9 @@ foreach ( array(
     'FAQ sets: Save set'                   => '>Save set</button>',
     "Add event: Fill these in"             => 'data-uc-prefill-apply>Fill these in</button>',
 ) as $what => $needle ) {
-    $l = tl_line( $P, $needle );
-    rt( "A: $what is grey", '' !== $l && false === strpos( $l, 'uc-btn-primary' ) && false !== strpos( $l, 'uc-btn' ) );
+    // Every line that draws it: Export CSV is on two screens.
+    $ls = array_filter( explode( "\n", $P ), function ( $l ) use ( $needle ) { return false !== strpos( $l, $needle ); } );
+    rt( "A: $what is grey", $ls && ! array_filter( $ls, function ( $l ) { return false !== strpos( $l, 'uc-btn-primary' ) || false === strpos( $l, 'uc-btn' ); } ) );
 }
 rt( 'A: Save attendance is grey', 1 === preg_match( '/name="attendance"[^\n]*\n[^\n]*\n\s*<button type="submit" class="uc-btn">Save<\/button>/', $P ) );
 $org = substr( $P, strpos( $P, '>Add organizer</button>' ), 6000 );
