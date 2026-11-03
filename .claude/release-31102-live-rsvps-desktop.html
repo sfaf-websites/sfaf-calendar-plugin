@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Events - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.132.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.132.0" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.132.0" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.133.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.133.0" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.133.0" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.132.0" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.133.0" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -143,7 +143,7 @@
                 <header class="uc-portal-topbar">
                                         <button type="button" class="uc-portal-menu-btn" id="uc-menu-btn" aria-label="Menu"><svg class="sfaf-icon sfaf-icon-menu" width="22px" height="22px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
                                     </header>
-                <main class="uc-portal-content">
+                <main class="uc-portal-content uc-portal-content-wide">
                 <div class="uc-page-head">
             <h1>Harm reduction walk through the Tenderloin and back again</h1>
             <div class="uc-page-head-actions">
@@ -463,82 +463,85 @@
                     </form>
                                     </div>
                                                                         <table class="uc-table uc-rsvp-table">
-                    <thead><tr><th>First name</th><th>Last name</th><th>Email</th><th>Phone</th><th>Updates</th><th>Status</th><th>Registered</th><th><span class="uc-visually-hidden">Actions</span></th></tr></thead>
+                    <thead><tr><th class="uc-rc-name">Name</th><th class="uc-rc-email">Email</th><th class="uc-rc-phone">Phone</th><th class="uc-rc-updates">Updates</th><th class="uc-rc-status">Status</th><th class="uc-rc-registered">Registered</th><th class="uc-rsvp-actions"><span class="uc-visually-hidden">Actions</span></th></tr></thead>
                     <tbody>
                                             <tr data-uc-rsvp-row data-uc-rsvp-name="ana alvarez-montenegro" data-uc-rsvp-email="ana.alvarez.montenegro@example.org">
-                                                        <td><strong>Ana</strong></td>
-                                                        <td>Alvarez-Montenegro</td>
-                            <td>ana.alvarez.montenegro@example.org</td>
-                            <td></td>
-                            <td><span class="uc-muted">&ndash;</span></td>
-                            <td>
+                                                                                    <td class="uc-rc-name"><strong>Ana</strong> Alvarez-Montenegro</td>
+                            <td class="uc-rc-email">ana.alvarez.montenegro@example.org</td>
+                            <td class="uc-rc-phone uc-rc-none"></td>
+                                                        <td class="uc-rc-updates uc-rc-none"><span class="uc-muted">&ndash;</span></td>
+                            <td class="uc-rc-status">
                                 <span class="uc-pill uc-pill-confirmed">Registered</span>
                                                             </td>
-                            <td>Sep 20, 2026 at 10 am</td>
+                            <td class="uc-rc-registered"><span class="uc-rc-registered-label">Registered </span><time datetime="2026-09-20 10:00:00" title="Sep 20, 2026 at 10 am">Sep 20, 10 am</time></td>
                             <td class="uc-rsvp-actions">
-                                                                    <form method="post" action="https://resources.sfaf.org/caladmin/rsvps">
+                                                                    <form method="post" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-checkin-form" data-uc-checkin-form>
+                                        <input type="hidden" name="uc_action" value="checkin_toggle" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <input type="hidden" name="rsvp_id" value="1" />
+                                        <button type="submit" class="uc-btn uc-btn-sm uc-checkin-btn" aria-pressed="false" data-uc-checkin>Check in</button>
+                                    </form>
+                                                                <span class="uc-rc-tools">
+                                                                                                    <form method="post" action="https://resources.sfaf.org/caladmin/rsvps">
                                         <input type="hidden" name="uc_action" value="remove_rsvp" />
                                         <input type="hidden" name="uc_nonce" value="nonce" />                                        <input type="hidden" name="rsvp_id" value="1" />
                                         <input type="hidden" name="back_event" value="1" />                                        <button type="submit" class="uc-link-danger uc-btn-sm" data-uc-rsvp-remove
                                                 aria-label="Remove Ana Alvarez-Montenegro"
                                                 data-uc-confirm="Remove Ana Alvarez-Montenegro&#039;s registration? Their place is released, and nothing puts it back.">Remove</button>
                                     </form>
-                                                                                                                                    <form method="post" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-checkin-form" data-uc-checkin-form>
-                                        <input type="hidden" name="uc_action" value="checkin_toggle" />
-                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <input type="hidden" name="rsvp_id" value="1" />
-                                        <button type="submit" class="uc-btn uc-btn-sm uc-checkin-btn" aria-pressed="false" data-uc-checkin>Check in</button>
-                                    </form>
-                                                            </td>
+                                                                </span>
+                            </td>
                         </tr>
                                                                     <tr data-uc-rsvp-row data-uc-rsvp-name="ben brooks" data-uc-rsvp-email="ben@example.org">
-                                                        <td><strong>Ben</strong></td>
-                                                        <td>Brooks</td>
-                            <td>ben@example.org</td>
-                            <td></td>
-                            <td><span class="uc-muted">&ndash;</span></td>
-                            <td>
+                                                                                    <td class="uc-rc-name"><strong>Ben</strong> Brooks</td>
+                            <td class="uc-rc-email">ben@example.org</td>
+                            <td class="uc-rc-phone uc-rc-none"></td>
+                                                        <td class="uc-rc-updates uc-rc-none"><span class="uc-muted">&ndash;</span></td>
+                            <td class="uc-rc-status">
                                 <span class="uc-pill uc-pill-confirmed">Registered</span>
                                                             </td>
-                            <td>Sep 21, 2026 at 10 am</td>
+                            <td class="uc-rc-registered"><span class="uc-rc-registered-label">Registered </span><time datetime="2026-09-21 10:00:00" title="Sep 21, 2026 at 10 am">Sep 21, 10 am</time></td>
                             <td class="uc-rsvp-actions">
-                                                                    <form method="post" action="https://resources.sfaf.org/caladmin/rsvps">
+                                                                    <form method="post" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-checkin-form" data-uc-checkin-form>
+                                        <input type="hidden" name="uc_action" value="checkin_toggle" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <input type="hidden" name="rsvp_id" value="2" />
+                                        <button type="submit" class="uc-btn uc-btn-sm uc-checkin-btn" aria-pressed="false" data-uc-checkin>Check in</button>
+                                    </form>
+                                                                <span class="uc-rc-tools">
+                                                                                                    <form method="post" action="https://resources.sfaf.org/caladmin/rsvps">
                                         <input type="hidden" name="uc_action" value="remove_rsvp" />
                                         <input type="hidden" name="uc_nonce" value="nonce" />                                        <input type="hidden" name="rsvp_id" value="2" />
                                         <input type="hidden" name="back_event" value="1" />                                        <button type="submit" class="uc-link-danger uc-btn-sm" data-uc-rsvp-remove
                                                 aria-label="Remove Ben Brooks"
                                                 data-uc-confirm="Remove Ben Brooks&#039;s registration? Their place is released, and nothing puts it back.">Remove</button>
                                     </form>
-                                                                                                                                    <form method="post" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-checkin-form" data-uc-checkin-form>
-                                        <input type="hidden" name="uc_action" value="checkin_toggle" />
-                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <input type="hidden" name="rsvp_id" value="2" />
-                                        <button type="submit" class="uc-btn uc-btn-sm uc-checkin-btn" aria-pressed="false" data-uc-checkin>Check in</button>
-                                    </form>
-                                                            </td>
+                                                                </span>
+                            </td>
                         </tr>
                                                                     <tr data-uc-rsvp-row data-uc-rsvp-name="dee diaz" data-uc-rsvp-email="">
-                                                        <td><strong>Dee</strong></td>
-                                                        <td>Diaz</td>
-                            <td><span class="uc-muted">&ndash;</span></td>
-                            <td></td>
-                            <td><span class="uc-muted">&ndash;</span></td>
-                            <td>
+                                                                                    <td class="uc-rc-name"><strong>Dee</strong> Diaz</td>
+                            <td class="uc-rc-email uc-rc-none"><span class="uc-muted">&ndash;</span></td>
+                            <td class="uc-rc-phone uc-rc-none"></td>
+                                                        <td class="uc-rc-updates uc-rc-none"><span class="uc-muted">&ndash;</span></td>
+                            <td class="uc-rc-status">
                                 <span class="uc-pill uc-pill-confirmed">Registered</span>
                                                             </td>
-                            <td>Sep 22, 2026 at 10 am</td>
+                            <td class="uc-rc-registered"><span class="uc-rc-registered-label">Registered </span><time datetime="2026-09-22 10:00:00" title="Sep 22, 2026 at 10 am">Sep 22, 10 am</time></td>
                             <td class="uc-rsvp-actions">
-                                                                    <form method="post" action="https://resources.sfaf.org/caladmin/rsvps">
+                                                                    <form method="post" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-checkin-form" data-uc-checkin-form>
+                                        <input type="hidden" name="uc_action" value="checkin_toggle" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <input type="hidden" name="rsvp_id" value="3" />
+                                        <button type="submit" class="uc-btn uc-btn-sm uc-checkin-btn" aria-pressed="false" data-uc-checkin>Check in</button>
+                                    </form>
+                                                                <span class="uc-rc-tools">
+                                                                                                    <form method="post" action="https://resources.sfaf.org/caladmin/rsvps">
                                         <input type="hidden" name="uc_action" value="remove_rsvp" />
                                         <input type="hidden" name="uc_nonce" value="nonce" />                                        <input type="hidden" name="rsvp_id" value="3" />
                                         <input type="hidden" name="back_event" value="1" />                                        <button type="submit" class="uc-link-danger uc-btn-sm" data-uc-rsvp-remove
                                                 aria-label="Remove Dee Diaz"
                                                 data-uc-confirm="Remove Dee Diaz&#039;s registration? Their place is released, and nothing puts it back.">Remove</button>
                                     </form>
-                                                                                                                                    <form method="post" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-checkin-form" data-uc-checkin-form>
-                                        <input type="hidden" name="uc_action" value="checkin_toggle" />
-                                        <input type="hidden" name="uc_nonce" value="nonce" />                                        <input type="hidden" name="rsvp_id" value="3" />
-                                        <button type="submit" class="uc-btn uc-btn-sm uc-checkin-btn" aria-pressed="false" data-uc-checkin>Check in</button>
-                                    </form>
-                                                            </td>
+                                                                </span>
+                            </td>
                         </tr>
                                                                 </tbody>
                 </table>
@@ -547,9 +550,9 @@
             </div>
         </div>
         <script type="application/json" id="uc-session-config">{"ajax":"https:\/\/resources.sfaf.org\/wp-admin\/admin-ajax.php","action":"sfaf_caladmin_session","signin":"https:\/\/resources.sfaf.org\/caladmin","screen":"dashboard","signedIn":true}</script>
-<script src="../public/js/caladmin-session.js?ver=3.132.0"></script>
-<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.132.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.132.0"></script>
-<script src="../public/js/portal.js?ver=3.132.0"></script>
+<script src="../public/js/caladmin-session.js?ver=3.133.0"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.133.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.133.0"></script>
+<script src="../public/js/portal.js?ver=3.133.0"></script>
 <script>window.RV_PAGE="rsvps-desktop";(function () {
 var P = window.RV_PAGE, out = { page: P, errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
