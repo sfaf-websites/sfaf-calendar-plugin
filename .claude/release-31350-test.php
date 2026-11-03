@@ -426,7 +426,9 @@ tl_fresh( array( tw_row( 2, 900, '(415) 555-0102', 'whatsapp', 'es', 'Beto' ) ) 
 $x = rt_x( rt_cap( function () use ( $portal, $me ) { kit_call( 'SFAF_Portal', 'render_text_registrants', $portal, array( $me, 900 ) ); } ) );
 rt( 'G: nobody by text, no pieces: only the characters', 1 === $x->query( '//*[@data-uc-tr-chars]' )->length && 0 === $x->query( '//*[@data-uc-tr-pieces]' )->length );
 // The script's arithmetic against pieces(), in node.
-$cases = array( '', str_repeat( 'a', 160 ), str_repeat( 'a', 161 ), str_repeat( 'a', 307 ), 'á' . str_repeat( 'a', 70 ), "\u{1F600}" . str_repeat( 'a', 69 ), '{' . str_repeat( 'a', 159 ), 'Está registrado. ¿Preguntas?', str_repeat( 'é', 161 ), '€' . str_repeat( 'b', 158 ) );
+$cases = array( '', str_repeat( 'a', 160 ), str_repeat( 'a', 161 ), str_repeat( 'a', 307 ), 'á' . str_repeat( 'a', 70 ), "\u{1F600}" . str_repeat( 'a', 69 ), '{' . str_repeat( 'a', 159 ), 'Está registrado. ¿Preguntas?', str_repeat( 'é', 161 ), '€' . str_repeat( 'b', 158 ),
+    // Each side of every edge: 306 and 307, 459 and 460, and 134 and 135 units in UCS-2.
+    str_repeat( 'a', 306 ), str_repeat( 'a', 459 ), str_repeat( 'a', 460 ), 'á' . str_repeat( 'a', 133 ), 'á' . str_repeat( 'a', 134 ), 'á' . str_repeat( 'a', 201 ), 'á' . str_repeat( 'a', 202 ) );
 $start = strpos( $JS, '    var UC_GSM = ' );
 $end   = strpos( $JS, '    function initTextCount() {' );
 $tmp   = sys_get_temp_dir() . '/uc-pieces-' . getmypid() . '.js';
