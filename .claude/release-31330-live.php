@@ -174,7 +174,7 @@ window.addEventListener('load', function () { setTimeout(function () {
   });
   out.btn = out.btn.slice(0, 10);
   var first = rows[0];
-  out.firstName = first ? text(q('.uc-rc-name', first)) : '';
+  out.firstName = first ? (function (c) { c = c.cloneNode(true); var t = c.querySelector('[data-uc-lang-tag]'); if (t) { t.remove(); } return text(c); })(q('.uc-rc-name', first)) : ''; // the name, without its EN or ES (3.135.0)
   var six = rows.filter(function (r) { return r.getAttribute('data-uc-rsvp-name') === 'old year'; })[0];
   out.dates = { now: rows[1] ? text(q('.uc-rc-registered time', rows[1])) : '', old: six ? text(q('.uc-rc-registered time', six)) : '' };
   out.checkins = qa('[data-uc-checkin]').length;

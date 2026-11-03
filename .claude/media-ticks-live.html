@@ -174,6 +174,7 @@ function ucDismissOnBackdrop(dialog) {
         run('table-cards', initTableCards);
         run('registrantMail', initRegistrantMail);
         run('recipientList', initRecipientList);
+        run('textCount', initTextCount);
         run('attachment', initAttachment);
         run('checkin', initCheckin);
         run('rsvpFilter', initRsvpFilter);
@@ -321,6 +322,50 @@ function ucDismissOnBackdrop(dialog) {
         });
     }
 
+    /* ---------------------------------------------------------------------
+     * THE COUNT UNDER TEXT REGISTRANTS' BOX (3.135.0): characters against the
+     * 600, and for texts about how many pieces the whole text goes as, the
+     * words around the message included, for each language somebody texted
+     * registered in, the larger. SFAF_Texts::pieces() is the same arithmetic.
+     * ------------------------------------------------------------------ */
+    var UC_GSM = '@\u00a3$\u00a5\u00e8\u00e9\u00f9\u00ec\u00f2\u00c7\u00d8\u00f8\u00c5\u00e5\u0394_\u03a6\u0393\u039b\u03a9\u03a0\u03a8\u03a3\u0398\u039e\u00c6\u00e6\u00df\u00c9 !"#\u00a4%&\'()*+,-./0123456789:;<=>?\u00a1ABCDEFGHIJKLMNOPQRSTUVWXYZ\u00c4\u00d6\u00d1\u00dc\u00a7\u00bfabcdefghijklmnopqrstuvwxyz\u00e4\u00f6\u00f1\u00fc\u00e0\n\r';
+    var UC_GSM_EXT = '^{}\\[~]|\u20ac';
+    function ucTextPieces(text) {
+        if (!text) { return 0; }
+        var n = 0;
+        var chars = Array.from(text);
+        for (var i = 0; i < chars.length; i++) {
+            if (UC_GSM.indexOf(chars[i]) >= 0) { n++; }
+            else if (UC_GSM_EXT.indexOf(chars[i]) >= 0) { n += 2; }
+            else { return text.length <= 70 ? 1 : Math.ceil(text.length / 67); }
+        }
+        return n <= 160 ? 1 : Math.ceil(n / 153);
+    }
+    function initTextCount() {
+        document.querySelectorAll('[data-uc-tr-count]').forEach(function (out) {
+            var form = out.closest('form');
+            var box = form ? form.querySelector('[data-uc-tr-message]') : null;
+            if (!box) { return; }
+            var max = parseInt(out.getAttribute('data-uc-tr-max'), 10) || 600;
+            var wrap = [];
+            try { wrap = JSON.parse(out.getAttribute('data-uc-tr-wrap') || '[]') || []; } catch (e) { wrap = []; }
+            var chars = out.querySelector('[data-uc-tr-chars]');
+            var pieces = out.querySelector('[data-uc-tr-pieces]');
+            function update() {
+                // As SFAF_Texts::clean_message() and ended() will have it.
+                var msg = box.value.replace(/\s+/g, ' ').trim();
+                var n = Array.from(msg).length;
+                if (chars) { chars.textContent = n + ' of ' + max + ' characters.'; }
+                if (!pieces) { return; }
+                if (msg && !/[.!?\u2026]["')]*$/.test(msg)) { msg += '.'; }
+                var most = 0;
+                wrap.forEach(function (w) { most = Math.max(most, ucTextPieces(w[0] + msg + w[1])); });
+                pieces.textContent = 'By text, about ' + most + (1 === most ? ' piece.' : ' pieces.');
+            }
+            box.addEventListener('input', update);
+            update();
+        });
+    }
     /* ---------------------------------------------------------------------
      * WHO GETS IT (3.131.0): the recipient list under Email registrants' and
      * Text registrants' message. The search box hides rows and never unticks
@@ -4282,7 +4327,8 @@ function ucDismissOnBackdrop(dialog) {
         var ok = document.createElement('button');
         ok.type = 'submit';
         ok.value = 'ok';
-        ok.className = 'uc-btn uc-btn-sm ' + (danger ? 'uc-btn-danger' : 'uc-btn-primary');
+        // A green trigger confirms in green (3.135.0): Publish with fields missing.
+        ok.className = 'uc-btn uc-btn-sm ' + (danger ? 'uc-btn-danger' : (btn.classList.contains('uc-btn-go') ? 'uc-btn-go' : 'uc-btn-primary'));
         ok.textContent = verb;
 
         actions.appendChild(cancel);
@@ -6799,7 +6845,9 @@ function ucDismissOnBackdrop(dialog) {
             send = document.createElement('button');
             send.type = 'submit';
             send.value = 'send';
-            send.className = 'uc-btn uc-btn-sm uc-btn-primary';
+            /* The send's colour is the caller's (3.135.0): green for a save
+             * that emails, red for a cancellation that does. */
+            send.className = 'uc-btn uc-btn-sm ' + (opts.sendClass || 'uc-btn-primary');
             send.textContent = opts.sendLabel;
         }
 
@@ -6875,7 +6923,7 @@ function ucDismissOnBackdrop(dialog) {
             var confirmSend = document.createElement('button');
             confirmSend.type = 'submit';
             confirmSend.value = 'send';
-            confirmSend.className = 'uc-btn uc-btn-sm uc-btn-primary';
+            confirmSend.className = 'uc-btn uc-btn-sm ' + (opts.sendClass || 'uc-btn-primary');
             confirmSend.textContent = opts.sendPrompt.confirmLabel || opts.sendLabel;
 
             stepActions.appendChild(back);
@@ -7006,6 +7054,7 @@ function ucDismissOnBackdrop(dialog) {
                 changes: changes,
                 sendQuestion: 'Email the ' + people + (1 === people ? ' person' : ' people') + ' registered?',
                 sendLabel: 'Save and email ' + (1 === people ? 'them' : 'them all'),
+                sendClass: 'uc-btn-go',
                 silentLabel: 'Save without telling them',
                 cancelLabel: 'Back to the form'
             }, function (answer) {
@@ -7267,6 +7316,7 @@ function ucDismissOnBackdrop(dialog) {
                     sendLabel: back
                         ? ('Put it back on and tell ' + (1 === people ? 'them' : 'them all'))
                         : ('Cancel and email ' + (1 === told ? 'them' : 'them all')),
+                    sendClass: back ? '' : 'uc-btn-danger',
                     silentLabel: back ? 'Put it back on without telling them' : 'Cancel without telling them',
                     /* "Leave it alone" beside two buttons that both cancel the
                      * event read as a third thing to do to it. This button
@@ -7624,7 +7674,7 @@ function ucDismissOnBackdrop(dialog) {
             ok.type = 'submit';
             ok.value = 'ok';
             ok.className = 'uc-btn uc-btn-sm '
-                + (btn.hasAttribute('data-uc-ask-danger') ? 'uc-btn-danger' : 'uc-btn-primary');
+                + (btn.hasAttribute('data-uc-ask-danger') ? 'uc-btn-danger' : 'uc-btn-go');
             ok.textContent = btn.getAttribute('data-uc-ask-confirm') || 'Approve';
 
             actions.appendChild(cancel);
@@ -7773,7 +7823,7 @@ function ucDismissOnBackdrop(dialog) {
         var done = document.createElement('button');
         done.type = 'submit';
         done.value = 'done';
-        done.className = 'uc-btn uc-btn-sm uc-btn-primary';
+        done.className = 'uc-btn uc-btn-sm';
         done.textContent = 'Done';
 
         actions.appendChild(done);

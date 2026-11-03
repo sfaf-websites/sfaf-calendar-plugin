@@ -107,6 +107,8 @@ class SFAF_Email {
         return '<a href="' . esc_url( $u ) . '">' . esc_html( $l ) . '</a>';
     }
     public static function button_row( $b ) { return implode( '', $b ); }
+    // 3.135.0: the real one outlines a second yellow; this stub draws no style, so none counts.
+    public static function has_primary( $h ) { return false; }
 }
 
 class SFAF_Reminders {

@@ -176,7 +176,7 @@ window.addEventListener('load', function () { setTimeout(function () {
     out.heading = wl ? text(wl.querySelector('h2')) : '';
     out.rows = wl ? Array.prototype.map.call(wl.querySelectorAll('[data-uc-waitlist-row]'), function (tr) {
       var tds = tr.querySelectorAll('td');
-      return { pos: text(tds[0]), name: text(tds[1]), pill: box(tr.querySelector('.uc-pill')), confirm: seen(tr.querySelector('[data-uc-waitlist-confirm]')), remove: seen(tr.querySelector('[data-uc-waitlist-remove]')) };
+      return { pos: text(tds[0]), name: text(tds[1].querySelector('strong') || tds[1]), pill: box(tr.querySelector('.uc-pill')), confirm: seen(tr.querySelector('[data-uc-waitlist-confirm]')), remove: seen(tr.querySelector('[data-uc-waitlist-remove]')) };
     }) : [];
     return finish();
   }

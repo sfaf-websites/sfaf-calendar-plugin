@@ -71,8 +71,7 @@
                         data-uc-rcp-got="">
                         <label class="uc-check">
                             <input type="checkbox" name="rm_ids[]" value="1" checked="checked" />
-                            <span class="uc-rcp-name">Ana</span>
-                            <span class="uc-muted">ana@example.org · (415) 555-0101</span>
+                            <span class="uc-rcp-name">Ana</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">ana@example.org · (415) 555-0101</span>
                         </label>
                     </li>
                                     <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="beto beto@example.org · +52 55 1234 5678 525512345678"
@@ -80,8 +79,7 @@
                         data-uc-rcp-got="">
                         <label class="uc-check">
                             <input type="checkbox" name="rm_ids[]" value="2" checked="checked" />
-                            <span class="uc-rcp-name">Beto</span>
-                            <span class="uc-muted">beto@example.org · +52 55 1234 5678</span>
+                            <span class="uc-rcp-name">Beto</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">beto@example.org · +52 55 1234 5678</span>
                         </label>
                     </li>
                                     <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="cruz cruz@example.org · (415) 555-0103 4155550103"
@@ -89,8 +87,7 @@
                         data-uc-rcp-got="">
                         <label class="uc-check">
                             <input type="checkbox" name="rm_ids[]" value="3" checked="checked" />
-                            <span class="uc-rcp-name">Cruz</span>
-                            <span class="uc-muted">cruz@example.org · (415) 555-0103</span>
+                            <span class="uc-rcp-name">Cruz</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">cruz@example.org · (415) 555-0103</span>
                         </label>
                     </li>
                                     <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="dee dee@example.org "
@@ -98,8 +95,7 @@
                         data-uc-rcp-got="">
                         <label class="uc-check">
                             <input type="checkbox" name="rm_ids[]" value="4" checked="checked" />
-                            <span class="uc-rcp-name">Dee</span>
-                            <span class="uc-muted">dee@example.org</span>
+                            <span class="uc-rcp-name">Dee</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">dee@example.org</span>
                         </label>
                     </li>
                                     <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="eve eve@example.org "
@@ -107,8 +103,7 @@
                         data-uc-rcp-got="" data-uc-rcp-wait hidden>
                         <label class="uc-check">
                             <input type="checkbox" name="rm_ids[]" value="5" checked="checked" />
-                            <span class="uc-rcp-name">Eve</span>
-                            <span class="uc-muted">eve@example.org</span>
+                            <span class="uc-rcp-name">Eve</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">eve@example.org</span>
                         </label>
                     </li>
                                     <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="fay (415) 555-0106 4155550106"
@@ -116,8 +111,7 @@
                         data-uc-rcp-got="">
                         <label class="uc-check">
                             <input type="checkbox" name="rm_ids[]" value="6" disabled="disabled" />
-                            <span class="uc-rcp-name">Fay</span>
-                            <span class="uc-muted">(415) 555-0106 · No email</span>
+                            <span class="uc-rcp-name">Fay</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">(415) 555-0106 · No email</span>
                         </label>
                     </li>
                             </ul>
@@ -151,10 +145,36 @@
                         <input type="hidden" name="uc_nonce" value="nonce" />                        <input type="hidden" name="event_id" value="501" />
                         <label class="uc-field">
                             <span class="uc-field-label">Message</span>
-                            <textarea name="tr_message" rows="3" maxlength="300" required data-uc-tr-message></textarea>
-                            <span class="uc-hint">Up to 300 characters. It arrives by text as &quot;SFAF: Update about Support group:&quot;, then the message and where to email.</span>
+                            <textarea name="tr_message" rows="3" maxlength="600" required data-uc-tr-message aria-describedby="uc-tr-count-501"></textarea>
+                            <span class="uc-hint">It arrives by text as &quot;SFAF: Update about Support group:&quot;, then the message and where to email.</span>
                         </label>
-                                <div class="uc-recipients" data-uc-rcp data-uc-rcp-kind="text">
+                                                <p class="uc-hint uc-tr-count" id="uc-tr-count-501" data-uc-tr-count data-uc-tr-max="600" data-uc-tr-wrap="[[&quot;SFAF: Update about Support group: &quot;,&quot; For questions, please email admin@sfaf.org. Reply STOP to opt out.&quot;]]">
+                            <span data-uc-tr-chars>0 of 600 characters.</span>
+                                                            <span data-uc-tr-pieces>By text, about 1 piece.</span>
+                                <span>Accented letters make each piece shorter.</span>
+                                                    </p>
+                                                    <details open class="uc-tr-wa-help" data-uc-tr-wa-help>
+                                <summary><span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="14px" height="14px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>What can I send by WhatsApp?</summary>
+                                <div class="uc-tr-wa-help-body">
+                                    <p class="uc-tr-wa-help-head">OK to send:</p>
+                                    <ul>
+                                        <li>Changes to the time, date or location</li>
+                                        <li>Cancellations or postponements</li>
+                                        <li>What to bring, what to expect, accessibility or parking info</li>
+                                        <li>Check-in details or directions on the day</li>
+                                    </ul>
+                                    <p class="uc-tr-wa-help-head">Not OK:</p>
+                                    <ul>
+                                        <li>Promoting other events or programs</li>
+                                        <li>Donations or fundraising</li>
+                                        <li>Surveys, feedback or &ldquo;rate this event&rdquo;</li>
+                                        <li>Newsletters or general SFAF announcements</li>
+                                        <li>&ldquo;Don&rsquo;t miss,&rdquo; &ldquo;join us for,&rdquo; or offers of any kind</li>
+                                    </ul>
+                                    <p>If WhatsApp decides a message is promotional, it may block it, and future messages too.</p>
+                                </div>
+                            </details>
+                                                        <div class="uc-recipients" data-uc-rcp data-uc-rcp-kind="text">
             <input type="hidden" name="tr_picked" value="1" />
             <span class="uc-field-label">Recipients</span>
             <div class="uc-rcp-tools">
@@ -190,8 +210,7 @@
                         data-uc-rcp-got="0">
                         <label class="uc-check">
                             <input type="checkbox" name="tr_ids[]" value="1" checked="checked" />
-                            <span class="uc-rcp-name">Ana</span>
-                            <span class="uc-muted">(415) 555-0101 · Text</span>
+                            <span class="uc-rcp-name">Ana</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">(415) 555-0101 · Text</span>
                         </label>
                     </li>
                                     <li data-uc-rcp-row data-uc-rcp-how="whatsapp" data-uc-rcp-find="beto +52 55 1234 5678 525512345678"
@@ -199,8 +218,7 @@
                         data-uc-rcp-got="">
                         <label class="uc-check">
                             <input type="checkbox" name="tr_ids[]" value="2" checked="checked" />
-                            <span class="uc-rcp-name">Beto</span>
-                            <span class="uc-muted">+52 55 1234 5678 · WhatsApp</span>
+                            <span class="uc-rcp-name">Beto</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">+52 55 1234 5678 · WhatsApp</span>
                         </label>
                     </li>
                                     <li data-uc-rcp-row data-uc-rcp-how="sms" data-uc-rcp-find="cruz (415) 555-0103 4155550103"
@@ -208,8 +226,7 @@
                         data-uc-rcp-got="">
                         <label class="uc-check">
                             <input type="checkbox" name="tr_ids[]" value="3" checked="checked" />
-                            <span class="uc-rcp-name">Cruz</span>
-                            <span class="uc-muted">(415) 555-0103 · Text</span>
+                            <span class="uc-rcp-name">Cruz</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">(415) 555-0103 · Text</span>
                         </label>
                     </li>
                             </ul>
