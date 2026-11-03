@@ -1651,7 +1651,9 @@ var ucData = { ajaxUrl: 'https://example.org/wp-admin/admin-ajax.php', nonce: 't
                                 '<label class="uc-rsvp-optin" id="uc-rsvp-text-wa"><input type="checkbox" name="uc-rsvp-text-channel" value="whatsapp" /><span data-uc-w="by_whatsapp">WhatsApp</span></label>' +
                                 '<p class="uc-rsvp-note" id="uc-rsvp-text-consent" hidden><span id="uc-rsvp-sms-consent" data-uc-w="text_consent">Text me updates about this event. Message frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help.</span>' +
                                     '<span id="uc-rsvp-wa-consent" data-uc-w="wa_consent" hidden>Send me WhatsApp updates about this event. Message frequency varies. Data rates may apply. Reply STOP to opt out, HELP for help.</span> ' +
-                                    '<a id="uc-rsvp-privacy" href="https://www.sfaf.org/privacy-policy/" target="_blank" rel="noopener" data-uc-w="privacy">Privacy policy</a></p>' +
+                                    '<a id="uc-rsvp-privacy" href="https://www.sfaf.org/privacy-policy/" target="_blank" rel="noopener" data-uc-w="privacy">Privacy policy</a>' +
+                                    // The carrier campaign's terms, beside the privacy policy (3.134.0).
+                                    '<span aria-hidden="true"> &middot; </span><a id="uc-rsvp-terms" href="https://www.sfaf.org/calendar/events-calendar-terms-conditions/" target="_blank" rel="noopener" data-uc-w="terms">Terms</a></p>' +
                             '</fieldset></div>' +
                         // STAY IN TOUCH (3.124.0): the SFAF box, then one per
                         // team whose Mailchimp sign-up this event shows, drawn
