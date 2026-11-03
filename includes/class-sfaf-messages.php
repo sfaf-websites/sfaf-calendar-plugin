@@ -450,6 +450,8 @@ class SFAF_Messages {
                 'f_text_consent'   => array( 'Text me updates about this event. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.', 'Envíenme novedades sobre este evento. La frecuencia de los mensajes varía. Pueden aplicarse tarifas de mensajes y datos. Responda STOP para cancelar, HELP para obtener ayuda.' ),
                 'f_wa_consent'     => array( 'Send me WhatsApp updates about this event. Message frequency varies. Data rates may apply. Reply STOP to opt out, HELP for help.', 'Envíenme avisos de este evento por WhatsApp. La frecuencia de los mensajes varía. Pueden aplicarse cargos por datos. Responda STOP para cancelar, HELP para ayuda.' ),
                 'f_privacy'        => array( 'Privacy policy', 'Política de privacidad' ),
+                // The carrier campaign's terms, beside the privacy policy (3.134.0).
+                'f_terms'          => array( 'Terms', 'Términos' ),
                 // The "Stay in touch" group at the end of the form (3.124.0): the
                 // SFAF box, and one per team with a Mailchimp connection, %s its name.
                 'f_stay'           => array( 'Stay in touch', 'Sigamos en contacto' ),
@@ -483,6 +485,8 @@ class SFAF_Messages {
                 'e_email'          => array( 'Please enter a valid email address.', 'Escriba un correo electrónico válido.' ),
                 'e_no_event'       => array( 'This event could not be found.', 'No se encontró este evento.' ),
                 'e_cancelled'      => array( 'This event has been cancelled, so registrations are closed.', 'Este evento se canceló, así que las inscripciones están cerradas.' ),
+                'e_not_live'       => array( 'This event takes registrations once it is published.', 'Este evento acepta inscripciones una vez que se publique.' ),
+                'e_ended'          => array( 'This event has ended.', 'Este evento ya terminó.' ),
                 'e_closed'         => array( 'RSVP is not available for this event.', 'Este evento no acepta inscripciones.' ),
                 'e_already'        => array( 'You have already registered for this event.', 'Ya se inscribió en este evento.' ),
                 'e_already_waiting'=> array( 'You are already on the waitlist for this event.', 'Ya está en la lista de espera de este evento.' ),

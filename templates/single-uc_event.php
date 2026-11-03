@@ -35,6 +35,9 @@ while ( have_posts() ) :
         ? SFAF_Recurrence::pattern_label( $recurrence, $date )
         : '';
 
+    // Over: registration closes on this page (3.134.0).
+    $ended = sfaf_event_has_ended( $post_id );
+
     $settings   = get_option( 'uc_settings', array() );
     $brand_logo = isset( $settings['brand_logo'] ) ? $settings['brand_logo'] : '';
     ?>
@@ -218,8 +221,11 @@ while ( have_posts() ) :
                     // ones there are: see sfaf_faq_meta_key().
                     echo sfaf_faq_accordion_html( $post_id );
 
-                    // Other events in this series.
-                    echo sfaf_series_list_html( $post_id );
+                    // Other events in this series. An ended event lists them
+                    // under "This event has ended." instead (3.134.0).
+                    if ( ! $ended ) {
+                        echo sfaf_series_list_html( $post_id );
+                    }
 
                     /*
                      * Getting there: the address as a link, and a map behind a
@@ -394,11 +400,12 @@ while ( have_posts() ) :
                             <?php endif; ?>                        </ul>
 
                         <?php
-                        // RSVP block.
-                        echo sfaf_rsvp_block( $post_id );
+                        // RSVP block. An ended event takes no registrations and
+                        // offers no calendar entry (3.134.0).
+                        echo $ended ? sfaf_event_ended_block( $post_id ) : sfaf_rsvp_block( $post_id );
 
                         // Add to calendar + follow the series.
-                        $secondary = sfaf_add_to_calendar( $post_id ) . sfaf_follow_series_button( $post_id );
+                        $secondary = ( $ended ? '' : sfaf_add_to_calendar( $post_id ) ) . sfaf_follow_series_button( $post_id );
                         if ( trim( $secondary ) !== '' ) :
                         ?>
                             <div class="uc-single-actions"><?php echo $secondary; ?></div>

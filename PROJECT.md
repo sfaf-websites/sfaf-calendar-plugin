@@ -4627,6 +4627,21 @@ private series is every event in it marked private.
 private replaces its slug with 32 hex characters from `random_bytes()`. The
 previous slug is kept so making it public again restores the old address.
 
+**The link shown is the address the event will have (3.134.0).** Before an
+event is published (a draft, pending review, or scheduled), `get_permalink()`
+gives WordPress's `?post_type=uc_event&p=ID` form, which only signed-in staff
+can open, through `SFAF_Preview`; the card and the WordPress editor's box
+showed that, and registering through it was refused as "could not be found",
+because `submit()` takes published events only. Both now show
+`SFAF_Preview::live_link()`, the token address, with "The link opens the
+event and takes registrations once the event is published." while it is not,
+and staff registering on an unpublished event are told
+`e_not_live` ("This event takes registrations once it is published.");
+anybody else still gets "could not be found". A published private event
+takes registrations, and its confirmation, cancel link, Text registrants,
+Email registrants and reminders, exactly as any event
+(`.claude/release-31340-test.php` F).
+
 **Both editors offer it, in the Display card (3.109.0).** On Add event it
 applies at the first save, Save draft or Publish alike, and **an event made
 private there never has a public address**: `save_event_from_post()` merges
@@ -5614,8 +5629,19 @@ opened, WhatsApp takes only a Meta-approved template, so there is no
 free-text fallback: `whatsapp_on()` wants the sender and all four template
 SIDs (`sfaf_event_reminder` and `sfaf_event_update`, English and Spanish).
 Until then a person who chose WhatsApp gets email only, and Text
-registrants says so. A text says the same words as the template, with
-"Reply STOP to opt out." added, which the template leaves to WhatsApp.
+registrants says so. The confirmation's own two templates
+(`sfaf_event_confirmation`, 3.134.0) are a separate gate,
+`whatsapp_confirm_on()`: without both, WhatsApp confirmations stay off while
+the reminder and the update still go.
+
+**Every text is the carrier campaign's shape (3.134.0)**: it starts "SFAF:"
+and ends "Reply STOP to opt out.", in Spanish "Responda STOP para
+cancelar.", which `SFAF_Texts::sms()` adds to the template's words, each only
+when the words do not already have it. So the reminder's words are
+"Reminder: ..." and the update's "Update about ...": the "from SFAF" they
+carried before became the prefix. The automatic answer to a reply by text goes
+through it too; STOP and HELP by text are answered by the Messaging Service,
+and nothing on WhatsApp changes.
 
 **The reminder's cancel link (3.131.0)** is the person's own, the one their
 confirmation email carries: `SFAF_Reminders::cancel_url()` of the
@@ -5625,6 +5651,16 @@ languages; the Spanish is "¿No puede asistir? Cancele aquí:", in usted like
 the rest of the calendar's Spanish (3.132.0). A registration with no
 token has no link: the text drops the line, and {{5}} falls back to the
 event page, because a template refuses an empty variable.
+
+**The confirmation (3.134.0)**, `send_confirmation()`: right after a
+registration that chose Text or WhatsApp (`SFAF_RSVP::route_submission()`),
+and when a waitlist place is confirmed (`SFAF_Waitlist::admit()`), never on
+joining the waitlist. Beside the confirmation email, under the same site
+switch (`confirmations_enabled()`) and the event's, and without needing an
+email address. Mark's words; the WhatsApp template's six blanks are the
+event, the date with its weekday (`sfaf_ap_date( 'full' )`), the start time,
+the place, the event page and the person's own cancel link, with the
+reminder's fallbacks (`facts()`), {{6}} the event page without a token.
 
 **What is sent**: the morning-of reminder, inside
 `SFAF_Reminders::send_for_event()` after the emails and before the event is
@@ -6381,6 +6417,32 @@ dates less the first 100 upcoming, so a series with more than 100 upcoming
 dates listed upcoming ones as past. "Upcoming dates" is unchanged, the first
 100. `.claude/release-31210-test.php` renders the template with 120 upcoming
 dates.
+
+### An ended event takes no registrations (3.134.0)
+
+**`sfaf_event_has_ended()` is the one rule**: past the event's end time, or its
+start time when it has none, or the end of its day when it has no time at all;
+an end at or before the start on a one-day event runs past midnight, and a
+source's `_uc_end_date` moves the end to that day. An event with no date has
+not ended.
+
+**The event page asks it once, at the top of the loop.** Ended, the sidebar's
+RSVP block is `sfaf_event_ended_block()`: "This event has ended." ("Este evento
+ya terminó.", both on a Spanish event's page) and the series' upcoming dates,
+`sfaf_event_upcoming_dates()`: the public ones "Upcoming in this series" lists,
+without this event or any that have ended too, each with its weekday
+(`sfaf_ap_date( 'full' )`) and time, a link to its page in the same tab. No
+form, no Register or source button, no Add to Calendar, and no separate
+"Upcoming in this series" box, so the dates are not listed twice. The block's
+style travels with it in `<style id="uc-ended-css">`, as the preview band's
+does, because calendar.css is the embed's stylesheet too. **Cards, the embed and
+the series page are not changed.**
+
+**`SFAF_RSVP::submit()` refuses an ended event** with `e_ended`, after the
+cancelled check and before anything is written, whatever the form sends: a
+page left open from before the end still posts.
+
+`.claude/release-31340-test.php` D and E, `.claude/release-31340-live.php` I.
 
 ### A Spanish event's page reads its labels in both languages (3.120.0)
 

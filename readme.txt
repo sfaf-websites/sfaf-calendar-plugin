@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.133.0
+Stable tag: 3.134.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,21 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.134.0 =
+
+**A confirmation by text or WhatsApp, every text as the carrier campaign has it, registration closed on ended events, and a private event's link that works. Every embed answer and header is 3.133.0's, proved by embed-identity-test.php.**
+
+**WHAT CHANGES ON PUBLIC PAGES:** the event page of an ended event, the RSVP form once Twilio is set up, every text message, and the new confirmation by text or WhatsApp.
+
+* **Confirmation by text**: right after somebody registers having chosen Text, beside the confirmation email, in the language they chose: "SFAF: You're registered for [event] on [weekday, date] at [time], [place]. Details: [event page] Can't make it? Cancel here: [their cancel link] Reply STOP to opt out." In Spanish "SFAF: Está registrado para [event] el [date] a las [time], en [place]. Detalles: [event page] ¿No puede asistir? Cancele aquí: [link] Responda STOP para cancelar." It also goes with no email address. A waitlist sign-up gets it when confirmed into the event, not on joining.
+* **Confirmation by WhatsApp**: the templates sfaf_event_confirmation_en and _es, with {{1}} the event, {{2}} the date with its weekday, {{3}} the start time, {{4}} the place, {{5}} the event page and {{6}} the person's own cancel link, and the reminder's fallbacks when a detail is missing. **Off until both template SIDs are in Settings > Twilio**; the other WhatsApp messages are not held back by it.
+* Both follow the site's confirmation switch, as the email does.
+* **Every text** now starts "SFAF:" and ends "Reply STOP to opt out." ("Responda STOP para cancelar." in Spanish), added only where it is not already there. So the reminder reads "SFAF: Reminder: [event] is today at ..." (was "Reminder from SFAF: ..."), Text registrants "SFAF: Update about [event]: ..." (was "Update from SFAF about ..."), and the automatic answer to a reply by text gains both. The Spanish ending was "Responda STOP para no recibir más." WhatsApp messages are unchanged.
+* **RSVP form**: "Terms" ("Términos") beside "Privacy policy" under the Text and WhatsApp consent lines, opening https://www.sfaf.org/calendar/events-calendar-terms-conditions/ in a new tab.
+* **An ended event's page** (past its end time, or its start time when it has none, or its day when it has no time): no Register button and no form, but "This event has ended." ("Este evento ya terminó."), and under it the series' upcoming dates with their weekdays, each a link to its page. No Add to Calendar, and no separate "Upcoming in this series" box, since the dates are under the line. The server refuses a registration for an ended event whatever the form sends.
+* **Private events**: a published private event takes registrations as any event does. The link shown under "Who can find this event" before an event is published (a draft, waiting for review, or scheduled) was WordPress's ?post_type=uc_event&p= address, which only signed-in staff can open, and registering through it said the event could not be found. It now shows the address the event will have, says the link works once the event is published, and staff registering on an unpublished event are told that instead.
+* **Settings > Twilio**: two boxes for the confirmation's template SIDs.
 
 = 3.133.0 =
 

@@ -290,6 +290,7 @@ Labels, buttons and the calendar file's words. These are not edited on the Templ
 | Text me updates about this event. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. | Envíenme novedades sobre este evento. La frecuencia de los mensajes varía. Pueden aplicarse tarifas de mensajes y datos. Responda STOP para cancelar, HELP para obtener ayuda. |
 | Send me WhatsApp updates about this event. Message frequency varies. Data rates may apply. Reply STOP to opt out, HELP for help. | Envíenme avisos de este evento por WhatsApp. La frecuencia de los mensajes varía. Pueden aplicarse cargos por datos. Responda STOP para cancelar, HELP para ayuda. |
 | Privacy policy | Política de privacidad |
+| Terms | Términos |
 | Stay in touch | Sigamos en contacto |
 | Sign me up for SFAF Newsletter and Updates | Quiero recibir el boletín y las novedades de SFAF |
 | Sign me up for %s email updates | Quiero recibir las novedades por correo de %s |
@@ -320,6 +321,8 @@ Labels, buttons and the calendar file's words. These are not edited on the Templ
 | Please enter a valid email address. | Escriba un correo electrónico válido. |
 | This event could not be found. | No se encontró este evento. |
 | This event has been cancelled, so registrations are closed. | Este evento se canceló, así que las inscripciones están cerradas. |
+| This event takes registrations once it is published. | Este evento acepta inscripciones una vez que se publique. |
+| This event has ended. | Este evento ya terminó. |
 | RSVP is not available for this event. | Este evento no acepta inscripciones. |
 | You have already registered for this event. | Ya se inscribió en este evento. |
 | You are already on the waitlist for this event. | Ya está en la lista de espera de este evento. |

@@ -38,7 +38,7 @@ function rt( $label, $got, $want ) {
 function rt_page( $lang ) {
     $ev = kit_write_post( array( 'post_type' => 'uc_event', 'post_status' => 'publish', 'post_title' => 'Drop-in Group', 'post_name' => 'drop-in-' . $lang, 'post_content' => '<p>Escrito por la organizadora.</p>' ) );
     $GLOBALS['ev'] = $ev;
-    foreach ( array( '_uc_event_date' => '2026-11-05', '_uc_start_time' => '18:00', '_uc_end_time' => '19:30', '_uc_cost' => 'Free', '_uc_age_restriction' => '18+',
+    foreach ( array( '_uc_event_date' => date( 'Y-m-d', strtotime( '+30 days' ) ), '_uc_start_time' => '18:00', '_uc_end_time' => '19:30', '_uc_cost' => 'Free', '_uc_age_restriction' => '18+',
         '_uc_rsvp_enabled' => '1', '_uc_rsvp_url' => 'https://example.org/rsvp', '_uc_language' => $lang,
         '_uc_location_name' => 'Strut', '_uc_location' => '470 Castro St, San Francisco, CA 94114' ) as $k => $v ) {
         update_post_meta( $ev, $k, $v );

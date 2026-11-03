@@ -202,8 +202,8 @@ $vf = json_decode( $by['+14155550106']['ContentVariables'], true );
 rt( 'A: without a token, {{5}} is never empty', '' !== (string) $vf['5'] && 'https://resources.sfaf.org/events/900/' === $vf['5'] );
 
 /* ---- B. Text ---- */
-rt( 'B: the English reminder ends with the cancel line, then STOP', 'Reminder from SFAF: Coffee & Conversation is today at 10 am, at 1035 Market St. Event details: https://resources.sfaf.org/events/900/ Can\'t make it? Cancel here: ' . $link( $ana->token ) . ' Reply STOP to opt out.' === $by['+14155550101']['Body'] );
-rt( 'B: the Spanish reminder in Mark\'s words', false !== strpos( $by['+14155550104']['Body'], ' ¿No puede asistir? Cancele aquí: ' . $link( $dee->token ) . ' Responda STOP' ) && 0 === strpos( $by['+14155550104']['Body'], 'Recordatorio de SFAF: ' ) );
+rt( 'B: the English reminder ends with the cancel line, then STOP', 'SFAF: Reminder: Coffee & Conversation is today at 10 am, at 1035 Market St. Event details: https://resources.sfaf.org/events/900/ Can\'t make it? Cancel here: ' . $link( $ana->token ) . ' Reply STOP to opt out.' === $by['+14155550101']['Body'] );
+rt( 'B: the Spanish reminder in Mark\'s words', false !== strpos( $by['+14155550104']['Body'], ' ¿No puede asistir? Cancele aquí: ' . $link( $dee->token ) . ' Responda STOP' ) && 0 === strpos( $by['+14155550104']['Body'], 'SFAF: Recordatorio: ' ) );
 rt( 'B: each text carries its own link', false === strpos( $by['+14155550101']['Body'], $dee->token ) && false === strpos( $by['+14155550104']['Body'], $ana->token ) );
 rt( 'B: without a token, no cancel line', false === strpos( $by['+14155550105']['Body'], 'Cancel here' ) && false !== strpos( $by['+14155550105']['Body'], 'Event details: https://resources.sfaf.org/events/900/ Reply STOP' ) );
 

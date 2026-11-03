@@ -77,6 +77,29 @@ class SFAF_Preview {
     }
 
     /**
+     * The address an event has once it is published (3.134.0): its own when it
+     * is, else the one it will have. get_permalink() gives an unpublished event
+     * ?post_type=uc_event&p=ID, which only signed-in staff can open, so a
+     * private event's link handed out before publishing never reached anybody
+     * else, and registering through it was refused.
+     *
+     * @param int $event_id
+     * @return string
+     */
+    public static function live_link( $event_id ) {
+        $post = get_post( (int) $event_id );
+        if ( ! $post || 'uc_event' !== $post->post_type ) {
+            return '';
+        }
+        return 'publish' === $post->post_status ? (string) get_permalink( $post ) : self::address_once_live( $post );
+    }
+
+    /** Whether an event is not yet public: a draft, pending review or scheduled. */
+    public static function not_live( $event_id ) {
+        return in_array( (string) get_post_status( (int) $event_id ), self::statuses(), true );
+    }
+
+    /**
      * A scheduled event's address as it will be once live. get_permalink()
      * gives a scheduled post the ?p= form, so the post is asked as published.
      */

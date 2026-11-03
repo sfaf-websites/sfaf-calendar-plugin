@@ -1637,6 +1637,107 @@ function sfaf_series_list_html( $post_id ) {
     return ob_get_clean();
 }
 
+/**
+ * Whether an event is over (3.134.0): its end time has passed, or its start
+ * time when it has no end time. With no time at all it is over when its day
+ * is. A last day from a source (`_uc_end_date`) moves the end to that day.
+ * An event with no date has not ended.
+ *
+ * @param int      $post_id
+ * @param int|null $now     A timestamp, for a check; the present when null.
+ * @return bool
+ */
+function sfaf_event_has_ended( $post_id, $now = null ) {
+    $post_id = (int) $post_id;
+    $date    = (string) get_post_meta( $post_id, '_uc_event_date', true );
+    if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ) {
+        return false;
+    }
+    $last  = (string) get_post_meta( $post_id, '_uc_end_date', true );
+    $last  = ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $last ) && $last > $date ) ? $last : $date;
+    $start = (string) get_post_meta( $post_id, '_uc_start_time', true );
+    $end   = (string) get_post_meta( $post_id, '_uc_end_time', true );
+    $tz    = wp_timezone();
+    try {
+        if ( '' !== $end ) {
+            $ends = new DateTime( $last . ' ' . $end, $tz );
+            // An end at or before the start on a one-day event runs past midnight.
+            if ( $last === $date && '' !== $start && strtotime( '2000-01-01 ' . $end ) <= strtotime( '2000-01-01 ' . $start ) ) {
+                $ends->modify( '+1 day' );
+            }
+        } elseif ( '' !== $start && $last === $date ) {
+            $ends = new DateTime( $date . ' ' . $start, $tz );
+        } else {
+            $ends = new DateTime( $last . ' 23:59:59', $tz );
+        }
+    } catch ( Exception $e ) {
+        return false;
+    }
+    return $ends->getTimestamp() <= ( null === $now ? time() : (int) $now );
+}
+
+/**
+ * What an ended event's page shows in place of registering (3.134.0): "This
+ * event has ended." and the series' upcoming dates, each with its weekday and
+ * a link to it. No form, no Register button, no link to the calendar. The
+ * dates are the public ones "Upcoming in this series" lists, without any that
+ * have ended too.
+ *
+ * @param int $post_id
+ * @return string
+ */
+function sfaf_event_ended_block( $post_id ) {
+    $post_id = (int) $post_id;
+    $dates   = sfaf_event_upcoming_dates( $post_id );
+    // Its style travels with it, as the preview band's does: calendar.css is
+    // the embed's stylesheet too, and the embed does not change.
+    $css = '.uc-single-card .uc-event-ended{flex-direction:column;align-items:stretch;gap:10px}'
+        . '.uc-single .uc-event-ended .uc-ended-line{margin:0;font-size:15px;font-weight:700;line-height:1.4;color:var(--uc-text,#1A1D21)}'
+        . '.uc-single .uc-event-ended .uc-series-list li a{display:block;line-height:1.45}'
+        . '.uc-single .uc-event-ended .uc-series-time{display:block;margin-top:2px}';
+    ob_start();
+    ?>
+    <style id="uc-ended-css"><?php echo $css; // phpcs:ignore -- fixed CSS. ?></style>
+    <div class="uc-card-rsvp uc-event-ended" data-uc-ended>
+        <p class="uc-ended-line"><?php echo esc_html( sfaf_page_label( $post_id, 'ended' ) ); ?></p>
+        <?php if ( $dates ) : ?>
+            <ul class="uc-series-list uc-ended-dates" data-uc-ended-dates>
+                <?php foreach ( $dates as $eid ) :
+                    $lang = sfaf_event_language( $eid );
+                    $d    = (string) get_post_meta( $eid, '_uc_event_date', true );
+                    $st   = (string) get_post_meta( $eid, '_uc_start_time', true );
+                    ?>
+                    <li>
+                        <a href="<?php echo esc_url( get_permalink( $eid ) ); ?>">
+                            <span class="uc-series-date"><?php echo esc_html( sfaf_ap_date( $d, 'full', $lang ) ); ?></span>
+                            <?php if ( '' !== $st ) : ?><span class="uc-series-time"><?php echo esc_html( sfaf_ap_time( $st, true, $lang ) ); ?></span><?php endif; ?>
+                        </a>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+
+/**
+ * The same series' upcoming public dates, not this one and none that have
+ * ended (3.134.0).
+ *
+ * @param int $post_id
+ * @return int[]
+ */
+function sfaf_event_upcoming_dates( $post_id ) {
+    $term_id = SFAF_Series::id_for_event( (int) $post_id );
+    if ( ! $term_id ) {
+        return array();
+    }
+    return array_values( array_filter( sfaf_get_series_events( $term_id, true ), function ( $id ) use ( $post_id ) {
+        return (int) $id !== (int) $post_id && ! sfaf_event_has_ended( $id );
+    } ) );
+}
+
 /* -------------------------------------------------------------------------
  * Galaxy Digital (volunteer needs) helpers
  * ---------------------------------------------------------------------- */
@@ -3829,6 +3930,7 @@ function sfaf_page_words() {
         'in_person_online'  => array( 'In person and online', 'En persona y en línea' ),
         'faq'               => array( 'Frequently Asked Questions', 'Preguntas frecuentes' ),
         'upcoming'          => array( 'Upcoming in this series', 'Próximas fechas de esta serie' ),
+        'ended'             => array( 'This event has ended.', 'Este evento ya terminó.' ),
         'getting_there'     => array( 'Getting there', 'Cómo llegar' ),
         'flyer'             => array( 'View flyer (PDF)', 'Ver folleto (PDF)' ),
         'register'          => array( 'Register', 'Inscribirse' ),

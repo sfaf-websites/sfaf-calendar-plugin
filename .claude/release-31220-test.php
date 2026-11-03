@@ -73,7 +73,7 @@ $GLOBALS['kit_query'] = function ( $a ) { return array(); };
 /* The events, one per state the top of Edit event and the tour depend on. */
 function rt_event( $status, $meta = array(), $series = 11 ) {
     $id = kit_write_post( array( 'post_type' => 'uc_event', 'post_status' => $status, 'post_title' => 'Dinner ' . $status, 'post_name' => 'dinner-' . $status . '-' . $GLOBALS['kit_next'], 'post_author' => 1, 'post_date' => '2026-12-01 09:00:00' ) );
-    foreach ( array_merge( array( '_uc_event_date' => '2026-12-20', '_uc_start_time' => '18:00', '_uc_end_time' => '19:30', '_uc_rsvp_enabled' => '1' ), $meta ) as $k => $v ) {
+    foreach ( array_merge( array( '_uc_event_date' => date( 'Y-m-d', strtotime( '+60 days' ) ), '_uc_start_time' => '18:00', '_uc_end_time' => '19:30', '_uc_rsvp_enabled' => '1' ), $meta ) as $k => $v ) {
         update_post_meta( $id, $k, $v );
     }
     if ( $series ) { $GLOBALS['kit_terms'][ $id ]['uc_series'] = array( $series ); }
@@ -297,7 +297,7 @@ rt( 'D: a published event\'s page says nothing', SFAF_Preview::banner( $ev['publ
 function rt_page( $meta ) {
     $id = kit_write_post( array( 'post_type' => 'uc_event', 'post_status' => 'publish', 'post_title' => 'Beach clean', 'post_name' => 'beach-' . $GLOBALS['kit_next'], 'post_content' => '<p>Bring gloves.</p>' ) );
     $GLOBALS['rt_page_event'] = $id;
-    foreach ( array_merge( array( '_uc_event_date' => '2026-12-05', '_uc_start_time' => '10:00', '_uc_end_time' => '12:00' ), $meta ) as $k => $v ) { update_post_meta( $id, $k, $v ); }
+    foreach ( array_merge( array( '_uc_event_date' => date( 'Y-m-d', strtotime( '+45 days' ) ), '_uc_start_time' => '10:00', '_uc_end_time' => '12:00' ), $meta ) as $k => $v ) { update_post_meta( $id, $k, $v ); }
     $GLOBALS['kit_query'] = function ( $a ) use ( $id ) { return array( $id ); };
     $GLOBALS['loop_done'] = false;
     ob_start();

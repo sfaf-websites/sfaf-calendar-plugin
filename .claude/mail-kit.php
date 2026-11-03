@@ -403,7 +403,9 @@ foreach ( array( 'function sfaf_local_timestamp(', 'function sfaf_ap_date(', 'fu
                  'function sfaf_event_location(', 'function sfaf_event_takes_rsvps(', 'function sfaf_flatten_html(',
                  'function sfaf_email_required_locked(', 'function sfaf_email_required(',
                  'function sfaf_event_language(', 'function sfaf_ap_restate(', 'function sfaf_ap_datetime(', 'function sfaf_donate_default_url(',
-                 'function sfaf_donate_choice_key(', 'function sfaf_donate_resolve(', 'function sfaf_donate_url(', 'function sfaf_event_datetimes(' ) as $mk_n ) {
+                 'function sfaf_donate_choice_key(', 'function sfaf_donate_resolve(', 'function sfaf_donate_url(', 'function sfaf_event_datetimes(',
+                 // An ended event takes no registrations (3.134.0).
+                 'function sfaf_event_has_ended(' ) as $mk_n ) {
     eval( mk_lift( $mk_tpl, $mk_n ) );
 }
 // The default donation link, a constant the template functions define (3.106.0).

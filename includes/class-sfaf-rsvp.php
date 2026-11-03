@@ -282,6 +282,15 @@ class SFAF_RSVP {
         // Make sure this is a real, published event before accepting an RSVP.
         $event = get_post( $data['event_id'] );
         if ( ! $event || $event->post_type !== 'uc_event' || $event->post_status !== 'publish' ) {
+            /*
+             * NOT PUBLISHED YET (3.134.0). Staff can open a draft, pending or
+             * scheduled event's page, a private one by its link, and its form
+             * said the event could not be found. They are told why; anybody
+             * else is told nothing about an event they cannot see.
+             */
+            if ( $event && 'uc_event' === $event->post_type && class_exists( 'SFAF_Preview' ) && SFAF_Preview::can_preview( $event ) ) {
+                return array( 'success' => false, 'message' => SFAF_Messages::label( 'e_not_live', $say ) );
+            }
             return array( 'success' => false, 'message' => SFAF_Messages::label( 'e_no_event', $say ) );
         }
 
@@ -301,6 +310,12 @@ class SFAF_RSVP {
          */
         if ( SFAF_Cancellation::is_cancelled( $data['event_id'] ) ) {
             return array( 'success' => false, 'message' => SFAF_Messages::label( 'e_cancelled', $say ) );
+        }
+
+        // AN ENDED EVENT TAKES NO REGISTRATIONS (3.134.0), whatever the form
+        // sends: a page left open from before the end still posts.
+        if ( sfaf_event_has_ended( $data['event_id'] ) ) {
+            return array( 'success' => false, 'message' => SFAF_Messages::label( 'e_ended', $say ) );
         }
 
         // Don't accept RSVPs for events that don't have RSVP enabled, or that
@@ -605,6 +620,19 @@ class SFAF_RSVP {
          */
         if ( '' !== $person->email && self::confirmations_enabled() && SFAF_Notifications::on( $event_id, 'confirmation' ) ) {
             SFAF_Notifications::send_confirmation( $event_id, $person );
+        }
+
+        // 1b) And by Text or WhatsApp when they chose one (3.134.0), under the
+        // same two switches, with or without an email.
+        if ( class_exists( 'SFAF_Texts' ) && ! empty( $data['text_channel'] ) ) {
+            SFAF_Texts::send_confirmation( (object) array(
+                'id'           => $person->rsvp_id,
+                'event_id'     => (int) $event_id,
+                'phone'        => isset( $data['phone'] ) ? (string) $data['phone'] : '',
+                'text_channel' => (string) $data['text_channel'],
+                'lang'         => $person->lang,
+                'token'        => $person->token,
+            ) );
         }
 
         /*

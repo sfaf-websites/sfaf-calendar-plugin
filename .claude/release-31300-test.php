@@ -210,7 +210,8 @@ $tok = $px->query( '//input[@name="twilio_token"]' )->item( 0 );
 rt( 'A: the token box is a password box, always empty', $tok && 'password' === $tok->getAttribute( 'type' ) && '' === $tok->getAttribute( 'value' ) );
 rt( 'A: Test connection is on the panel', 1 === $px->query( '//button[@data-uc-twilio-test]' )->length );
 rt( 'A: the panel gives the incoming message address', 1 === $px->query( '//input[@data-uc-twilio-incoming and @readonly and @value="' . SFAF_Texts::incoming_url() . '"]' )->length );
-rt( 'A: the four template boxes', 4 === $px->query( '//input[starts-with(@name,"twilio_wa_")]' )->length );
+// Six from 3.134.0: the confirmation's two joined the four.
+rt( 'A: the four template boxes', 4 === $px->query( '//input[starts-with(@name,"twilio_wa_") and not(@data-uc-twilio-confirm-template)]' )->length );
 $GLOBALS['tw_answer'] = array( 'code' => 401, 'body' => '{"message":"Bad token ' . $TOKEN . '","code":20003}' );
 $r = SFAF_Texts::api( 'POST', '/Messages.json', array( 'To' => '+14155550123' ) );
 rt( 'A: an error from Twilio never carries the token', ! $r['ok'] && false === strpos( $r['error'], $TOKEN ) && false !== strpos( $r['error'], '[token]' ) );
@@ -284,8 +285,9 @@ rt( 'C: two texts go, nothing by WhatsApp while it is off, nothing to Neither or
 $to = array_map( function ( $c ) { return $c['args']['body']['To']; }, $calls );
 rt( 'C: to the two who chose Text', array( '+14155550101', '+14155550103' ) === $to );
 rt( 'C: a text goes through the Messaging Service', $GLOBALS['MG'] === $calls[0]['args']['body']['MessagingServiceSid'] );
-rt( 'C: the English reminder, as the template reads', 'Reminder from SFAF: Coffee & Conversation is today at 10 am, at 1035 Market St. Event details: https://resources.sfaf.org/events/900/ Reply STOP to opt out.' === $calls[0]['args']['body']['Body'] );
-rt( 'C: the Spanish reminder for the one who chose Spanish', 0 === strpos( $calls[1]['args']['body']['Body'], 'Recordatorio de SFAF: Coffee & Conversation es hoy a las ' ) && false !== strpos( $calls[1]['args']['body']['Body'], 'Responda STOP' ) );
+// "SFAF:" opens every text from 3.134.0, so it reads "SFAF: Reminder:".
+rt( 'C: the English reminder, as the template reads', 'SFAF: Reminder: Coffee & Conversation is today at 10 am, at 1035 Market St. Event details: https://resources.sfaf.org/events/900/ Reply STOP to opt out.' === $calls[0]['args']['body']['Body'] );
+rt( 'C: the Spanish reminder for the one who chose Spanish', 0 === strpos( $calls[1]['args']['body']['Body'], 'SFAF: Recordatorio: Coffee & Conversation es hoy a las ' ) && false !== strpos( $calls[1]['args']['body']['Body'], 'Responda STOP' ) );
 $GLOBALS['tw_calls'] = array();
 $r2 = SFAF_Texts::send_reminders( 900 );
 rt( 'C: a second run sends nothing again', 0 === $r2['sent'] && 2 === $r2['already'] && 0 === count( $GLOBALS['tw_calls'] ) );
@@ -339,7 +341,7 @@ $empty = SFAF_Texts::send_update( 900, "   \n ", 1 );
 rt( 'D: an empty message sends nothing and logs nothing', ! empty( $empty['error'] ) && 0 === count( $GLOBALS['tw_calls'] ) && array() === SFAF_Texts::log( 900 ) );
 $sent = SFAF_Texts::send_update( 900, 'Doors open at 9:45. <b>Bring</b> a friend!', 1 );
 rt( 'D: one text, to the one it can reach', 1 === $sent['sms'] && 0 === $sent['whatsapp'] && 1 === count( $GLOBALS['tw_calls'] ) && '+14155550101' === $GLOBALS['tw_calls'][0]['args']['body']['To'] );
-rt( 'D: the update reads as the template does', 'Update from SFAF about Coffee & Conversation: Doors open at 9:45. Bring a friend! For questions, please email events@sfaf.org. Reply STOP to opt out.' === $GLOBALS['tw_calls'][0]['args']['body']['Body'] );
+rt( 'D: the update reads as the template does', 'SFAF: Update about Coffee & Conversation: Doors open at 9:45. Bring a friend! For questions, please email events@sfaf.org. Reply STOP to opt out.' === $GLOBALS['tw_calls'][0]['args']['body']['Body'] );
 $log = SFAF_Texts::log( 900 );
 rt( 'D: the send is logged with who, the message and the counts', 1 === count( $log ) && 1 === $log[0]['by'] && 'Doors open at 9:45. Bring a friend!' === $log[0]['message'] && 1 === $log[0]['sms'] );
 rt( 'D: the log says what happened', 'Sent by text to 1.' === SFAF_Texts::said( $log[0] ) );
@@ -375,12 +377,13 @@ $h = SFAF_Texts::answer( 'whatsapp:+14155550101', 'help' );
 rt( 'E: HELP on WhatsApp is answered, with the Replies go to address', false !== strpos( $h, 'events@sfaf.org' ) && false !== strpos( $h, 'STOP' ) );
 rt( 'E: HELP on a text is left to the Messaging Service', '' === SFAF_Texts::answer( '+14155550101', 'HELP' ) );
 $auto = SFAF_Texts::answer( '+14155550101', 'Is there parking?' );
-rt( "E: Mark's line, word for word", "This number isn't monitored. For questions about Coffee & Conversation, please contact events@sfaf.org." === $auto );
+// A text from 3.134.0: "SFAF:" before Mark's line and the STOP line after.
+rt( "E: Mark's line, word for word", "SFAF: This number isn't monitored. For questions about Coffee & Conversation, please contact events@sfaf.org. Reply STOP to opt out." === $auto );
 rt( 'E: once a day per number', '' === SFAF_Texts::answer( '+14155550101', 'Hello?' ) );
-rt( 'E: a stranger gets the site default', "This number isn't monitored. For questions about this event, please contact calendar@sfaf.org." === SFAF_Texts::answer( '+14155559999', 'Hi' ) );
+rt( 'E: a stranger gets the site default', "SFAF: This number isn't monitored. For questions about this event, please contact calendar@sfaf.org. Reply STOP to opt out." === SFAF_Texts::answer( '+14155559999', 'Hi' ) );
 delete_post_meta( 900, '_uc_email_replyto' );
 $GLOBALS['kit_trans'] = array();
-rt( "E: without the event's own address, the creator's", "This number isn't monitored. For questions about Coffee & Conversation, please contact admin@sfaf.org." === SFAF_Texts::answer( '+14155550101', 'Hi' ) );
+rt( "E: without the event's own address, the creator's", "SFAF: This number isn't monitored. For questions about Coffee & Conversation, please contact admin@sfaf.org. Reply STOP to opt out." === SFAF_Texts::answer( '+14155550101', 'Hi' ) );
 global $TOKEN;
 rt( 'E: an unsigned request is refused', ! SFAF_Texts::signed( array( 'From' => '+14155550101', 'Body' => 'STOP' ), $TOKEN, '' ) );
 $params = array( 'From' => '+14155550101', 'Body' => 'STOP' );

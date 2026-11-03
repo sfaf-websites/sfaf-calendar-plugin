@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 413 items.** Quick 334, needs real conditions 74, blocked on other
+**Outstanding: 418 items.** Quick 337, needs real conditions 76, blocked on other
 people 5.
 
 ---
@@ -4564,6 +4564,50 @@ number. Search for a name.
 check drew the page in Chrome at 390, 768, 1024 and 1280px with invented
 registrations.
 
+### 1.337 Terms beside the privacy policy on the RSVP form (3.134.0)
+
+On a real event page, press Register and tick **Text**: under the consent line,
+"Privacy policy · Terms". Press **Terms**: the events calendar terms page on
+sfaf.org opens in a new tab. Tick **WhatsApp** instead: the same two links under
+its own line. Switch to **Español**: "Política de privacidad · Términos".
+
+**Why it needs a person:** the live form with Twilio set up, on the real site's
+theme and caches; the check drew it in Chrome with invented settings.
+
+### 1.338 An ended event's page (3.134.0)
+
+Open the page of a repeating event whose date has passed, in a private window.
+Where Register was: "This event has ended.", and under it the series' next
+dates, each with its weekday, each opening that date's page. No Register
+button, no Add to Calendar, and no "Upcoming in this series" box lower down.
+Open a past event with no later dates: the line alone. Open a Spanish event's
+past date: "This event has ended. / Este evento ya terminó." Then open a page
+of an event happening today, before its end time: Register is there, and
+after its end time (or its start time when it has no end time) the page says
+it has ended.
+
+**Why it needs a person:** real events, real dates and the live site's page
+cache, which may keep showing Register on a page cached before the event ended
+until the cache is cleared.
+
+### 1.339 Registering on a private event (3.134.0)
+
+**First, say which event failed before**, and whether it was published,
+a draft, waiting for review, or scheduled when you registered; 3.134.0 could
+not reproduce the fault on a published private event. Then in caladmin, make a
+draft event private and look under **Who can find this event**: the link is a
+string of letters and numbers, not ?post_type=uc_event&p=, with "The link
+opens the event and takes registrations once the event is published." Publish
+it. Open the link in a private window, signed out, and register with your own
+address and Text with your own number: it goes through, the confirmation email
+and text arrive, and the email's cancel link opens the cancel page. Send
+yourself a line with **Email registrants** and with **Text registrants** from
+its RSVP list: both arrive. If it is an event for tomorrow, the morning-of
+reminder arrives by email and text.
+
+**Why it needs a person:** the real site's statuses, caches, mail and Twilio;
+the check ran the real code on invented events.
+
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -5591,8 +5635,9 @@ registrations and answers; the checks rendered the lists with invented ones.
 
 Register for an event taking place tomorrow, choosing Text, with your own
 number. On the morning, at the reminder time, the email and the text arrive
-together: "Reminder from SFAF: [event] is today at [time], at [place]. Event
+together: "SFAF: Reminder: [event] is today at [time], at [place]. Event
 details: [link] Can't make it? Cancel here: [link] Reply STOP to opt out."
+("SFAF:" first from 3.134.0; it read "Reminder from SFAF:" before.)
 Tap the cancel link: it opens the same cancel page as the confirmation
 email's link, for your registration (do not confirm unless you mean to). The
 next scheduled run sends nothing more. (Cancel line from 3.131.0.)
@@ -5602,9 +5647,10 @@ day, and a real phone.
 
 ### 2.74 Replies, HELP and STOP (3.130.0)
 
-From the phone in 2.72, reply "What time do doors open?": one answer, "This
-number isn't monitored. For questions about [event], please contact
-[Replies go to].", and a second question the same day gets nothing. Reply
+From the phone in 2.72, reply "What time do doors open?": one answer, "SFAF:
+This number isn't monitored. For questions about [event], please contact
+[Replies go to]. Reply STOP to opt out." ("SFAF:" and the STOP line from
+3.134.0), and a second question the same day gets nothing. Reply
 HELP: Twilio's HELP reply set in 2.72. Reply STOP: Twilio confirms; on the RSVP
 list's Text registrants you now show "Nothing: this number sent STOP", and a
 Send does not reach you. Reply START: you are listed as Text again.
@@ -5638,6 +5684,38 @@ line above the list saying how many.
 
 **Why it needs a person:** Meta's approval of the templates and a real
 WhatsApp account; nothing in the build can send one.
+
+### 2.77 The confirmation by text (3.134.0)
+
+Register for an event with your own phone, choosing **Text**, in English: the
+confirmation email arrives and so does a text, "SFAF: You're registered for
+[event] on [weekday, date] at [time], [place]. Details: [link] Can't make it?
+Cancel here: [link] Reply STOP to opt out." Both links open: the event page,
+and the cancel page for your registration. Register again for another event in
+**Español**: "SFAF: Está registrado para ... Responda STOP para cancelar."
+Register once with "I do not use email" ticked and Text chosen: the text
+still comes. Fill a test event's places, join its waitlist choosing Text (no
+text yet), then confirm yourself from its RSVP list: the text comes then.
+Send a line with Text registrants: it starts "SFAF: Update about [event]:" and
+ends "Reply STOP to opt out." once.
+
+**Why it needs a person:** a real phone and Twilio's real Messaging Service;
+the check recorded what would be sent.
+
+### 2.78 The WhatsApp confirmation, once Meta approves its two templates (3.134.0)
+
+In Twilio's Content Template Builder, create **sfaf_event_confirmation** in
+English and Spanish (Utility), with Mark's words and {{1}} to {{6}}: the event,
+the date with its weekday, the start time, the place, the event page and the
+cancel link. Submit both. Until both Content SIDs are in **Settings > Twilio**,
+the line above their boxes says "WhatsApp confirmations stay off until both
+are filled in, with WhatsApp on." and nobody gets one, while the reminder and
+Text registrants still go by WhatsApp. Paste both: the line says "WhatsApp
+confirmations are on." Register with your own WhatsApp number choosing
+WhatsApp: the confirmation arrives on WhatsApp with your own cancel link in
+the last blank.
+
+**Why it needs a person:** Meta's approval and a real WhatsApp account.
 
 ## 3. Blocked on other people
 

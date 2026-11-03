@@ -250,6 +250,8 @@ for f in .claude/*.php; do
     release-31310-live.php) continue ;;  # run below with --run
     release-31330-live.php) continue ;;  # run below with --run
     plant-31330.php) continue ;;       # a fault planter for the 3.133.0 check, not a check
+    release-31340-live.php) continue ;;  # run below with --run
+    plant-31340.php) continue ;;       # a fault planter for the 3.134.0 checks, run with the release, and it drives Chrome
     release-31260-live.php) continue ;;  # run below with --run
     release-31240-live.php) continue ;;  # run below with --run
     release-31138-live.php) continue ;;  # run below with --run
@@ -570,6 +572,8 @@ run "release-31290-live --run" php .claude/release-31290-live.php --run
 run "release-31310-live --run" php .claude/release-31310-live.php --run
 # The RSVP list at 390, 768, 1024 and 1280px (3.133.0).
 run "release-31330-live --run" php .claude/release-31330-live.php --run
+# The Terms link on the RSVP form, and an ended event's page (3.134.0).
+run "release-31340-live --run" php .claude/release-31340-live.php --run
 # The embed in its shadow root under a hostile host stylesheet, and the combined
 # sidebar ending at its content (3.111.0 J and K), at 1280px and 390px.
 run "embed-isolation-live --run" php .claude/embed-isolation-live.php --run

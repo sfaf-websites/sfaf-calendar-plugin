@@ -177,7 +177,7 @@ $GLOBALS['KEY'] = $KEY;
 
 function rt_event( $orgs, $meta = array(), $series = 0 ) {
     $id = kit_write_post( array( 'post_type' => 'uc_event', 'post_status' => 'publish', 'post_title' => 'Lunch and learn', 'post_author' => 1 ) );
-    foreach ( array_merge( array( '_uc_event_date' => '2027-01-14', '_uc_start_time' => '12:00', '_uc_end_time' => '13:00', '_uc_rsvp_enabled' => '1' ), $meta ) as $k => $v ) { update_post_meta( $id, $k, $v ); }
+    foreach ( array_merge( array( '_uc_event_date' => date( 'Y-m-d', strtotime( '+70 days' ) ), '_uc_start_time' => '12:00', '_uc_end_time' => '13:00', '_uc_rsvp_enabled' => '1' ), $meta ) as $k => $v ) { update_post_meta( $id, $k, $v ); }
     $GLOBALS['kit_terms'][ $id ]['uc_organizer'] = $orgs;
     if ( $series ) { $GLOBALS['kit_terms'][ $id ]['uc_series'] = array( $series ); }
     return $id;

@@ -141,6 +141,9 @@ class SFAF_Credentials {
             'twilio_wa_reminder_es'    => 'text',
             'twilio_wa_update_en'      => 'text',
             'twilio_wa_update_es'      => 'text',
+            // The confirmation's two templates (3.134.0).
+            'twilio_wa_confirmation_en' => 'text',
+            'twilio_wa_confirmation_es' => 'text',
         );
     }
 

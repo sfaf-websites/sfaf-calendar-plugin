@@ -8368,15 +8368,18 @@ class SFAF_Portal {
                 <div class="uc-private-link-row" data-uc-private-link-row data-uc-saved-action="private-link">
                     <label class="uc-visually-hidden" for="<?php echo esc_attr( $link_id ); ?>">The event's private link</label>
                     <input type="text" id="<?php echo esc_attr( $link_id ); ?>" class="uc-private-link-box" readonly
-                           value="<?php echo esc_attr( get_permalink( $event_id ) ); ?>" data-uc-private-link />
+                           value="<?php echo esc_attr( SFAF_Preview::live_link( $event_id ) ); ?>" data-uc-private-link />
                     <button type="button" class="uc-btn uc-btn-sm" data-uc-copy="<?php echo esc_attr( $link_id ); ?>">Copy</button>
                     <span class="uc-visually-hidden" role="status" data-uc-copy-said></span>
                 </div>
             <?php elseif ( $is_private ) : ?>
                 <p class="uc-hint uc-private-link">
                     Send this address:
-                    <code><?php echo esc_html( get_permalink( $event_id ) ); ?></code>
+                    <code><?php echo esc_html( SFAF_Preview::live_link( $event_id ) ); ?></code>
                 </p>
+            <?php endif; ?>
+            <?php if ( $is_private && SFAF_Preview::not_live( $event_id ) ) : ?>
+                <p class="uc-hint" data-uc-private-not-live>The link opens the event and takes registrations once the event is published.</p>
             <?php endif; ?>
             <?php if ( $imported ) : ?>
                 <p class="uc-hint">This choice is yours permanently. A fetch never changes it.</p>
@@ -19808,7 +19811,7 @@ class SFAF_Portal {
                         <label class="uc-field">
                             <span class="uc-field-label">Message</span>
                             <textarea name="tr_message" rows="3" maxlength="<?php echo (int) SFAF_Texts::MAX_MESSAGE; ?>" required data-uc-tr-message></textarea>
-                            <span class="uc-hint"><?php echo esc_html( sprintf( 'Up to %d characters. It arrives as "Update from SFAF about %s:", then the message and where to email.', SFAF_Texts::MAX_MESSAGE, html_entity_decode( get_the_title( $event_id ), ENT_QUOTES, 'UTF-8' ) ) ); ?></span>
+                            <span class="uc-hint"><?php echo esc_html( sprintf( 'Up to %d characters. It arrives by text as "SFAF: Update about %s:", then the message and where to email.', SFAF_Texts::MAX_MESSAGE, html_entity_decode( get_the_title( $event_id ), ENT_QUOTES, 'UTF-8' ) ) ); ?></span>
                         </label>
                         <?php $this->render_recipient_picker( 'tr', $event_id, $tr_people, $log, 'message' ); ?>
                         <div class="uc-form-actions">

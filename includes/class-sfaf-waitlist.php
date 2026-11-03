@@ -459,6 +459,10 @@ class SFAF_Waitlist {
         } elseif ( $opened && '' === trim( $person->email ) ) {
             self::alert_added_untold( (int) $row->event_id, $row );
         }
+        // The confirmation by Text or WhatsApp too, once they are in (3.134.0).
+        if ( class_exists( 'SFAF_Texts' ) && ! empty( $row->text_channel ) ) {
+            SFAF_Texts::send_confirmation( $row );
+        }
         SFAF_Notifications::send_alert( (int) $row->event_id, $person );
     }
 

@@ -470,7 +470,7 @@ class SFAF_Post_Types {
                 </p>
                 <?php if ( $is_private ) : ?>
                     <p class="description">Send this address:<br />
-                        <code style="word-break:break-all;"><?php echo esc_html( get_permalink( $post->ID ) ); ?></code>
+                        <code style="word-break:break-all;"><?php echo esc_html( SFAF_Preview::live_link( $post->ID ) ); ?></code>
                     </p>
                 <?php endif; ?>
             <?php endif; ?>

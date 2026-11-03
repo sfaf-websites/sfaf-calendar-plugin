@@ -14,12 +14,21 @@
  *     person's own cancel link, their confirmation email's (3.131.0);
  *   - "Text registrants" from the RSVP list: one message the team types,
  *     wrapped in the person's language, logged on the event like Email
- *     registrants.
+ *     registrants;
+ *   - the confirmation (3.134.0), right after a registration and when a
+ *     waitlist place is confirmed, beside the confirmation email and under
+ *     the same two switches (send_confirmation()).
  * Each in the language the person chose on the form, else the event's.
+ *
+ * EVERY TEXT STARTS "SFAF:" AND ENDS "Reply STOP to opt out." (3.134.0),
+ * "Responda STOP para cancelar." in Spanish, as the carrier campaign was
+ * registered: sms() adds either only when it is not there already. A
+ * WhatsApp message is unchanged.
  *
  * WHATSAPP STAYS OFF until the Account SID, the Auth Token, the WhatsApp
  * sender and all four template SIDs (the reminder and the update, English and
- * Spanish) are in Settings. WhatsApp outside a conversation the person opened
+ * Spanish) are in Settings. The WhatsApp confirmation also needs its own two
+ * (3.134.0), and without them stays off while the rest goes. WhatsApp outside a conversation the person opened
  * may only be a Meta-approved template, so there is no free-text fallback.
  * Until it is on, somebody who chose WhatsApp gets email only, and the RSVP
  * list says WhatsApp isn't active yet.
@@ -77,8 +86,17 @@ class SFAF_Texts {
         'update_en'   => 'twilio_wa_update_en',
         'update_es'   => 'twilio_wa_update_es',
     );
+    /** The confirmation's two (3.134.0): WhatsApp confirmations stay off until both are in. */
+    const WA_CONFIRM_TEMPLATES = array(
+        'confirmation_en' => 'twilio_wa_confirmation_en',
+        'confirmation_es' => 'twilio_wa_confirmation_es',
+    );
 
     /** Keywords, upper case. Twilio's stop and start words, and PARAR. */
+    /** How a text ends (3.134.0), as the carrier campaign was registered. */
+    const STOP_LINE_EN = 'Reply STOP to opt out.';
+    const STOP_LINE_ES = 'Responda STOP para cancelar.';
+
     const STOP_WORDS  = array( 'STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT', 'REVOKE', 'OPTOUT', 'PARAR' );
     const START_WORDS = array( 'START', 'UNSTOP', 'YES' );
     const HELP_WORDS  = array( 'HELP', 'INFO', 'AYUDA' );
@@ -175,6 +193,24 @@ class SFAF_Texts {
         return true;
     }
 
+    /** WhatsApp confirmations can go: WhatsApp is on, and both confirmation templates are in (3.134.0). */
+    public static function whatsapp_confirm_on() {
+        if ( ! self::whatsapp_on() ) {
+            return false;
+        }
+        foreach ( self::WA_CONFIRM_TEMPLATES as $key ) {
+            if ( ! preg_match( '/^HX[0-9a-f]{32}$/i', self::setting( $key ) ) ) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Every template SID the panel keeps. */
+    public static function template_keys() {
+        return array_merge( array_values( self::WA_TEMPLATES ), array_values( self::WA_CONFIRM_TEMPLATES ) );
+    }
+
     /**
      * Save the panel. The token only when one was typed; blank keeps it.
      *
@@ -186,11 +222,11 @@ class SFAF_Texts {
             self::SID     => array( '/^AC[0-9a-f]{32}$/i', 'The Account SID starts with AC and has 34 characters.' ),
             self::SERVICE => array( '/^MG[0-9a-f]{32}$/i', 'The Messaging Service SID starts with MG and has 34 characters.' ),
         );
-        foreach ( self::WA_TEMPLATES as $key ) {
+        foreach ( self::template_keys() as $key ) {
             $checks[ $key ] = array( '/^HX[0-9a-f]{32}$/i', 'A template SID starts with HX and has 34 characters.' );
         }
         $clean = array();
-        foreach ( array_merge( array( self::SID, self::SERVICE, self::WA_FROM ), array_values( self::WA_TEMPLATES ) ) as $key ) {
+        foreach ( array_merge( array( self::SID, self::SERVICE, self::WA_FROM ), self::template_keys() ) as $key ) {
             $v = isset( $fields[ $key ] ) ? trim( preg_replace( '/\s+/', '', (string) $fields[ $key ] ) ) : '';
             if ( '' !== $v && isset( $checks[ $key ] ) && 1 !== preg_match( $checks[ $key ][0], $v ) ) {
                 $bad[] = $checks[ $key ][1];
@@ -328,6 +364,9 @@ class SFAF_Texts {
     public static function facts( $event_id, $lang ) {
         $es    = ( 'es' === $lang );
         $start = (string) get_post_meta( $event_id, '_uc_start_time', true );
+        // The date with its weekday, for the confirmation (3.134.0).
+        $day   = (string) get_post_meta( $event_id, '_uc_event_date', true );
+        $date  = '' !== $day ? sfaf_ap_date( $day, 'full', $lang ) : '';
         // sfaf_event_location() answers "Online Event" in English for an online event.
         $place = class_exists( 'SFAF_Online' ) && SFAF_Online::is_online( $event_id )
             ? SFAF_Messages::label( 'online_event', $lang )
@@ -341,6 +380,7 @@ class SFAF_Texts {
         return array(
             'name'  => html_entity_decode( get_the_title( $event_id ), ENT_QUOTES, 'UTF-8' ),
             'time'  => '' !== $start ? sfaf_ap_time( $start, true, $lang ) : SFAF_Messages::label( 'tbc', $lang ),
+            'date'  => '' !== $date ? $date : SFAF_Messages::label( 'tbc', $lang ),
             'place' => $place,
             'link'  => (string) get_permalink( $event_id ),
             'reply' => SFAF_Reminders::reply_to_for( $event_id ),
@@ -348,19 +388,27 @@ class SFAF_Texts {
     }
 
     /**
-     * The words of a text: the WhatsApp template's, so a text and a WhatsApp
-     * message say the same thing. The reminder and the update end with how to
-     * stop, which the WhatsApp templates leave to WhatsApp.
+     * The words of a message: the WhatsApp template's, so a text and a WhatsApp
+     * message say the same thing. A text is these words through sms(), which
+     * puts "SFAF:" before them and how to stop after (3.134.0).
      */
     public static function words( $kind, $lang, $v ) {
         $es = ( 'es' === $lang );
         if ( isset( $v['message'] ) ) {
             $v['message'] = self::ended( $v['message'] );
         }
-        if ( 'reminder' === $kind ) {
-            $s = $es
-                ? sprintf( 'Recordatorio de SFAF: %s es hoy a las %s, en %s. Detalles del evento: %s', $v['name'], $v['time'], $v['place'], $v['link'] )
-                : sprintf( 'Reminder from SFAF: %s is today at %s, at %s. Event details: %s', $v['name'], $v['time'], $v['place'], $v['link'] );
+        if ( 'reminder' === $kind || 'confirmation' === $kind ) {
+            if ( 'confirmation' === $kind ) {
+                // Mark's words (3.134.0). "SFAF:" and STOP come from sms().
+                $s = $es
+                    ? sprintf( 'Está registrado para %s el %s a las %s, en %s. Detalles: %s', $v['name'], $v['date'], $v['time'], $v['place'], $v['link'] )
+                    : sprintf( "You're registered for %s on %s at %s, %s. Details: %s", $v['name'], $v['date'], $v['time'], $v['place'], $v['link'] );
+            } else {
+                // "SFAF:" opens every text from 3.134.0, so the reminder no longer says "from SFAF".
+                $s = $es
+                    ? sprintf( 'Recordatorio: %s es hoy a las %s, en %s. Detalles del evento: %s', $v['name'], $v['time'], $v['place'], $v['link'] )
+                    : sprintf( 'Reminder: %s is today at %s, at %s. Event details: %s', $v['name'], $v['time'], $v['place'], $v['link'] );
+            }
             // The person's own cancel link, as the template's {{5}} (3.131.0), in Mark's words, the Spanish in usted (3.132.0).
             if ( ! empty( $v['cancel'] ) ) {
                 $s .= $es
@@ -369,8 +417,8 @@ class SFAF_Texts {
             }
         } elseif ( 'update' === $kind ) {
             $s = $es
-                ? sprintf( 'Novedad de SFAF sobre %s: %s Si tiene preguntas, escriba a %s.', $v['name'], $v['message'], $v['reply'] )
-                : sprintf( 'Update from SFAF about %s: %s For questions, please email %s.', $v['name'], $v['message'], $v['reply'] );
+                ? sprintf( 'Novedad sobre %s: %s Si tiene preguntas, escriba a %s.', $v['name'], $v['message'], $v['reply'] )
+                : sprintf( 'Update about %s: %s For questions, please email %s.', $v['name'], $v['message'], $v['reply'] );
         } elseif ( 'help' === $kind ) {
             return $es
                 ? sprintf( 'Mensajes de SFAF sobre %s. Si tiene preguntas, escriba a %s. Responda STOP para no recibir más.', $v['name'], $v['reply'] )
@@ -389,11 +437,31 @@ class SFAF_Texts {
                 ? sprintf( 'Este número no se revisa. Si tiene preguntas sobre %s, escriba a %s.', $v['name'], $v['reply'] )
                 : sprintf( "This number isn't monitored. For questions about %s, please contact %s.", $v['name'], $v['reply'] );
         }
-        return $s . ( $es ? ' Responda STOP para no recibir más.' : ' Reply STOP to opt out.' );
+        return $s;
+    }
+
+    /**
+     * A text as the carrier campaign has it (3.134.0): "SFAF:" first and how to
+     * stop last, each added only when the words do not already have it.
+     */
+    public static function sms( $text, $lang ) {
+        $text = trim( (string) $text );
+        $stop = ( 'es' === $lang ) ? self::STOP_LINE_ES : self::STOP_LINE_EN;
+        if ( 0 !== strpos( $text, 'SFAF:' ) ) {
+            $text = 'SFAF: ' . $text;
+        }
+        if ( $stop !== substr( $text, -strlen( $stop ) ) ) {
+            $text .= ' ' . $stop;
+        }
+        return $text;
     }
 
     /** The template's variables, in the order Mark's templates number them. */
     public static function variables( $kind, $v ) {
+        if ( 'confirmation' === $kind ) {
+            // {{6}} falls back to the event page as the reminder's {{5}} does (3.134.0).
+            return array( '1' => $v['name'], '2' => $v['date'], '3' => $v['time'], '4' => $v['place'], '5' => $v['link'], '6' => ! empty( $v['cancel'] ) ? $v['cancel'] : $v['link'] );
+        }
         // {{5}} is the cancel link (3.131.0). A registration with no token has
         // none, and a template refuses an empty variable, so it is the event page.
         return 'reminder' === $kind
@@ -468,23 +536,45 @@ class SFAF_Texts {
         if ( ! in_array( $reach['state'], array( 'sms', 'whatsapp' ), true ) ) {
             return false;
         }
+        // The WhatsApp confirmation waits for its own two templates (3.134.0).
+        if ( 'whatsapp' === $reach['state'] && 'confirmation' === $kind && ! self::whatsapp_confirm_on() ) {
+            return false;
+        }
         $lang = self::lang_of( $row );
         $v    = array_merge( self::facts( (int) $row->event_id, $lang ), array( 'cancel' => self::cancel_link( $row ) ), $extra );
         if ( 'sms' === $reach['state'] ) {
             $r = self::api( 'POST', '/Messages.json', array(
                 'MessagingServiceSid' => self::setting( self::SERVICE ),
                 'To'                  => $reach['phone'],
-                'Body'                => self::words( $kind, $lang, $v ),
+                'Body'                => self::sms( self::words( $kind, $lang, $v ), $lang ),
             ) );
         } else {
             $r = self::api( 'POST', '/Messages.json', array(
                 'From'             => 'whatsapp:' . self::e164( self::setting( self::WA_FROM ) ),
                 'To'               => 'whatsapp:' . $reach['phone'],
-                'ContentSid'       => self::setting( self::WA_TEMPLATES[ $kind . '_' . $lang ] ),
+                'ContentSid'       => self::setting( 'confirmation' === $kind ? self::WA_CONFIRM_TEMPLATES[ 'confirmation_' . $lang ] : self::WA_TEMPLATES[ $kind . '_' . $lang ] ),
                 'ContentVariables' => wp_json_encode( self::variables( $kind, $v ) ),
             ) );
         }
         return $r['ok'];
+    }
+
+    /**
+     * The confirmation by text or WhatsApp (3.134.0), beside the confirmation
+     * email: right after a registration (SFAF_RSVP::route_submission()) and
+     * when a waitlist place is confirmed (SFAF_Waitlist::admit()). Under the
+     * same two switches as the email, the site's and the event's; it does not
+     * need an email address.
+     *
+     * @param object $row A registration: event_id, phone, text_channel, lang, token.
+     * @return bool Whether a message went.
+     */
+    public static function send_confirmation( $row ) {
+        $row = (object) $row;
+        if ( empty( $row->event_id ) || ! SFAF_RSVP::confirmations_enabled() || ! SFAF_Notifications::on( (int) $row->event_id, 'confirmation' ) ) {
+            return false;
+        }
+        return self::send( $row, 'confirmation' );
     }
 
     /**
@@ -673,7 +763,8 @@ class SFAF_Texts {
             return '';
         }
         set_transient( $key, 1, DAY_IN_SECONDS );
-        return self::words( 'auto', $lang, $v );
+        $auto = self::words( 'auto', $lang, $v );
+        return 'whatsapp' === $channel ? $auto : self::sms( $auto, $lang );
     }
 
     private static function site_reply_to() {
@@ -813,6 +904,10 @@ class SFAF_Texts {
             'update_en'   => 'sfaf_event_update, English',
             'update_es'   => 'sfaf_event_update, Spanish',
         );
+        $tpl_confirm = array(
+            'confirmation_en' => 'sfaf_event_confirmation, English',
+            'confirmation_es' => 'sfaf_event_confirmation, Spanish',
+        );
         ?>
         <div class="uc-integration-panel uc-twilio-panel<?php echo $notice ? ' uc-panel-open' : ''; ?>" id="uc-twilio" data-uc-twilio-panel>
             <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
@@ -861,6 +956,15 @@ class SFAF_Texts {
                         <div class="uc-field-row">
                             <label for="uc-tw-<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></label>
                             <input type="text" id="uc-tw-<?php echo esc_attr( $key ); ?>" name="<?php echo esc_attr( $key ); ?>" value="<?php echo esc_attr( self::setting( $key ) ); ?>" placeholder="HX..." class="uc-input" autocomplete="off" />
+                        </div>
+                    <?php endforeach; ?>
+                    <p class="description" data-uc-twilio-confirm-state><?php echo self::whatsapp_confirm_on() ? 'WhatsApp confirmations are on.' : 'WhatsApp confirmations stay off until both are filled in, with WhatsApp on.'; ?></p>
+                    <?php foreach ( $tpl_confirm as $k => $label ) :
+                        $key = self::WA_CONFIRM_TEMPLATES[ $k ];
+                        ?>
+                        <div class="uc-field-row">
+                            <label for="uc-tw-<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></label>
+                            <input type="text" id="uc-tw-<?php echo esc_attr( $key ); ?>" name="<?php echo esc_attr( $key ); ?>" value="<?php echo esc_attr( self::setting( $key ) ); ?>" placeholder="HX..." class="uc-input" autocomplete="off" data-uc-twilio-confirm-template />
                         </div>
                     <?php endforeach; ?>
                     <h3>Replies and STOP</h3>
