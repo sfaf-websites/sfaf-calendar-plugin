@@ -22,12 +22,7 @@
  *      Publish N drafts, Set team on N events and Add organizer are yellow;
  *      WP admin's plain button is R and its row x red ink
  *
- *   Q  the event page's outlined button hovers to the band, 4.5:1 or better,
- *      at both widths, and the embed's card and sidebar buttons keep the brand
- *      teal. The real calendar.css with :hover read as a class, in the same
- *      place in the cascade, so every other rule still has its say.
- *
- * caladmin's hover pairs are measured in control-standard-audit.php. PLANT in
+ * The hover pairs are measured in control-standard-audit.php. PLANT in
  * plant-31370.php.
  */
 
@@ -232,33 +227,6 @@ foreach ( $files as $key => $f ) {
     }
     if ( ! empty( $r['asked'] ) ) { $asked[] = $key . ': ' . $r['asked']['label'] . ' opened ' . ( empty( $r['dialog'] ) ? 'no dialog' : $r['dialog'] . ' buttons' ); }
 }
-/* ---- Q: the public outlined button under the pointer. ---- */
-if ( ! $only || in_array( 'public-hover', $only, true ) ) {
-    $btn = sfaf_action_button( array( 'label' => 'Route map', 'href' => 'https://example.org/a.pdf', 'variant' => 'secondary' ) );
-    rl( false !== strpos( $btn, 'uc-actionbtn-secondary' ), 'PLANT Q: sfaf_action_button drew no secondary button: ' . $btn );
-    $hcss = str_replace( ':hover', '.rl-hover', (string) file_get_contents( dirname( __DIR__ ) . '/public/css/calendar.css' ) );
-    $hjs  = "window.addEventListener('load',function(){var o={};['single','calendar','sidebar'].forEach(function(k){var b=document.querySelector('.uc-'+k+' .uc-actionbtn-secondary');b.style.transition='none';b.classList.add('rl-hover');var c=getComputedStyle(b);o[k]={face:c.backgroundColor,ink:c.color,edge:c.borderTopColor,width:window.innerWidth};});window.parent.postMessage(JSON.stringify(o),'*');});";
-    foreach ( array( 'desktop' => 1280, 'phone' => 390 ) as $w => $px ) {
-        $inner = __DIR__ . '/release-31370-live-public-hover-' . $w . '.html';
-        file_put_contents( $inner, '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><style>' . $hcss . '</style></head><body>'
-            . '<div class="uc-single">' . $btn . '</div><div class="uc-calendar">' . $btn . '</div><div class="uc-sidebar">' . $btn . '</div><script>' . $hjs . '</script></body></html>' );
-        $frame = __DIR__ . '/release-31370-live-public-hover-' . $w . '-frame.html';
-        file_put_contents( $frame, '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0"><iframe src="' . basename( $inner ) . '" style="display:block;width:' . $px . 'px;height:600px;border:0"></iframe>'
-            . '<script>window.addEventListener("message",function(e){var p=document.createElement("pre");p.id="out";p.textContent=e.data;document.body.appendChild(p);});</script></body></html>' );
-        $dom = shell_exec( '"' . $chrome . '" --headless --disable-gpu --run-all-compositor-stages-before-draw --allow-file-access-from-files --window-size=1300,800 --virtual-time-budget=5000 --dump-dom "file:///' . str_replace( '\\', '/', $frame ) . '" 2>NUL' );
-        if ( ! preg_match( '#<pre id="out">(.*?)</pre>#s', (string) $dom, $m ) ) { rl( false, "PLANT Q: public-hover@$w: Chrome returned no probe block" ); continue; }
-        $h = json_decode( html_entity_decode( $m[1], ENT_QUOTES, 'UTF-8' ), true );
-        rl( $px === (int) $h['single']['width'], "PLANT Q: public-hover@$w measured at {$h['single']['width']}px" );
-        $BAND = 'rgb(232, 249, 250)';
-        rl( $BAND === $h['single']['face'] && $TEAL === $h['single']['ink'] && $TEAL === $h['single']['edge'], "PLANT Q: public-hover@$w: the event page's hover is not the band: " . json_encode( $h['single'] ) );
-        foreach ( array( 'calendar', 'sidebar' ) as $k ) {
-            rl( 'rgb(22, 190, 207)' === $h[ $k ]['face'] && 'rgb(55, 52, 51)' === $h[ $k ]['ink'], "PLANT Q: public-hover@$w: the embed's $k button changed: " . json_encode( $h[ $k ] ) );
-        }
-        $all += 3;
-        echo "public hover at {$px}px: event page {$h['single']['face']}, cards {$h['calendar']['face']}, sidebar {$h['sidebar']['face']}\n";
-    }
-}
-
 if ( ! $only ) {
 rl( $all > 300, "only $all buttons measured" );
 rl( $kinds['R'] > 100, 'only ' . $kinds['R'] . ' R buttons seen' );

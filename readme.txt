@@ -535,7 +535,7 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 **The secondary button is R, the look of Set team. Every embed answer and header is 3.136.0's, proved by embed-identity-test.php.**
 
-**WHAT CHANGES ON PUBLIC PAGES:** the staff request form and the community submit form: their secondary buttons ("Fill these in", "Start from scratch", "+ Add a question") are R, and "Remove this question" is the red outline. The event page: its outlined button, such as a PDF attachment's, goes light teal under the pointer where it went bright teal. The public calendar and the embed are unchanged, their cards' and sidebar's outlined buttons keeping the bright-teal hover.
+**WHAT CHANGES ON PUBLIC PAGES:** only the staff request form and the community submit form: their secondary buttons ("Fill these in", "Start from scratch", "+ Add a question") are R, and "Remove this question" is the red outline. The public calendar, the event page and the embed are unchanged, their outlined button keeping its bright-teal hover.
 
 * **R, the secondary button**: white, a 1px teal #0E7680 edge, teal semibold words, 8px corners, light teal #E8F9FA under the pointer (5.35:1 at rest, 4.94:1 on hover). It replaces the Light Gray button everywhere in caladmin, on the two public forms, and in WP admin through our admin stylesheet, including "Choose file", the buttons in every dialog, and any button with no style of its own.
 * **Teal outline always means secondary**: Fetch updates and Refresh from source, solid teal until now, are R.

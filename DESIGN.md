@@ -557,10 +557,11 @@ release. Measured, in `.claude/control-standard-audit.php`:
 muted ink, `#F3F4F6` with `#6B7280`; R keeps a white face with a coloured edge
 and full-strength teal words.
 
-**One hover for an outlined button, the band**, the event page's included,
-everywhere except the public calendar's cards and sidebar, whose outlined
-`.uc-actionbtn-secondary` keeps its bright-teal hover because it is part of
-the embed, which did not change in 3.137.0.
+**One hover for an outlined button, the band**, in caladmin, WP admin and the
+two public forms. The public site's outlined `.uc-actionbtn-secondary`, on the
+cards, the sidebar and the event page, keeps its bright-teal hover: Mark dropped
+one hover everywhere from 3.137.0, because the rule is in the embed's stylesheet
+and the embed and every public file had to stay 3.136.0's.
 
 **An option group is not a row of buttons.** Pressing a segment picks a value;
 it does not do a thing. So a pick-one group wears **one** boundary with seams

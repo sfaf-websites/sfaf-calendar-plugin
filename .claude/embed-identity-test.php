@@ -60,8 +60,7 @@ const BASE_NAME = '3.136.0';
    why. Probe A still compares every embed answer, so none of these can reach
    the embed unseen. */
 const ALLOWED_FILES = array(
-    // 3.137.0: release-31370-test.php section E holds this file to one edit, the event page's hover, and no embed selector.
-    'public/css/calendar.css' => 'the event page outlined button hovers to the band; .uc-single only',
+    // None in 3.137.0: portal.css, portal.js and caladmin-session.js are caladmin's, admin.css WP admin's.
     // None in 3.136.0: the Events list is caladmin.
     // None in 3.135.0: its changes are caladmin, WP admin, the request form and email.
     // 3.134.0 named public/js/calendar.js, the Terms link, and templates/single-uc_event.php, an ended event's page.

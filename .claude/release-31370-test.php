@@ -17,9 +17,7 @@
  *      Clear the log, a closure's Remove and Remove this question, the row x
  *      red ink, + Add Campaign teal.
  *   D. Every pair measured, and DESIGN.md says R.
- *   E. The public calendar's script is 3.136.0's, and its stylesheet differs
- *      by one edit only: the event page's outlined button hovers to the band.
- *      The rule the embed's cards and sidebar use is untouched.
+ *   E. The public calendar's stylesheet and script are 3.136.0's.
  *
  * The browser half is release-31370-live.php; PLANTs in plant-31370.php.
  */
@@ -115,28 +113,10 @@ $audit = (string) shell_exec( 'php ' . escapeshellarg( __DIR__ . '/control-stand
 rt( 'D: the control-standard check passes and asks for R', false !== strpos( $audit, 'PASS.' ) && false !== strpos( $audit, 'R: teal ink on white' ) );
 
 /* ======================================================================== E */
-$lf = function ( $s ) { return str_replace( "\r\n", "\n", (string) $s ); };
-$was = $lf( shell_exec( 'git -C ' . escapeshellarg( $root ) . ' show ceb126a:public/js/calendar.js 2>&1' ) );
-rt( "E: public/js/calendar.js is 3.136.0's", '' !== $was && $was === $lf( file_get_contents( $root . '/public/js/calendar.js' ) ) );
-
-/* The one edit, spelled out: 3.136.0's stylesheet with these two replacements
-   must be this one, byte for byte, so nothing an embed reads can have moved. */
-$was = $lf( shell_exec( 'git -C ' . escapeshellarg( $root ) . ' show ceb126a:public/css/calendar.css 2>&1' ) );
-$note_was = " *              brand Dark Gray #373433 at 5.47:1.\n";
-$note_now = " *              brand Dark Gray #373433 at 5.47:1. The event page's hover is\n"
-          . " *              the band instead, as every outlined button's is (3.137.0):\n"
-          . " *              #0E7680 on #E8F9FA, 4.94:1. The cards and the sidebar are the\n"
-          . " *              embed, which keeps the brand teal.\n";
-$rule_was = ".uc-single .uc-actionbtn-secondary:hover, .uc-single .uc-actionbtn-secondary:focus-visible,\n"
-          . ".uc-sidebar .uc-actionbtn-secondary:hover, .uc-sidebar .uc-actionbtn-secondary:focus-visible {\n"
-          . "    background: var(--uc-teal); color: var(--uc-dark); border-color: var(--uc-teal-text);\n}\n";
-$rule_now = ".uc-sidebar .uc-actionbtn-secondary:hover, .uc-sidebar .uc-actionbtn-secondary:focus-visible {\n"
-          . "    background: var(--uc-teal); color: var(--uc-dark); border-color: var(--uc-teal-text);\n}\n"
-          . ".uc-single .uc-actionbtn-secondary:hover, .uc-single .uc-actionbtn-secondary:focus-visible {\n"
-          . "    background: var(--uc-band); color: var(--uc-teal-text); border-color: var(--uc-teal-text);\n}\n";
-rt( "E: the two edits apply to 3.136.0's public/css/calendar.css", 1 === substr_count( $was, $note_was ) && 1 === substr_count( $was, $rule_was ) );
-rt( "E: public/css/calendar.css is 3.136.0's but for the event page's hover", str_replace( array( $note_was, $rule_was ), array( $note_now, $rule_now ), $was ) === $lf( file_get_contents( $root . '/public/css/calendar.css' ) ) );
-rt( 'E: the event page hover measures 4.5:1 or better', rt_ratio( '#0E7680', '#E8F9FA' ) >= 4.5 );
+foreach ( array( 'public/css/calendar.css', 'public/js/calendar.js' ) as $f ) {
+    $was = (string) shell_exec( 'git -C ' . escapeshellarg( $root ) . ' show ceb126a:' . $f . ' 2>&1' );
+    rt( "E: $f is 3.136.0's", '' !== $was && str_replace( "\r\n", "\n", $was ) === str_replace( "\r\n", "\n", (string) file_get_contents( $root . '/' . $f ) ) );
+}
 
 echo "\n3.137.0: the secondary button is R\n" . str_repeat( '=', 72 ) . "\n";
 echo "release-31370: $ran checks\n";
