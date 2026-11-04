@@ -67,9 +67,11 @@ rt( 'A: Check in before is R (no rule of its own for the face)', 0 === preg_matc
 rt( 'A: Set team, the reference, is unchanged', false !== strpos( $css, '.uc-portal .uc-outline-btn:hover { background-color: var(--uc-band); }' ) );
 
 /* ======================================================================== B */
-rt( 'B: Publish N drafts is yellow', 1 === preg_match( '/class="uc-btn uc-btn-sm uc-btn-primary"\s+name="uc_do" value="publish"/', $P ) );
-rt( 'B: Set team on N events is yellow', 1 === preg_match( '/class="uc-btn uc-btn-sm uc-btn-primary"\s+name="uc_do" value="team"/', $P ) );
-rt( 'B: Add to N events stays secondary', 1 === preg_match( '/class="uc-btn uc-btn-sm"\s+name="uc_do" value="categorize"/', $P ) );
+// The Events list's own bulk row: Pending has a yellow Publish of its own.
+$EV = substr( $P, strpos( $P, 'private function render_events(' ), strpos( $P, 'private function events_table(' ) - strpos( $P, 'private function render_events(' ) );
+rt( 'B: Publish N drafts is yellow', 1 === preg_match( '/class="uc-btn uc-btn-sm uc-btn-primary"\s+name="uc_do" value="publish"/', $EV ) );
+rt( 'B: Set team on N events is yellow', 1 === preg_match( '/class="uc-btn uc-btn-sm uc-btn-primary"\s+name="uc_do" value="team"/', $EV ) );
+rt( 'B: Add to N events stays secondary', 1 === preg_match( '/class="uc-btn uc-btn-sm"\s+name="uc_do" value="categorize"/', $EV ) );
 rt( 'B: Add organizer is yellow', false !== strpos( $P, '<button type="submit" class="uc-btn uc-btn-primary">Add organizer</button>' ) );
 rt( 'B: Delete them anyway is the red outline', false !== strpos( $P, 'value="delete" class="uc-btn uc-btn-danger-outline" data-uc-delete-anyway>' ) );
 rt( 'B: Reset to default is the red outline', false !== strpos( $P, 'class="uc-btn uc-btn-danger-outline" name="tpl_do" value="reset" data-uc-tpl-reset' ) );
