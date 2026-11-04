@@ -143,7 +143,7 @@ foreach ( $files as $name => $file ) {
     if ( in_array( '--verbose', $argv, true ) ) { echo $name . ': ' . json_encode( $g[ $name ], JSON_UNESCAPED_SLASHES ) . "\n"; }
 }
 
-$pressed = function ( $f ) { return 'rgb(191, 194, 196)' === $f['bg'] && 'none' !== $f['shadow'] && false !== strpos( $f['shadow'], 'inset' ); };
+$pressed = function ( $f ) { return 'rgb(232, 249, 250)' === $f['bg'] && 'none' !== $f['shadow'] && false !== strpos( $f['shadow'], 'inset' ); };
 foreach ( $g as $name => $r ) {
     list( $mode ) = explode( '-', $name );
 
