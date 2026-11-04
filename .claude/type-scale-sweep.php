@@ -63,6 +63,7 @@ $exempt = array(
 	'uc-chip'          => 'chips are a coloured pill, sized to the pill',
 	'uc-badge'         => 'badges are chrome',
 	'uc-pill'          => 'chrome',
+	'uc-rsvp-pill'     => 'the RSVP count on the Events list is a status pill (3.136.0), sized as uc-pill is',
 	'uc-tab'           => 'chrome',
 	'uc-icon'          => 'icons are sized in px like images',
 	'uc-brandmark'     => 'the wordmark is a logo',
