@@ -86,6 +86,12 @@ $plants = array(
     'the row x is warm again' => array( $T, 'FAIL  C: the row x is red ink', array(
         array( $A, '.uc-repeater-remove { color: #c0392b !important;', '.uc-repeater-remove { color: #E8573A !important;' ),
     ) ),
+    'the event page keeps the bright hover' => array( $L, 'PLANT Q:', 'public-hover', array(
+        array( 'public/css/calendar.css', "    background: var(--uc-band); color: var(--uc-teal-text); border-color: var(--uc-teal-text);\n}", "    background: var(--uc-teal); color: var(--uc-dark); border-color: var(--uc-teal-text);\n}" ),
+    ) ),
+    'the hover reaches the embed cards' => array( $L, 'PLANT Q:', 'public-hover', array(
+        array( 'public/css/calendar.css', ".uc-single .uc-actionbtn-secondary:hover, .uc-single .uc-actionbtn-secondary:focus-visible {", ".uc-calendar .uc-actionbtn-secondary:hover, .uc-single .uc-actionbtn-secondary:hover, .uc-single .uc-actionbtn-secondary:focus-visible {" ),
+    ) ),
     'the public stylesheet changes' => array( $T, 'FAIL  E: public/css/calendar.css', array(
         array( 'public/css/calendar.css', "    background: var(--uc-teal); color: var(--uc-dark); border-color: var(--uc-teal-text);\n}", "    background: #E8F9FA; color: var(--uc-teal-text); border-color: var(--uc-teal-text);\n}" ),
     ) ),

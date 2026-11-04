@@ -4303,7 +4303,8 @@ function ucDismissOnBackdrop(dialog) {
         // The button's own label is the verb on the confirming button, so the
         // dialog answers with the same word the manager pressed.
         var verb = (btn.textContent || '').trim() || 'Continue';
-        var danger = btn.classList.contains('uc-link-danger') || btn.classList.contains('uc-btn-danger');
+        // The red outline asks in red too (3.137.0): Reset to default.
+        var danger = btn.classList.contains('uc-link-danger') || btn.classList.contains('uc-btn-danger') || btn.classList.contains('uc-btn-danger-outline');
 
         var dialog = document.createElement('dialog');
         dialog.className = 'uc-confirm-modal';

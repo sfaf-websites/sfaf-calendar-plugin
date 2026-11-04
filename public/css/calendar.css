@@ -1949,7 +1949,10 @@
  *              would have failed the check the outline exists to pass. The
  *              darkened teal is a variation the brand guide permits (p.18).
  *              On hover the brand teal arrives as a fill with the label in
- *              brand Dark Gray #373433 at 5.47:1.
+ *              brand Dark Gray #373433 at 5.47:1. The event page's hover is
+ *              the band instead, as every outlined button's is (3.137.0):
+ *              #0E7680 on #E8F9FA, 4.94:1. The cards and the sidebar are the
+ *              embed, which keeps the brand teal.
  *
  *   primary    The action with a consequence: Donate, RSVP, Sign Up. Solid
  *              #0E818C with a white label, 4.63:1, which is why the fill is
@@ -1975,9 +1978,11 @@
     transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
 }
 .uc-calendar .uc-actionbtn-secondary:hover, .uc-calendar .uc-actionbtn-secondary:focus-visible,
-.uc-single .uc-actionbtn-secondary:hover, .uc-single .uc-actionbtn-secondary:focus-visible,
 .uc-sidebar .uc-actionbtn-secondary:hover, .uc-sidebar .uc-actionbtn-secondary:focus-visible {
     background: var(--uc-teal); color: var(--uc-dark); border-color: var(--uc-teal-text);
+}
+.uc-single .uc-actionbtn-secondary:hover, .uc-single .uc-actionbtn-secondary:focus-visible {
+    background: var(--uc-band); color: var(--uc-teal-text); border-color: var(--uc-teal-text);
 }
 
 .uc-calendar .uc-actionbtn-primary,
