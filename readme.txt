@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.136.0
+Stable tag: 3.137.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,21 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.137.0 =
+
+**The secondary button is R, the look of Set team. Every embed answer and header is 3.136.0's, proved by embed-identity-test.php.**
+
+**WHAT CHANGES ON PUBLIC PAGES:** only the staff request form and the community submit form: their secondary buttons ("Fill these in", "Start from scratch", "+ Add a question") are R, and "Remove this question" is the red outline. The public calendar, the event page and the embed are unchanged, their outlined button keeping its bright-teal hover.
+
+* **R, the secondary button**: white, a 1px teal #0E7680 edge, teal semibold words, 8px corners, light teal #E8F9FA under the pointer (5.35:1 at rest, 4.94:1 on hover). It replaces the Light Gray button everywhere in caladmin, on the two public forms, and in WP admin through our admin stylesheet, including "Choose file", the buttons in every dialog, and any button with no style of its own.
+* **Teal outline always means secondary**: Fetch updates and Refresh from source, solid teal until now, are R.
+* **Red outline** (white, red #c0392b edge and words, pale red on hover) for Remove this question in caladmin, WP admin and both forms, Delete them anyway, Reset to default in Email templates, Clear the log, and a closure's Remove. The four "x" remove buttons in WP admin Settings are red words, no box, where they were orange at 3.32:1. A red-outline button that asks first now asks in red.
+* **Yellow, as the screen's main action**: Publish N drafts and Set team on N events on the Events list, and Add organizer. "Put it back on and tell them" was already yellow.
+* **Check in** is R; once checked in, solid teal with white words.
+* **Media's "Move to Other images" and "Remove"**: white with a #6B6764 edge and words, 5.60:1, fixing their 3.73:1.
+* **Discard** on the "restore what you were typing" bar is a red text link.
+* **+ Add Campaign** in WP admin Settings is teal #0E7680 words (5.35:1), where it was the brand teal at 2.26:1.
 
 = 3.136.0 =
 

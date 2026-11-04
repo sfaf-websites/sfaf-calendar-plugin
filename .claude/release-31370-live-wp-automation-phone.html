@@ -1,0 +1,310 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="../admin/css/admin.css"></head><body class="wp-admin" style="margin:0;background:#f0f0f1;font-family:sans-serif">        <div class="wrap uc-admin-wrap">
+            <div class="uc-admin-header">
+                <div>
+                    <h1>Automation</h1>
+                    <p class="uc-subtitle">Work this site does on its own: reminder emails, the who-is-coming list, and source fetching</p>
+                </div>
+                <form method="post" class="uc-cron-run-form">
+                    <input type="hidden" name="uc_cron_nonce" value="nonce" />                    <input type="hidden" name="uc_cron_action" value="run_now" />
+                                        <button type="submit" class="button" data-uc-busy="Running&hellip;">Run now</button>
+                </form>
+            </div>
+
+                        
+                        <div class="uc-cron-banner uc-cron-banner-never">
+                <h2>Scheduled tasks have never run</h2>
+                <p>Press &quot;Run now&quot; to try one. If that works, the next thing to set up is something that presses it automatically. The readme has the steps.</p>
+                            </div>
+
+            <div class="uc-admin-card">
+                <h2>Scheduled tasks</h2>
+                <p class="description">
+                    Each of these runs on its own, without anybody pressing anything. A run happens every
+                    15 minutes and does whichever of them are due.
+                </p>
+                <table class="uc-admin-table uc-cron-tasks">
+                    <thead>
+                        <tr><th>Task</th><th>Last ran</th><th>Next due</th><th>What happened</th></tr>
+                    </thead>
+                    <tbody>
+                                                    <tr>
+                                <td>
+                                    <strong>Reminder emails</strong>
+                                    <span class="uc-muted">Emails everybody registered for an event on the morning it happens, at 6:00am.</span>
+                                </td>
+                                <td>
+                                                                            <span class="uc-muted">Never</span>
+                                                                    </td>
+                                <td>
+                                                                            in 3 days                                        <span class="uc-muted">Nov 4, 2026 at 10:12 am</span>
+                                                                    </td>
+                                <td>
+                                                                            <span class="uc-muted">It has not run yet.</span>
+                                                                    </td>
+                            </tr>
+                                                    <tr>
+                                <td>
+                                    <strong>Count for tomorrow</strong>
+                                    <span class="uc-muted">At 6 am, tells each event&#039;s notification list how many have registered for tomorrow. Nothing goes out for an event nobody has registered for.</span>
+                                </td>
+                                <td>
+                                                                            <span class="uc-muted">Never</span>
+                                                                    </td>
+                                <td>
+                                                                            in 3 days                                        <span class="uc-muted">Nov 4, 2026 at 10:12 am</span>
+                                                                    </td>
+                                <td>
+                                                                            <span class="uc-muted">It has not run yet.</span>
+                                                                    </td>
+                            </tr>
+                                                    <tr>
+                                <td>
+                                    <strong>Digest emails</strong>
+                                    <span class="uc-muted">At 6 am, sends each person who asked for one their daily or weekly list of events. A digest with no events in it is not sent.</span>
+                                </td>
+                                <td>
+                                                                            <span class="uc-muted">Never</span>
+                                                                    </td>
+                                <td>
+                                                                            in 3 days                                        <span class="uc-muted">Nov 4, 2026 at 10:12 am</span>
+                                                                    </td>
+                                <td>
+                                                                            <span class="uc-muted">It has not run yet.</span>
+                                                                    </td>
+                            </tr>
+                                                    <tr>
+                                <td>
+                                    <strong>Waitlist offers from before 3.110.0</strong>
+                                    <span class="uc-muted">Once, after the update: puts anybody who was holding a waitlist offer back in the queue and gives open places to the next people waiting.</span>
+                                </td>
+                                <td>
+                                                                            <span class="uc-muted">Never</span>
+                                                                    </td>
+                                <td>
+                                                                            in 3 days                                        <span class="uc-muted">Nov 4, 2026 at 10:12 am</span>
+                                                                    </td>
+                                <td>
+                                                                            <span class="uc-muted">It has not run yet.</span>
+                                                                    </td>
+                            </tr>
+                                                    <tr>
+                                <td>
+                                    <strong>Who is coming</strong>
+                                    <span class="uc-muted">Emails the people running an event a list of who has registered, two hours before it starts.</span>
+                                </td>
+                                <td>
+                                                                            <span class="uc-muted">Never</span>
+                                                                    </td>
+                                <td>
+                                                                            in 3 days                                        <span class="uc-muted">Nov 4, 2026 at 10:12 am</span>
+                                                                    </td>
+                                <td>
+                                                                            <span class="uc-muted">It has not run yet.</span>
+                                                                    </td>
+                            </tr>
+                                                    <tr>
+                                <td>
+                                    <strong>Fetch from sources</strong>
+                                    <span class="uc-muted">Brings in new and changed events from Eventbrite, GoFundMe Pro and EveryAction. EveryAction also needs its own Auto-Import switch on.</span>
+                                </td>
+                                <td>
+                                                                            <span class="uc-muted">Never</span>
+                                                                    </td>
+                                <td>
+                                                                            <span class="uc-muted">Switched off</span>
+                                                                    </td>
+                                <td>
+                                                                            Automated fetching is switched off. Use &quot;Fetch updates&quot; on the calendar portal&#039;s Pending screen to run it by hand.                                                                    </td>
+                            </tr>
+                                                    <tr>
+                                <td>
+                                    <strong>Clear spent queue rows</strong>
+                                    <span class="uc-muted">Takes events whose date has passed out of the Pending and Dismissed queues. Published events are never touched.</span>
+                                </td>
+                                <td>
+                                                                            <span class="uc-muted">Never</span>
+                                                                    </td>
+                                <td>
+                                                                            in 3 days                                        <span class="uc-muted">Nov 4, 2026 at 10:12 am</span>
+                                                                    </td>
+                                <td>
+                                                                            <span class="uc-muted">It has not run yet.</span>
+                                                                    </td>
+                            </tr>
+                                                    <tr>
+                                <td>
+                                    <strong>EveryAction signup links</strong>
+                                    <span class="uc-muted">Once a day, reads the public EveryAction events list for each imported event&#039;s signup page.</span>
+                                </td>
+                                <td>
+                                                                            <span class="uc-muted">Never</span>
+                                                                    </td>
+                                <td>
+                                                                            <span class="uc-muted">Switched off</span>
+                                                                    </td>
+                                <td>
+                                                                            EveryAction has no hub login stored.                                                                    </td>
+                            </tr>
+                                                    <tr>
+                                <td>
+                                    <strong>Events with no organizer</strong>
+                                    <span class="uc-muted">Checks once a day for events whose organizer no longer has calendar access, and emails the calendar admins when the list changes.</span>
+                                </td>
+                                <td>
+                                                                            <span class="uc-muted">Never</span>
+                                                                    </td>
+                                <td>
+                                                                            in 3 days                                        <span class="uc-muted">Nov 4, 2026 at 10:12 am</span>
+                                                                    </td>
+                                <td>
+                                                                            <span class="uc-muted">It has not run yet.</span>
+                                                                    </td>
+                            </tr>
+                                            </tbody>
+                </table>
+                <p class="description">
+                    &ldquo;Last ran&rdquo; is the last time the task actually did something, not the last time it was
+                    passed over. A task that is switched off has no next due date because it has none.
+                </p>
+            </div>
+
+            <div class="uc-admin-card">
+                <h2>Status</h2>
+                <table class="uc-admin-table uc-cron-status">
+                    <tbody>
+                        <tr>
+                            <th>Last run</th>
+                            <td>
+                                                                    No run has ever started.
+                                                            </td>
+                        </tr>
+                        <tr>
+                            <th>Health</th>
+                            <td class="uc-cron-never">The scheduled run has never completed yet. If you have just installed this, wait for the top of the hour or press &quot;Run now&quot;.</td>
+                        </tr>
+                        <tr>
+                            <th>Schedule</th>
+                            <td>Every 15 minutes. Next due in 3 days, Nov 4, 2026 at 10:12 am.</td>
+                        </tr>
+                        <tr>
+                            <th>Trigger</th>
+                            <td>
+                                                                    <code>DISABLE_WP_CRON</code> is <strong>not</strong> set, so WordPress is still firing scheduled tasks off visitor traffic. That means a 6am reminder does not go out until somebody visits the site. <strong>Set up the external ping first and confirm above that tasks are running, then add the constant.</strong> Doing it the other way round can leave nothing running at all. The readme has the steps in order.
+                                                            </td>
+                        </tr>
+                        <tr>
+                            <th>Cron URL</th>
+                            <td>
+                                <code>https://resources.sfaf.orgwp-cron.php?doing_wp_cron</code>
+                                <br />This is the address an external scheduler should request, every
+                                15 minutes. It needs no parameter,
+                                no header and no key, and it keeps working once <code>DISABLE_WP_CRON</code> is set.
+                                Do not point the scheduler at the page-view nudge below instead: that one runs this
+                                plugin's jobs only, and would leave the rest of WordPress's schedule stopped.
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Page-view nudge</th>
+                            <td>
+                                                                                                    No page has started a run yet.
+                                                                Every sfaf.org page with a calendar on it asks this site to run its jobs, at most
+                                once every 15 minutes. Nothing is set up
+                                for this and nothing needs to be. Leave it on after the external scheduler is
+                                working: it is a request from a site that has visitors, which is what lets this
+                                site notice the scheduler has stopped and send the alert email below.
+                                <br /><code>https://resources.sfaf.org/wp-admin/admin-ajax.php?action=sfaf_cron_ping</code>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Lock</th>
+                            <td>Free.</td>
+                        </tr>
+                        <tr>
+                            <th>Alert email</th>
+                            <td>
+                                                                    No alert address is set, so nothing is emailed when the runner stops.
+                                                                <a href="https://resources.sfaf.org/wp-admin/edit.php?post_type=uc_event&amp;page=uc-settings">Change it under Settings.</a>
+                            </td>
+                        </tr>
+                        <tr>
+                                                        <th>Who a reminder goes to</th>
+                            <td>Registrations and the event&rsquo;s notification list. Native events only: imported events are never sent for.</td>
+                        </tr>
+                        <tr>
+                            <th>Fetching by hand</th>
+                            <td>&ldquo;Fetch updates&rdquo; on the calendar portal&rsquo;s Pending screen runs a fetch whether or not the automated one is switched on.</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p class="description">
+                    An external scheduler may report a timeout even when the run finished: <code>wp-cron.php</code> keeps
+                    working after the connection drops. The run log below is the source of truth, not the status code
+                    the scheduler recorded.
+                </p>
+            </div>
+
+                        <div class="uc-admin-card">
+                <h2>Send a test email</h2>
+
+                
+                <p class="description">
+                    Builds the real message against a real event and sends it to you. Nobody is registered and no place
+                    is held. The subject is prefixed with [Test].
+                </p>
+
+                                    <p class="uc-no-data">Publish an event first: a test message is built from a real one.</p>
+                            </div>
+
+            <div class="uc-admin-card">
+                <h2>Run log</h2>
+                                    <p class="uc-no-data">Nothing has run yet. Press &ldquo;Run now&rdquo; to try it.</p>
+                            </div>
+        </div>
+        <script>window.RL_PAGE="wp-automation";(function () {
+var P = window.RL_PAGE, out = { page: P, errors: [], buttons: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function qa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function text(el) { return el ? (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim() : ''; }
+function seen(el) { if (!el || el.closest('[hidden]') || !el.getClientRects().length) { return false; } var r = el.getBoundingClientRect(); if (r.width < 2 || r.height < 2) { return false; } var cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0.9; }
+function rgba(s) { var m = String(s).match(/[\d.]+/g); if (!m) { return null; } return [+m[0], +m[1], +m[2], m.length > 3 ? +m[3] : 1]; }
+function lum(c) { return [c[0], c[1], c[2]].map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }).reduce(function (a, v, i) { return a + v * [0.2126, 0.7152, 0.0722][i]; }, 0); }
+function ratio(a, b) { var x = lum(a), y = lum(b); return Math.round(((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)) * 100) / 100; }
+function behind(el) { for (var n = el; n && n.nodeType === 1; n = n.parentElement) { var c = rgba(getComputedStyle(n).backgroundColor); if (c && c[3] > 0.5) { return c; } } return [255, 255, 255, 1]; }
+function opacityChain(el) { var o = 1; for (var n = el; n && n.nodeType === 1; n = n.parentElement) { o *= parseFloat(getComputedStyle(n).opacity); } return o; }
+var LINKISH = /uc-link-danger|uc-link-ok|uc-action-link|uc-repeater-remove|uc-chip-remove|uc-help-btn|uc-icon-btn|uc-seg-opt|uc-tpl-token|uc-picker-tab|uc-tab|uc-nav-item|uc-day|uc-scope-btn|uc-disclosure|uc-checkin-mode|button-link|uc-month|uc-view|notice-dismiss|uc-copy-icon|uc-pw-toggle|uc-sl-|uc-email-pill|uc-rcp-|uc-tag-|uc-chip/;
+function measure() {
+  qa('button, input[type="submit"], input[type="button"], a.uc-btn, a.button, summary.uc-outline-btn, summary.uc-btn').forEach(function (b) {
+    if (b.disabled || !seen(b) || opacityChain(b) < 0.9) { return; }
+    var cs = getComputedStyle(b), face = rgba(cs.backgroundColor), ink = rgba(cs.color);
+    var under = behind(b.parentElement || b), own = face && face[3] > 0.5 ? face : under;
+    var size = parseFloat(cs.fontSize), weight = parseInt(cs.fontWeight, 10);
+    var large = size >= 24 || (size >= 18.66 && weight >= 700);
+    var bw = parseFloat(cs.borderTopWidth), bc = rgba(cs.borderTopColor);
+    var cls = (b.getAttribute('class') || '') + (b.tagName === 'SUMMARY' ? ' summary' : '');
+    var label = text(b) || b.getAttribute('value') || b.getAttribute('aria-label') || '';
+    out.buttons.push({ label: label.slice(0, 50), cls: cls.slice(0, 90), face: cs.backgroundColor, ink: cs.color, edge: bw > 0 ? cs.borderTopColor : 'none',
+      text: label ? ratio(ink, own) : null, large: large, linkish: LINKISH.test(cls),
+      edgeRatio: (bw > 0 && bc && bc[3] > 0.5) ? ratio(bc, under) : null, faceRatio: ratio(own, under) });
+  });
+}
+window.addEventListener('load', function () { setTimeout(function () {
+  qa('.uc-integration-panel').forEach(function (p) { p.classList.add('uc-panel-open'); });
+  qa('.uc-btn-utility[disabled]').forEach(function (b) { b.style.transition = 'none'; b.disabled = false; });
+  measure();
+  out.pageWidth = document.documentElement.scrollWidth;
+  // One button that asks first, pressed: the dialog it opens is measured too.
+  var ask = qa('[data-uc-confirm].uc-btn').filter(function (b) { return seen(b) && !b.disabled; })[0];
+  if (!ask) { return window.parent.postMessage(JSON.stringify(out), '*'); }
+  out.asked = { label: text(ask), cls: ask.getAttribute('class') };
+  ask.click();
+  setTimeout(function () {
+    var dlg = document.querySelector('dialog[open]');
+    if (dlg) {
+      var n = out.buttons.length;
+      qa('button', dlg).forEach(function (b) { if (seen(b)) { var cs = getComputedStyle(b); out.buttons.push({ label: 'dialog: ' + text(b), cls: (b.getAttribute('class') || ''), face: cs.backgroundColor, ink: cs.color, edge: parseFloat(cs.borderTopWidth) > 0 ? cs.borderTopColor : 'none', text: ratio(rgba(cs.color), rgba(cs.backgroundColor)[3] > 0.5 ? rgba(cs.backgroundColor) : behind(dlg)), large: false, linkish: false, edgeRatio: parseFloat(cs.borderTopWidth) > 0 ? ratio(rgba(cs.borderTopColor), behind(dlg)) : null, faceRatio: ratio(rgba(cs.backgroundColor)[3] > 0.5 ? rgba(cs.backgroundColor) : behind(dlg), behind(dlg)) }); } });
+      out.dialog = out.buttons.length - n;
+    }
+    window.parent.postMessage(JSON.stringify(out), '*');
+  }, 300);
+}, 500); });
+})();</script></body></html>

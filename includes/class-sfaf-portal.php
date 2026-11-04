@@ -7665,7 +7665,7 @@ class SFAF_Portal {
                      * a rule nobody wrote.
                      */
                     ?>
-                    <button type="submit" class="uc-btn uc-btn-sm"
+                    <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary"
                             name="uc_do" value="publish" formnovalidate
                             data-uc-tick-submit data-uc-tick-eligible
                             data-uc-confirm="<?php echo esc_attr(
@@ -7704,7 +7704,7 @@ class SFAF_Portal {
                         <input type="hidden" name="bulk_access_present" value="1" />
                         <?php $this->render_access_choices( SFAF_Teams::all(), $this->access_people_choices(), array(), array(), 'bulk_access' ); ?>
                         <div class="uc-bulk-cat-go">
-                            <button type="submit" class="uc-btn uc-btn-sm"
+                            <button type="submit" class="uc-btn uc-btn-sm uc-btn-primary"
                                     name="uc_do" value="team" formnovalidate
                                     data-uc-tick-submit
                                     data-uc-confirm="Set this team and access on the ticked events? It replaces what each of them had."
@@ -11592,7 +11592,7 @@ class SFAF_Portal {
                         </button>
                         <?php if ( 0 === $people ) : ?>
                             <?php // Nobody holds a place, so deleting is not refused. ?>
-                            <button type="submit" name="instead" value="delete" class="uc-btn" data-uc-delete-anyway>
+                            <button type="submit" name="instead" value="delete" class="uc-btn uc-btn-danger-outline" data-uc-delete-anyway>
                                 Delete them anyway
                             </button>
                         <?php endif; ?>
@@ -11858,7 +11858,7 @@ class SFAF_Portal {
                     </label>
                     <?php $this->render_review_team_field( '' ); ?>
                     <div class="uc-form-actions">
-                        <button type="submit" class="uc-btn">Add organizer</button>
+                        <button type="submit" class="uc-btn uc-btn-primary">Add organizer</button>
                     </div>
                 </form>
             </div>
@@ -22559,7 +22559,7 @@ class SFAF_Portal {
                         </label>
                         <div class="uc-form-actions">
                             <button type="submit" class="uc-btn uc-btn-primary" name="tpl_do" value="save">Save</button>
-                            <button type="submit" class="uc-btn" name="tpl_do" value="reset" data-uc-tpl-reset
+                            <button type="submit" class="uc-btn uc-btn-danger-outline" name="tpl_do" value="reset" data-uc-tpl-reset
                                     data-uc-confirm="Put this message back to the shipped text? Your edits to it are removed.">Reset to default</button>
                         </div>
                     </form>

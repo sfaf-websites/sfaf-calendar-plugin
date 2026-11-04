@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 422 items.** Quick 340, needs real conditions 77, blocked on other
+**Outstanding: 423 items.** Quick 341, needs real conditions 77, blocked on other
 people 5.
 
 ---
@@ -4655,6 +4655,12 @@ registration switched off, or on another site, shows a dash.
 
 **Why it needs a person:** real registrations from before 3.135.0, some with
 no language stored, which show the event's.
+
+### 1.343 R, the secondary button, on every screen (3.137.0)
+
+In caladmin open each screen, at a desk and on a phone: Dashboard, Events (tick two events), Add event (pick a series), Edit event, Series and a series' remove screen, Organizers (open a row's Edit), Venues, Media (one image's Move and Remove), an event's RSVP list (Registration settings, Email and Text registrants, Check in on one person), Pending, FAQ sets, Preferences, Email templates (edit one), Users and Teams. Every button that is not the screen's yellow or a red action is white with a teal edge and teal words and goes light teal under the pointer; Fetch updates is the same, not solid teal; Publish N drafts, Set team on N events and Add organizer are yellow; Remove this question, Delete them anyway and Reset to default are red outlines, and Reset to default asks in red; Checked in is solid teal with white words; Media's Move to Other images and Remove are grey-edged; Discard on the restore bar is red words. In WP admin, Settings (Twilio, Mailchimp, the campaign rows), Automation, Closures and Users: the plain buttons are the same white and teal, Clear the log and a closure's Remove red outlines, the row "x" red. On the staff request form and the community form: Fill these in and + Add a question are R. The public calendar's buttons are as they were.
+
+**Why it needs a person:** the checks measured 380 buttons on rendered copies of these screens; the live site has real data, WordPress's own admin styles beside ours, and buttons that only show with real content (the bulk row, the restore bar, campaign rows, Media's images).
 
 ## 2. Needs real conditions
 

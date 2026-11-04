@@ -281,7 +281,8 @@
         yes.textContent = 'Restore';
         var no = document.createElement('button');
         no.type = 'button';
-        no.className = 'uc-btn';
+        // A quiet red text link from 3.137.0: it throws the typing away.
+        no.className = 'uc-link-danger';
         no.setAttribute('data-uc-draft-discard', '');
         no.textContent = 'Discard';
         acts.appendChild(yes);

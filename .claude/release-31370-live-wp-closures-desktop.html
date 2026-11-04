@@ -1,0 +1,241 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="../admin/css/admin.css"></head><body class="wp-admin" style="margin:0;background:#f0f0f1;font-family:sans-serif">        <div class="wrap uc-admin-wrap">
+            <div class="uc-admin-header">
+                <div>
+                    <h1>Closures</h1>
+                    <p class="uc-subtitle">Days SFAF is shut. They are marked on the calendar and are not events.</p>
+                </div>
+            </div>
+
+                                    
+                                    <div class="uc-admin-card">
+                <h2>Add a closure</h2>
+                <p class="description">
+                    A closure is marked on the month grid and appears in a calendar list as a flat card.
+                    It has no page, cannot be clicked, takes no registrations and sends nothing.
+                    For several days in a row, enter one closure with a last day rather than one per day.
+                </p>
+                <form method="post">
+                    <input type="hidden" name="uc_closure_nonce" value="nonce" />                    <input type="hidden" name="uc_closure_action" value="save" />
+                    <input type="hidden" name="closure_id" value="" />
+                    <p>
+                        <label for="uc_closure_label">What to call it</label><br />
+                        <input type="text" name="closure_label" id="uc_closure_label" class="regular-text"
+                               placeholder="Thanksgiving" value="" required />
+                        <br /><span class="description">Shown as &ldquo;Closed for Thanksgiving&rdquo;.</span>
+                    </p>
+                    <p>
+                        <label for="uc_closure_start">First day</label><br />
+                        <input type="date" name="closure_start" id="uc_closure_start" value="" required />
+                    </p>
+                    <p>
+                        <label for="uc_closure_end">Last day</label><br />
+                        <input type="date" name="closure_end" id="uc_closure_end" value="" />
+                        <br /><span class="description">Leave empty for a single day.</span>
+                    </p>
+                    <p>
+                        <label for="uc_closure_note">Note</label><br />
+                        <input type="text" name="closure_note" id="uc_closure_note" class="regular-text"
+                               maxlength="200" placeholder="The 6th Street Center is open as usual" value="" />
+                        <br /><span class="description">Optional. Shown with the closure on the calendar. The month grid shortens anything long, so put what matters first.</span>
+                    </p>
+                                        <fieldset class="uc-closure-open" data-uc-closure-open>
+                        <legend>Still open</legend>
+                                                    <div data-uc-open-rows>
+                                                            </div>
+                            <template data-uc-open-template>        <div class="uc-open-row" data-uc-open-row>
+            <label>
+                <span class="uc-open-label">Venue</span>
+                <select name="closure_open_venue[__i__]">
+                    <option value="0">Choose a venue</option>
+                                            <option value="11" >Alpha</option>
+                                            <option value="12" >Beta</option>
+                                    </select>
+            </label>
+            <span class="uc-open-time">
+                <span class="uc-open-label">Opens</span>
+                    <span class="uc-timepick" role="group" aria-label="Opens">
+        <select name="closure_open_from___i___h"
+                                class="uc-timepick-h"
+                aria-label="Opens, hour">
+            <option value="" selected="selected">Hour</option>
+                            <option value="00">12 am</option>
+                            <option value="01">1 am</option>
+                            <option value="02">2 am</option>
+                            <option value="03">3 am</option>
+                            <option value="04">4 am</option>
+                            <option value="05">5 am</option>
+                            <option value="06">6 am</option>
+                            <option value="07">7 am</option>
+                            <option value="08">8 am</option>
+                            <option value="09">9 am</option>
+                            <option value="10">10 am</option>
+                            <option value="11">11 am</option>
+                            <option value="12">12 pm</option>
+                            <option value="13">1 pm</option>
+                            <option value="14">2 pm</option>
+                            <option value="15">3 pm</option>
+                            <option value="16">4 pm</option>
+                            <option value="17">5 pm</option>
+                            <option value="18">6 pm</option>
+                            <option value="19">7 pm</option>
+                            <option value="20">8 pm</option>
+                            <option value="21">9 pm</option>
+                            <option value="22">10 pm</option>
+                            <option value="23">11 pm</option>
+                    </select>
+        <select name="closure_open_from___i___m"
+                class="uc-timepick-m"
+                aria-label="Opens, minute">
+            <option value="" selected="selected">Min</option>
+                            <option value="00">:00</option>
+                            <option value="05">:05</option>
+                            <option value="10">:10</option>
+                            <option value="15">:15</option>
+                            <option value="20">:20</option>
+                            <option value="25">:25</option>
+                            <option value="30">:30</option>
+                            <option value="35">:35</option>
+                            <option value="40">:40</option>
+                            <option value="45">:45</option>
+                            <option value="50">:50</option>
+                            <option value="55">:55</option>
+                    </select>
+    </span>
+                </span>
+            <span class="uc-open-time">
+                <span class="uc-open-label">Closes</span>
+                    <span class="uc-timepick" role="group" aria-label="Closes">
+        <select name="closure_open_to___i___h"
+                                class="uc-timepick-h"
+                aria-label="Closes, hour">
+            <option value="" selected="selected">Hour</option>
+                            <option value="00">12 am</option>
+                            <option value="01">1 am</option>
+                            <option value="02">2 am</option>
+                            <option value="03">3 am</option>
+                            <option value="04">4 am</option>
+                            <option value="05">5 am</option>
+                            <option value="06">6 am</option>
+                            <option value="07">7 am</option>
+                            <option value="08">8 am</option>
+                            <option value="09">9 am</option>
+                            <option value="10">10 am</option>
+                            <option value="11">11 am</option>
+                            <option value="12">12 pm</option>
+                            <option value="13">1 pm</option>
+                            <option value="14">2 pm</option>
+                            <option value="15">3 pm</option>
+                            <option value="16">4 pm</option>
+                            <option value="17">5 pm</option>
+                            <option value="18">6 pm</option>
+                            <option value="19">7 pm</option>
+                            <option value="20">8 pm</option>
+                            <option value="21">9 pm</option>
+                            <option value="22">10 pm</option>
+                            <option value="23">11 pm</option>
+                    </select>
+        <select name="closure_open_to___i___m"
+                class="uc-timepick-m"
+                aria-label="Closes, minute">
+            <option value="" selected="selected">Min</option>
+                            <option value="00">:00</option>
+                            <option value="05">:05</option>
+                            <option value="10">:10</option>
+                            <option value="15">:15</option>
+                            <option value="20">:20</option>
+                            <option value="25">:25</option>
+                            <option value="30">:30</option>
+                            <option value="35">:35</option>
+                            <option value="40">:40</option>
+                            <option value="45">:45</option>
+                            <option value="50">:50</option>
+                            <option value="55">:55</option>
+                    </select>
+    </span>
+                </span>
+            <button type="button" class="button-link button-link-delete" data-uc-open-remove>Remove</button>
+        </div>
+        </template>
+                            <p><button type="button" class="button" data-uc-open-add>Add a row</button></p>
+                            <script>
+                            (function () {
+                                var box = document.querySelector('[data-uc-closure-open]');
+                                if (!box) { return; }
+                                var rows = box.querySelector('[data-uc-open-rows]');
+                                var tpl = box.querySelector('[data-uc-open-template]');
+                                var next = rows.querySelectorAll('[data-uc-open-row]').length;
+                                box.querySelector('[data-uc-open-add]').addEventListener('click', function () {
+                                    var wrap = document.createElement('div');
+                                    wrap.innerHTML = tpl.innerHTML.replace(/__i__/g, String(next++));
+                                    var row = wrap.firstElementChild;
+                                    rows.appendChild(row);
+                                    var first = row.querySelector('select');
+                                    if (first) { first.focus(); }
+                                });
+                                box.addEventListener('click', function (e) {
+                                    var btn = e.target.closest ? e.target.closest('[data-uc-open-remove]') : null;
+                                    if (btn) { btn.closest('[data-uc-open-row]').remove(); }
+                                });
+                            })();
+                            </script>
+                                            </fieldset>
+                    <p>
+                        <button type="submit" class="button button-primary">Add closure</button>
+                                            </p>
+                </form>
+            </div>
+
+            <div class="uc-admin-card">
+                <h2>0 closures</h2>
+
+                                    <p class="uc-no-data">Nothing recorded. The calendar shows no closed days.</p>
+                            </div>
+        </div>
+        <script>window.RL_PAGE="wp-closures";(function () {
+var P = window.RL_PAGE, out = { page: P, errors: [], buttons: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function qa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function text(el) { return el ? (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim() : ''; }
+function seen(el) { if (!el || el.closest('[hidden]') || !el.getClientRects().length) { return false; } var r = el.getBoundingClientRect(); if (r.width < 2 || r.height < 2) { return false; } var cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0.9; }
+function rgba(s) { var m = String(s).match(/[\d.]+/g); if (!m) { return null; } return [+m[0], +m[1], +m[2], m.length > 3 ? +m[3] : 1]; }
+function lum(c) { return [c[0], c[1], c[2]].map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }).reduce(function (a, v, i) { return a + v * [0.2126, 0.7152, 0.0722][i]; }, 0); }
+function ratio(a, b) { var x = lum(a), y = lum(b); return Math.round(((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)) * 100) / 100; }
+function behind(el) { for (var n = el; n && n.nodeType === 1; n = n.parentElement) { var c = rgba(getComputedStyle(n).backgroundColor); if (c && c[3] > 0.5) { return c; } } return [255, 255, 255, 1]; }
+function opacityChain(el) { var o = 1; for (var n = el; n && n.nodeType === 1; n = n.parentElement) { o *= parseFloat(getComputedStyle(n).opacity); } return o; }
+var LINKISH = /uc-link-danger|uc-link-ok|uc-action-link|uc-repeater-remove|uc-chip-remove|uc-help-btn|uc-icon-btn|uc-seg-opt|uc-tpl-token|uc-picker-tab|uc-tab|uc-nav-item|uc-day|uc-scope-btn|uc-disclosure|uc-checkin-mode|button-link|uc-month|uc-view|notice-dismiss|uc-copy-icon|uc-pw-toggle|uc-sl-|uc-email-pill|uc-rcp-|uc-tag-|uc-chip/;
+function measure() {
+  qa('button, input[type="submit"], input[type="button"], a.uc-btn, a.button, summary.uc-outline-btn, summary.uc-btn').forEach(function (b) {
+    if (b.disabled || !seen(b) || opacityChain(b) < 0.9) { return; }
+    var cs = getComputedStyle(b), face = rgba(cs.backgroundColor), ink = rgba(cs.color);
+    var under = behind(b.parentElement || b), own = face && face[3] > 0.5 ? face : under;
+    var size = parseFloat(cs.fontSize), weight = parseInt(cs.fontWeight, 10);
+    var large = size >= 24 || (size >= 18.66 && weight >= 700);
+    var bw = parseFloat(cs.borderTopWidth), bc = rgba(cs.borderTopColor);
+    var cls = (b.getAttribute('class') || '') + (b.tagName === 'SUMMARY' ? ' summary' : '');
+    var label = text(b) || b.getAttribute('value') || b.getAttribute('aria-label') || '';
+    out.buttons.push({ label: label.slice(0, 50), cls: cls.slice(0, 90), face: cs.backgroundColor, ink: cs.color, edge: bw > 0 ? cs.borderTopColor : 'none',
+      text: label ? ratio(ink, own) : null, large: large, linkish: LINKISH.test(cls),
+      edgeRatio: (bw > 0 && bc && bc[3] > 0.5) ? ratio(bc, under) : null, faceRatio: ratio(own, under) });
+  });
+}
+window.addEventListener('load', function () { setTimeout(function () {
+  qa('.uc-integration-panel').forEach(function (p) { p.classList.add('uc-panel-open'); });
+  qa('.uc-btn-utility[disabled]').forEach(function (b) { b.style.transition = 'none'; b.disabled = false; });
+  measure();
+  out.pageWidth = document.documentElement.scrollWidth;
+  // One button that asks first, pressed: the dialog it opens is measured too.
+  var ask = qa('[data-uc-confirm].uc-btn').filter(function (b) { return seen(b) && !b.disabled; })[0];
+  if (!ask) { return window.parent.postMessage(JSON.stringify(out), '*'); }
+  out.asked = { label: text(ask), cls: ask.getAttribute('class') };
+  ask.click();
+  setTimeout(function () {
+    var dlg = document.querySelector('dialog[open]');
+    if (dlg) {
+      var n = out.buttons.length;
+      qa('button', dlg).forEach(function (b) { if (seen(b)) { var cs = getComputedStyle(b); out.buttons.push({ label: 'dialog: ' + text(b), cls: (b.getAttribute('class') || ''), face: cs.backgroundColor, ink: cs.color, edge: parseFloat(cs.borderTopWidth) > 0 ? cs.borderTopColor : 'none', text: ratio(rgba(cs.color), rgba(cs.backgroundColor)[3] > 0.5 ? rgba(cs.backgroundColor) : behind(dlg)), large: false, linkish: false, edgeRatio: parseFloat(cs.borderTopWidth) > 0 ? ratio(rgba(cs.borderTopColor), behind(dlg)) : null, faceRatio: ratio(rgba(cs.backgroundColor)[3] > 0.5 ? rgba(cs.backgroundColor) : behind(dlg), behind(dlg)) }); } });
+      out.dialog = out.buttons.length - n;
+    }
+    window.parent.postMessage(JSON.stringify(out), '*');
+  }, 300);
+}, 500); });
+})();</script></body></html>

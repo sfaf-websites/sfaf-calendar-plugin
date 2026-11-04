@@ -1,0 +1,65 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="../admin/css/admin.css"></head><body class="wp-admin" style="margin:0;background:#f0f0f1;font-family:sans-serif">        <div class="wrap uc-admin-wrap">
+            <div class="uc-admin-header">
+                <div>
+                    <h1>Calendar Users</h1>
+                    <p class="uc-subtitle">Who can use the calendar, and who gets told about events. Two separate things, edited separately.</p>
+                </div>
+                <div class="uc-admin-actions">
+                    <a href="https://resources.sfaf.org/wp-admin/users.php" class="button">WordPress Users</a>
+                </div>
+            </div>
+
+            
+            <div class="uc-admin-card">
+                <p class="uc-users-explainer">
+                    <strong>Access level</strong> is what somebody may do in <code>/caladmin</code>.
+                    <strong>Teams</strong> are who gets notified about an event. Changing one never changes the other,
+                    and neither one changes anybody's WordPress role.
+                    A WordPress administrator always has full calendar access, whatever is listed here, so their
+                    access level is shown as fixed rather than offered as a control that would do nothing.
+                </p>
+
+                <form method="get" class="uc-users-search">
+                    <input type="hidden" name="post_type" value="uc_event" />
+                    <input type="hidden" name="page" value="uc-users" />
+                    <label class="screen-reader-text" for="uc-users-s">Search users</label>
+                    <input type="search" id="uc-users-s" name="s" value="" placeholder="Search name or email" />
+                    <button type="submit" class="button">Search</button>
+                                        <span class="uc-users-count">1 user</span>
+                </form>
+
+                                <table class="uc-admin-table uc-users-table">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>WordPress role</th>
+                            <th>Calendar access</th>
+                            <th>Teams</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                                            <tr>
+                            <td class="uc-users-who">
+                                <strong>Admin</strong>
+                                <span class="uc-muted">admin@sfaf.org</span>
+                            </td>
+
+                            <td class="uc-users-wprole">
+                                administrator                                <a class="uc-users-editrole" href="https://resources.sfaf.org/wp-admin/user-edit.php?user_id=1">Edit in WordPress</a>
+                            </td>
+
+                            <td class="uc-users-access">
+                                                                    <strong>Full (WP Admin)</strong>
+                                    <span class="uc-muted">A WordPress administrator has full calendar access, including RSVPs, whether or not they are listed as a calendar user. Take away their administrator role on the WordPress Users screen to change that.</span>
+                                                            </td>
+
+                            <td class="uc-users-teams">
+                                                                    <span class="uc-muted">No teams yet. Make one in <a href="https://resources.sfaf.org/caladmin/users">the portal</a>.</span>
+                                                            </td>
+                        </tr>
+                                        </tbody>
+                </table>
+
+                                            </div>
+        </div>
+        </body></html>

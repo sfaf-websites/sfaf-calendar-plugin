@@ -1,0 +1,1009 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="../admin/css/admin.css"></head><body class="wp-admin" style="margin:0;background:#f0f0f1;font-family:sans-serif">        <div class="wrap uc-admin-wrap">
+            <div class="uc-admin-header">
+                <div>
+                    <h1>Settings &amp; Integrations</h1>
+                    <p class="uc-subtitle">Connect your calendar to external services and sync events across your digital ecosystem</p>
+                </div>
+            </div>
+
+            <form method="post" action="options.php">
+                
+                <!-- DISPLAY -->
+                <div class="uc-integration-panel uc-panel-open">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><svg class="sfaf-icon sfaf-icon-calendar" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span>
+                        <div class="uc-panel-info">
+                            <h2>Display</h2>
+                            <p>How many events to show and how visitors page through them</p>
+                        </div>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                        <div class="uc-field-row">
+                            <label>Events per page</label>
+                            <input type="number" name="uc_settings[display_per_page]" value="12" class="uc-input" min="-1" step="1" style="max-width:120px;" />
+                        </div>
+                        <p class="description">Default 12. Use 0 or -1 to show all events with no pagination. Override per shortcode with <code>per_page="20"</code>.</p>
+                        <div class="uc-field-row">
+                            <label>Calendar home URL</label>
+                            <input type="url" name="uc_settings[calendar_home_url]" value="" class="uc-input" placeholder="https://www.sfaf.org/events/" />
+                        </div>
+                        <p class="description">
+                            The page that carries the calendar. Event pages are served from this site and the calendar
+                            usually is not, so this is where <strong>All Events</strong> and the category chips on an
+                            event page send somebody who arrived without a referrer: a shared link, a search result, a
+                            bookmark. When they did click through from a calendar, they go back to that exact page
+                            instead, whichever one it was.
+                            <br />
+                            If there are several calendar pages, this one is the fallback for all of them. The plugin
+                            cannot tell which page holds a shortcode and does not try to guess. Leaving this empty falls
+                            back to this site's own event archive, which is almost certainly not what a visitor should
+                            be shown.
+                        </p>
+                        <div class="uc-field-row">
+                            <label for="uc_donate_default_url">Default donation link in emails</label>
+                            <input type="url" name="uc_settings[donate_default_url]" id="uc_donate_default_url"
+                                   value="https://donate.sfaf.org/campaign/773029/donate" class="uc-input" />
+                        </div>
+                        <p class="description">Linked from one line in the confirmation and reminder emails when neither the event nor its series has a link. Leave empty to leave the line out of those emails.</p>
+                        <div class="uc-field-row uc-field-row-top">
+                            <label>Pagination style</label>
+                            <div class="uc-radio-stack">
+                                                                    <label class="uc-radio-opt">
+                                        <input type="radio" name="uc_settings[display_pagination]" value="load_more"  checked="checked" />
+                                        Load More button: fetches the next batch and appends it                                    </label>
+                                                                    <label class="uc-radio-opt">
+                                        <input type="radio" name="uc_settings[display_pagination]" value="pages"  />
+                                        Next / Previous pages: numbered page links below the list                                    </label>
+                                                                    <label class="uc-radio-opt">
+                                        <input type="radio" name="uc_settings[display_pagination]" value="infinite"  />
+                                        Infinite scroll: loads more automatically near the bottom                                    </label>
+                                                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BRANDING -->
+                <div class="uc-integration-panel uc-panel-open">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><svg class="sfaf-icon sfaf-icon-palette" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.3 0 2-.9 2-2s.6-2 2-2h1.6a2.9 2.9 0 0 0 2.9-3A8.6 8.6 0 0 0 12 3.5z"/><circle cx="7.5" cy="11" r="1"/><circle cx="12" cy="8" r="1"/><circle cx="16.5" cy="11" r="1"/></svg></span>
+                        <div class="uc-panel-info">
+                            <h2>Branding</h2>
+                            <p>Colors and card style for the public calendar</p>
+                        </div>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                        <div class="uc-field-row">
+                            <label>Primary Color</label>
+                            <input type="text" name="uc_settings[brand_primary_color]" value="#FFD900" class="uc-color-field" data-default-color="#FFD900" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Accent Color</label>
+                            <input type="text" name="uc_settings[brand_accent_color]" value="#16BECF" class="uc-color-field" data-default-color="#16BECF" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>SFAF Palette</label>
+                            <div class="uc-palette">
+                                <span class="uc-swatch" style="background:#FFD900" title="SFAF Yellow #FFD900"></span>
+                                <span class="uc-swatch" style="background:#000000" title="SFAF Black #000000"></span>
+                                <span class="uc-swatch" style="background:#373433" title="SFAF Dark Gray #373433"></span>
+                                <span class="uc-swatch" style="background:#16BECF" title="Teal #16BECF"></span>
+                                <span class="uc-palette-note">Yellow #FFD900 · Black #000000 · Dark Gray #373433</span>
+                            </div>
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Card Style</label>
+                            <select name="uc_settings[brand_card_style]" class="uc-input">
+                                                                    <option value="bordered"  selected="selected">Bordered</option>
+                                                                    <option value="shadow" >Shadow</option>
+                                                                    <option value="minimal" >Minimal</option>
+                                                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RSVP DATA ROUTING -->
+                <div class="uc-integration-panel uc-panel-open">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><svg class="sfaf-icon sfaf-icon-link" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10.5 13.5a4.5 4.5 0 0 0 6.8.5l2.4-2.4a4.5 4.5 0 0 0-6.4-6.4l-1.4 1.4"/><path d="M13.5 10.5a4.5 4.5 0 0 0-6.8-.5L4.3 12.4a4.5 4.5 0 0 0 6.4 6.4l1.4-1.4"/></svg></span>
+                        <div class="uc-panel-info">
+                            <h2>RSVP Data Routing</h2>
+                            <p>What happens when someone RSVPs</p>
+                        </div>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                        <div class="uc-routing-row">
+                            <span class="uc-status-dot uc-dot-green"></span>
+                            <div class="uc-routing-info"><strong>Save to database</strong><span>Always on. Every RSVP is stored.</span></div>
+                            <label class="uc-toggle uc-toggle-disabled"><input type="checkbox" checked disabled /><span class="uc-toggle-slider"></span></label>
+                        </div>
+
+                                                <div class="uc-routing-row">
+                            <span class="uc-status-dot uc-dot-green"></span>
+                            <div class="uc-routing-info">
+                                <strong>Tell the event's notification list</strong>
+                                <span>Always on, per event. Each event carries its own list of people, teams, and addresses, and it starts with whoever created the event. Edit it on the event.</span>
+                            </div>
+                            <label class="uc-toggle uc-toggle-disabled"><input type="checkbox" checked disabled /><span class="uc-toggle-slider"></span></label>
+                        </div>
+
+                        <div class="uc-routing-row">
+                            <span class="uc-status-dot uc-dot-gray"></span>
+                            <div class="uc-routing-info">
+                                <strong>Create Pardot prospect</strong>
+                                <span class="uc-conn-no">Not configured</span>
+                            </div>
+                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[route_pardot]" value="1"  /><span class="uc-toggle-slider"></span></label>
+                        </div>
+
+                        <div class="uc-routing-row">
+                            <span class="uc-status-dot uc-dot-gray"></span>
+                            <div class="uc-routing-info">
+                                <strong>Add to Google Sheet</strong>
+                                <input type="url" name="uc_settings[route_sheet_url]" value="" class="uc-input uc-monospace" placeholder="https://docs.google.com/spreadsheets/..." />
+                            </div>
+                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[route_google_sheet]" value="1"  /><span class="uc-toggle-slider"></span></label>
+                        </div>
+
+                                                <div class="uc-routing-row">
+                            <span class="uc-status-dot uc-dot-green"></span>
+                            <div class="uc-routing-info"><strong>Send confirmation email</strong><span>Emails the person who registered. On unless you switch it off here, and switchable per event.</span></div>
+                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[route_confirmation_email]" value="1"  checked="checked" /><span class="uc-toggle-slider"></span></label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SCHEDULED TASKS -->
+                <div class="uc-integration-panel uc-panel-open">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><svg class="sfaf-icon sfaf-icon-bolt" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M13 2.5 4.5 14H11l-1 7.5L19.5 10H13z"/></svg></span>
+                        <div class="uc-panel-info">
+                            <h2>Scheduled Tasks</h2>
+                            <p>The hourly runner: morning-of reminders, and automated fetching</p>
+                        </div>
+                        <span class="uc-panel-status ">WP pseudo-cron</span>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                                                <p class="description"><strong>Status:</strong> The scheduled run has never completed yet. If you have just installed this, wait for the top of the hour or press &quot;Run now&quot;.                            The full run log and a &ldquo;Run now&rdquo; button are on the
+                            <a href="https://resources.sfaf.org/wp-admin/edit.php?post_type=uc_event&amp;page=uc-automation">Automation screen</a>.</p>
+
+                                                    <p class="description" style="color:#92400e;">
+                                <strong>WordPress is still firing scheduled tasks off visitor traffic.</strong>
+                                That means a 6:00am reminder does not go out until somebody happens to visit the site.
+                                Add a system cron job hitting <code>https://resources.sfaf.orgwp-cron.php?doing_wp_cron</code> hourly,
+                                and set <code>define( 'DISABLE_WP_CRON', true );</code> in <code>wp-config.php</code>.
+                                The readme has the exact steps.
+                            </p>
+                        
+                        <div class="uc-routing-row">
+                            <span class="uc-status-dot uc-dot-green"></span>
+                            <div class="uc-routing-info">
+                                <strong>Send morning-of reminders</strong>
+                                <span>6:00am site time on the day of the event, to everyone registered plus the event's notification list. Native events only: imported events are never sent for, because their platform sends its own.</span>
+                            </div>
+                                                        <label class="uc-toggle"><input type="checkbox" name="uc_settings[reminders_enabled]" value="1"  checked="checked" /><span class="uc-toggle-slider"></span></label>
+                        </div>
+
+                        <div class="uc-routing-row">
+                            <span class="uc-status-dot uc-dot-gray"></span>
+                            <div class="uc-routing-info">
+                                <strong>Fetch from third-party sources automatically</strong>
+                                <span>
+                                    <strong>Leave this off for now.</strong> A fetch can take an event off the calendar when
+                                    it stops being returned by its source, and that behavior has never been watched through
+                                    a real removal. Running it unattended before then is how live events disappear overnight.
+                                    Switch it on by hand once one removal has been seen go through correctly.
+                                    &ldquo;Fetch updates&rdquo; on the dashboard runs it manually in the meantime.
+                                </span>
+                            </div>
+                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[auto_fetch_enabled]" value="1"  /><span class="uc-toggle-slider"></span></label>
+                        </div>
+
+                        <h3>Failure alerts</h3>
+                        <p class="description">
+                            An admin notice only works on somebody who is logged in and looking, which is exactly what
+                            nobody is doing at 3am. These two conditions are also emailed: three failed runs in a row,
+                            and no completed run for three hours. You get one message when it breaks, at most one a day
+                            while it stays broken, and one when it starts working again.
+                            <strong>Separate from the event email settings on purpose:</strong> this is about the
+                            server, not about the events.
+                        </p>
+                        <div class="uc-field-row">
+                            <label for="uc_cron_alert_email">Alert address</label>
+                            <input type="email" id="uc_cron_alert_email" name="uc_settings[cron_alert_email]"
+                                   value=""
+                                   class="uc-input"
+                                   placeholder="" />
+                        </div>
+                        <p class="description">
+                            Leave blank to use this site's administration email
+                            (<code></code>).
+                            Alerts currently go to <code>nobody</code>.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- EMAIL TEMPLATES -->
+                <div class="uc-integration-panel">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><svg class="sfaf-icon sfaf-icon-mail" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/></svg></span>
+                        <div class="uc-panel-info">
+                            <h2>Email Templates</h2>
+                            <p>Global defaults for confirmation and reminder emails</p>
+                        </div>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                        <p class="uc-token-ref">Tokens: <code>{event_name}</code> <code>{attendee_name}</code> <code>{first_name}</code> <code>{last_name}</code> <code>{event_date}</code> <code>{event_time}</code> <code>{event_end_time}</code> <code>{event_time_range}</code> <code>{event_location}</code> <code>{event_url}</code> <code>{organizer_name}</code> <code>{cancel_link}</code> <code>{cancel_url}</code></p>
+
+                        <h3>Sender</h3>
+                        <p class="description">
+                            Mail goes out through <code>wp_mail()</code>, so an SMTP plugin or a transactional
+                            service can take delivery over without any code change. These three are settings and
+                            not constants for exactly that reason. Nothing in the plugin hardcodes a provider.
+                        </p>
+                        <div class="uc-field-row">
+                            <label>From name</label>
+                            <input type="text" name="uc_settings[email_from_name]" value="" class="uc-input" placeholder="San Francisco AIDS Foundation" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>From address</label>
+                            <input type="email" name="uc_settings[email_from_address]" value="" class="uc-input" placeholder="events@sfaf.org" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Reply-To</label>
+                            <input type="email" name="uc_settings[email_reply_to]" value="" class="uc-input" placeholder="events@sfaf.org" />
+                        </div>
+
+                        <h3>Submissions</h3>
+                        <p class="description">
+                            One email per address, each addressed to that address alone. Leave it empty and
+                            everybody with Admin on the calendar is told instead.
+                        </p>
+                        <div class="uc-field-row">
+                            <label for="uc_submission_alert_emails">Tell these addresses about a new submission</label>
+                            <input type="text" id="uc_submission_alert_emails"
+                                   name="uc_settings[submission_alert_emails]"
+                                   value="websites@sfaf.org"
+                                   class="uc-input" placeholder="websites@sfaf.org" />
+                            <p class="description">
+                                Separate several with commas. An address that is not a real one is dropped on save.
+                            </p>
+                        </div>
+
+                        <h3>Asana</h3>
+                        <p class="description">
+                            One copy of each message ticked below goes to this address, after everybody else's.
+                            Leave it empty to send none.
+                        </p>
+                        <input type="hidden" name="uc_settings[asana_present]" value="1" />
+                        <div class="uc-field-row">
+                            <label for="uc_asana_address">Asana address</label>
+                            <input type="email" id="uc_asana_address" name="uc_settings[asana_address]"
+                                   value="x+1219554950091179@mail.asana.com"
+                                   class="uc-input" placeholder="x+1219554950091179@mail.asana.com" />
+                        </div>
+                                                    <div class="uc-field-row">
+                                <label for="uc_asana_copy_request">Event requested</label>
+                                <label class="uc-toggle"><input type="checkbox" id="uc_asana_copy_request"
+                                       name="uc_settings[asana_copy_request]" value="1"
+                                        checked="checked" /><span class="uc-toggle-slider"></span></label>
+                            </div>
+                                                    <div class="uc-field-row">
+                                <label for="uc_asana_copy_submit">Event submitted</label>
+                                <label class="uc-toggle"><input type="checkbox" id="uc_asana_copy_submit"
+                                       name="uc_settings[asana_copy_submit]" value="1"
+                                        checked="checked" /><span class="uc-toggle-slider"></span></label>
+                            </div>
+                                                    <div class="uc-field-row">
+                                <label for="uc_asana_copy_picture">Picture uploaded for an event</label>
+                                <label class="uc-toggle"><input type="checkbox" id="uc_asana_copy_picture"
+                                       name="uc_settings[asana_copy_picture]" value="1"
+                                        checked="checked" /><span class="uc-toggle-slider"></span></label>
+                            </div>
+                                                    <div class="uc-field-row">
+                                <label for="uc_asana_copy_orphans">Events with no organizer, and the all-clear</label>
+                                <label class="uc-toggle"><input type="checkbox" id="uc_asana_copy_orphans"
+                                       name="uc_settings[asana_copy_orphans]" value="1"
+                                        checked="checked" /><span class="uc-toggle-slider"></span></label>
+                            </div>
+                                                    <div class="uc-field-row">
+                                <label for="uc_asana_copy_cron">Scheduled tasks failing, and working again</label>
+                                <label class="uc-toggle"><input type="checkbox" id="uc_asana_copy_cron"
+                                       name="uc_settings[asana_copy_cron]" value="1"
+                                        checked="checked" /><span class="uc-toggle-slider"></span></label>
+                            </div>
+                        
+                        <h3>Morning-of Reminder</h3>
+                        <p class="description">
+                            Sent once per event, at 6:00am site time on the day. Leave either field blank to use
+                            the shipped default. <code>{cancel_link}</code> renders a whole sentence offering to
+                            release the recipient's place, and collapses to nothing for staff on a notification
+                            list, who have no registration to cancel.
+                        </p>
+                        <div class="uc-field-row">
+                            <label>Subject</label>
+                            <input type="text" name="uc_settings[email_dayof_subject]" value="" class="uc-input" placeholder="Today: {event_name}" />
+                        </div>
+                        <div class="uc-field-row uc-field-row-top">
+                            <label>Body</label>
+                            <textarea name="uc_settings[email_dayof_body]" rows="8" class="uc-input uc-textarea" placeholder="Your event is today.
+
+{event_name}
+{event_date}
+{event_time_range}
+{event_location}
+
+Details: {event_url}
+{cancel_link}"></textarea>
+                        </div>
+
+                        <h3>RSVP Confirmation</h3>
+                        <div class="uc-field-row">
+                            <label>Subject</label>
+                            <input type="text" name="uc_settings[email_rsvp_subject]" value="" class="uc-input" placeholder="You're registered for {event_name}" />
+                        </div>
+                        <div class="uc-field-row uc-field-row-top">
+                            <label>Body</label>
+                            <textarea name="uc_settings[email_rsvp_body]" rows="4" class="uc-input uc-textarea" placeholder="Hi {attendee_name}, you're registered for {event_name} on {event_date}."></textarea>
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Reply-To</label>
+                            <input type="email" name="uc_settings[email_rsvp_replyto]" value="" class="uc-input" placeholder="events@sfaf.org" />
+                        </div>
+
+                        <h3>Reminder Signup Confirmation</h3>
+                        <div class="uc-field-row">
+                            <label>Subject</label>
+                            <input type="text" name="uc_settings[email_reminder_subject]" value="" class="uc-input" placeholder="You'll get a reminder for {event_name}" />
+                        </div>
+                        <div class="uc-field-row uc-field-row-top">
+                            <label>Body</label>
+                            <textarea name="uc_settings[email_reminder_body]" rows="4" class="uc-input uc-textarea" placeholder="Thanks! We'll remind you before {event_name}."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MULTI-SITE API (server) -->
+                <div class="uc-integration-panel">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><svg class="sfaf-icon sfaf-icon-link" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10.5 13.5a4.5 4.5 0 0 0 6.8.5l2.4-2.4a4.5 4.5 0 0 0-6.4-6.4l-1.4 1.4"/><path d="M13.5 10.5a4.5 4.5 0 0 0-6.8-.5L4.3 12.4a4.5 4.5 0 0 0 6.4 6.4l1.4-1.4"/></svg></span>
+                        <div class="uc-panel-info">
+                            <h2>Multi-Site API</h2>
+                            <p>This site is the API server. Satellite sites pull events from it using the SFAF Calendar Satellite plugin.</p>
+                        </div>
+                        <span class="uc-panel-status uc-status-active">Server</span>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                        <div class="uc-field-row">
+                            <label>Public Endpoint</label>
+                            <input type="text" value="" readonly class="uc-input uc-monospace" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>API Key</label>
+                            <input type="text" id="uc_multisite_api_key" name="uc_settings[multisite_api_key]" value="" class="uc-input uc-monospace" placeholder="Generate a key, then paste it into each satellite" />
+                            <button type="button" class="button uc-generate-key">Generate Key</button>
+                        </div>
+                        <p class="description">When a key is set, the events feed requires the <code>X-SFAF-API-Key</code> header (satellites send it automatically). Leave blank to keep the feed public. This site never pulls from or pushes to other sites.</p>
+                    </div>
+                </div>
+
+                <!-- GOOGLE MAPS -->
+                <div class="uc-integration-panel">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><svg class="sfaf-icon sfaf-icon-pin" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 21c4.3-4.7 6.5-8.2 6.5-11a6.5 6.5 0 0 0-13 0c0 2.8 2.2 6.3 6.5 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
+                        <div class="uc-panel-info">
+                            <h2>Google Maps</h2>
+                            <p>An optional map on the event page.</p>
+                        </div>
+                        <span class="uc-panel-status uc-status-pending">Not configured</span>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                        <div class="uc-field-row">
+                            <label>Maps Embed API key</label>
+                            <input type="text" name="uc_settings[google_maps_embed_key]" value="" class="uc-input uc-monospace" placeholder="Leave blank for no map" />
+                        </div>
+                        <p class="description">
+                            <strong>Paste a key and every event page with an address shows a map, loaded from Google when the visitor reaches it.</strong> Google is told the page was viewed, and event pages cover HIV services, substance use, and trans health programming. Leave this blank and the page shows the address as an ordinary Google Maps link alone, with no map and no error.
+                        </p>
+                        <p class="description">
+                            <strong>Restrict the key before you paste it in.</strong> In the Google Cloud console set <em>Application restrictions</em> to HTTP referrers and list both <code>resources.sfaf.org/*</code> and <code>sfaf.org/*</code>, then set <em>API restrictions</em> to the <strong>Maps Embed API</strong> and nothing else. The Embed API has no usage cap, so an unrestricted key is a billing exposure rather than a map risk: anyone who copies it can run it up on their own site against this account.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- CLOUDFLARE TURNSTILE -->
+                <div class="uc-integration-panel">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><svg class="sfaf-icon sfaf-icon-check" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6.5 9.5 17 4 11.5"/></svg></span>
+                        <div class="uc-panel-info">
+                            <h2>Cloudflare Turnstile</h2>
+                            <p>Spam protection for the public event submission form.</p>
+                        </div>
+                        <span class="uc-panel-status uc-status-pending">Not configured</span>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                        <div class="uc-field-row">
+                            <label>Site key</label>
+                            <input type="text" name="uc_settings[turnstile_site_key]" value="" class="uc-input uc-monospace" placeholder="0x4AAAAAAA..." />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Secret key</label>
+                            <input type="password" name="uc_settings[turnstile_secret_key]" value="" class="uc-input uc-monospace" placeholder="0x4AAAAAAA..." autocomplete="new-password" />
+                        </div>
+                        <p class="description">
+                            <strong>Both keys, or the widget does not appear at all.</strong> A site key with no secret would draw a checkbox that nothing verifies. Use the same Cloudflare account and domain that Gravity Forms already uses on this site.
+                        </p>
+                        <p class="description">
+                            This protects the community submission form at <code>uc_event_submit=</code>, which has no login and no email check. The staff request form does not use it: a link sent to an sfaf.org mailbox is already a stronger check. If Cloudflare cannot be reached the submission still goes through, and the honeypot, the rate limits and the pending queue still apply.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- GOFUNDME PRO -->
+                <div class="uc-integration-panel">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><svg class="sfaf-icon sfaf-icon-heart" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 20.5 4.8 13.3a4.6 4.6 0 0 1 6.5-6.5l.7.7.7-.7a4.6 4.6 0 0 1 6.5 6.5z"/></svg></span>
+                        <div class="uc-panel-info">
+                            <h2>GoFundMe Pro</h2>
+                            <p>Manage campaigns and display live progress on event cards</p>
+                        </div>
+                        <span class="uc-panel-status uc-status-active">Active</span>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                        <p class="description">GoFundMe Pro uses OAuth2 (client credentials). Tokens and data come from <strong>different hosts</strong>. GoFundMe Pro support has confirmed the token endpoint below is correct, so <strong>leave it as it is</strong>; pro.gofundme.com does not issue tokens. Every request also carries the <code>x-integration-id</code> header they issued, which is what stops their edge security treating this server as a bot.</p>
+                        <div class="uc-field-row">
+                            <label>Token endpoint URL</label>
+                            <input type="url" name="uc_settings[gofundme_token_url]" value=""
+                                   placeholder="https://api.classy.org/oauth2/auth" class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>API base URL (data)</label>
+                            <input type="url" name="uc_settings[gofundme_api_base]" value=""
+                                   placeholder="https://pro.gofundme.com/api/2.0" class="uc-input" />
+                        </div>
+                        <p class="description">Leave blank to use the defaults shown. In use now. Token: <code>https://api.classy.org/oauth2/auth</code> &middot; data: <code>https://pro.gofundme.com/api/2.0</code> &middot; integration ID: <code>NSINTG4F8A2C9D6Q1</code></p>
+                        <div class="uc-field-row">
+                            <label>Client ID</label>
+                            <input type="text" name="uc_settings[gofundme_client_id]" value="" class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Client Secret</label>
+                                                        <input type="password" name="uc_settings[gofundme_client_secret]" value="" autocomplete="new-password"
+                                   placeholder="Paste the client secret"
+                                   class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Organization ID</label>
+                            <input type="text" name="uc_settings[gofundme_org_id]" value="" class="uc-input" />
+                        </div>
+                        <p class="description">The Organization ID is not used to obtain a token. It identifies which organization's data to read, in calls such as <code>GET /organizations/{org_id}/campaigns</code>. Set it before the campaign step.</p>
+                        <div class="uc-field-row">
+                            <label>Connection</label>
+                            <div class="uc-conn-controls">
+                                                                <button type="button" class="button uc-gofundme-connect">Test connection</button>
+                                <span class="uc-conn-pill ">Not connected</span>
+                            </div>
+                        </div>
+                        <p class="description uc-gofundme-conn-msg" style="display:none;"></p>
+
+                                                <div class="uc-probe-box">
+                            <h3>Campaign probe <span class="uc-probe-tag">diagnostic</span></h3>
+                            <p class="description">Calls four campaign endpoints and prints exactly what comes back: status and body, nothing decoded or filtered. <strong>Read-only:</strong> it imports nothing and changes nothing. Here to replace guesswork about where the campaign's real copy and images live.</p>
+                            <div class="uc-field-row">
+                                <label>Campaign ID</label>
+                                <div class="uc-conn-controls">
+                                    <input type="text" class="uc-input uc-probe-id" placeholder="e.g. 227362" />
+                                    <button type="button" class="button uc-gfmp-probe">Probe campaign</button>
+                                    <button type="button" class="button uc-probe-copy" style="display:none;">Copy all output</button>
+                                </div>
+                            </div>
+                            <p class="description uc-probe-msg" style="display:none;"></p>
+                            <div class="uc-probe-out" style="display:none;"></div>
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Show progress bar on event cards</label>
+                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[gofundme_show_progress]" value="1"  /><span class="uc-toggle-slider"></span></label>
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Auto-Import Campaigns as Events</label>
+                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[gofundme_auto_import]" value="1"  /><span class="uc-toggle-slider"></span></label>
+                        </div>
+
+                        <div class="uc-campaign-manager">
+                            <h3>Campaign Manager</h3>
+                            <p class="description">These campaigns populate the dropdown on each event's Integrations box.</p>
+                            <div class="uc-repeater" data-repeater="gofundme_campaigns">
+                                <div class="uc-repeater-rows">
+                                                                    </div>
+                                <button type="button" class="button uc-repeater-add">+ Add Campaign</button>
+                                <script type="text/html" class="uc-repeater-template">
+                                    <div class="uc-repeater-row">
+                                        <input type="text" name="uc_settings[gofundme_campaigns][__INDEX__][name]" placeholder="Campaign name" />
+                                        <input type="url" name="uc_settings[gofundme_campaigns][__INDEX__][url]" placeholder="https://gofund.me/..." />
+                                        <input type="text" name="uc_settings[gofundme_campaigns][__INDEX__][goal]" placeholder="Goal $" class="uc-repeater-narrow" />
+                                        <button type="button" class="button uc-repeater-remove" aria-label="Remove">&times;</button>
+                                    </div>
+                                </script>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- EVENTBRITE -->
+                                <div class="uc-integration-panel">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><svg class="sfaf-icon sfaf-icon-calendar" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span>
+                        <div class="uc-panel-info">
+                            <h2>Eventbrite</h2>
+                            <p>Connect the Eventbrite account whose events this calendar will read</p>
+                        </div>
+                                                <span class="uc-panel-status uc-eventbrite-panel-status uc-status-pending">Not configured</span>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                        <p class="description">Eventbrite uses a single long-lived <strong>private token</strong> from your account's API keys page. There is no OAuth round trip. It is sent as a bearer token on every request.</p>
+                        <div class="uc-field-row">
+                            <label>API base URL</label>
+                            <input type="url" name="uc_settings[eventbrite_api_base]" value=""
+                                   placeholder="https://www.eventbriteapi.com/v3" class="uc-input" />
+                        </div>
+                        <p class="description">Leave blank to use the default shown. In use now: <code>https://www.eventbriteapi.com/v3</code> &middot; the test calls <code>https://www.eventbriteapi.com/v3/users/me/</code></p>
+                        <div class="uc-field-row">
+                            <label>Private token</label>
+                                                        <input type="password" name="uc_settings[eventbrite_private_token]" value="" autocomplete="new-password"
+                                   placeholder="Paste the private token"
+                                   class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Connection</label>
+                            <div class="uc-conn-controls">
+                                <button type="button" class="button uc-eventbrite-connect">Test connection</button>
+                                <span class="uc-conn-pill ">Not connected</span>
+                            </div>
+                        </div>
+                                                <p class="description uc-eventbrite-conn-msg" style="display:none;"></p>
+
+                        <div class="uc-field-row">
+                            <label>Events</label>
+                            <div class="uc-conn-controls">
+                                <button type="button" class="button uc-eventbrite-preview">Fetch events (preview)</button>
+                                <select class="uc-input uc-eventbrite-status uc-repeater-narrow">
+                                    <option value="live">Published (live)</option>
+                                    <option value="draft">Draft</option>
+                                    <option value="started">Started</option>
+                                    <option value="ended">Ended</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="canceled">Canceled</option>
+                                    <option value="all">All statuses</option>
+                                </select>
+                            </div>
+                        </div>
+                        <p class="description">Reads the account's organizations, then every event under each one, and shows what came back. <strong>Nothing is imported</strong>. This is a look at the data before anything is mapped to events on this site.</p>
+                        <p class="description uc-eventbrite-fetch-msg" style="display:none;"></p>
+                        <div class="uc-eventbrite-preview-out" style="display:none;"></div>
+
+                        <p class="description">Step 2 of the integration: authenticate, then read. Importing into the Pending queue comes next, using this same fetch.</p>
+                    </div>
+                </div>
+
+                <!-- EVERYACTION -->
+                                <div class="uc-integration-panel uc-everyaction-panel">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><svg class="sfaf-icon sfaf-icon-calendar" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span>
+                        <div class="uc-panel-info">
+                            <h2>EveryAction</h2>
+                            <p>Events from Val's tracker on the hub</p>
+                        </div>
+                        <span class="uc-panel-status uc-everyaction-panel-status uc-status-pending">Not tested</span>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                        <div class="uc-field-row">
+                            <label for="uc-ea-auto">Auto-Import events</label>
+                            <label class="uc-toggle"><input type="checkbox" id="uc-ea-auto" name="uc_settings[everyaction_auto_import]" value="1"  /><span class="uc-toggle-slider"></span></label>
+                        </div>
+                        <p class="description">Off: EveryAction is read only when somebody presses Fetch updates on the Pending screen.</p>
+                                                <div class="uc-field-row">
+                            <label>Last fetch</label>
+                            <p class="uc-everyaction-last-fetch">Not fetched yet.</p>
+                        </div>
+                                                <div class="uc-field-row">
+                            <label>Signup links</label>
+                            <p class="uc-everyaction-links">Not read yet.</p>
+                        </div>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-hub">Hub address</label>
+                            <input type="url" id="uc-ea-hub" name="uc_settings[everyaction_hub_url]" value="https://hub.sfaf.org" class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-key">API key</label>
+                            <input type="password" id="uc-ea-key" name="uc_settings[everyaction_api_key]" value="" autocomplete="new-password"
+                                   placeholder="Paste the API key"
+                                   class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-user">Username</label>
+                            <input type="text" id="uc-ea-user" name="uc_settings[everyaction_username]" value="" autocomplete="off" class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-pass">Password</label>
+                            <input type="password" id="uc-ea-pass" name="uc_settings[everyaction_password]" value="" autocomplete="new-password"
+                                   placeholder="The account's MangoApps password"
+                                   class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label for="uc-ea-tracker">Tracker ID</label>
+                            <input type="text" id="uc-ea-tracker" name="uc_settings[everyaction_tracker_id]" value="162570" class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Connection</label>
+                            <div class="uc-conn-controls">
+                                <button type="button" class="button uc-everyaction-connect">Test connection</button>
+                                <span class="uc-conn-pill uc-everyaction-pill ">Not connected</span>
+                            </div>
+                        </div>
+                        <p class="description uc-everyaction-conn-msg" hidden></p>
+
+                        <div class="uc-probe-box uc-everyaction-probe-box">
+                            <h3>Tracker probe <span class="uc-probe-tag">diagnostic</span></h3>
+                            <p class="description">Logs in, reads the first page of the tracker, logs out, and prints the body exactly as the hub sent it. <strong>Read-only:</strong> it imports nothing and changes nothing.</p>
+                            <div class="uc-conn-controls">
+                                <button type="button" class="button uc-everyaction-probe">Probe tracker</button>
+                            </div>
+                            <p class="description uc-everyaction-probe-msg" hidden></p>
+                            <pre class="uc-probe-pre uc-everyaction-probe-out" hidden></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PARDOT / SALESFORCE -->
+                <div class="uc-integration-panel">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><svg class="sfaf-icon sfaf-icon-cloud" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 19a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 17.7 9.7 4.2 4.2 0 0 1 17.2 19z"/></svg></span>
+                        <div class="uc-panel-info">
+                            <h2>Pardot / Salesforce</h2>
+                            <p>Manage campaigns and route RSVPs to prospect lists</p>
+                        </div>
+                        <span class="uc-panel-status uc-status-pending">Not configured</span>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                        <div class="uc-field-row">
+                            <label>Salesforce SSO</label>
+                            <button type="button" class="button">Connect Salesforce Account</button>
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Business Unit ID</label>
+                            <input type="text" name="uc_settings[pardot_business_unit]" value="" class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Auto-Create Prospect on RSVP</label>
+                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[pardot_auto_prospect]" value="1"  /><span class="uc-toggle-slider"></span></label>
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Event Notification Emails</label>
+                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[pardot_event_emails]" value="1"  /><span class="uc-toggle-slider"></span></label>
+                        </div>
+
+                        <div class="uc-campaign-manager">
+                            <h3>Campaign Manager</h3>
+                            <p class="description">These campaigns populate the multi-select on each event and the mapping table below.</p>
+                            <div class="uc-repeater" data-repeater="pardot_campaigns">
+                                <div class="uc-repeater-rows">
+                                                                    </div>
+                                <button type="button" class="button uc-repeater-add">+ Add Campaign</button>
+                                <script type="text/html" class="uc-repeater-template">
+                                    <div class="uc-repeater-row">
+                                        <input type="text" name="uc_settings[pardot_campaigns][__INDEX__][name]" placeholder="Campaign name" />
+                                        <input type="text" name="uc_settings[pardot_campaigns][__INDEX__][id]" placeholder="Campaign ID" />
+                                        <button type="button" class="button uc-repeater-remove" aria-label="Remove">&times;</button>
+                                    </div>
+                                </script>
+                            </div>
+                        </div>
+
+                        <div class="uc-field-row uc-field-row-top">
+                            <label>Global Default Campaign</label>
+                            <div style="flex:1;">
+                                <input type="text" name="uc_settings[pardot_default_campaign]" value="" class="uc-input" placeholder="Campaign ID, all RSVPs go here regardless" />
+                                <p class="description">Every RSVP is assigned to this campaign, no matter the category or event.</p>
+                            </div>
+                        </div>
+
+                        <div class="uc-campaign-map">
+                            <h3>Category &rarr; Campaign Mapping</h3>
+                                                            <p class="description">Add campaigns above to enable category mapping.</p>
+                                                    </div>
+
+                        <div class="uc-tier-explainer">
+                            <strong>How RSVPs are assigned to campaigns:</strong>
+                            <span>Global default <em>+</em> Category mapping <em>+</em> Event-specific campaigns</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GOOGLE CALENDAR -->
+                <div class="uc-integration-panel">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><svg class="sfaf-icon sfaf-icon-calendar" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span>
+                        <div class="uc-panel-info">
+                            <h2>Google Calendar</h2>
+                            <p>Two-way sync between WordPress events and Google Workspace calendars</p>
+                        </div>
+                        <span class="uc-panel-status uc-status-connected">Connected</span>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                        <div class="uc-field-row">
+                            <label>Google Calendar ID</label>
+                            <input type="text" name="uc_settings[google_calendar_id]" value="" class="uc-input" placeholder="events@sfaf.org" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Auto-Publish to Public Calendar</label>
+                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[google_auto_publish]" value="1"  /><span class="uc-toggle-slider"></span></label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GALAXY DIGITAL -->
+                <div class="uc-integration-panel">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><svg class="sfaf-icon sfaf-icon-handshake" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 10.5 6.6 7a2.2 2.2 0 0 1 3.1 0L12 9.3l2.3-2.3a2.2 2.2 0 0 1 3.1 0L21 10.5"/><path d="M3 10.5v2.9l5.5 5a2 2 0 0 0 2.8 0l.7-.7"/><path d="M21 10.5v2.9l-5.5 5a2 2 0 0 1-2.8 0L12 17"/></svg></span>
+                        <div class="uc-panel-info">
+                            <h2>Galaxy Digital</h2>
+                            <p>Import volunteer opportunities from volunteers.sfaf.org</p>
+                        </div>
+                        <span class="uc-panel-status uc-status-connected">Connected</span>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                        <p class="description">Get Connected (v1.9.2) uses Bearer-token auth. Base URL: <code>https://api.galaxydigital.com/api/</code></p>
+                        <div class="uc-field-row">
+                            <label>API Key (Bearer Token)</label>
+                            <input type="password" name="uc_settings[galaxy_api_key]" value="" class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Portal URL</label>
+                            <input type="text" name="uc_settings[galaxy_portal_url]" value="" class="uc-input" placeholder="https://volunteers.sfaf.org" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Agency / Organization ID</label>
+                            <input type="text" name="uc_settings[galaxy_agency_id]" value="" class="uc-input" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Import Needs as Category</label>
+                            <select name="uc_settings[galaxy_needs_category]" class="uc-input">
+                                <option value="">Select a category</option>
+                                <option value="__create__" >Auto-create "Volunteer Opportunities"</option>
+                                                                    <option value="11" >Alpha</option>
+                                                                    <option value="12" >Beta</option>
+                                                            </select>
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Import Galaxy Digital Events</label>
+                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[galaxy_import_events]" value="1"  /><span class="uc-toggle-slider"></span></label>
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Active Needs Only</label>
+                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[galaxy_active_only]" value="1"  checked="checked" /><span class="uc-toggle-slider"></span></label>
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Auto-Sync</label>
+                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[galaxy_auto_sync]" value="1"  /><span class="uc-toggle-slider"></span></label>
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Sync Interval</label>
+                            <select name="uc_settings[galaxy_sync_interval]" class="uc-input">
+                                <option value="5" >5 minutes</option>
+                                <option value="15"  selected="selected">15 minutes</option>
+                                <option value="30" >30 minutes</option>
+                                <option value="60" >1 hour</option>
+                            </select>
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Manual Sync</label>
+                            <div class="uc-conn-controls">
+                                <button type="button" class="button uc-galaxy-sync">Sync Now</button>
+                                <span class="uc-conn-pill ">Not configured</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- WEBHOOKS -->
+                <div class="uc-integration-panel">
+                    <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                        <span class="uc-panel-icon"><svg class="sfaf-icon sfaf-icon-bolt" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M13 2.5 4.5 14H11l-1 7.5L19.5 10H13z"/></svg></span>
+                        <div class="uc-panel-info">
+                            <h2>Webhooks (n8n / Zapier)</h2>
+                            <p>Fire outbound webhooks on event actions for custom automation</p>
+                        </div>
+                        <span class="uc-panel-status uc-status-active">Active</span>
+                        <span class="uc-panel-toggle">&#9660;</span>
+                    </div>
+                    <div class="uc-panel-body">
+                        <div class="uc-field-row">
+                            <label>Webhook URL</label>
+                            <input type="url" name="uc_settings[webhook_url]" value="" class="uc-input uc-monospace" />
+                        </div>
+                        <div class="uc-field-row">
+                            <label>Secret Key (HMAC)</label>
+                            <input type="password" name="uc_settings[webhook_secret]" value="" class="uc-input" />
+                        </div>
+                        <h3>Event Triggers</h3>
+                                                <div class="uc-field-row uc-trigger-row">
+                            <code>event.created</code>
+                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[webhook_event_created]" value="1"  /><span class="uc-toggle-slider"></span></label>
+                        </div>
+                                                <div class="uc-field-row uc-trigger-row">
+                            <code>event.updated</code>
+                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[webhook_event_updated]" value="1"  /><span class="uc-toggle-slider"></span></label>
+                        </div>
+                                                <div class="uc-field-row uc-trigger-row">
+                            <code>event.deleted</code>
+                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[webhook_event_deleted]" value="1"  /><span class="uc-toggle-slider"></span></label>
+                        </div>
+                                                <div class="uc-field-row uc-trigger-row">
+                            <code>event.rsvp</code>
+                            <label class="uc-toggle"><input type="checkbox" name="uc_settings[webhook_event_rsvp]" value="1"  /><span class="uc-toggle-slider"></span></label>
+                        </div>
+                                            </div>
+                </div>
+
+                <div class="uc-save-bar">
+                                        <button type="button" class="button">Test All Connections</button>
+                </div>
+            </form>
+
+                    <div class="uc-integration-panel uc-mailchimp-panel" id="uc-mailchimp" data-uc-mailchimp-panel>
+            <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                <span class="uc-panel-icon"><svg class="sfaf-icon sfaf-icon-mail" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m3.8 7 8.2 5.8L20.2 7"/></svg></span>
+                <div class="uc-panel-info">
+                    <h2>Mailchimp</h2>
+                    <p>A team's own mailing list, from the RSVP form</p>
+                </div>
+                <span class="uc-panel-status uc-status-pending">Not configured</span>
+                <span class="uc-panel-toggle">&#9660;</span>
+            </div>
+            <div class="uc-panel-body">
+                
+                
+                                    <p><a class="button" href="?mc_edit=new#uc-mailchimp">Add a connection</a></p>
+                
+                <h3>Sign-ups that did not go through</h3>
+                                    <p class="description" data-uc-mc-no-problems>None.</p>
+                            </div>
+        </div>
+                <div class="uc-integration-panel uc-twilio-panel" id="uc-twilio" data-uc-twilio-panel>
+            <div class="uc-panel-header" onclick="this.parentElement.classList.toggle('uc-panel-open')">
+                <span class="uc-panel-icon"><svg class="sfaf-icon sfaf-icon-speech" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20.5 12.5a7.5 7.5 0 0 1-7.5 7.5 8.4 8.4 0 0 1-3.3-.66L4 21l1.7-4.6A7.3 7.3 0 0 1 5 12.5 7.5 7.5 0 0 1 12.5 5 7.5 7.5 0 0 1 20.5 12.5z"/></svg></span>
+                <div class="uc-panel-info">
+                    <h2>Twilio</h2>
+                    <p>Texts and WhatsApp messages to registrants</p>
+                </div>
+                <span class="uc-panel-status uc-status-pending" data-uc-twilio-status>Not configured</span>
+                <span class="uc-panel-toggle">&#9660;</span>
+            </div>
+            <div class="uc-panel-body">
+                                <form method="post" action="https://resources.sfaf.org/wp-admin/admin-post.php" class="uc-twilio-form" data-uc-twilio-form>
+                    <input type="hidden" name="_wpnonce" value="nonce" />                    <input type="hidden" name="action" value="sfaf_twilio_save" />
+                    <div class="uc-field-row">
+                        <label for="uc-tw-twilio_account_sid">Account SID</label>
+                        <input type="text" id="uc-tw-twilio_account_sid" name="twilio_account_sid" value="" placeholder="AC..." class="uc-input" autocomplete="off" />
+                    </div>
+                    <div class="uc-field-row">
+                        <label for="uc-tw-token">Auth Token</label>
+                        <input type="password" id="uc-tw-token" name="twilio_token" value="" autocomplete="new-password" class="uc-input"
+                               placeholder="None saved." data-uc-twilio-token />
+                    </div>
+                    <div class="uc-field-row">
+                        <label>Connection</label>
+                        <div class="uc-conn-controls">
+                            <button type="button" class="button" data-uc-twilio-test>Test connection</button>
+                        </div>
+                    </div>
+                    <p class="description" data-uc-twilio-test-msg hidden></p>
+                                            <div class="uc-field-row">
+                            <label for="uc-tw-twilio_messaging_sid">Messaging Service SID</label>
+                            <input type="text" id="uc-tw-twilio_messaging_sid" name="twilio_messaging_sid" value="" placeholder="MG..." class="uc-input" autocomplete="off" />
+                        </div>
+                                            <div class="uc-field-row">
+                            <label for="uc-tw-twilio_whatsapp_from">WhatsApp sender</label>
+                            <input type="text" id="uc-tw-twilio_whatsapp_from" name="twilio_whatsapp_from" value="" placeholder="+14155550123" class="uc-input" autocomplete="off" />
+                        </div>
+                                        <h3>WhatsApp template SIDs</h3>
+                    <p class="description" data-uc-twilio-wa-state>WhatsApp stays off until all four are filled in, with the sender above. Until then, anyone who chose WhatsApp gets email only.</p>
+                                            <div class="uc-field-row">
+                            <label for="uc-tw-twilio_wa_reminder_en">sfaf_event_reminder, English</label>
+                            <input type="text" id="uc-tw-twilio_wa_reminder_en" name="twilio_wa_reminder_en" value="" placeholder="HX..." class="uc-input" autocomplete="off" />
+                        </div>
+                                            <div class="uc-field-row">
+                            <label for="uc-tw-twilio_wa_reminder_es">sfaf_event_reminder, Spanish</label>
+                            <input type="text" id="uc-tw-twilio_wa_reminder_es" name="twilio_wa_reminder_es" value="" placeholder="HX..." class="uc-input" autocomplete="off" />
+                        </div>
+                                            <div class="uc-field-row">
+                            <label for="uc-tw-twilio_wa_update_en">sfaf_event_update, English</label>
+                            <input type="text" id="uc-tw-twilio_wa_update_en" name="twilio_wa_update_en" value="" placeholder="HX..." class="uc-input" autocomplete="off" />
+                        </div>
+                                            <div class="uc-field-row">
+                            <label for="uc-tw-twilio_wa_update_es">sfaf_event_update, Spanish</label>
+                            <input type="text" id="uc-tw-twilio_wa_update_es" name="twilio_wa_update_es" value="" placeholder="HX..." class="uc-input" autocomplete="off" />
+                        </div>
+                                        <p class="description" data-uc-twilio-confirm-state>WhatsApp confirmations stay off until both are filled in, with WhatsApp on.</p>
+                                            <div class="uc-field-row">
+                            <label for="uc-tw-twilio_wa_confirmation_en">sfaf_event_confirmation, English</label>
+                            <input type="text" id="uc-tw-twilio_wa_confirmation_en" name="twilio_wa_confirmation_en" value="" placeholder="HX..." class="uc-input" autocomplete="off" data-uc-twilio-confirm-template />
+                        </div>
+                                            <div class="uc-field-row">
+                            <label for="uc-tw-twilio_wa_confirmation_es">sfaf_event_confirmation, Spanish</label>
+                            <input type="text" id="uc-tw-twilio_wa_confirmation_es" name="twilio_wa_confirmation_es" value="" placeholder="HX..." class="uc-input" autocomplete="off" data-uc-twilio-confirm-template />
+                        </div>
+                                        <h3>Replies and STOP</h3>
+                    <div class="uc-field-row">
+                        <label for="uc-tw-incoming">Incoming message address</label>
+                        <input type="text" id="uc-tw-incoming" value="" class="uc-input" readonly data-uc-twilio-incoming />
+                    </div>
+                    <p class="description">In Twilio, set this as the Messaging Service's incoming message webhook, and the WhatsApp sender's, with HTTP POST.</p>
+                    <p class="uc-mc-buttons">
+                        <button type="submit" class="button">Save Twilio settings</button>
+                    </p>
+                </form>
+                            </div>
+        </div>
+                </div>
+        <script>window.RL_PAGE="wp-settings";(function () {
+var P = window.RL_PAGE, out = { page: P, errors: [], buttons: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function qa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function text(el) { return el ? (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim() : ''; }
+function seen(el) { if (!el || el.closest('[hidden]') || !el.getClientRects().length) { return false; } var r = el.getBoundingClientRect(); if (r.width < 2 || r.height < 2) { return false; } var cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0.9; }
+function rgba(s) { var m = String(s).match(/[\d.]+/g); if (!m) { return null; } return [+m[0], +m[1], +m[2], m.length > 3 ? +m[3] : 1]; }
+function lum(c) { return [c[0], c[1], c[2]].map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }).reduce(function (a, v, i) { return a + v * [0.2126, 0.7152, 0.0722][i]; }, 0); }
+function ratio(a, b) { var x = lum(a), y = lum(b); return Math.round(((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)) * 100) / 100; }
+function behind(el) { for (var n = el; n && n.nodeType === 1; n = n.parentElement) { var c = rgba(getComputedStyle(n).backgroundColor); if (c && c[3] > 0.5) { return c; } } return [255, 255, 255, 1]; }
+function opacityChain(el) { var o = 1; for (var n = el; n && n.nodeType === 1; n = n.parentElement) { o *= parseFloat(getComputedStyle(n).opacity); } return o; }
+var LINKISH = /uc-link-danger|uc-link-ok|uc-action-link|uc-repeater-remove|uc-chip-remove|uc-help-btn|uc-icon-btn|uc-seg-opt|uc-tpl-token|uc-picker-tab|uc-tab|uc-nav-item|uc-day|uc-scope-btn|uc-disclosure|uc-checkin-mode|button-link|uc-month|uc-view|notice-dismiss|uc-copy-icon|uc-pw-toggle|uc-sl-|uc-email-pill|uc-rcp-|uc-tag-|uc-chip/;
+function measure() {
+  qa('button, input[type="submit"], input[type="button"], a.uc-btn, a.button, summary.uc-outline-btn, summary.uc-btn').forEach(function (b) {
+    if (b.disabled || !seen(b) || opacityChain(b) < 0.9) { return; }
+    var cs = getComputedStyle(b), face = rgba(cs.backgroundColor), ink = rgba(cs.color);
+    var under = behind(b.parentElement || b), own = face && face[3] > 0.5 ? face : under;
+    var size = parseFloat(cs.fontSize), weight = parseInt(cs.fontWeight, 10);
+    var large = size >= 24 || (size >= 18.66 && weight >= 700);
+    var bw = parseFloat(cs.borderTopWidth), bc = rgba(cs.borderTopColor);
+    var cls = (b.getAttribute('class') || '') + (b.tagName === 'SUMMARY' ? ' summary' : '');
+    var label = text(b) || b.getAttribute('value') || b.getAttribute('aria-label') || '';
+    out.buttons.push({ label: label.slice(0, 50), cls: cls.slice(0, 90), face: cs.backgroundColor, ink: cs.color, edge: bw > 0 ? cs.borderTopColor : 'none',
+      text: label ? ratio(ink, own) : null, large: large, linkish: LINKISH.test(cls),
+      edgeRatio: (bw > 0 && bc && bc[3] > 0.5) ? ratio(bc, under) : null, faceRatio: ratio(own, under) });
+  });
+}
+window.addEventListener('load', function () { setTimeout(function () {
+  qa('.uc-integration-panel').forEach(function (p) { p.classList.add('uc-panel-open'); });
+  qa('.uc-btn-utility[disabled]').forEach(function (b) { b.style.transition = 'none'; b.disabled = false; });
+  measure();
+  out.pageWidth = document.documentElement.scrollWidth;
+  // One button that asks first, pressed: the dialog it opens is measured too.
+  var ask = qa('[data-uc-confirm].uc-btn').filter(function (b) { return seen(b) && !b.disabled; })[0];
+  if (!ask) { return window.parent.postMessage(JSON.stringify(out), '*'); }
+  out.asked = { label: text(ask), cls: ask.getAttribute('class') };
+  ask.click();
+  setTimeout(function () {
+    var dlg = document.querySelector('dialog[open]');
+    if (dlg) {
+      var n = out.buttons.length;
+      qa('button', dlg).forEach(function (b) { if (seen(b)) { var cs = getComputedStyle(b); out.buttons.push({ label: 'dialog: ' + text(b), cls: (b.getAttribute('class') || ''), face: cs.backgroundColor, ink: cs.color, edge: parseFloat(cs.borderTopWidth) > 0 ? cs.borderTopColor : 'none', text: ratio(rgba(cs.color), rgba(cs.backgroundColor)[3] > 0.5 ? rgba(cs.backgroundColor) : behind(dlg)), large: false, linkish: false, edgeRatio: parseFloat(cs.borderTopWidth) > 0 ? ratio(rgba(cs.borderTopColor), behind(dlg)) : null, faceRatio: ratio(rgba(cs.backgroundColor)[3] > 0.5 ? rgba(cs.backgroundColor) : behind(dlg), behind(dlg)) }); } });
+      out.dialog = out.buttons.length - n;
+    }
+    window.parent.postMessage(JSON.stringify(out), '*');
+  }, 300);
+}, 500); });
+})();</script></body></html>

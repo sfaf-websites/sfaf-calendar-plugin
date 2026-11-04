@@ -1,0 +1,194 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="../admin/css/admin.css"></head><body class="wp-admin" style="margin:0;background:#f0f0f1;font-family:sans-serif">        <div class="wrap uc-admin-wrap">
+            <div class="uc-admin-header">
+                <div>
+                    <h1>Closures</h1>
+                    <p class="uc-subtitle">Days SFAF is shut. They are marked on the calendar and are not events.</p>
+                </div>
+            </div>
+
+                                    
+                                    <div class="uc-admin-card">
+                <h2>Add a closure</h2>
+                <p class="description">
+                    A closure is marked on the month grid and appears in a calendar list as a flat card.
+                    It has no page, cannot be clicked, takes no registrations and sends nothing.
+                    For several days in a row, enter one closure with a last day rather than one per day.
+                </p>
+                <form method="post">
+                    <input type="hidden" name="uc_closure_nonce" value="nonce" />                    <input type="hidden" name="uc_closure_action" value="save" />
+                    <input type="hidden" name="closure_id" value="" />
+                    <p>
+                        <label for="uc_closure_label">What to call it</label><br />
+                        <input type="text" name="closure_label" id="uc_closure_label" class="regular-text"
+                               placeholder="Thanksgiving" value="" required />
+                        <br /><span class="description">Shown as &ldquo;Closed for Thanksgiving&rdquo;.</span>
+                    </p>
+                    <p>
+                        <label for="uc_closure_start">First day</label><br />
+                        <input type="date" name="closure_start" id="uc_closure_start" value="" required />
+                    </p>
+                    <p>
+                        <label for="uc_closure_end">Last day</label><br />
+                        <input type="date" name="closure_end" id="uc_closure_end" value="" />
+                        <br /><span class="description">Leave empty for a single day.</span>
+                    </p>
+                    <p>
+                        <label for="uc_closure_note">Note</label><br />
+                        <input type="text" name="closure_note" id="uc_closure_note" class="regular-text"
+                               maxlength="200" placeholder="The 6th Street Center is open as usual" value="" />
+                        <br /><span class="description">Optional. Shown with the closure on the calendar. The month grid shortens anything long, so put what matters first.</span>
+                    </p>
+                                        <fieldset class="uc-closure-open" data-uc-closure-open>
+                        <legend>Still open</legend>
+                                                    <div data-uc-open-rows>
+                                                            </div>
+                            <template data-uc-open-template>        <div class="uc-open-row" data-uc-open-row>
+            <label>
+                <span class="uc-open-label">Venue</span>
+                <select name="closure_open_venue[__i__]">
+                    <option value="0">Choose a venue</option>
+                                            <option value="11" >Alpha</option>
+                                            <option value="12" >Beta</option>
+                                    </select>
+            </label>
+            <span class="uc-open-time">
+                <span class="uc-open-label">Opens</span>
+                    <span class="uc-timepick" role="group" aria-label="Opens">
+        <select name="closure_open_from___i___h"
+                                class="uc-timepick-h"
+                aria-label="Opens, hour">
+            <option value="" selected="selected">Hour</option>
+                            <option value="00">12 am</option>
+                            <option value="01">1 am</option>
+                            <option value="02">2 am</option>
+                            <option value="03">3 am</option>
+                            <option value="04">4 am</option>
+                            <option value="05">5 am</option>
+                            <option value="06">6 am</option>
+                            <option value="07">7 am</option>
+                            <option value="08">8 am</option>
+                            <option value="09">9 am</option>
+                            <option value="10">10 am</option>
+                            <option value="11">11 am</option>
+                            <option value="12">12 pm</option>
+                            <option value="13">1 pm</option>
+                            <option value="14">2 pm</option>
+                            <option value="15">3 pm</option>
+                            <option value="16">4 pm</option>
+                            <option value="17">5 pm</option>
+                            <option value="18">6 pm</option>
+                            <option value="19">7 pm</option>
+                            <option value="20">8 pm</option>
+                            <option value="21">9 pm</option>
+                            <option value="22">10 pm</option>
+                            <option value="23">11 pm</option>
+                    </select>
+        <select name="closure_open_from___i___m"
+                class="uc-timepick-m"
+                aria-label="Opens, minute">
+            <option value="" selected="selected">Min</option>
+                            <option value="00">:00</option>
+                            <option value="05">:05</option>
+                            <option value="10">:10</option>
+                            <option value="15">:15</option>
+                            <option value="20">:20</option>
+                            <option value="25">:25</option>
+                            <option value="30">:30</option>
+                            <option value="35">:35</option>
+                            <option value="40">:40</option>
+                            <option value="45">:45</option>
+                            <option value="50">:50</option>
+                            <option value="55">:55</option>
+                    </select>
+    </span>
+                </span>
+            <span class="uc-open-time">
+                <span class="uc-open-label">Closes</span>
+                    <span class="uc-timepick" role="group" aria-label="Closes">
+        <select name="closure_open_to___i___h"
+                                class="uc-timepick-h"
+                aria-label="Closes, hour">
+            <option value="" selected="selected">Hour</option>
+                            <option value="00">12 am</option>
+                            <option value="01">1 am</option>
+                            <option value="02">2 am</option>
+                            <option value="03">3 am</option>
+                            <option value="04">4 am</option>
+                            <option value="05">5 am</option>
+                            <option value="06">6 am</option>
+                            <option value="07">7 am</option>
+                            <option value="08">8 am</option>
+                            <option value="09">9 am</option>
+                            <option value="10">10 am</option>
+                            <option value="11">11 am</option>
+                            <option value="12">12 pm</option>
+                            <option value="13">1 pm</option>
+                            <option value="14">2 pm</option>
+                            <option value="15">3 pm</option>
+                            <option value="16">4 pm</option>
+                            <option value="17">5 pm</option>
+                            <option value="18">6 pm</option>
+                            <option value="19">7 pm</option>
+                            <option value="20">8 pm</option>
+                            <option value="21">9 pm</option>
+                            <option value="22">10 pm</option>
+                            <option value="23">11 pm</option>
+                    </select>
+        <select name="closure_open_to___i___m"
+                class="uc-timepick-m"
+                aria-label="Closes, minute">
+            <option value="" selected="selected">Min</option>
+                            <option value="00">:00</option>
+                            <option value="05">:05</option>
+                            <option value="10">:10</option>
+                            <option value="15">:15</option>
+                            <option value="20">:20</option>
+                            <option value="25">:25</option>
+                            <option value="30">:30</option>
+                            <option value="35">:35</option>
+                            <option value="40">:40</option>
+                            <option value="45">:45</option>
+                            <option value="50">:50</option>
+                            <option value="55">:55</option>
+                    </select>
+    </span>
+                </span>
+            <button type="button" class="button-link button-link-delete" data-uc-open-remove>Remove</button>
+        </div>
+        </template>
+                            <p><button type="button" class="button" data-uc-open-add>Add a row</button></p>
+                            <script>
+                            (function () {
+                                var box = document.querySelector('[data-uc-closure-open]');
+                                if (!box) { return; }
+                                var rows = box.querySelector('[data-uc-open-rows]');
+                                var tpl = box.querySelector('[data-uc-open-template]');
+                                var next = rows.querySelectorAll('[data-uc-open-row]').length;
+                                box.querySelector('[data-uc-open-add]').addEventListener('click', function () {
+                                    var wrap = document.createElement('div');
+                                    wrap.innerHTML = tpl.innerHTML.replace(/__i__/g, String(next++));
+                                    var row = wrap.firstElementChild;
+                                    rows.appendChild(row);
+                                    var first = row.querySelector('select');
+                                    if (first) { first.focus(); }
+                                });
+                                box.addEventListener('click', function (e) {
+                                    var btn = e.target.closest ? e.target.closest('[data-uc-open-remove]') : null;
+                                    if (btn) { btn.closest('[data-uc-open-row]').remove(); }
+                                });
+                            })();
+                            </script>
+                                            </fieldset>
+                    <p>
+                        <button type="submit" class="button button-primary">Add closure</button>
+                                            </p>
+                </form>
+            </div>
+
+            <div class="uc-admin-card">
+                <h2>0 closures</h2>
+
+                                    <p class="uc-no-data">Nothing recorded. The calendar shows no closed days.</p>
+                            </div>
+        </div>
+        </body></html>

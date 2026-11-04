@@ -194,16 +194,28 @@
     background: var(--uc-bg); font-family: inherit; font-size: 13px;
 }
 
-/* THE BUTTON FAMILY, THE SAME TWO WEIGHTS AS THE PORTAL. Yellow is the primary
-   and appears once per screen; everything else is the outline. Dark Gray on
-   SFAF yellow measures 8.92:1. WordPress's own blue primary is replaced only
-   inside our wrap, so core screens keep core's button. */
+/* THE BUTTON FAMILY, THE SAME WEIGHTS AS THE PORTAL. Yellow is the primary
+   and appears once per screen; everything else is R (3.137.0), the portal's
+   secondary: white, a 1px teal edge, teal ink, the band on hover. #0E7680 on
+   white 5.35:1, on #E8F9FA 4.94:1. Dark Gray on SFAF yellow measures 8.92:1.
+   WordPress's own buttons are replaced only inside our wrap, so core screens
+   keep core's. */
 .uc-admin-wrap .button, .uc-meta-box .button {
-    border-radius: 8px; border-color: var(--uc-border-strong);
-    color: var(--uc-text); font-weight: 600; box-shadow: none;
+    border-radius: 8px; border: 1px solid var(--uc-teal-text); background: #fff;
+    color: var(--uc-teal-text); font-weight: 600; box-shadow: none;
 }
 .uc-admin-wrap .button:hover, .uc-meta-box .button:hover {
-    border-color: var(--uc-teal-text); color: var(--uc-teal-text); background: #fff;
+    border-color: var(--uc-teal-text); color: var(--uc-teal-text); background: #E8F9FA;
+}
+/* THE RED OUTLINE (3.137.0): Clear the log, a closure's Remove, an FAQ's
+   Remove this question. #c0392b on white 5.44:1, on #FEF2F2 4.96:1. */
+.uc-admin-wrap .button.uc-button-danger-outline, .uc-meta-box .button.uc-faq-remove,
+.uc-admin-wrap .button.uc-faq-remove {
+    border-color: #c0392b; background: #fff; color: #c0392b !important;
+}
+.uc-admin-wrap .button.uc-button-danger-outline:hover, .uc-meta-box .button.uc-faq-remove:hover,
+.uc-admin-wrap .button.uc-faq-remove:hover {
+    border-color: #c0392b; background: #FEF2F2; color: #c0392b !important;
 }
 .uc-admin-wrap .button:focus, .uc-meta-box .button:focus {
     outline: 2px solid var(--uc-teal-text); outline-offset: 2px; box-shadow: none;
@@ -414,8 +426,13 @@
 .uc-repeater-row { display: flex; gap: 8px; align-items: center; }
 .uc-repeater-row input { flex: 1; } /* box defers to the control block */
 .uc-repeater-narrow { max-width: 110px; flex: 0 0 110px !important; }
-.uc-repeater-remove { color: var(--uc-warm) !important; font-size: 18px !important; line-height: 1 !important; padding: 0 10px !important; }
-.uc-repeater-add { border-style: dashed !important; color: var(--uc-teal) !important; }
+/* The x that removes a row: red text and no box (3.137.0), 5.44:1. Warm
+   #E8573A until then, 3.32:1. */
+.uc-repeater-remove { color: #c0392b !important; font-size: 18px !important; line-height: 1 !important; padding: 0 10px !important; }
+.uc-admin-wrap .button.uc-repeater-remove:not(.uc-faq-remove) { border-color: transparent; background: transparent; }
+.uc-admin-wrap .button.uc-repeater-remove:not(.uc-faq-remove):hover { border-color: transparent; background: #FEF2F2; }
+/* R, as every secondary (3.137.0). Brand teal ink was 2.26:1. */
+.uc-repeater-add { color: var(--uc-teal-text) !important; }
 
 /* Pardot category map */
 .uc-map-row-multi { flex-direction: column; align-items: flex-start; gap: 8px; }
@@ -511,8 +528,7 @@
 /* The remove control is a labelled button under the row now, not an x in the
  * corner. Right-aligned, because it is not the thing to do here. */
 .uc-faq-row-actions { display: flex; justify-content: flex-end; margin-top: 2px; }
-.uc-faq-row .uc-faq-remove { color: #b32d2e; }
-.uc-faq-row .uc-faq-remove:hover { color: #8a2424; border-color: #8a2424; }
+/* Its red outline is with the button family above (3.137.0). */
 /* Taller, and draggable. This grip is the no-script fallback's; the editor's
  * own comes from TinyMCE, turned on in SFAF_Rich_Text::settings(). */
 .uc-faq-row textarea { flex: none !important; width: 100%; min-height: 180px; resize: vertical; line-height: 1.5; background: #fff; }

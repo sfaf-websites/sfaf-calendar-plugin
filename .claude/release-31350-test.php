@@ -225,7 +225,7 @@ foreach ( array(
     'Preferences: the password Save'       => '<button type="submit" class="uc-btn">Save</button>',
     'RSVP list: Export CSV'                => '>Export CSV</a>',
     'RSVP list: Save settings'             => '>Save settings</button>',
-    'Organizers: Add organizer'            => '>Add organizer</button>',
+    // Organizers' Add organizer is the screen's yellow from 3.137.0: release-31370-test.php.
     'FAQ sets: Create set'                 => '>Create set</button>',
     'FAQ sets: Save set'                   => '>Save set</button>',
     "Add event: Fill these in"             => 'data-uc-prefill-apply>Fill these in</button>',
@@ -238,7 +238,8 @@ rt( 'A: Save attendance is grey', 1 === preg_match( '/name="attendance"[^\n]*\n[
 $org = substr( $P, strpos( $P, '>Add organizer</button>' ), 6000 );
 rt( 'A: Organizers: the Save on an opened row is grey', 1 === preg_match( '/<button type="submit" class="uc-btn">Save<\/button>/', $org ) );
 $bulk = substr( $P, strpos( $P, 'private function render_events(' ), strpos( $P, 'private function events_table(' ) - strpos( $P, 'private function render_events(' ) );
-rt( 'A: the Events list bulk buttons are grey, + New Event keeps the yellow', 1 === substr_count( $bulk, 'uc-btn-primary' ) && false !== strpos( tl_line( $bulk, 'uc-btn-primary' ), 'New Event' ) );
+// 3.137.0: Publish N drafts and Set team on N events are yellow again, Mark's call; Add to N events stays secondary.
+rt( 'A: the Events list bulk buttons are grey, + New Event keeps the yellow', false !== strpos( tl_line( $bulk, 'uc-btn-primary' ), 'New Event' ) && 1 === preg_match( '/<button type="submit" class="uc-btn uc-btn-sm"\s+name="uc_do" value="categorize"/', $bulk ) );
 $rq = (string) file_get_contents( $root . '/includes/class-sfaf-request.php' );
 rt( 'A: the request form: Fill these in is grey', false === strpos( tl_line( $rq, 'data-uc-prefill-apply>Fill these in' ), 'uc-btn-primary' ) );
 rt( 'A: the form-links Done is grey', false !== strpos( $JS, "done.className = 'uc-btn uc-btn-sm';" ) );

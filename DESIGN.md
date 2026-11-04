@@ -63,7 +63,7 @@ unknown backdrop cannot be contrast-checked.
 | Purple | `#8D54A2` | Category only |
 | Green | `#8CC745` | Category, and success state |
 | Teal | `#16BECF` | The single structural accent |
-| Light Gray | `#D1D3D4` | Hairlines, text on dark surfaces, and the secondary button's face |
+| Light Gray | `#D1D3D4` | Hairlines and text on dark surfaces (the secondary button's face until 3.137.0) |
 | Dark Gray | `#373433` | Body text, and the portal sidebar |
 
 Nothing outside this list is a brand color. Neutrals derived for surfaces
@@ -191,13 +191,16 @@ in-between yellow.
   that goes with a cancellation is red `.uc-btn-danger` on both steps: Cancel and
   email them, and the series' Cancel these and email the N people. Reassign and
   remove is red. Put it back on and tell them stays yellow.
-- **One yellow per screen; the rest are the grey secondary.** Grey since 3.135.0:
-  the Save on every Venues and Users row, Preferences' password Save, the RSVP
-  list's Export CSV, Save settings and Save attendance, the Events list's bulk
-  buttons, Organizers' Add organizer and row Save, FAQ sets' Create set and Save
-  set, Add event's Fill these in and Restore, the form links' Done, and the
+- **One yellow per screen; the rest are the secondary**, R from 3.137.0 (the
+  control standard, below). Secondary since 3.135.0: the Save on every Venues
+  and Users row, Preferences' password Save, the RSVP list's Export CSV, Save
+  settings and Save attendance, Organizers' row Save, FAQ sets' Create set and
+  Save set, Add event's Fill these in and Restore, the form links' Done, and the
   request form's Fill these in. In WP admin the plain `.button`: Save Twilio
   settings, Mailchimp's Save connection, and Automation's Run now and Send it.
+- **Yellow again in 3.137.0, as the screen's main action, Mark's call**: the
+  Events list's Publish N drafts and Set team on N events, and Organizers' Add
+  organizer. Put it back on and tell them has been yellow throughout.
 ### Teal is the single structural accent
 
 One accent, used for structure: focus rings, the active indicator, heading
@@ -508,38 +511,55 @@ places, nine of which handed it the decorative hairline instead of a boundary.
 |---|---|---|---|
 | Text input, select, textarea | white | `--p-border-strong` | you type in this |
 | Select | white, plus a chevron **and an end cap** | `--p-border-strong` | it opens a list |
-| Secondary button | Light Gray `#D1D3D4` | `--p-border-strong` | you press this |
+| Secondary button, "R" | white, ink `#0E7680` | `#0E7680`; hover fills `#E8F9FA` | you press this |
 | Primary button | Yellow `#FFD900`, ink `#373433` | `#E0BE00` | this is THE action. One per view |
-| Utility button | `#0E7680`, white ink | its own | go and get it again |
 | Destructive button | `#c0392b`, white ink | its own | behind a disclosure |
+| Destructive outline | white, ink `#c0392b` | `#c0392b`; hover fills `#FEF2F2` | removes or deletes from a row or form |
 | Quiet action | none | none | a verb in a row of verbs |
 | Segmented option group | white, chosen fills `#0E7680` | one boundary, seams inside | pick one of these |
 | Option card | white | `--p-border-strong` | pick one, with its consequence under it |
 | Disclosure | inherits | none, or a ring on a card head | this opens |
 
-**In caladmin the button takes the surface, not the field, and that is not a
-reversal of the filter-bar rule.** "No fill" is only available where the group
-sits on a tint. A caladmin button sits on a white card as often as on the page,
-so transparent *is* white there. The statement is kept by inverting which half
-carries it: white stays "you type in this", and the button gets Light Gray.
-Measured, in `.claude/control-standard-audit.php`:
+**THE SECONDARY BUTTON IS "R" (3.137.0), MARK'S DECISION**, the look of Set
+team on the Events list: white, a 1px `#0E7680` edge, `#0E7680` semibold ink,
+8px corners, and `#E8F9FA` (`--uc-band`) under the pointer. It replaces the
+Light Gray face of 3.64.0 to 3.136.0, which answered "a white box with a grey
+edge is a text field". R answers it with colour instead of a fill: a field's
+edge is the grey `--p-border-strong` and its ink Dark Gray, a button's edge and
+words are teal. **A teal outline always means secondary**: the solid teal
+utility button (Fetch updates, Refresh from source) became R in the same
+release. Measured, in `.claude/control-standard-audit.php`:
 
 | Pairing | Ratio |
 |---|---|
-| `#D1D3D4` face against a white card | 1.50:1 |
-| `#D1D3D4` face against the page `#F5F6F7` | 1.39:1 |
-| `#373433` ink on the face | 8.22:1 |
-| `#BFC2C4` hover face, ink on it | 6.89:1 |
+| `#0E7680` ink on white | 5.35:1 |
+| `#0E7680` ink on the hover `#E8F9FA` | 4.94:1 |
+| `#0E7680` edge against a white card | 5.35:1 |
+| `#0E7680` edge against the page `#F5F6F7` | 4.95:1 |
 
-**The fill is not the boundary and is not asked to be.** 1.50:1 is a visible
-surface, not an edge; the 1px `--p-border-strong` at 3.33:1 is what clears WCAG
-1.4.11. Two jobs, two declarations.
+**The edge is the boundary**, past WCAG 1.4.11's 3:1 on either surface.
 
-**It must not read as disabled, and the numbers are how that stays true.** A
-disabled control here is *lighter* than the page with *muted* ink: `#F3F4F6`
-with `#6B7280`, or `#F9FAFB` with `#4B5563`. The button face is darker than
-both, at full ink and 600 weight, and measures 1.37:1 against the nearer of
-them.
+**Its relatives, all in R's shape** (3.137.0):
+
+- **The destructive outline**, `.uc-btn-danger-outline` (WP admin
+  `.uc-button-danger-outline`): white, `#c0392b` edge and ink, 5.44:1, the
+  pale `#FEF2F2` on hover, 4.96:1. Remove this question, Delete them anyway,
+  Reset to default, Clear the log, a closure's Remove. WP admin's row "x" is
+  red ink alone.
+- **The quiet button**, `.uc-btn-quiet`: white, `#6B6764` edge and ink,
+  5.60:1, the band on hover with Dark Gray ink. Media's Move to Other images and
+  Remove.
+- **Check in** is R; **Checked in** is solid `#0E7680` with white ink, 5.35:1.
+- **Discard** on the restore bar is the quiet red text link.
+- WP admin's plain `.button` inside our wrap is R too.
+
+**It must not read as disabled.** A disabled control here is a pale fill with
+muted ink, `#F3F4F6` with `#6B7280`; R keeps a white face with a coloured edge
+and full-strength teal words.
+
+**One hover for an outlined button, the band**, everywhere except the public
+calendar, whose outlined `.uc-actionbtn-secondary` keeps its bright-teal hover
+because it is part of the embed, which did not change in 3.137.0.
 
 **An option group is not a row of buttons.** Pressing a segment picks a value;
 it does not do a thing. So a pick-one group wears **one** boundary with seams
@@ -1014,11 +1034,10 @@ by `.claude/release-31062-live.php` and, for the editor from 3.106.3,
 | + Add option | a text button in the link colour, in line with the option boxes | 13px/600 `--uc-accent-text`, 40px in (grip plus gap) |
 | + Add question | an outlined button at its own width, on the left | 1px `--uc-accent-text` edge and text, `--uc-band` on hover |
 
-**The outlined button is not the secondary button**, and that is the brief's
-call rather than a drift: the standard's secondary face is Light Gray, and an
-outline in the accent is used here for the one control that adds a whole
-question. It shares no fill with a text field, so white with a grey boundary
-still means "you type in this". The grip moves an option with Up and Down as
+**The outlined button is the secondary button** from 3.137.0 (R, in the
+control standard above); until then the secondary face was Light Gray and this
+outline was the exception. White with a grey boundary still means "you type in
+this"; white with a teal one means "press this". The grip moves an option with Up and Down as
 well as by dragging.
 
 **The public form.** "Additional information" is the form's subhead step,

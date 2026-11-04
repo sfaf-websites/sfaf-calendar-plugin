@@ -102,8 +102,12 @@
        them.
        --------------------------------------------------------------------- */
     --p-control-face: #ffffff;   /* you type in this, or it opens */
-    --p-btn-face: #D1D3D4;       /* you press this */
-    --p-btn-face-hover: #BFC2C4;
+    /* THE SECONDARY BUTTON, "R" (3.137.0): white, a 1px teal edge, teal ink,
+       the band on hover, as Set team. #0E7680 on white 5.35:1, on the band
+       4.94:1. Light Gray #D1D3D4 until 3.137.0. */
+    --p-btn-face: #ffffff;       /* you press this: the teal edge and ink say so */
+    --p-btn-face-hover: #E8F9FA; /* --uc-band */
+    --p-btn-edge: #0E7680;       /* --uc-accent-text */
     --p-text: #373433;       /* brand Dark Gray, not pure black */
     --p-muted: #6B6764;      /* a warm gray from the same family, 5.60:1 on white */
     /* The bento cards sit on the page background and need to read as raised
@@ -667,8 +671,8 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 /* The one part of a file input that IS a button gets the button face, so
    "Choose file" reads as pressable next to every other button on the form. */
 :where(.uc-portal) :where(input[type="file"])::file-selector-button {
-    margin-right: 10px; padding: 6px 12px; border: 1px solid var(--p-border-strong);
-    border-radius: 7px; background: var(--p-btn-face); color: var(--p-text);
+    margin-right: 10px; padding: 6px 12px; border: 1px solid var(--p-btn-edge);
+    border-radius: 7px; background: var(--p-btn-face); color: var(--p-btn-edge);
     font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
 }
 
@@ -683,8 +687,12 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
    should supply a surface, not a layout. */
 :where(.uc-portal) :where(button, input[type="submit"], input[type="button"], input[type="reset"]) {
     padding: 9px 16px; border-radius: 8px;
-    border: 1px solid var(--p-border-strong); background: var(--p-btn-face); color: var(--p-text);
+    border: 1px solid var(--p-btn-edge); background: var(--p-btn-face); color: var(--p-btn-edge);
     font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1.4; cursor: pointer;
+}
+/* Zero specificity like the rest, so every button class's own state wins. */
+:where(.uc-portal) :where(button, input[type="submit"], input[type="button"], input[type="reset"]):hover {
+    background: var(--p-btn-face-hover);
 }
 :where(.uc-portal) :where(button, input[type="submit"]):focus-visible {
     outline: 2px solid var(--uc-accent-text); outline-offset: 2px;
@@ -693,31 +701,30 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 /* ---------------------------------------------------------------------------
    THE BUTTON VOCABULARY. FOUR WEIGHTS AND A QUIET FIFTH, AND NOTHING ELSE.
 
-   A SECONDARY BUTTON HAS A SURFACE (3.64.0). It was a white box with a 1px
-   --p-border-strong outline and an 8px radius, which is byte for byte what a
-   text input was, so Choose Image, Add these questions, Add FAQ, Add category,
-   Save Draft and Back all read as the same thing as the Title field beside
-   them. An outline on white does not say "press me"; it says "there is an edge
-   here". The fill is what says it, and the fill is brand Light Gray:
+   THE SECONDARY BUTTON IS "R" (3.137.0, Mark's decision), the look of Set
+   team: white, a 1px teal edge, teal ink, 8px corners, the band on hover. A
+   text field is white with the grey control edge and Dark Gray ink, so the
+   teal edge and the teal words are what say "press me". From 3.64.0 to 3.136.0
+   it was Light Gray, because a white box with a GREY outline was byte for byte
+   a text input; the teal is what answers that.
 
      PRIMARY      yellow #FFD900, ink #373433, 8.92:1. ONE per view.
-     SECONDARY    Light Gray #D1D3D4, ink #373433, 8.22:1. The default.
-     UTILITY      solid teal #0E7680, white ink, 5.35:1. "Go and get it again".
-     DESTRUCTIVE  solid #c0392b, white ink, 5.44:1. Behind a disclosure.
+     SECONDARY    R: white, #0E7680 edge and ink, 5.35:1; hover #E8F9FA, 4.94:1.
+     DESTRUCTIVE  solid #c0392b, white ink, 5.44:1. Behind a disclosure; as an
+                  outline (.uc-btn-danger-outline) on a destructive row action.
      QUIET        no surface at all: .uc-action-link, .uc-link-danger,
                   .uc-link-ok. A verb in a row of verbs, never a box.
 
-   The border stays. The fill is 1.50:1 against a white card, which is a
-   visible surface and not a boundary, so the edge is still the thing clearing
-   WCAG 1.4.11's 3:1 at 3.33:1. Two jobs, two declarations.
+   A teal outline always means secondary: the solid teal utility button went
+   to R in 3.137.0. The edge is the control's boundary, 5.35:1 on a card and
+   4.95:1 on the page, past WCAG 1.4.11's 3:1.
 
-   HOVER MOVES THE FACE, not just the edge. The old hover changed border and
-   text colour only, so on a white card the thing that moved was a hairline.
+   HOVER MOVES THE FACE, not just the edge, to the band.
    ------------------------------------------------------------------------- */
 .uc-btn,
-.uc-form-links-open { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--p-border-strong); background: var(--p-btn-face); color: var(--p-text); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+.uc-form-links-open { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--p-btn-edge); background: var(--p-btn-face); color: var(--p-btn-edge); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: inherit; }
 .uc-btn:hover,
-.uc-form-links-open:hover { background: var(--p-btn-face-hover); border-color: var(--uc-accent-text); color: var(--p-text); text-decoration: none; }
+.uc-form-links-open:hover { background: var(--p-btn-face-hover); border-color: var(--p-btn-edge); color: var(--p-btn-edge); text-decoration: none; }
 .uc-btn:focus-visible,
 .uc-form-links-open:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; }
 .uc-btn-primary,
@@ -745,10 +752,12 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
    WCAG 1.4.11 asks of a control's own boundary, so the button reads as a
    button without a separate border. Yellow stays the single primary.
    ------------------------------------------------------------------------- */
-.uc-btn-utility { background: var(--uc-accent-text); border-color: var(--uc-accent-text); color: #fff; }
-.uc-btn-utility:hover { background: #0B5F67; border-color: #0B5F67; color: #fff; }
-.uc-portal a.uc-btn-utility { color: #fff; }
-.uc-portal a.uc-btn-utility:hover { color: #fff; }
+/* R FROM 3.137.0, so a teal outline always means secondary. The class stays
+   for the turning mark below. */
+.uc-btn-utility { background: var(--p-btn-face); border-color: var(--p-btn-edge); color: var(--p-btn-edge); }
+.uc-btn-utility:hover { background: var(--p-btn-face-hover); border-color: var(--p-btn-edge); color: var(--p-btn-edge); }
+.uc-portal a.uc-btn-utility { color: var(--p-btn-edge); }
+.uc-portal a.uc-btn-utility:hover { color: var(--p-btn-edge); }
 /* The mark turns when the fetch is running, so the button says "working"
    without losing its label. portal.js sets [disabled] for the duration. */
 .uc-btn-utility .sfaf-icon { transition: transform .25s ease; }
@@ -2611,8 +2620,9 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
    neutral button carries a red word, and the confirmation carries the weight.
    Declared as a pair, so the two never come apart: 3.39.0 split a fill from its
    ink across two declarations and got red on red at 1.19:1. */
-.uc-faq-row .uc-faq-remove { color: var(--p-danger-text); background: var(--p-btn-face); }
-.uc-faq-row .uc-faq-remove:hover { color: #fff; background: var(--p-danger-text); border-color: var(--p-danger-text); }
+/* The red outline from 3.137.0: red on white, 5.44:1, and the pale red on hover. */
+.uc-faq-row .uc-faq-remove { color: var(--p-danger-text); background: #fff; border-color: var(--p-danger-text); }
+.uc-faq-row .uc-faq-remove:hover { color: var(--p-danger-text); background: #FEF2F2; border-color: var(--p-danger-text); }
 
 /* TALLER. A box that scrolls inside a page that scrolls is the thing being
    fixed, so the floor is a real paragraph rather than three lines.
@@ -3246,8 +3256,10 @@ body.uc-modal-open { overflow: hidden; }
    Save is that on this card. So Remove is a plain control that reads as
    secondary to the Save beside it, and the confirmation carries the detail.
    ------------------------------------------------------------------------ */
-.uc-btn-quiet { color: var(--p-muted, #6B6764); }
-.uc-btn-quiet:hover { color: var(--p-text); border-color: var(--p-border-strong); }
+/* White with the muted edge and ink from 3.137.0: #6B6764 on white 5.60:1, on
+   the band 5.17:1. On the Light Gray face the ink was 3.73:1 and failed. */
+.uc-btn-quiet { background: #fff; border-color: #6B6764; color: #6B6764; }
+.uc-btn-quiet:hover { background: var(--p-btn-face-hover); border-color: #6B6764; color: var(--p-text); }
 
 /* ---------------------------------------------------------------------------
    THE UPLOAD PANEL AND THE GRID WERE TWO DENSITIES (3.78.0)
@@ -3873,6 +3885,11 @@ body.uc-modal-open { overflow: hidden; }
 .uc-btn-danger { background: #c0392b; border-color: #c0392b; color: #fff; }
 .uc-btn-danger:hover { background: #a33025; border-color: #a33025; color: #fff; }
 .uc-portal a.uc-btn-danger, .uc-portal a.uc-btn-danger:hover { color: #fff; }
+/* THE RED OUTLINE (3.137.0): a destructive action on a row or in a form, R's
+   shape in red. #c0392b on white 5.44:1, on the pale red hover 4.96:1. */
+.uc-btn-danger-outline { background: #fff; border-color: #c0392b; color: #c0392b; }
+.uc-btn-danger-outline:hover { background: #FEF2F2; border-color: #c0392b; color: #c0392b; }
+.uc-portal a.uc-btn-danger-outline, .uc-portal a.uc-btn-danger-outline:hover { color: #c0392b; }
 
 /* The Remove series control, alone at the foot of the series editor. It takes
    the space a card would have taken so the button does not sit against the
@@ -5318,7 +5335,9 @@ body.uc-modal-open { overflow: hidden; }
 .uc-recipients [data-uc-rcp-count] { margin: 0; }
 .uc-rcp-who summary { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
 .uc-rsvp-table .uc-checkin-form { display: inline; margin: 0; }
-.uc-rsvp-table .uc-checkin-btn[aria-pressed="true"] { border-color: var(--uc-accent-text); color: var(--uc-accent-text); background: var(--uc-band); }
+/* Checked in: solid teal with white ink, 5.35:1 (3.137.0); R before. */
+.uc-rsvp-table .uc-checkin-btn[aria-pressed="true"] { border-color: var(--uc-accent-text); color: #fff; background: var(--uc-accent-text); }
+.uc-rsvp-table .uc-checkin-btn[aria-pressed="true"]:hover { border-color: #0C666F; color: #fff; background: #0C666F; }
 /* The EN or ES beside a registrant (3.135.0) is the same small mark. */
 .uc-texts-mark,
 .uc-lang-tag {

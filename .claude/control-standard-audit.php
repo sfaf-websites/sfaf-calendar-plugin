@@ -31,6 +31,8 @@ $mode = 'run';
 foreach ( array_slice( $argv, 1 ) as $arg ) {
     if ( '--self-test' === $arg ) { $mode = 'selftest'; }
     if ( '--report' === $arg )    { $mode = 'report'; }
+    // Another stylesheet, for the self-test's probes of check 3.
+    if ( 0 === strpos( $arg, '--css=' ) ) { $css = substr( $arg, 6 ); }
 }
 
 /* =====================================================================
@@ -357,51 +359,67 @@ foreach ( $rules as $r ) {
 }
 
 /* =====================================================================
- * CHECK 3. A BUTTON AND A FIELD MAY NOT SHARE A FILL.
+ * CHECK 3. THE SECONDARY BUTTON IS R, AND A FIELD IS NOT (3.137.0).
  *
- * This is the reported complaint stated as an assertion. Until 3.64.0
- * `.uc-btn` was `background: #fff` and a text input was `background-color:
- * #fff`, with the same 1px --p-border-strong and the same 8px radius, so the
- * only difference between "you press this" and "you type in this" was
- * font-weight. DESIGN.md's own rule from 3.61.0 is that white means "you type
- * in this, or it opens"; a button must therefore have a surface.
+ * Until 3.64.0 `.uc-btn` was white with the same grey 1px edge as a text
+ * input, so "you press this" and "you type in this" differed by font-weight.
+ * 3.64.0 answered with a Light Gray face. 3.137.0, Mark's decision, answers
+ * with colour instead: the secondary button is R, white with a teal edge and
+ * teal ink, the band on hover; a field keeps the grey control edge and Dark
+ * Gray ink. So this asserts R's three values by token, and that a field's
+ * edge is never the button's.
  * ================================================================== */
 
-$field_fill = null;
-$btn_fill   = null;
+$field_border = null;
+$btn          = array();
+$btn_hover    = array();
+$tokens       = array();
+if ( preg_match_all( '/(--p-btn-[a-z-]+)\s*:\s*([^;]+);/', css_strip_comments( $src ), $tm, PREG_SET_ORDER ) ) {
+    foreach ( $tm as $t ) { $tokens[ $t[1] ] = strtolower( trim( $t[2] ) ); }
+}
 
 foreach ( $rules as $r ) {
     $spec = css_spec( $r['selector'] );
     if ( targets_text_control( $r['selector'] ) && ! is_state_selector( $r['selector'] )
         && 0 === $spec[0] && 0 === $spec[1] && 0 === $spec[2] ) {
-        foreach ( array( 'background-color', 'background' ) as $p ) {
-            if ( isset( $r['decls'][ $p ] ) ) { $field_fill = $r['decls'][ $p ]; }
+        foreach ( array( 'border', 'border-color' ) as $p ) {
+            if ( isset( $r['decls'][ $p ] ) ) { $field_border = $r['decls'][ $p ]; }
         }
     }
     foreach ( explode( ',', $r['selector'] ) as $one ) {
-        if ( '.uc-btn' !== trim( $one ) ) { continue; }
-        foreach ( array( 'background-color', 'background' ) as $p ) {
-            if ( isset( $r['decls'][ $p ] ) ) { $btn_fill = $r['decls'][ $p ]; }
-        }
+        $one = trim( $one );
+        if ( '.uc-btn' === $one ) { $btn = array_merge( $btn, $r['decls'] ); }
+        if ( '.uc-btn:hover' === $one ) { $btn_hover = array_merge( $btn_hover, $r['decls'] ); }
     }
 }
 
 if ( 'report' !== $mode ) {
-    if ( null === $field_fill ) {
-        $fail[] = 'The zero-specificity text-control baseline declares no fill. It has to say white out loud, because white is the statement.';
+    $want_tok = array( '--p-btn-face' => array( '#fff', '#ffffff' ), '--p-btn-edge' => array( '#0e7680' ), '--p-btn-face-hover' => array( '#e8f9fa' ) );
+    foreach ( $want_tok as $tok => $vals ) {
+        if ( ! isset( $tokens[ $tok ] ) || ! in_array( $tokens[ $tok ], $vals, true ) ) {
+            $fail[] = sprintf( 'R: %s is %s, not %s.', $tok, isset( $tokens[ $tok ] ) ? $tokens[ $tok ] : 'undeclared', $vals[0] );
+        }
     }
-    if ( null === $btn_fill ) {
-        $fail[] = '`.uc-btn` declares no fill, so a secondary button is whatever is behind it.';
+    $fill = isset( $btn['background'] ) ? $btn['background'] : ( isset( $btn['background-color'] ) ? $btn['background-color'] : '' );
+    if ( false === strpos( $fill, '--p-btn-face' ) ) {
+        $fail[] = '`.uc-btn` does not take its fill from --p-btn-face (' . ( '' === $fill ? 'none' : $fill ) . ').';
     }
-    if ( null !== $field_fill && null !== $btn_fill
-        && strtolower( str_replace( '#ffffff', '#fff', $field_fill ) ) === strtolower( str_replace( '#ffffff', '#fff', $btn_fill ) ) ) {
-        $fail[] = sprintf(
-            'A secondary button and a text field share one fill (%s). Nothing on the screen says which is pressable.',
-            $btn_fill
-        );
+    if ( ! isset( $btn['border'] ) || false === strpos( $btn['border'], '--p-btn-edge' ) ) {
+        $fail[] = '`.uc-btn` does not draw its edge in --p-btn-edge, so a secondary button is not R.';
+    }
+    if ( ! isset( $btn['color'] ) || false === strpos( $btn['color'], '--p-btn-edge' ) ) {
+        $fail[] = '`.uc-btn` does not write its words in --p-btn-edge, so a secondary button is not R.';
+    }
+    $hfill = isset( $btn_hover['background'] ) ? $btn_hover['background'] : ( isset( $btn_hover['background-color'] ) ? $btn_hover['background-color'] : '' );
+    if ( false === strpos( $hfill, '--p-btn-face-hover' ) ) {
+        $fail[] = '`.uc-btn:hover` does not fill with --p-btn-face-hover, the band.';
+    }
+    if ( null === $field_border ) {
+        $fail[] = 'The zero-specificity text-control baseline declares no edge.';
+    } elseif ( false !== strpos( $field_border, '--p-btn-edge' ) || false !== stripos( $field_border, '#0e7680' ) ) {
+        $fail[] = sprintf( 'A text field takes the button\'s teal edge (%s). Nothing on the screen says which is pressable.', $field_border );
     }
 }
-
 /* =====================================================================
  * CHECK 4. ONE CLASS, DECLARED ONCE.
  *
@@ -591,12 +609,16 @@ if ( 'report' !== $mode ) {
 
 $MEASURED = array(
     // label                                        fg         bg         floor
-    array( 'secondary ink on its face',            '#373433', '#D1D3D4', 4.5 ),
-    array( 'secondary face vs a white card',       '#D1D3D4', '#FFFFFF', 1.45 ),
-    array( 'secondary face vs the page',           '#D1D3D4', '#F5F6F7', 1.35 ),
-    array( 'secondary face vs the locked fill',    '#D1D3D4', '#F3F4F6', 1.30 ),
-    array( 'hovered secondary ink on its face',    '#373433', '#BFC2C4', 4.5 ),
-    array( 'hovered face vs the resting face',     '#BFC2C4', '#D1D3D4', 1.15 ),
+    // R, the secondary button (3.137.0).
+    array( 'R: teal ink on white',                 '#0E7680', '#FFFFFF', 4.5 ),
+    array( 'R: teal ink on the hover band',        '#0E7680', '#E8F9FA', 4.5 ),
+    array( 'R: teal edge on a white card',         '#0E7680', '#FFFFFF', 3.0 ),
+    array( 'R: teal edge on the page',             '#0E7680', '#F5F6F7', 3.0 ),
+    array( 'red outline: ink on white',            '#c0392b', '#FFFFFF', 4.5 ),
+    array( 'red outline: ink on its hover',        '#c0392b', '#FEF2F2', 4.5 ),
+    array( 'quiet: muted ink on white',            '#6B6764', '#FFFFFF', 4.5 ),
+    array( 'quiet: Dark Gray on the hover band',   '#373433', '#E8F9FA', 4.5 ),
+    array( 'checked in: white on teal',            '#FFFFFF', '#0E7680', 4.5 ),
     array( 'control boundary on a card',           '#8C8D8E', '#FFFFFF', 3.0 ),
     array( 'control boundary on the page',         '#8C8D8E', '#F5F6F7', 3.0 ),
     array( 'primary ink on yellow',                '#373433', '#FFD900', 4.5 ),
@@ -692,6 +714,20 @@ if ( 'selftest' === $mode ) {
         (bool) preg_match( '/var\(\s*--p-border\s*[,)]/', '1px solid var(--p-border)' ), true );
     $probe( 'check 2 passes the boundary token',
         (bool) preg_match( '/var\(\s*--p-border\s*[,)]/', '1px solid var(--p-border-strong)' ), false );
+    // Check 3 reads R off the stylesheet: run it on two made-up sheets.
+    $r3 = function ( $sheet ) {
+        $cmd = escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __FILE__ ) . ' --css=' . escapeshellarg( $sheet );
+        return (string) shell_exec( $cmd . ' 2>&1' );
+    };
+    $tmp  = sys_get_temp_dir() . '/uc-csa-' . getmypid();
+    $base = ":root { --p-btn-face: #fff; --p-btn-face-hover: #E8F9FA; --p-btn-edge: #0E7680; }\n"
+        . ":where(.uc-portal) :where(input, select) { border: 1px solid var(--p-border-strong); background-color: #fff; }\n";
+    file_put_contents( $tmp . '-r.css', $base . ".uc-btn { border: 1px solid var(--p-btn-edge); background: var(--p-btn-face); color: var(--p-btn-edge); }\n.uc-btn:hover { background: var(--p-btn-face-hover); }\n" );
+    file_put_contents( $tmp . '-grey.css', str_replace( '--p-btn-face: #fff', '--p-btn-face: #D1D3D4', $base ) . ".uc-btn { border: 1px solid var(--p-border-strong); background: var(--p-btn-face); color: var(--p-text); }\n.uc-btn:hover { background: var(--p-btn-face-hover); }\n" );
+    $out_r = $r3( $tmp . '-r.css' );
+    $probe( 'check 3 passes R', false === strpos( $out_r, 'R: --p-btn' ) && false === strpos( $out_r, 'is not R' ) && false === strpos( $out_r, 'declares no edge' ) && false !== strpos( $out_r, 'Measured pairs' ), true );
+    $probe( 'check 3 fails the Light Gray button', false !== strpos( $r3( $tmp . '-grey.css' ), 'is not R' ) && false !== strpos( $r3( $tmp . '-grey.css' ), 'R: --p-btn-face is #d1d3d4' ), true );
+    @unlink( $tmp . '-r.css' ); @unlink( $tmp . '-grey.css' );
 
     echo "\n$t checks, $bad failed\n";
     exit( $bad ? 1 : 0 );

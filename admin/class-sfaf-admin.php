@@ -896,7 +896,7 @@ class SFAF_Admin {
                     <form method="post" style="margin-top:12px;">
                         <?php wp_nonce_field( 'uc_cron_action', 'uc_cron_nonce' ); ?>
                         <input type="hidden" name="uc_cron_action" value="clear_log" />
-                        <button type="submit" class="button">Clear the log</button>
+                        <button type="submit" class="button uc-button-danger-outline">Clear the log</button>
                     </form>
                 <?php endif; ?>
             </div>
@@ -1188,7 +1188,7 @@ class SFAF_Admin {
                                             <input type="hidden" name="closure_id" value="<?php echo esc_attr( $row['id'] ); ?>" />
                                             <a class="button button-small"
                                                href="<?php echo esc_url( add_query_arg( 'edit', $row['id'], self::closures_url() ) ); ?>">Edit</a>
-                                            <button type="submit" class="button button-small">Remove</button>
+                                            <button type="submit" class="button button-small uc-button-danger-outline">Remove</button>
                                         </form>
                                     </td>
                                 </tr>
