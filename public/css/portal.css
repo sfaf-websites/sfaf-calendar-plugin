@@ -5326,8 +5326,19 @@ body.uc-modal-open { overflow: hidden; }
     font-size: 12px; font-weight: 400; line-height: 1.5; color: var(--p-muted); background: var(--p-bg);
 }
 .uc-lang-tag { font-weight: 600; letter-spacing: .04em; }
-/* The Events list's RSVP count as a button (3.135.0). */
-.uc-rsvp-count-btn { white-space: nowrap; }
+/* THE EVENTS LIST'S RSVP COUNT (3.136.0): a status pill in the band teal,
+   always with its number, a person before it. A link for whoever may open the
+   list, darker on hover; the same pill as text for anyone else. Teal on the
+   band measures 4.94:1, #0C666F on the hover fill 5.71:1. */
+.uc-rsvp-pill {
+    display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 99px;
+    font-size: 12px; font-weight: 600; line-height: 1.5; white-space: nowrap;
+    background: var(--uc-band); color: var(--uc-accent-text);
+}
+.uc-rsvp-pill .sfaf-icon { flex: none; }
+.uc-portal a.uc-rsvp-pill { color: var(--uc-accent-text); text-decoration: none; transition: background-color .15s, color .15s; }
+.uc-portal a.uc-rsvp-pill:hover { background: #D9F2F4; color: #0C666F; text-decoration: none; }
+.uc-portal a.uc-rsvp-pill:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; }
 /* Text registrants: the count under the box and what WhatsApp takes (3.135.0). */
 .uc-tr-count { margin: 0; }
 .uc-tr-wa-help > summary { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--uc-accent-text); list-style: none; }

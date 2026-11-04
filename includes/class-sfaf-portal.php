@@ -7897,17 +7897,23 @@ class SFAF_Portal {
                          */
                         $rsvp_n = (int) sfaf_get_rsvp_count( $id );
                         /*
-                         * A SMALL SECONDARY BUTTON FROM 3.135.0, "12 RSVPs" or
-                         * "View RSVPs" at none, on an event that takes RSVPs
-                         * here, for whoever may open its list. Anything else
-                         * keeps the plain number.
+                         * ONE PILL, ALWAYS WITH ITS NUMBER (3.136.0): "0 RSVPs",
+                         * "1 RSVP", "12 RSVPs", on every event that takes RSVPs
+                         * here. A link to the list for whoever may open it, the
+                         * same pill as plain text for anyone else; a dash on an
+                         * event that takes none here.
                          */
-                        if ( sfaf_event_takes_rsvps( $id ) && $this->can_edit_event( $user, $id ) ) {
-                            echo '<a class="uc-btn uc-btn-sm uc-rsvp-count-btn" data-uc-rsvp-count-btn href="'
-                                . esc_url( add_query_arg( 'event_id', $id, $this->url( 'rsvps' ) ) ) . '">'
-                                . esc_html( $rsvp_n ? sprintf( '%d %s', $rsvp_n, 1 === $rsvp_n ? 'RSVP' : 'RSVPs' ) : 'View RSVPs' ) . '</a>';
+                        if ( ! sfaf_event_takes_rsvps( $id ) ) {
+                            echo '<span class="uc-muted" data-uc-rsvp-none>&ndash;</span>';
                         } else {
-                            echo (int) $rsvp_n;
+                            $pill = sfaf_icon( 'person', array( 'size' => '14px' ) )
+                                . '<span>' . esc_html( sprintf( '%d %s', $rsvp_n, 1 === $rsvp_n ? 'RSVP' : 'RSVPs' ) ) . '</span>';
+                            if ( $this->can_edit_event( $user, $id ) ) {
+                                echo '<a class="uc-rsvp-pill" data-uc-rsvp-pill href="'
+                                    . esc_url( add_query_arg( 'event_id', $id, $this->url( 'rsvps' ) ) ) . '">' . $pill . '</a>';
+                            } else {
+                                echo '<span class="uc-rsvp-pill" data-uc-rsvp-pill>' . $pill . '</span>';
+                            }
                         }
                     ?></td>
                     <td>

@@ -108,16 +108,7 @@ $plants = array(
     'the waitlist has no tag' => array( $T, 'FAIL  D: the waitlist on the same page', array(
         array( $P, "</strong><?php echo self::lang_tag( SFAF_Texts::lang_of( \$r ) ); ?></td>", '</strong></td>' ),
     ) ),
-    // E. The RSVP button.
-    'every event gets the button' => array( $T, 'FAIL  E: an event that does not take RSVPs here keeps the plain number', array(
-        array( $P, 'if ( sfaf_event_takes_rsvps( $id ) && $this->can_edit_event( $user, $id ) ) {', 'if ( $this->can_edit_event( $user, $id ) ) {' ),
-    ) ),
-    'none yet reads 0 RSVPs' => array( $T, 'FAIL  E: none yet: a small secondary "View RSVPs"', array(
-        array( $P, "esc_html( \$rsvp_n ? sprintf( '%d %s', \$rsvp_n, 1 === \$rsvp_n ? 'RSVP' : 'RSVPs' ) : 'View RSVPs' )", "esc_html( sprintf( '%d %s', \$rsvp_n, 1 === \$rsvp_n ? 'RSVP' : 'RSVPs' ) )" ),
-    ) ),
-    'the button is yellow' => array( $L, 'PLANT L:', array(
-        array( $P, '<a class="uc-btn uc-btn-sm uc-rsvp-count-btn" data-uc-rsvp-count-btn', '<a class="uc-btn uc-btn-sm uc-btn-primary uc-rsvp-count-btn" data-uc-rsvp-count-btn' ),
-    ) ),
+    // E. The RSVP count is a pill from 3.136.0: plant-31360.php.
     // F. 600.
     'the limit is still 300' => array( $T, 'FAIL  F: the limit is 600', array(
         array( $X, '    const MAX_MESSAGE    = 600;', '    const MAX_MESSAGE    = 300;' ),

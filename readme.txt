@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.135.0
+Stable tag: 3.136.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,14 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.136.0 =
+
+**The Events list's RSVP column, one pill. Every embed answer and header is 3.135.0's, proved by embed-identity-test.php.**
+
+**WHAT CHANGES ON PUBLIC PAGES:** nothing.
+
+* **RSVP column on the Events list**: every event that takes RSVPs here shows the same light teal pill with a person and its number, "0 RSVPs", "1 RSVP" or "12 RSVPs", never "View RSVPs". It opens the event's RSVP list for whoever may open it, slightly darker under the pointer; anyone else sees the same pill, not clickable. An event that takes no RSVPs here, switched off or registering on another site, shows a dash, where it showed its number.
 
 = 3.135.0 =
 

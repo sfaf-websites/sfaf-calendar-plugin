@@ -16,8 +16,7 @@
  *      the pieces as SFAF_Texts::pieces() does, one á making them shorter;
  *      "What can I send by WhatsApp?" closed, then open and on screen; EN and
  *      ES beside the names; Send asks in green (#15803D), as Publish does
- *   L  the Events list: "12 RSVPs" and "View RSVPs" grey secondary buttons,
- *      on one line
+ *   L  (the Events list's RSVP count: a pill from 3.136.0, release-31360-live.php)
  *
  * PLANT in plant-31350.php.
  */
@@ -175,8 +174,6 @@ $pages = array(
     'edit-phone'   => array( 390, rl_page( $edit ) ),
     'tr-desktop'   => array( 1280, rl_page( $tr ) ),
     'tr-phone'     => array( 390, rl_page( $tr ) ),
-    'list-desktop' => array( 1280, rl_page( $list ) ),
-    'list-phone'   => array( 390, rl_page( $list ) ),
 );
 $files = array();
 foreach ( $pages as $name => $p ) {
@@ -221,11 +218,6 @@ foreach ( $g as $name => $r ) {
         rl( array( 'Ana:EN', 'Beto:ES', 'Cruz:ES' ) === $r['tags'], "PLANT K: $name: the tags read " . json_encode( $r['tags'] ) );
         rl( isset( $r['confirm']['bg'] ) && $GREEN === $r['confirm']['bg'] && 'Send' === $r['confirm']['label'], "PLANT K: $name: Send asks with " . json_encode( $r['confirm'] ?? null ) );
         continue;
-    }
-    $labels = array_column( (array) $r['buttons'], 'label' );
-    rl( array( '12 RSVPs', 'View RSVPs' ) === $labels, "PLANT L: $name: the buttons read " . json_encode( $labels ) );
-    foreach ( (array) $r['buttons'] as $b ) {
-        rl( $GREY === $b['bg'] && $b['oneLine'] && $b['seen'], "PLANT L: $name: a button is " . json_encode( $b ) );
     }
 }
 

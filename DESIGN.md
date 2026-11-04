@@ -1767,14 +1767,14 @@ secondary button and Delete as the red text link, and the new-tag form in
 `.uc-cat-new` with Add tag the primary yellow in its own action row, 14px under
 the field. `component-sweep.php` holds every screen to this (CLAUDE.md 7).
 
-### The language tag, the RSVP count button and Text registrants' count (3.135.0)
+### The language tag, the RSVP count and Text registrants' count (3.135.0, the count a pill from 3.136.0)
 
 Built from components already on the page; nothing here is a new colour.
 
 | Part | What it is | Values |
 |---|---|---|
 | EN or ES | `.uc-lang-tag`, the `.uc-texts-mark` pill, after the name on the RSVP list, its waitlist and both recipient lists | 12px/600, `--p-muted` on `--p-bg`, `--p-border` edge, .04em tracking; "English" or "Spanish" for a screen reader |
-| 12 RSVPs, View RSVPs | the Events list's RSVP cell, `.uc-btn.uc-btn-sm`, on one line | the standard grey secondary; 44px tall on a phone |
+| 0 RSVPs, 1 RSVP, 12 RSVPs | the Events list's RSVP cell, `.uc-rsvp-pill` (3.136.0): the status pill's shape with a 14px `person` icon, always with its number; a link to the list for whoever may open it, plain text for anyone else; a dash where the event takes none here | 12px/600, 4px by 10px, 99px radius, `--uc-band` #E8F9FA with `--uc-accent-text` ink, 4.94:1; the link's hover #D9F2F4 with #0C666F, 5.71:1; 26px tall |
 | 0 of 600 characters. By text, about 1 piece. | `.uc-hint.uc-tr-count` under the message box | the hint's type |
 | What can I send by WhatsApp? | a closed `details` under the count, the chevron then the words | 13px/600 `--uc-accent-text`; open, a `--p-border` box, 8px radius, 12px by 14px |
 

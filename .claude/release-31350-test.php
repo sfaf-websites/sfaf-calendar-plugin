@@ -19,8 +19,7 @@
  *      lists and line, only with WhatsApp on.
  *   D. EN or ES beside each registrant: the RSVP list, its waitlist, Email
  *      registrants and Text registrants.
- *   E. The Events list's RSVP count as a small secondary button, "12 RSVPs"
- *      or "View RSVPs", only on an event that takes RSVPs here.
+ *   E. (The Events list's RSVP count: a pill from 3.136.0, release-31360-test.php.)
  *   F. 600 characters, and a long message going whole by WhatsApp.
  *   G. The count: characters of 600, and pieces by text from the whole text,
  *      the script and SFAF_Texts::pieces() agreeing. The browser half is
@@ -345,44 +344,7 @@ $w = rt_cap( function () use ( $portal, $me ) { kit_call( 'SFAF_Portal', 'render
 rt( 'D: the waitlist on the same page: ES beside Dana', array( 'Dana' => 'es|ES' ) === tl_tags( rt_x( $w ), '//tr[@data-uc-waitlist-row]' ) );
 
 /* ======================================================================== E */
-tl_fresh( array() );
-kit_write_post( array( 'ID' => 901, 'post_title' => 'No RSVPs here', 'post_type' => 'uc_event', 'post_status' => 'publish', 'post_author' => 1 ) );
-update_post_meta( 901, '_uc_event_date', '2026-12-02' );
-kit_write_post( array( 'ID' => 902, 'post_title' => 'Twelve', 'post_type' => 'uc_event', 'post_status' => 'publish', 'post_author' => 1 ) );
-update_post_meta( 902, '_uc_event_date', '2026-12-03' );
-update_post_meta( 902, '_uc_rsvp_enabled', '1' );
-kit_write_post( array( 'ID' => 903, 'post_title' => 'One', 'post_type' => 'uc_event', 'post_status' => 'publish', 'post_author' => 1 ) );
-update_post_meta( 903, '_uc_event_date', '2026-12-04' );
-update_post_meta( 903, '_uc_rsvp_enabled', '1' );
-$store =& sfaf_rsvp_count_store();
-$store[900] = 0; $store[901] = 3; $store[902] = 12; $store[903] = 1;
-$admin = wp_get_current_user();
-$ev = rt_cap( function () use ( $portal, $admin ) { kit_call( 'SFAF_Portal', 'events_table', $portal, array( array( 900, 901, 902, 903 ), $admin ) ); } );
-$x  = rt_x( $ev );
-function tl_rsvp_cell( $x, $title ) {
-    foreach ( $x->query( '//tr[td]' ) as $tr ) {
-        if ( false !== strpos( $tr->textContent, $title ) ) {
-            $b = $x->query( './/a[@data-uc-rsvp-count-btn]', $tr );
-            if ( $b->length ) { return 'button:' . trim( $b->item( 0 )->textContent ) . '|' . $b->item( 0 )->getAttribute( 'class' ) . '|' . $b->item( 0 )->getAttribute( 'href' ); }
-            $cells = $x->query( './td', $tr );
-            foreach ( $cells as $i => $td ) { if ( preg_match( '/^\d+$/', trim( $td->textContent ) ) ) { return 'plain:' . trim( $td->textContent ); } }
-            return 'nothing';
-        }
-    }
-    return 'no row';
-}
-rt( 'E: the Events list renders', false === strpos( $ev, 'THREW' ) );
-rt( 'E: none yet: a small secondary "View RSVPs"', 0 === strpos( tl_rsvp_cell( $x, 'Coffee' ), 'button:View RSVPs|uc-btn uc-btn-sm uc-rsvp-count-btn|' ) );
-rt( 'E: "12 RSVPs", to the event\'s list', 0 === strpos( tl_rsvp_cell( $x, 'Twelve' ), 'button:12 RSVPs|uc-btn uc-btn-sm uc-rsvp-count-btn|' ) && false !== strpos( tl_rsvp_cell( $x, 'Twelve' ), 'event_id=902' ) );
-rt( 'E: "1 RSVP"', 0 === strpos( tl_rsvp_cell( $x, 'One' ), 'button:1 RSVP|' ) );
-rt( 'E: an event that does not take RSVPs here keeps the plain number', 'plain:3' === tl_rsvp_cell( $x, 'No RSVPs here' ) );
-update_post_meta( 902, SFAF_Register_Elsewhere::META_MODE, 'elsewhere' );
-update_post_meta( 902, SFAF_Register_Elsewhere::META_URL, 'https://example.org/register' );
-$x2 = rt_x( rt_cap( function () use ( $portal, $admin ) { kit_call( 'SFAF_Portal', 'events_table', $portal, array( array( 902 ), $admin ) ); } ) );
-rt( 'E: registering on another site is not here: the plain number', SFAF_Register_Elsewhere::is_on( 902 ) && 'plain:12' === tl_rsvp_cell( $x2, 'Twelve' ) );
-delete_post_meta( 902, SFAF_Register_Elsewhere::META_MODE );
-rt( 'E: only for who can open the list', false !== strpos( $P, "if ( sfaf_event_takes_rsvps( \$id ) && \$this->can_edit_event( \$user, \$id ) ) {\n                            echo '<a class=\"uc-btn uc-btn-sm uc-rsvp-count-btn\"" ) );
-rt( 'E: the button does not wrap', false !== strpos( (string) file_get_contents( $root . '/public/css/portal.css' ), '.uc-rsvp-count-btn { white-space: nowrap; }' ) );
+// The Events list's RSVP count is a pill from 3.136.0: release-31360-test.php checks it.
 
 /* ======================================================================== F */
 rt( 'F: the limit is 600', 600 === SFAF_Texts::MAX_MESSAGE );

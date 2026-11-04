@@ -4642,14 +4642,16 @@ about blocking; with WhatsApp off it is not there.
 
 **Why it needs a person:** the live Twilio settings decide what shows.
 
-### 1.342 EN and ES beside each registrant, and the RSVP button (3.135.0)
+### 1.342 EN and ES beside each registrant, and the RSVP pill (3.135.0, 3.136.0)
 
 On an event with somebody who registered in Spanish: the RSVP list shows ES
 beside their name and EN beside the others, and so do the lists in **Email
 registrants** and **Text registrants**, and the waitlist. On the Events list,
-the RSVP column of an event that takes RSVPs reads "12 RSVPs" (its count) or
-"View RSVPs" as a small grey button that opens its list; an event with
-registration switched off, or on another site, shows the plain number.
+the RSVP column of an event that takes RSVPs is a light teal pill with a person
+and its count, "0 RSVPs", "1 RSVP" or "12 RSVPs", slightly darker under the
+pointer, opening that event's list; signed in as an editor who does not have
+an event, its pill is there and does nothing when pressed; an event with
+registration switched off, or on another site, shows a dash.
 
 **Why it needs a person:** real registrations from before 3.135.0, some with
 no language stored, which show the event's.

@@ -19,7 +19,8 @@
  *      except embed.js's EMBED_JS_VERSION line, and the caladmin files in
  *      CALADMIN_ONLY, which no public calendar page loads.
  *
- * BASE is the release compared against: 3.134.0's released commit from 3.135.0
+ * BASE is the release compared against: 3.135.0's released commit from 3.136.0
+ * (3.134.0's, 9b2eaa4, for 3.135.0)
  * (3.133.0's, 87d3fc0, for 3.134.0)
  * (3.132.0's, a0c4606, for 3.133.0)
  * (3.131.0's, b982f9e, for 3.132.0)
@@ -51,13 +52,14 @@
  * name, in ALLOWED or ALLOWED_FILES.
  */
 
-const BASE      = '9b2eaa4';
-const BASE_NAME = '3.134.0';
+const BASE      = '2f6fcd0';
+const BASE_NAME = '3.135.0';
 
 /* Files under public/ and templates/ a release means to change, as path =>
    why. Probe A still compares every embed answer, so none of these can reach
    the embed unseen. */
 const ALLOWED_FILES = array(
+    // None in 3.136.0: the Events list is caladmin.
     // None in 3.135.0: its changes are caladmin, WP admin, the request form and email.
     // 3.134.0 named public/js/calendar.js, the Terms link, and templates/single-uc_event.php, an ended event's page.
     // None in 3.133.0: the RSVP list is portal.css and portal.js, CALADMIN_ONLY.
