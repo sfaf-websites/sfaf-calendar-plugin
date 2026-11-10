@@ -49,13 +49,21 @@
                     <span class="uc-field-label">Search</span>
                     <input type="search" data-uc-rcp-search placeholder="Name, email or phone" autocomplete="off" />
                 </label>
-                                                <div class="uc-rcp-bulk">
+                                                <label class="uc-field">
+                    <span class="uc-field-label">Language</span>
+                    <select data-uc-rcp-lang>
+                        <option value="">Choose a language</option>
+                        <option value="en">English only</option>
+                        <option value="es">Spanish only</option>
+                    </select>
+                </label>
+                <div class="uc-rcp-bulk">
                     <button type="button" class="uc-btn" data-uc-rcp-all>Tick all</button>
                     <button type="button" class="uc-btn" data-uc-rcp-none>Clear all</button>
                 </div>
             </div>
             <ul class="uc-rcp-list" data-uc-rcp-list>
-                                    <li data-uc-rcp-row data-uc-rcp-how="sms" data-uc-rcp-find="ana (415) 555-0101 4155550101"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="sms" data-uc-rcp-find="ana (415) 555-0101 4155550101"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -63,7 +71,7 @@
                             <span class="uc-rcp-name">Ana</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">(415) 555-0101 · Text</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="whatsapp" data-uc-rcp-find="beto +52 55 1234 5678 525512345678"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="es" data-uc-rcp-how="whatsapp" data-uc-rcp-find="beto +52 55 1234 5678 525512345678"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -71,7 +79,7 @@
                             <span class="uc-rcp-name">Beto</span> <span class="uc-lang-tag" data-uc-lang-tag="es" title="Spanish"><span aria-hidden="true">ES</span><span class="uc-visually-hidden">Spanish</span></span>                            <span class="uc-muted">+52 55 1234 5678 · WhatsApp</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="sms" data-uc-rcp-find="cruz (415) 555-0103 4155550103"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="es" data-uc-rcp-how="sms" data-uc-rcp-find="cruz (415) 555-0103 4155550103"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">

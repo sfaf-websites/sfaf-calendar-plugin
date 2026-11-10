@@ -396,8 +396,8 @@ function ucDismissOnBackdrop(dialog) {
     /* ---------------------------------------------------------------------
      * WHO GETS IT (3.131.0): the recipient list under Email registrants' and
      * Text registrants' message. The search box hides rows and never unticks
-     * them; By answer and Didn't get tick exactly the rows that match and
-     * untick the rest; Tick all and Clear all; Include the waitlist shows the
+     * them; By answer, Didn't get and Language (3.138.0) tick exactly the
+     * rows that match and untick the rest; Tick all and Clear all; Include the waitlist shows the
      * waiting rows. The count under the list and Send's question follow every
      * change, and Send is off with nobody ticked.
      * ------------------------------------------------------------------ */
@@ -410,6 +410,7 @@ function ucDismissOnBackdrop(dialog) {
             var search = box.querySelector('[data-uc-rcp-search]');
             var answer = box.querySelector('[data-uc-rcp-answer]');
             var missed = box.querySelector('[data-uc-rcp-missed]');
+            var lang = box.querySelector('[data-uc-rcp-lang]');
             var count = box.querySelector('[data-uc-rcp-count]');
             var send = form.querySelector('[data-uc-rm-send], [data-uc-tr-send]');
             var wait = form.querySelector('[data-uc-rm-waitlist]');
@@ -462,12 +463,13 @@ function ucDismissOnBackdrop(dialog) {
             rows.forEach(function (r) { var b = boxOf(r); if (b) { b.addEventListener('change', update); } });
             if (search) { search.addEventListener('input', show); search.addEventListener('keydown', function (e) { if ('Enter' === e.key) { e.preventDefault(); } }); }
             var all = box.querySelector('[data-uc-rcp-all]'), none = box.querySelector('[data-uc-rcp-none]');
-            if (all) { all.addEventListener('click', function () { if (answer) { answer.value = ''; } if (missed) { missed.value = ''; } tickWhere(function () { return true; }); }); }
-            if (none) { none.addEventListener('click', function () { if (answer) { answer.value = ''; } if (missed) { missed.value = ''; } tickWhere(function () { return false; }); }); }
+            function clearFilters(keep) { [answer, missed, lang].forEach(function (s) { if (s && s !== keep) { s.value = ''; } }); }
+            if (all) { all.addEventListener('click', function () { clearFilters(null); tickWhere(function () { return true; }); }); }
+            if (none) { none.addEventListener('click', function () { clearFilters(null); tickWhere(function () { return false; }); }); }
             if (answer) {
                 answer.addEventListener('change', function () {
                     if (!answer.value) { return; }
-                    if (missed) { missed.value = ''; }
+                    clearFilters(answer);
                     var want = answer.value;
                     tickWhere(function (r) { return (' ' + (r.getAttribute('data-uc-rcp-answers') || '') + ' ').indexOf(' ' + want + ' ') >= 0; });
                 });
@@ -475,9 +477,17 @@ function ucDismissOnBackdrop(dialog) {
             if (missed) {
                 missed.addEventListener('change', function () {
                     if ('' === missed.value) { return; }
-                    if (answer) { answer.value = ''; }
+                    clearFilters(missed);
                     var idx = missed.value;
                     tickWhere(function (r) { return (' ' + (r.getAttribute('data-uc-rcp-got') || '') + ' ').indexOf(' ' + idx + ' ') < 0; });
+                });
+            }
+            if (lang) {
+                lang.addEventListener('change', function () {
+                    if (!lang.value) { return; }
+                    clearFilters(lang);
+                    var want = lang.value;
+                    tickWhere(function (r) { return r.getAttribute('data-uc-rcp-lang') === want; });
                 });
             }
             if (wait) { wait.addEventListener('change', function () { show(); update(); }); }

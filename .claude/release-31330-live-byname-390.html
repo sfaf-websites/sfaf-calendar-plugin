@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Events - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.137.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.137.0" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.137.0" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.138.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.138.0" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.138.0" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.137.0" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.138.0" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -254,7 +254,7 @@
                                     <p class="uc-notify-always" data-uc-notify-always="reminder">
                         Morning-of reminder                        <span class="uc-pill uc-notify-always-tag">Always sent</span>
                     </p>
-                    <p class="uc-hint uc-notify-kind-note">Sent at 6 am on the day, or at midnight when the event starts earlier. Your notification list is copied in.</p>
+                    <p class="uc-hint uc-notify-kind-note">Sent at 6 am on the day, or at midnight when the event starts earlier. Your notification list is copied in. Also sent by text or WhatsApp to anyone who chose it on the RSVP form.</p>
                 
                 <h4 class="uc-notify-subhead">Sent to the people above</h4>
                                     <label class="uc-check">
@@ -352,13 +352,21 @@
                     <span class="uc-field-label">Search</span>
                     <input type="search" data-uc-rcp-search placeholder="Name, email or phone" autocomplete="off" />
                 </label>
-                                                <div class="uc-rcp-bulk">
+                                                <label class="uc-field">
+                    <span class="uc-field-label">Language</span>
+                    <select data-uc-rcp-lang>
+                        <option value="">Choose a language</option>
+                        <option value="en">English only</option>
+                        <option value="es">Spanish only</option>
+                    </select>
+                </label>
+                <div class="uc-rcp-bulk">
                     <button type="button" class="uc-btn" data-uc-rcp-all>Tick all</button>
                     <button type="button" class="uc-btn" data-uc-rcp-none>Clear all</button>
                 </div>
             </div>
             <ul class="uc-rcp-list" data-uc-rcp-list>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="ana alvarez-montenegro ana@example.org · (415) 555-0101 4155550101"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="ana alvarez-montenegro ana@example.org · (415) 555-0101 4155550101"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -366,7 +374,7 @@
                             <span class="uc-rcp-name">Ana Alvarez-Montenegro</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">ana@example.org · (415) 555-0101</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="dee (415) 555-0100 4155550100"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="dee (415) 555-0100 4155550100"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -374,7 +382,7 @@
                             <span class="uc-rcp-name">Dee</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">(415) 555-0100 · No email</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="eve evans eve@example.org "
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="eve evans eve@example.org "
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="" data-uc-rcp-wait hidden>
                         <label class="uc-check">
@@ -382,7 +390,7 @@
                             <span class="uc-rcp-name">Eve Evans</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">eve@example.org</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="maximiliano alejandro fernández-castellanos de la torre maximiliano.alejandro.fernandez.castellanos.delatorre@community-health-partners.example.org · +52 55 1234 5678 525512345678"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="maximiliano alejandro fernández-castellanos de la torre maximiliano.alejandro.fernandez.castellanos.delatorre@community-health-partners.example.org · +52 55 1234 5678 525512345678"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -390,7 +398,7 @@
                             <span class="uc-rcp-name">Maximiliano Alejandro Fernández-Castellanos de la Torre</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">maximiliano.alejandro.fernandez.castellanos.delatorre@community-health-partners.example.org · +52 55 1234 5678</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="old year old.year@example.org "
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="old year old.year@example.org "
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -398,7 +406,7 @@
                             <span class="uc-rcp-name">Old Year</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">old.year@example.org</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person10 registrant-longername10 person10.registrant@example-organization.org · (415) 555-0110 104155550110"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person10 registrant-longername10 person10.registrant@example-organization.org · (415) 555-0110 104155550110"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -406,7 +414,7 @@
                             <span class="uc-rcp-name">Person10 Registrant-Longername10</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person10.registrant@example-organization.org · (415) 555-0110</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person11 registrant-longername11 person11.registrant@example-organization.org · (415) 555-0111 114155550111"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person11 registrant-longername11 person11.registrant@example-organization.org · (415) 555-0111 114155550111"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -414,7 +422,7 @@
                             <span class="uc-rcp-name">Person11 Registrant-Longername11</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person11.registrant@example-organization.org · (415) 555-0111</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person12 registrant-longername12 person12.registrant@example-organization.org 12"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person12 registrant-longername12 person12.registrant@example-organization.org 12"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -422,7 +430,7 @@
                             <span class="uc-rcp-name">Person12 Registrant-Longername12</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person12.registrant@example-organization.org</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person13 registrant-longername13 person13.registrant@example-organization.org · (415) 555-0113 134155550113"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person13 registrant-longername13 person13.registrant@example-organization.org · (415) 555-0113 134155550113"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -430,7 +438,7 @@
                             <span class="uc-rcp-name">Person13 Registrant-Longername13</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person13.registrant@example-organization.org · (415) 555-0113</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person14 registrant-longername14 person14.registrant@example-organization.org · (415) 555-0114 144155550114"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person14 registrant-longername14 person14.registrant@example-organization.org · (415) 555-0114 144155550114"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -438,7 +446,7 @@
                             <span class="uc-rcp-name">Person14 Registrant-Longername14</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person14.registrant@example-organization.org · (415) 555-0114</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person15 registrant-longername15 person15.registrant@example-organization.org 15"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person15 registrant-longername15 person15.registrant@example-organization.org 15"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -446,7 +454,7 @@
                             <span class="uc-rcp-name">Person15 Registrant-Longername15</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person15.registrant@example-organization.org</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person16 registrant-longername16 person16.registrant@example-organization.org · (415) 555-0116 164155550116"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person16 registrant-longername16 person16.registrant@example-organization.org · (415) 555-0116 164155550116"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -454,7 +462,7 @@
                             <span class="uc-rcp-name">Person16 Registrant-Longername16</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person16.registrant@example-organization.org · (415) 555-0116</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person17 registrant-longername17 person17.registrant@example-organization.org · (415) 555-0117 174155550117"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person17 registrant-longername17 person17.registrant@example-organization.org · (415) 555-0117 174155550117"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -462,7 +470,7 @@
                             <span class="uc-rcp-name">Person17 Registrant-Longername17</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person17.registrant@example-organization.org · (415) 555-0117</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person18 registrant-longername18 person18.registrant@example-organization.org 18"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person18 registrant-longername18 person18.registrant@example-organization.org 18"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -470,7 +478,7 @@
                             <span class="uc-rcp-name">Person18 Registrant-Longername18</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person18.registrant@example-organization.org</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person19 registrant-longername19 person19.registrant@example-organization.org · (415) 555-0119 194155550119"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person19 registrant-longername19 person19.registrant@example-organization.org · (415) 555-0119 194155550119"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -478,7 +486,7 @@
                             <span class="uc-rcp-name">Person19 Registrant-Longername19</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person19.registrant@example-organization.org · (415) 555-0119</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person20 registrant-longername20 person20.registrant@example-organization.org · (415) 555-0120 204155550120"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person20 registrant-longername20 person20.registrant@example-organization.org · (415) 555-0120 204155550120"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -486,7 +494,7 @@
                             <span class="uc-rcp-name">Person20 Registrant-Longername20</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person20.registrant@example-organization.org · (415) 555-0120</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person21 registrant-longername21 person21.registrant@example-organization.org 21"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person21 registrant-longername21 person21.registrant@example-organization.org 21"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -494,7 +502,7 @@
                             <span class="uc-rcp-name">Person21 Registrant-Longername21</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person21.registrant@example-organization.org</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person22 registrant-longername22 person22.registrant@example-organization.org · (415) 555-0122 224155550122"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person22 registrant-longername22 person22.registrant@example-organization.org · (415) 555-0122 224155550122"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -502,7 +510,7 @@
                             <span class="uc-rcp-name">Person22 Registrant-Longername22</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person22.registrant@example-organization.org · (415) 555-0122</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person23 registrant-longername23 person23.registrant@example-organization.org · (415) 555-0123 234155550123"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person23 registrant-longername23 person23.registrant@example-organization.org · (415) 555-0123 234155550123"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -510,7 +518,7 @@
                             <span class="uc-rcp-name">Person23 Registrant-Longername23</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person23.registrant@example-organization.org · (415) 555-0123</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person24 registrant-longername24 person24.registrant@example-organization.org 24"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person24 registrant-longername24 person24.registrant@example-organization.org 24"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -518,7 +526,7 @@
                             <span class="uc-rcp-name">Person24 Registrant-Longername24</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person24.registrant@example-organization.org</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person25 registrant-longername25 person25.registrant@example-organization.org · (415) 555-0125 254155550125"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person25 registrant-longername25 person25.registrant@example-organization.org · (415) 555-0125 254155550125"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -526,7 +534,7 @@
                             <span class="uc-rcp-name">Person25 Registrant-Longername25</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person25.registrant@example-organization.org · (415) 555-0125</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person26 registrant-longername26 person26.registrant@example-organization.org · (415) 555-0126 264155550126"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person26 registrant-longername26 person26.registrant@example-organization.org · (415) 555-0126 264155550126"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -534,7 +542,7 @@
                             <span class="uc-rcp-name">Person26 Registrant-Longername26</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person26.registrant@example-organization.org · (415) 555-0126</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person27 registrant-longername27 person27.registrant@example-organization.org 27"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person27 registrant-longername27 person27.registrant@example-organization.org 27"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -542,7 +550,7 @@
                             <span class="uc-rcp-name">Person27 Registrant-Longername27</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person27.registrant@example-organization.org</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person28 registrant-longername28 person28.registrant@example-organization.org · (415) 555-0128 284155550128"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person28 registrant-longername28 person28.registrant@example-organization.org · (415) 555-0128 284155550128"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -550,7 +558,7 @@
                             <span class="uc-rcp-name">Person28 Registrant-Longername28</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person28.registrant@example-organization.org · (415) 555-0128</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person29 registrant-longername29 person29.registrant@example-organization.org · (415) 555-0129 294155550129"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person29 registrant-longername29 person29.registrant@example-organization.org · (415) 555-0129 294155550129"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -558,7 +566,7 @@
                             <span class="uc-rcp-name">Person29 Registrant-Longername29</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person29.registrant@example-organization.org · (415) 555-0129</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person30 registrant-longername30 person30.registrant@example-organization.org 30"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person30 registrant-longername30 person30.registrant@example-organization.org 30"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -566,7 +574,7 @@
                             <span class="uc-rcp-name">Person30 Registrant-Longername30</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person30.registrant@example-organization.org</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person31 registrant-longername31 person31.registrant@example-organization.org · (415) 555-0131 314155550131"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person31 registrant-longername31 person31.registrant@example-organization.org · (415) 555-0131 314155550131"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -574,7 +582,7 @@
                             <span class="uc-rcp-name">Person31 Registrant-Longername31</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person31.registrant@example-organization.org · (415) 555-0131</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person32 registrant-longername32 person32.registrant@example-organization.org · (415) 555-0132 324155550132"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person32 registrant-longername32 person32.registrant@example-organization.org · (415) 555-0132 324155550132"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -582,7 +590,7 @@
                             <span class="uc-rcp-name">Person32 Registrant-Longername32</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person32.registrant@example-organization.org · (415) 555-0132</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person33 registrant-longername33 person33.registrant@example-organization.org 33"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person33 registrant-longername33 person33.registrant@example-organization.org 33"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -590,7 +598,7 @@
                             <span class="uc-rcp-name">Person33 Registrant-Longername33</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person33.registrant@example-organization.org</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person34 registrant-longername34 person34.registrant@example-organization.org · (415) 555-0134 344155550134"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person34 registrant-longername34 person34.registrant@example-organization.org · (415) 555-0134 344155550134"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -598,7 +606,7 @@
                             <span class="uc-rcp-name">Person34 Registrant-Longername34</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person34.registrant@example-organization.org · (415) 555-0134</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person7 registrant-longername7 person7.registrant@example-organization.org · (415) 555-017 7415555017"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person7 registrant-longername7 person7.registrant@example-organization.org · (415) 555-017 7415555017"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -606,7 +614,7 @@
                             <span class="uc-rcp-name">Person7 Registrant-Longername7</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person7.registrant@example-organization.org · (415) 555-017</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person8 registrant-longername8 person8.registrant@example-organization.org · (415) 555-018 8415555018"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person8 registrant-longername8 person8.registrant@example-organization.org · (415) 555-018 8415555018"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -614,7 +622,7 @@
                             <span class="uc-rcp-name">Person8 Registrant-Longername8</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">person8.registrant@example-organization.org · (415) 555-018</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="email" data-uc-rcp-find="person9 registrant-longername9 person9.registrant@example-organization.org 9"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="email" data-uc-rcp-find="person9 registrant-longername9 person9.registrant@example-organization.org 9"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -670,13 +678,21 @@
                     <span class="uc-field-label">Search</span>
                     <input type="search" data-uc-rcp-search placeholder="Name, email or phone" autocomplete="off" />
                 </label>
-                                                <div class="uc-rcp-bulk">
+                                                <label class="uc-field">
+                    <span class="uc-field-label">Language</span>
+                    <select data-uc-rcp-lang>
+                        <option value="">Choose a language</option>
+                        <option value="en">English only</option>
+                        <option value="es">Spanish only</option>
+                    </select>
+                </label>
+                <div class="uc-rcp-bulk">
                     <button type="button" class="uc-btn" data-uc-rcp-all>Tick all</button>
                     <button type="button" class="uc-btn" data-uc-rcp-none>Clear all</button>
                 </div>
             </div>
             <ul class="uc-rcp-list" data-uc-rcp-list>
-                                    <li data-uc-rcp-row data-uc-rcp-how="whatsapp_off" data-uc-rcp-find="maximiliano alejandro fernández-castellanos de la torre +52 55 1234 5678 525512345678"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="whatsapp_off" data-uc-rcp-find="maximiliano alejandro fernández-castellanos de la torre +52 55 1234 5678 525512345678"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -684,7 +700,7 @@
                             <span class="uc-rcp-name">Maximiliano Alejandro Fernández-Castellanos de la Torre</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">+52 55 1234 5678 · Email only: WhatsApp isn&#039;t active yet</span>
                         </label>
                     </li>
-                                    <li data-uc-rcp-row data-uc-rcp-how="sms" data-uc-rcp-find="ana alvarez-montenegro (415) 555-0101 4155550101"
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="sms" data-uc-rcp-find="ana alvarez-montenegro (415) 555-0101 4155550101"
                         data-uc-rcp-answers=""
                         data-uc-rcp-got="">
                         <label class="uc-check">
@@ -1947,9 +1963,9 @@
             </div>
         </div>
         <script type="application/json" id="uc-session-config">{"ajax":"https:\/\/resources.sfaf.org\/wp-admin\/admin-ajax.php","action":"sfaf_caladmin_session","signin":"https:\/\/resources.sfaf.org\/caladmin","screen":"dashboard","signedIn":true}</script>
-<script src="../public/js/caladmin-session.js?ver=3.137.0"></script>
-<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.137.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.137.0"></script>
-<script src="../public/js/portal.js?ver=3.137.0"></script>
+<script src="../public/js/caladmin-session.js?ver=3.138.0"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.138.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.138.0"></script>
+<script src="../public/js/portal.js?ver=3.138.0"></script>
 <script>window.RW_PAGE="byname-390";(function () {
 var P = window.RW_PAGE, out = { page: P, errors: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
