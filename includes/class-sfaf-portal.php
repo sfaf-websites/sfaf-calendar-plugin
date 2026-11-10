@@ -19471,7 +19471,8 @@ class SFAF_Portal {
      * WHO GETS IT (3.131.0): the one recipient list Email registrants and Text
      * registrants both draw, under the message. Every person it can reach is
      * ticked; a search box narrows what is shown, never who is ticked; By
-     * answer and Didn't get tick exactly the people who match; Clear all and
+     * answer, Didn't get and Language (3.138.0) tick exactly the people who
+     * match; Clear all and
      * Tick all. The count under it says who gets it and how. It posts
      * {prefix}_ids[] and {prefix}_picked, read by picked_ids().
      *
@@ -19537,6 +19538,14 @@ class SFAF_Portal {
                         </select>
                     </label>
                 <?php endif; ?>
+                <label class="uc-field">
+                    <span class="uc-field-label">Language</span>
+                    <select data-uc-rcp-lang>
+                        <option value="">Choose a language</option>
+                        <option value="en">English only</option>
+                        <option value="es">Spanish only</option>
+                    </select>
+                </label>
                 <div class="uc-rcp-bulk">
                     <button type="button" class="uc-btn" data-uc-rcp-all>Tick all</button>
                     <button type="button" class="uc-btn" data-uc-rcp-none>Clear all</button>
@@ -19550,7 +19559,7 @@ class SFAF_Portal {
                     }
                     $find = strtolower( $p['name'] . ' ' . $p['detail'] . ' ' . preg_replace( '/\D/', '', $p['detail'] ) );
                     ?>
-                    <li data-uc-rcp-row data-uc-rcp-how="<?php echo esc_attr( $p['how_key'] ); ?>" data-uc-rcp-find="<?php echo esc_attr( $find ); ?>"
+                    <li data-uc-rcp-row data-uc-rcp-lang="<?php echo ( isset( $p['lang'] ) && 'es' === $p['lang'] ) ? 'es' : 'en'; ?>" data-uc-rcp-how="<?php echo esc_attr( $p['how_key'] ); ?>" data-uc-rcp-find="<?php echo esc_attr( $find ); ?>"
                         data-uc-rcp-answers="<?php echo esc_attr( implode( ' ', isset( $answers[ (int) $p['id'] ] ) ? $answers[ (int) $p['id'] ] : array() ) ); ?>"
                         data-uc-rcp-got="<?php echo esc_attr( implode( ' ', $got ) ); ?>"<?php echo $p['wait'] ? ' data-uc-rcp-wait hidden' : ''; ?>>
                         <label class="uc-check">

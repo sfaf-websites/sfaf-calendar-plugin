@@ -10,9 +10,26 @@ function sweep(scope, top) {
   return Array.prototype.slice.call(scope.querySelectorAll('button, a, span')).filter(function (el) { return el.getClientRects().length; })
     .map(function (el) { return { at: path(el, top), css: css(el) }; });
 }
+/* APPLIED, NOT MERELY PARSED (3.138.0). calendar.css opens with an @import of
+   Google Fonts, and while that import is in flight Chrome has already handed the
+   link its sheet, every rule in it, and applies none of them: the block is drawn
+   unstyled, the combined view stacks, and K reported the sidebar under a
+   1248px grid in 3 of 42 runs. Measured with the fonts host blackholed: sheet
+   present, 597 rules, the import's styleSheet null, .uc-view-panels display
+   block, no 1200px cap. An import that has loaded, or failed, has a styleSheet,
+   and only then is the sheet in force. So that is the test, for every import. */
+function applied(sheet) {
+  var rules;
+  try { rules = sheet.cssRules; } catch (e) { return true; }
+  for (var i = 0; i < rules.length; i++) {
+    if (rules[i].type !== 3) { break; }
+    if (!rules[i].styleSheet || !applied(rules[i].styleSheet)) { return false; }
+  }
+  return true;
+}
 function sheetsIn(root) {
   var links = root.querySelectorAll('link[rel="stylesheet"]');
-  return links.length > 0 && Array.prototype.every.call(links, function (l) { return !!l.sheet; });
+  return links.length > 0 && Array.prototype.every.call(links, function (l) { return !!l.sheet && applied(l.sheet); });
 }
 function finish() { out.pageWidth = document.documentElement.scrollWidth; parent.postMessage(JSON.stringify(out), '*'); }
 var tries = 0;
@@ -23,7 +40,7 @@ var tries = 0;
   var scope = window.EI_MODE === 'none' ? document : flat ? (lp && lp.closest('.uc-calendar')) : (host && host.shadowRoot);
   /* Loaded, not merely linked: a <link> in a shadow root loads like any other, and
      measuring before it arrives measures an unstyled block. */
-  var ready = scope && (window.EI_MODE === 'none' || scope.querySelector('.uc-view-panels')) && (window.EI_MODE === 'light' || window.EI_MODE === 'none' || sheetsIn(window.EI_MODE === 'open' ? document : scope));
+  var ready = scope && (window.EI_MODE === 'none' || scope.querySelector('.uc-view-panels')) && (window.EI_MODE === 'none' || sheetsIn(flat ? document : scope));
   if (!ready && tries++ < 200) { setTimeout(wait, 100); return; }
   out.unready = !ready;
   /* The page's no-transition rule does not cross into a shadow root, and a pill

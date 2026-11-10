@@ -106,9 +106,26 @@ function sweep(scope, top) {
   return Array.prototype.slice.call(scope.querySelectorAll('button, a, span')).filter(function (el) { return el.getClientRects().length; })
     .map(function (el) { return { at: path(el, top), css: css(el) }; });
 }
+/* APPLIED, NOT MERELY PARSED (3.138.0). calendar.css opens with an @import of
+   Google Fonts, and while that import is in flight Chrome has already handed the
+   link its sheet, every rule in it, and applies none of them: the block is drawn
+   unstyled, the combined view stacks, and K reported the sidebar under a
+   1248px grid in 3 of 42 runs. Measured with the fonts host blackholed: sheet
+   present, 597 rules, the import's styleSheet null, .uc-view-panels display
+   block, no 1200px cap. An import that has loaded, or failed, has a styleSheet,
+   and only then is the sheet in force. So that is the test, for every import. */
+function applied(sheet) {
+  var rules;
+  try { rules = sheet.cssRules; } catch (e) { return true; }
+  for (var i = 0; i < rules.length; i++) {
+    if (rules[i].type !== 3) { break; }
+    if (!rules[i].styleSheet || !applied(rules[i].styleSheet)) { return false; }
+  }
+  return true;
+}
 function sheetsIn(root) {
   var links = root.querySelectorAll('link[rel="stylesheet"]');
-  return links.length > 0 && Array.prototype.every.call(links, function (l) { return !!l.sheet; });
+  return links.length > 0 && Array.prototype.every.call(links, function (l) { return !!l.sheet && applied(l.sheet); });
 }
 function finish() { out.pageWidth = document.documentElement.scrollWidth; parent.postMessage(JSON.stringify(out), '*'); }
 var tries = 0;
@@ -119,7 +136,7 @@ var tries = 0;
   var scope = flat ? (lp && lp.closest('.uc-calendar')) : (host && host.shadowRoot);
   /* Loaded, not merely linked: a <link> in a shadow root loads like any other, and
      measuring before it arrives measures an unstyled block. */
-  var ready = scope && scope.querySelector('.uc-view-panels') && (window.EI_MODE === 'light' || window.EI_MODE === 'none' || sheetsIn(window.EI_MODE === 'open' ? document : scope));
+  var ready = scope && scope.querySelector('.uc-view-panels') && (window.EI_MODE === 'none' || sheetsIn(flat ? document : scope));
   if (!ready && tries++ < 200) { setTimeout(wait, 100); return; }
   out.unready = !ready;
   /* The page's no-transition rule does not cross into a shadow root, and a pill
@@ -236,15 +253,24 @@ if ( ! in_array( '--run', $args, true ) && ! $shots ) { echo 'wrote ' . count( $
 $chrome = getenv( 'SFAF_CHROME' ) ?: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 if ( ! file_exists( $chrome ) ) { echo "Chrome not found at $chrome\n"; exit( 1 ); }
 
+/* NO FONTS HOST (3.138.0). calendar.css's @import of Google Fonts is the one
+   thing here that leaves the machine, and while it is in flight the sheet is
+   not applied (sheetsIn() above). The wait for it runs in virtual time, which
+   a slow answer from Google outlasts, so the check depended on Google's
+   servers and failed K at random. Refused, the import fails at once, the
+   sheet applies at once, and every page is measured the same way: the clean
+   and hostile pages share the fallback face, and J's Montserrat check reads
+   the declared family. --shots keeps the real fonts. */
+$no_fonts = ' --host-resolver-rules="MAP fonts.googleapis.com ~NOTFOUND"';
 $g = array();
 foreach ( $files as $name => $file ) {
     $w   = $pages[ $name ]['w'];
-    $dom = shell_exec( '"' . $chrome . '" --headless --disable-gpu --run-all-compositor-stages-before-draw --allow-file-access-from-files --window-size=' . max( 600, $w + 20 ) . ',1500 --virtual-time-budget=40000 --dump-dom "file:///' . str_replace( '\\', '/', $file ) . '" 2>NUL' );
+    $dom = shell_exec( '"' . $chrome . '" --headless --disable-gpu --run-all-compositor-stages-before-draw --allow-file-access-from-files' . $no_fonts . ' --window-size=' . max( 600, $w + 20 ) . ',1500 --virtual-time-budget=40000 --dump-dom "file:///' . str_replace( '\\', '/', $file ) . '" 2>NUL' );
     if ( ! preg_match( '#<pre id="out">(.*?)</pre>#s', (string) $dom, $m ) ) { ei( false, "$name: Chrome returned no probe block" ); continue; }
     $g[ $name ] = json_decode( html_entity_decode( $m[1], ENT_QUOTES, 'UTF-8' ), true );
     ei( empty( $g[ $name ]['errors'] ), "$name threw: " . implode( '; ', (array) $g[ $name ]['errors'] ) );
     // Not a finding about the embed: the page was measured before its stylesheet arrived.
-    ei( empty( $g[ $name ]['unready'] ), "$name: the block or its stylesheet had not loaded after 20 seconds, so nothing on that page was measured at rest" );
+    ei( empty( $g[ $name ]['unready'] ), "$name: the block or its stylesheet, with calendar.css's @import of Google Fonts, had not loaded after 20 seconds, so nothing on that page was measured at rest" );
     ei( (int) $g[ $name ]['pageWidth'] <= $w, "$name: the page scrolls sideways, " . $g[ $name ]['pageWidth'] . "px in $w" );
     if ( in_array( '--verbose', $args, true ) ) { echo $name . ': ' . json_encode( $g[ $name ], JSON_UNESCAPED_SLASHES ) . "\n"; }
 }
@@ -334,5 +360,5 @@ if ( $fails ) {
 echo 'embed.js without data-isolate, under the hostile stylesheet: ' . count( $open ) . " value(s) repainted, as in 3.110.5.\n";
 echo 'calendar.js on its own page, under the same stylesheet: ' . count( $light ) . " value(s) repainted.\n";
 foreach ( array_slice( $light, 0, 12 ) as $l ) { echo '      ' . $l . "\n"; }
-echo "embed isolation: with data-isolate=\"yes\" the embed and its hover preview measure the same under a hostile host stylesheet at 1280px and 390px, nothing of the calendar's reaches the host, the fonts load; the combined sidebar shows four dates, ends at its content with See all events under the short month pills.\n";
+echo "embed isolation: with data-isolate=\"yes\" the embed and its hover preview measure the same under a hostile host stylesheet at 1280px and 390px, nothing of the calendar's reaches the host, the fonts are linked in the head; the combined sidebar shows four dates, ends at its content with See all events under the short month pills.\n";
 exit( 0 );

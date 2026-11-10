@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.137.0
+Stable tag: 3.138.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,17 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.138.0 =
+
+**Publish and Approve in the pending queue in dark green, the morning-of reminder's text and WhatsApp line, and Language in who gets it. Every embed answer and header is 3.137.0's, proved by embed-identity-test.php.**
+
+**WHAT CHANGES ON PUBLIC PAGES:** nothing.
+
+* **Publish and Approve in the pending queue** are dark green #46661F, still links: 6.60:1 on the white card, where the brand green #8CC745 was 2.02:1.
+* **Notifications card**: under Sent to registrants, the Morning-of reminder's description adds "Also sent by text or WhatsApp to anyone who chose it on the RSVP form."
+* **Email registrants and Text registrants**: a Language filter beside By answer and Didn't get. English only or Spanish only ticks exactly those registrants; choosing it clears the other filters, and they, Tick all and Clear all clear it.
+* **The embed check is reliable**: embed-isolation-live measured the combined view before calendar.css was in force, while its import of Google Fonts was still loading, and reported the sidebar under the grid. It now waits for the stylesheet to apply, and refuses the fonts host so the import fails at once.
 
 = 3.137.0 =
 

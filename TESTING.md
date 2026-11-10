@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 423 items.** Quick 341, needs real conditions 77, blocked on other
+**Outstanding: 426 items.** Quick 344, needs real conditions 77, blocked on other
 people 5.
 
 ---
@@ -4661,6 +4661,24 @@ no language stored, which show the event's.
 In caladmin open each screen, at a desk and on a phone: Dashboard, Events (tick two events), Add event (pick a series), Edit event, Series and a series' remove screen, Organizers (open a row's Edit), Venues, Media (one image's Move and Remove), an event's RSVP list (Registration settings, Email and Text registrants, Check in on one person), Pending, FAQ sets, Preferences, Email templates (edit one), Users and Teams. Every button that is not the screen's yellow or a red action is white with a teal edge and teal words and goes light teal under the pointer; Fetch updates is the same, not solid teal; Publish N drafts, Set team on N events and Add organizer are yellow; Remove this question, Delete them anyway and Reset to default are red outlines, and Reset to default asks in red; Checked in is solid teal with white words; Media's Move to Other images and Remove are grey-edged; Discard on the restore bar is red words. In WP admin, Settings (Twilio, Mailchimp, the campaign rows), Automation, Closures and Users: the plain buttons are the same white and teal, Clear the log and a closure's Remove red outlines, the row "x" red. On the staff request form and the community form: Fill these in and + Add a question are R. The public calendar's buttons are as they were.
 
 **Why it needs a person:** the checks measured 380 buttons on rendered copies of these screens; the live site has real data, WordPress's own admin styles beside ours, and buttons that only show with real content (the bulk row, the restore bar, campaign rows, Media's images).
+
+### 1.344 Publish and Approve in the pending queue, dark green (3.138.0)
+
+Open Pending in caladmin with at least one imported event and one staff request waiting, at a desk and on a phone. Publish on the imported event and Approve on the request are dark green words (#46661F), not boxes, and underline under the pointer. Open Dismissed: its Publish is the same.
+
+**Why it needs a person:** the check measured a rendered copy of the queue; the live queue has real rows and WordPress's own styles beside ours.
+
+### 1.345 The morning-of reminder's description on the Notifications card (3.138.0)
+
+Open Add event and Edit event, Registration settings, the Notifications card. Under Sent to registrants, Morning-of reminder's description ends "Also sent by text or WhatsApp to anyone who chose it on the RSVP form." Check the line fits the card on a phone.
+
+**Why it needs a person:** the check reads the rendered card, not the live editor with its real width.
+
+### 1.346 Language in Email registrants and Text registrants (3.138.0)
+
+On a real event with registrations in both languages (EN and ES beside the names), open its RSVP list, Email registrants and then Text registrants. Choose Language, Spanish only: exactly the people marked ES are ticked and the count under the list agrees; English only, exactly the EN ones. Choose By answer or Didn't get: Language goes back to Choose a language. Send a test to Spanish only and check under Who in the log that it went to those people only.
+
+**Why it needs a person:** real registrations, some from before 3.135.0 with no language stored, which count as the event's.
 
 ## 2. Needs real conditions
 

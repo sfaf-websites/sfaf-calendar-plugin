@@ -263,6 +263,11 @@ green rather than yellow because yellow is the one primary action per view,
 which on the event page is Register. `--uc-green-ink` is the one declaration of
 `#46661F` in `calendar.css`; `--uc-open-ink` refers to it.
 
+**Publish and Approve in caladmin's pending queue are the same ink (3.138.0)**:
+`.uc-link-ok` is `--p-ok-ink` `#46661F` in `portal.css`, 6.60:1 on the queue's
+white card, measured in Chrome by `release-31380-live.php`. They were the
+brand green, 2.02:1. Still links: no fill, no border, underlined on hover.
+
 **The closed-day warning under a date field is the Red family's ink**, `#AD1C0D`,
 the closure's own colour: 7.12:1 on white, 6.58:1 on caladmin's `#F5F6F7`, and
 6.10:1 on the tint `#FDE9E7` that the pending row's "Closed: Thanksgiving" flag

@@ -776,7 +776,8 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
    inherited "no fill" through the hover would grow a grey box on the way past.
    The pair is declared together, which is the 3.39.0 rule. */
 .uc-link-danger:hover { background: none; text-decoration: underline; }
-.uc-link-ok { background: none; border: none; color: var(--p-green); cursor: pointer; font-size: 13px; padding: 0; font-weight: 600; }
+/* The green family's ink, 6.6:1 on white (3.138.0); the brand green was 2.02:1. */
+.uc-link-ok { background: none; border: none; color: var(--p-ok-ink); cursor: pointer; font-size: 13px; padding: 0; font-weight: 600; }
 .uc-link-ok:hover { background: none; text-decoration: underline; }
 
 /* ---------- Stats ---------- */

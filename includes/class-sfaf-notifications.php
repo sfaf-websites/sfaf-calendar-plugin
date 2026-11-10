@@ -105,7 +105,7 @@ class SFAF_Notifications {
             'reminder' => array(
                 'label' => 'Morning-of reminder to everybody registered',
                 'short' => 'Morning-of reminder',
-                'note'  => 'Sent at 6 am on the day, or at midnight when the event starts earlier. Your notification list is copied in.',
+                'note'  => 'Sent at 6 am on the day, or at midnight when the event starts earlier. Your notification list is copied in. Also sent by text or WhatsApp to anyone who chose it on the RSVP form.',
             ),
             'summary' => array(
                 'label' => "Who's coming, two hours before",

@@ -6946,8 +6946,11 @@ portal.js): every registrant it can reach is ticked, Text registrants listing
 only who chose Text or WhatsApp and showing why anybody unticked cannot be
 reached; a search box over name, email and phone that hides rows and never
 unticks them; **By answer**, an option of one of the event's questions, and
-**Didn't get**, one of the sends in the log, each ticking exactly the people
-who match and unticking the rest; Tick all and Clear all; and the count of
+**Didn't get**, one of the sends in the log, and **Language (3.138.0)**,
+English only or Spanish only, read from the row's `data-uc-rcp-lang`, the same
+language as its EN or ES tag, each ticking exactly the people who match and
+unticking the rest, and clearing the other two; Tick all and Clear all, which
+clear all three; and the count of
 who and how, "Sending to 4 people: 3 by text, 1 by WhatsApp.", which Send's
 question follows. **Each row, and each name on the RSVP list and its
 waitlist, carries EN or ES (3.135.0)**, `SFAF_Portal::lang_tag()` from
@@ -8601,6 +8604,20 @@ plugin code reproduces it; `--run-all-compositor-stages-before-draw` fixes the
 bare page and not the real ones. `closure-live.php` sends the event itself when
 the dialog has closed and it has not arrived, and counts that. **Suspect the
 harness's clock before the code when an answered dialog does nothing.**
+
+**A stylesheet whose `@import` is still loading has its sheet and is not
+applied (3.138.0).** calendar.css opens with an `@import` of Google Fonts.
+Until that import loads or fails, Chrome hands the `<link>` its `sheet` with
+every rule in it and draws the page unstyled: `!!link.sheet` is not "styled".
+`embed-isolation-live.php` waited on exactly that and failed K in 3 of 42 runs,
+the combined view stacked under an uncapped 1248px grid; blackholing
+fonts.googleapis.com reproduced it every time. The test for "in force" is
+that every `CSSImportRule` has its `styleSheet`, which a failed import has
+too. A wait under `--virtual-time-budget` counts virtual time, which a slow
+network answer outlasts, so a check that must not depend on Google refuses
+the host (`--host-resolver-rules="MAP fonts.googleapis.com ~NOTFOUND"`) and
+the import fails at once. **The same holds on a real host page:** an
+isolated embed is unstyled until Google Fonts answers or fails.
 
 **Headless Chrome will not open a window narrower than 504px (3.106.0).**
 `--window-size=390,...` gives a 504px viewport and no error, so every "phone"
