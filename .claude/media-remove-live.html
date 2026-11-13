@@ -3961,9 +3961,10 @@ function ucDismissOnBackdrop(dialog) {
      * A LISTBOX UNDER A TEXT BOX (3.129.0), for Who gets these emails and
      * Replies go to. `items()` answers the box's text with up to eight
      * {text, pick} entries; Enter or a click runs the highlighted one's pick.
+     * `onShown(true or false)`, if given, runs after the list opens or closes.
      * Returns { open, close, isOpen }.
      * ------------------------------------------------------------------- */
-    function suggestList(input, list, items, onEnterEmpty) {
+    function suggestList(input, list, items, onEnterEmpty, onShown) {
         var shown = [];
         var active = -1;
         var idBase = list.id || ('uc-sl-' + Math.random().toString(36).slice(2));
@@ -3987,6 +3988,7 @@ function ucDismissOnBackdrop(dialog) {
             active = -1;
             input.setAttribute('aria-expanded', 'false');
             input.removeAttribute('aria-activedescendant');
+            if (onShown) { onShown(false); }
         }
         function open() {
             shown = items() || [];
@@ -4011,6 +4013,7 @@ function ucDismissOnBackdrop(dialog) {
             });
             list.hidden = false;
             input.setAttribute('aria-expanded', 'true');
+            if (onShown) { onShown(true); }
             active = 0;
             mark();
         }
@@ -4222,6 +4225,41 @@ function ucDismissOnBackdrop(dialog) {
             box.setAttribute('aria-controls', ul.id);
             wrap.appendChild(box);
             wrap.appendChild(ul);
+
+            /* OVER EVERYTHING (3.139.0). The card clips what overflows it and
+               the save bar sits over the foot of the window, so the list is a
+               popover in the top layer, placed against the box: under it, or
+               over it when there is more room above. Without popover it is
+               fixed at a z-index over the save bar and the sidebar. */
+            var canPop = typeof ul.showPopover === 'function';
+            ul.classList.add('uc-sl-float');
+            if (canPop) { ul.setAttribute('popover', 'manual'); }
+            function place() {
+                if (ul.hidden) { return; }
+                var r = box.getBoundingClientRect();
+                var vh = window.innerHeight || document.documentElement.clientHeight;
+                var below = vh - r.bottom - 10, above = r.top - 10;
+                ul.style.left = Math.round(r.left) + 'px';
+                ul.style.width = Math.round(r.width) + 'px';
+                ul.style.maxHeight = '';
+                var want = ul.offsetHeight;
+                var up = want > below && above > below;
+                var room = Math.max(up ? above : below, 0);
+                if (want > room) { ul.style.maxHeight = Math.max(Math.floor(room), 88) + 'px'; }
+                ul.style.top = Math.round(up ? r.top - 2 - ul.offsetHeight : r.bottom + 2) + 'px';
+                ul.setAttribute('data-uc-sl-side', up ? 'up' : 'down');
+            }
+            function floatList(on) {
+                if (canPop) {
+                    try {
+                        if (on && !ul.matches(':popover-open')) { ul.showPopover(); }
+                        if (!on && ul.matches(':popover-open')) { ul.hidePopover(); }
+                    } catch (err) { /* already in the state asked for */ }
+                }
+                if (on) { place(); }
+            }
+            window.addEventListener('scroll', place, true);
+            window.addEventListener('resize', place);
             select.parentNode.insertBefore(wrap, select);
             select.hidden = true;
             // The label now names the box somebody types in.
@@ -4249,10 +4287,12 @@ function ucDismissOnBackdrop(dialog) {
                     }
                 });
                 return out;
-            });
+            }, null, floatList);
             box.value = current();
             // Opening shows the whole list; leaving without a choice puts the choice back.
             box.addEventListener('focus', function () { box.select(); sl.open(); });
+            // A click on the box, or its chevron, after a choice opens it again.
+            box.addEventListener('click', function () { if (!sl.isOpen()) { sl.open(); } });
             box.addEventListener('blur', function () { window.setTimeout(function () { box.value = current(); }, 160); });
         });
     }
