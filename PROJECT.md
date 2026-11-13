@@ -6337,7 +6337,7 @@ Someone else, with the address box beside it. A picked person's address is
 stored, not their id, as `_uc_email_replyto` always held. A stored address that
 is nobody on the list opens as Someone else with the box filled. What 3.117.0
 fixed still holds: the fallback is never put in the box, where a save would
-store it as the event's own. `initReplyTo()` makes the select searchable.
+store it as the event's own. `initReplyTo()` makes the select searchable. **Its list is a popover in the top layer (3.139.0)**, placed against the box by script and flipped upward when there is more room above, because `.uc-card` clips what overflows it and the save bar is sticky over the window's foot; without popover support it is fixed at z-index 1000. Who gets these emails keeps its list in the card.
 **The save needed nothing new**: every field
 carries its own marker and `save_event_from_post()` inserts the post before it
 saves them. `.claude/notifications-card-test.php` renders both screens and

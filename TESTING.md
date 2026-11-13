@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 426 items.** Quick 344, needs real conditions 77, blocked on other
+**Outstanding: 427 items.** Quick 345, needs real conditions 77, blocked on other
 people 5.
 
 ---
@@ -4679,6 +4679,12 @@ Open Add event and Edit event, Registration settings, the Notifications card. Un
 On a real event with registrations in both languages (EN and ES beside the names), open its RSVP list, Email registrants and then Text registrants. Choose Language, Spanish only: exactly the people marked ES are ticked and the count under the list agrees; English only, exactly the EN ones. Choose By answer or Didn't get: Language goes back to Choose a language. Send a test to Spanish only and check under Who in the log that it went to those people only.
 
 **Why it needs a person:** real registrations, some from before 3.135.0 with no language stored, which count as the event's.
+
+### 1.347 Replies go to opens over the card and the save bar (3.139.0)
+
+On Add event and on Edit event, at a desk and on a phone (an iPhone if one is to hand), scroll to the foot of the Notifications card so Replies go to sits just above the save bar. The box has a chevron at its right like the other dropdowns. Tap it: the whole list shows, above the box when there is no room below, and nothing crops it or covers it. Scroll the page with it open: it stays against the box. Pick a person, then tap the box again: it opens again. With the phone's keyboard up, the list is still on screen.
+
+**Why it needs a person:** the check ran in desktop Chrome at phone width; Safari draws popovers and the on-screen keyboard its own way, and the live editor has real people in the list.
 
 ## 2. Needs real conditions
 

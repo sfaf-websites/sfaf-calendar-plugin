@@ -1267,7 +1267,7 @@ groups, then Replies go to. Measured in Chrome by
 | Suggestions | a list under the box, inside the card: `--p-panel`, the `--p-border-strong` edge, 8px radius, `--p-shadow-raised`, 264px tall at most. Rows 14px at 1.4, 8px 12px padding; the highlighted row on `--uc-band`. "Add name@example.org" in 600 |
 | The fold | "Add people or teams", a `<details>` of unticked pills, drawn plain (no strike, no x). What the field is with no script; hidden with it |
 | Email groups | `.uc-notify-subhead` "Sent to registrants" and "Sent to the people above". The two always sent have no box and start at the edge, `.uc-pill` "Always sent" 6px after the name; the four keep their box and the note under the label text |
-| Replies go to | the field label, a text box showing the choice, the same suggestion list, the address box only for Someone else, and the 12px hint under it |
+| Replies go to | the field label, a text box showing the choice with the select's end cap and chevron (pointing up while open, 3.139.0), the same suggestion list, the address box only for Someone else, and the 12px hint under it. Its list floats over the card's border and the save bar, the box's width, under the box or over it when there is more room above; measured by `.claude/release-31390-live.php` |
 
 The section's 10px gap is the space between the rows.
 

@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.138.0
+Stable tag: 3.139.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,15 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.139.0 =
+
+**Replies go to looks like a dropdown, and its list opens over everything. Every embed answer and header is 3.138.0's, proved by embed-identity-test.php.**
+
+**WHAT CHANGES ON PUBLIC PAGES:** nothing.
+
+* **Replies go to**, on Add event and Edit event, carries the chevron and end cap of every other dropdown, pointing up while its list is open. A click on it opens the list again after a choice.
+* **Its list opens on top of everything**: the card's border no longer crops it and the save bar no longer covers it. With no room below it opens upward. Who gets these emails is unchanged.
 
 = 3.138.0 =
 
