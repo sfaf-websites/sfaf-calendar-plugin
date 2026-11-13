@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 427 items.** Quick 345, needs real conditions 77, blocked on other
+**Outstanding: 431 items.** Quick 348, needs real conditions 78, blocked on other
 people 5.
 
 ---
@@ -4686,6 +4686,24 @@ On Add event and on Edit event, at a desk and on a phone (an iPhone if one is to
 
 **Why it needs a person:** the check ran in desktop Chrome at phone width; Safari draws popovers and the on-screen keyboard its own way, and the live editor has real people in the list.
 
+### 1.348 Should they be told? asks only when something moved (3.140.0)
+
+On a real event with registrations, open Edit event and do each of these, then press Save changes: turn RSVP off and back on; change the description; change the category. None of them asks. Then move the start time: the dialog asks, and Time shows the time as it was saved (for example 10 am–12 pm), not "not set". Choose Back to the form, put the time back and save: no question. On a desktop the three choices are on one row, Back to the form a plain link at the left; on a phone the two buttons are stacked with the link under them.
+
+**Why it needs a person:** the check ran on a rendered copy of the editor; the live one has the real RSVP card, real registrations and every other script on the page.
+
+### 1.349 Include the waitlist in Text registrants (3.140.0)
+
+On a real event with someone on the waitlist who chose Text or WhatsApp, open the RSVP page, Text registrants. The waitlisted person is not in the list until Include the waitlist is ticked; ticked, they appear and can be ticked. Send a test to a number you hold with the waitlist ticked and check it arrives, and that Who in the log names them.
+
+**Why it needs a person:** a real waitlist and a real Twilio send.
+
+### 1.350 Series & Categories in two tabs (3.140.0)
+
+Open Series & Categories at a desk and on a phone. Two tabs, Series and Categories, each with its count. Series: the search box over the table narrows it as you type; + New series is at the top right; the line under Series reads "Each series groups an event's dates. Open one to change its schedule or details." Signed in as a calendar admin, any "Slugs that are not their names" note is at the foot; signed in as an editor, it is not shown. Categories: Create a category at the top right opens the form at the top of the card; Edit, Save and Delete on a category come back to the Categories tab; a row reads like "Pink, hand · 225 events". On a series' own page, Notifications, People is folded and says how many are chosen.
+
+**Why it needs a person:** the check used two made-up series and categories; the live screen has the real list, its pictures and the real editors' view.
+
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -5805,6 +5823,12 @@ in the update template, not cut and not refused by Meta.
 
 **Why it needs a person:** real carriers join the pieces, and Meta decides
 whether a long variable is accepted.
+
+### 2.80 The change email for a new meeting link (3.140.0)
+
+On a test online event with the link set to go with the confirmation, register an address you can read. Change the meeting link, save, choose Save and email them. The email has "Meeting link: Changed" with the new link under Joining online, and not the old one. Set the link to go with the reminder only, change it again and send: the email says "The new link will be sent with your reminder." and carries no link.
+
+**Why it needs a person:** real mail through Postmark, and a mail client drawing the joining block.
 
 ## 3. Blocked on other people
 

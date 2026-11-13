@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.139.0
+Stable tag: 3.140.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,19 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.140.0 =
+
+**Should they be told? asks only when the date, time, place or meeting link moves; Include the waitlist in Text registrants; Series & Categories in two tabs. Every embed answer and header is 3.139.0's, proved by embed-identity-test.php.**
+
+**WHAT CHANGES ON PUBLIC PAGES:** nothing on the calendar or event pages. One change reaches registrants: when an organizer changes an online event's meeting link and chooses to email them, the change email says "Meeting link: Changed", and carries the new link to people the event already sends it to with the confirmation; where only the reminder carries it, it says the new link will come with the reminder.
+
+* **Should they be told? no longer asks about nothing.** Since 3.98.0 the dialog read the start and end times from a field that no longer exists, so any save on an event with registrants said Time changed to "not set". It reads the hour and minute now, as the save does.
+* **It asks when the date, the start or end time, the location or venue, or the meeting link changes**, and no other edit asks.
+* **Its buttons, on one row on a desktop**: Back to the form a quiet link at the left, Save without telling them the teal outline, Save and email them green.
+* **Text registrants: Include the waitlist**, as Email registrants has. The morning-of reminder still goes to registrants only.
+* **Series & Categories**: two tabs, Series and Categories, with no folding lists. Series is a table with a search box over it and + New series at the top right; the note about slugs that are not their names is at the foot, for calendar admins. Categories has Create a category at the top right, and a row reads "Pink, hand · 225 events".
+* **The series page's Notifications**: People is folded, and says how many are chosen.
 
 = 3.139.0 =
 

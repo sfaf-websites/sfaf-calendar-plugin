@@ -6124,11 +6124,33 @@ The two messages differ deliberately:
   somebody who cannot make the new time should be able to release their place in
   one click.
 
-**Only date, time and location trigger anything.** Those three decide whether a
-person turns up. Description, category, series, capacity and image do not, and a
-notification that goes out for those is one that gets filtered, taking the date
-change with it. What is compared is the **formatted** value, so a change
-invisible to a reader cannot produce an email.
+**Only the date, the time, the location or venue, and the meeting link
+trigger anything.** Those decide whether a person turns up. Description,
+category, series, capacity, RSVP settings and image do not, and a notification
+that goes out for those is one that gets filtered, taking the date change with
+it. What is compared is the **formatted** value, so a change invisible to a
+reader cannot produce an email.
+
+**The meeting link is the fourth fact (3.140.0), as a fingerprint.**
+`movable_facts()` holds a 16-character hash of `SFAF_Online::link()`, never the
+link, because the link is a credential and the facts are stored in a group
+member's `_uc_moved_from`. The change email says it in a word, Added, Removed or
+Changed, and carries the new link only to a person the confirmation already
+sends it to (`SFAF_Online::joining_html()` for the confirmation, the same two
+gates); where only the reminder carries it, the email says the new link will be
+sent with the reminder. The several-dates email says "Meeting link: changed"
+and carries no link. The dialog compares the link field against the value it
+was drawn with, not against anything stamped, so the editor page holds the link
+only in its own field.
+
+**The time is read as the server folds it (3.140.0).** Since 3.98.0 a time is
+two selects, `start_time_h` and `start_time_m`, folded by
+`sfaf_normalize_time_post()`. The dialog went on reading a field named
+`start_time` that no longer existed, so from 3.98.0 to 3.139.0 every save on an
+event with registrants asked, saying Time changed to "not set".
+`portal.js` `timeNow()` folds the pair by the same rule.
+`.claude/release-31400-live.php` saves with RSVP turned off and on and asserts
+nothing is asked.
 
 ### Consent to send is one answer, given at the moment of saving
 
@@ -6151,7 +6173,7 @@ unrecognised value, or a form posted with scripting off all mean silence.
 > ticked box fails open, so anything that posted to the save route mailed
 > everybody. This fails closed.
 
-**Asked only when there is something to ask about**: one of the four fields
+**Asked only when there is something to ask about**: one of the four facts
 actually changed AND somebody is registered for it. Otherwise the save goes
 straight through. A click in the way of a save that cannot email anybody
 teaches people to dismiss dialogs, which is how the next real question gets
@@ -6941,7 +6963,11 @@ consent wording reviewed.
 ### Who gets it: the recipient list (3.131.0)
 
 **Email registrants and Text registrants share one recipient list**, under the
-message (`SFAF_Portal::render_recipient_picker()`, `initRecipientList()` in
+message, each with **Include the waitlist** (Text registrants from 3.140.0:
+`SFAF_Texts::plan( $event_id, true )` lists the waiting rows, hidden until the
+tick, and `send_update()` reaches them only when `tr_waitlist` is posted; the
+morning-of reminder never does), and the list is drawn
+by `SFAF_Portal::render_recipient_picker()` (`initRecipientList()` in
 portal.js): every registrant it can reach is ticked, Text registrants listing
 only who chose Text or WhatsApp and showing why anybody unticked cannot be
 reached; a search box over name, email and phone that hides rows and never

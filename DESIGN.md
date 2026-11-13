@@ -1804,6 +1804,22 @@ Built from components already on the page; nothing here is a new colour.
 | 0 of 600 characters. By text, about 1 piece. | `.uc-hint.uc-tr-count` under the message box | the hint's type |
 | What can I send by WhatsApp? | a closed `details` under the count, the chevron then the words | 13px/600 `--uc-accent-text`; open, a `--p-border` box, 8px radius, 12px by 14px |
 
+### Should they be told?, Series & Categories, the series People (3.140.0)
+
+Built from components already on the page; nothing here is a new colour.
+Measured in Chrome by `.claude/release-31400-live.php` at 1280px and 390px.
+
+| Part | What it is | Values |
+|---|---|---|
+| Should they be told? | the notify dialog, `.uc-notify-quiet-back`, 620px wide on a desktop | one row: Back to the form, the quiet `.uc-action-link`, at the left (`margin-right: auto`); Save without telling them, R; Save and email them, `.uc-btn-go` #15803D. At 600px and under the two buttons stack full width, the outline first, and the link sits centred under them |
+| A meeting link change | a row of the dialog's change list with one value, no strike and no arrow | "Meeting link", then Added, Removed or Changed |
+| Series and Categories | `.uc-view-tabs`, Pending's tabs, the count after each name | the tab is in the URL (`?tab=categories`); no list folds on either |
+| + New series, Create a category | the yellow primary, `.uc-btn-sm`, at the right of the section head (`.uc-section-head-act`) | under the heading and its line on a phone |
+| The series search | `.uc-filters-bar` in the card, over the table; `data-uc-filter` narrows the rows as you type, `?q=` without a script | "No series match." in `.uc-empty` when nothing does |
+| A category's line | `.uc-muted` under the name | "Pink, hand · 225 events" |
+| Slugs that are not their names | the attention note, at the foot of the Series tab, for calendar admins only | unchanged |
+| People, on the series page | `.uc-rcpt-more` `details`, closed: "People", the count in `--p-muted` 400 ("1 chosen"), the chevron | the boxes under it, 6px apart; the count follows the ticks |
+
 ---
 
 ## 5. CSS discipline
