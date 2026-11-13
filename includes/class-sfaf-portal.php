@@ -1652,9 +1652,9 @@ class SFAF_Portal {
                 }
                 if ( is_wp_error( $saved ) ) {
                     set_transient( 'sfaf_category_error_' . $user->ID, $saved->get_error_message(), 60 );
-                    $this->redirect( 'series', array( 'msg' => 'category_failed' ) );
+                    $this->redirect( 'series', array( 'tab' => 'categories', 'msg' => 'category_failed' ) );
                 }
-                $this->redirect( 'series', array( 'msg' => 'category_saved' ) );
+                $this->redirect( 'series', array( 'tab' => 'categories', 'msg' => 'category_saved' ) );
                 break;
 
             case 'delete_category':
@@ -1662,9 +1662,9 @@ class SFAF_Portal {
                 $gone = SFAF_Categories::delete( isset( $_POST['category_id'] ) ? intval( $_POST['category_id'] ) : 0 );
                 if ( is_wp_error( $gone ) ) {
                     set_transient( 'sfaf_category_error_' . $user->ID, $gone->get_error_message(), 60 );
-                    $this->redirect( 'series', array( 'msg' => 'category_failed' ) );
+                    $this->redirect( 'series', array( 'tab' => 'categories', 'msg' => 'category_failed' ) );
                 }
-                $this->redirect( 'series', array( 'msg' => 'category_deleted', 'freed' => (int) $gone ) );
+                $this->redirect( 'series', array( 'tab' => 'categories', 'msg' => 'category_deleted', 'freed' => (int) $gone ) );
                 break;
 
             /* ---- Venues. A name and an address, and events point at them. -- */
@@ -2477,7 +2477,7 @@ class SFAF_Portal {
                 $tr_only = self::picked_ids( 'tr' );
                 set_transient( 'sfaf_tr_said_' . $user->ID, ( null !== $tr_only && ! $tr_only )
                     ? array( 'error' => 'Tick at least one person to send to.' )
-                    : SFAF_Texts::send_update( $event_id, wp_unslash( $_POST['tr_message'] ?? '' ), (int) $user->ID, $tr_only ), 5 * MINUTE_IN_SECONDS );
+                    : SFAF_Texts::send_update( $event_id, wp_unslash( $_POST['tr_message'] ?? '' ), (int) $user->ID, $tr_only, ! empty( $_POST['tr_waitlist'] ) ), 5 * MINUTE_IN_SECONDS );
                 $this->redirect( 'rsvps', array( 'event_id' => $event_id ) );
                 break;
 
@@ -4088,10 +4088,18 @@ class SFAF_Portal {
         $start    = (string) get_post_meta( $event_id, '_uc_start_time', true );
         $end      = (string) get_post_meta( $event_id, '_uc_end_time', true );
 
+        /*
+         * THE MEETING LINK AS A FINGERPRINT, NEVER THE LINK (3.140.0). A new
+         * link is a move: the old one stops working. The link is a credential
+         * (SFAF_Online), so what is compared and stored in the group's
+         * snapshot is a hash of it, and the change email says it in a word.
+         */
+        $link = SFAF_Online::link( $event_id );
         return array(
-            'Date'     => '' !== $date ? sfaf_ap_date( $date, 'full' ) : '',
-            'Time'     => sfaf_ap_time_range( $start, $end ),
-            'Location' => (string) sfaf_event_location( $event_id ),
+            'Date'         => '' !== $date ? sfaf_ap_date( $date, 'full' ) : '',
+            'Time'         => sfaf_ap_time_range( $start, $end ),
+            'Location'     => (string) sfaf_event_location( $event_id ),
+            'Meeting link' => '' !== $link ? substr( hash( 'sha256', $link ), 0, 16 ) : '',
         );
     }
 
@@ -10546,16 +10554,24 @@ class SFAF_Portal {
                     <?php endforeach; ?>
                 </fieldset>
             <?php endif; ?>
-            <?php if ( $people ) : ?>
-                <fieldset class="uc-field">
-                    <legend class="uc-field-label">People</legend>
-                    <?php foreach ( $people as $pid => $pname ) : ?>
-                        <label class="uc-check">
-                            <input type="checkbox" name="series_def_notify_users[]" value="<?php echo (int) $pid; ?>" <?php checked( in_array( (int) $pid, $d['notify_users'], true ) ); ?> />
-                            <?php echo esc_html( $pname ); ?>
-                        </label>
-                    <?php endforeach; ?>
-                </fieldset>
+            <?php if ( $people ) :
+                // Folded, saying how many are chosen (3.140.0); portal.js keeps the count.
+                $chosen = count( array_intersect( array_map( 'intval', array_keys( $people ) ), array_map( 'intval', (array) $d['notify_users'] ) ) );
+                ?>
+                <div class="uc-field">
+                    <details class="uc-rcpt-more uc-people-fold" data-uc-people-fold>
+                        <summary><span>People</span> <span class="uc-muted" data-uc-people-count><?php echo esc_html( $chosen . ' chosen' ); ?></span> <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '14px' ) ); ?></span></summary>
+                        <fieldset class="uc-people-fold-list">
+                            <legend class="uc-visually-hidden">People</legend>
+                            <?php foreach ( $people as $pid => $pname ) : ?>
+                                <label class="uc-check">
+                                    <input type="checkbox" name="series_def_notify_users[]" value="<?php echo (int) $pid; ?>" <?php checked( in_array( (int) $pid, $d['notify_users'], true ) ); ?> />
+                                    <?php echo esc_html( $pname ); ?>
+                                </label>
+                            <?php endforeach; ?>
+                        </fieldset>
+                    </details>
+                </div>
             <?php endif; ?>
             <label class="uc-field">
                 <span class="uc-field-label">Anyone else</span>
@@ -10711,152 +10727,134 @@ class SFAF_Portal {
     private function render_series_list( $user ) {
         $this->chrome_open( $user, 'series' );
         $series = SFAF_Series::all();
+        $cats   = SFAF_Categories::all();
+        /*
+         * TWO TABS, NOT TWO FOLDED SECTIONS (3.140.0). The tab is in the URL,
+         * so a category's Edit, its save and its delete come back to it, and
+         * nothing needs a script. Built from Pending's .uc-view-tabs.
+         */
+        $tab = ( isset( $_GET['tab'] ) && 'categories' === $_GET['tab'] ) ? 'categories' : 'series';
+        if ( isset( $_GET['cat_edit'] ) || ! empty( $_GET['cat_new'] ) ) {
+            $tab = 'categories';
+        }
+        $base = $this->url( 'series' );
         ?>
         <div class="uc-page-head">
             <h1>Series &amp; Categories</h1>
         </div>
 
+        <div class="uc-view-tabs" role="navigation" aria-label="Series or categories" data-uc-series-tabs>
+            <?php foreach ( array( 'series' => array( 'Series', count( $series ) ), 'categories' => array( 'Categories', count( $cats ) ) ) as $key => $t ) :
+                $on  = ( $key === $tab );
+                $url = 'series' === $key ? $base : add_query_arg( 'tab', 'categories', $base );
+                ?>
+                <a class="uc-view-tab<?php echo $on ? ' uc-view-tab-active' : ''; ?>" href="<?php echo esc_url( $url ); ?>"<?php echo $on ? ' aria-current="page"' : ''; ?>>
+                    <?php echo esc_html( $t[0] ); ?>
+                    <span class="uc-tab-count"><?php echo (int) $t[1]; ?></span>
+                </a>
+            <?php endforeach; ?>
+        </div>
+
         <?php
-        /*
-         * TWO SECTIONS ON ONE PAGE, the same shape as Users and Permissions.
-         *
-         * Both answer "how is the programming organised": a series is one
-         * event and all of its dates, a category is what KIND of event it is.
-         * Neither is site configuration, which is the same reasoning that
-         * moved venues out of the WordPress admin in 3.13.0 and series before
-         * them. Managers work here; they do not open wp-admin.
-         */
+        if ( 'categories' === $tab ) {
+            $this->render_categories( $user );
+            $this->chrome_close();
+            return;
+        }
+
+        // The search works without a script too: ?q= narrows the list here.
+        $q     = isset( $_GET['q'] ) ? trim( sanitize_text_field( wp_unslash( $_GET['q'] ) ) ) : '';
+        $shown = '' === $q ? $series : array_values( array_filter( $series, function ( $term ) use ( $q ) {
+            return false !== stripos( $term->name, $q );
+        } ) );
         ?>
         <section class="uc-section" id="uc-series">
-            <div class="uc-section-head">
-                <h2>Series</h2>
-                <p class="uc-section-sub">An event and all of its dates, with the pattern it runs on.</p>
-            </div>
-            <?php $this->render_not_their_name( 'uc_series' ); ?>
-
-        <p class="uc-help">
-            Open a series to change the day or the time of everything still to come, add a date, or take one off.
-            To start a series, set a repeat on a new event; create one here only for a program whose dates are not known yet.
-        </p>
-
-        <div class="uc-card">
-            <?php
-            /*
-             * THE LIST FOLDS AWAY (3.76.0), AND THE DEFAULT IS A RULE RATHER
-             * THAN A NUMBER SOMEBODY CHOSE.
-             *
-             * Twenty-five series is a long scroll to reach the form under them,
-             * and seven categories is not. The obvious answer is "collapse
-             * series, open categories", and it is the wrong shape: it is two
-             * decisions taken against today's counts, and the seventh category
-             * becomes the fortieth without anybody revisiting them.
-             *
-             * SO IT IS ONE THRESHOLD, ASKED OF THE LIST. Short lists open, long
-             * ones fold, and both screens use the same number. Today that means
-             * categories open and series folded, which is the behaviour asked
-             * for, and it goes on being right when the counts move.
-             *
-             * A NATIVE <details>, so it works with nothing running. Same as the
-             * schedule's past dates, the picture chooser and the form-link
-             * disclosure. No scripted show and hide anywhere near it.
-             */
-            ?>
-            <details class="uc-list-fold"<?php echo sfaf_fold_open( count( $series ) ) ? ' open' : ''; ?>>
-                <summary class="uc-card-head uc-list-fold-head">
-                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
-                    <?php // "series" is the same word either way, so no plural test. ?>
-                    <h2><?php echo count( $series ); ?> series</h2>
-                </summary>
-            <?php if ( empty( $series ) ) : ?>
-                <p class="uc-empty">No series yet. Set a repeat on a new event and one is made for it.</p>
-            <?php else : ?>
-                <table class="uc-table uc-table-cards">
-                    <thead><tr><th></th><th>Series</th><th>Schedule</th><th>Upcoming</th><th>Next date</th><th class="uc-col-actions">Actions</th></tr></thead>
-                    <tbody>
-                    <?php foreach ( $series as $term ) :
-                        $edit  = $this->url( 'series/edit/' . $term->term_id );
-                        $count = SFAF_Series::upcoming_count( $term->term_id );
-                        $next  = SFAF_Series::next_date( $term->term_id );
-                        $img   = SFAF_Series::image_url( $term->term_id, 'medium' );
-                        ?>
-                        <tr>
-                            <td class="uc-series-thumb"><a href="<?php echo esc_url( $edit ); ?>"><?php
-                                if ( $img ) {
-                                    echo '<img src="' . esc_url( $img ) . '" alt="" />';
-                                } else {
-                                    echo '<span class="uc-series-thumb-none" aria-hidden="true">' . sfaf_icon( 'calendar', array( 'size' => '18px' ) ) . '</span>';
-                                }
-                            ?></a></td>
-                            <td><a class="uc-tlink" href="<?php echo esc_url( $edit ); ?>"><strong><?php echo esc_html( $term->name ); ?></strong></a></td>
-                            <td><?php
-                                /*
-                                 * THE CADENCE, IN THE LIST. It has been stored
-                                 * since 3.0.0 and shown nowhere, so a manager
-                                 * scanning this screen could not tell a weekly
-                                 * group from a one-off without opening it.
-                                 */
-                                $row_ids = SFAF_Series::events( $term->term_id, array( 'upcoming' => true, 'status' => SFAF_Series::editable_statuses(), 'limit' => 1 ) );
-                                if ( empty( $row_ids ) ) {
-                                    $row_ids = SFAF_Series::events( $term->term_id, array( 'status' => SFAF_Series::editable_statuses(), 'limit' => 1 ) );
-                                }
-                                if ( empty( $row_ids ) ) {
-                                    echo '<span class="uc-muted">No dates yet</span>';
-                                } else {
-                                    $rid  = (int) $row_ids[0];
-                                    $line = SFAF_Recurrence::schedule_sentence(
-                                        SFAF_Recurrence::pattern_of( $rid ),
-                                        (string) get_post_meta( $rid, '_uc_event_date', true ),
-                                        (string) get_post_meta( $rid, '_uc_start_time', true ),
-                                        (string) get_post_meta( $rid, '_uc_end_time', true )
-                                    );
-                                    echo esc_html( $line );
-                                }
-                            ?></td>
-                            <td><?php echo (int) $count; ?></td>
-                            <td><?php
-                                // "No dates yet" rather than a dash. An empty
-                                // series is a normal state, not a fault, and a
-                                // dash makes a manager go looking for the fault.
-                                echo $next
-                                    ? esc_html( sfaf_ap_date( $next, 'short_year' ) )
-                                    : '<span class="uc-muted">No dates yet</span>';
-                            ?></td>
-                            <td class="uc-row-actions">
-                                <div class="uc-actions">
-                                    <a class="uc-action-link" href="<?php echo esc_url( $edit ); ?>">Schedule</a>
-                                    <a class="uc-action-link" href="<?php echo esc_url( SFAF_Series::url( $term->term_id ) ); ?>" target="_blank" rel="noopener">View</a>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php endif; ?>
-            </details>
-
-            <?php
-            /*
-             * "NEW SERIES" SITS AT THE BOTTOM, LIKE "CREATE A CATEGORY".
-             *
-             * It was in the page head, above both sections, which put the
-             * rarest control on this screen in the most prominent place and
-             * made the two halves of the page work differently: one section
-             * offered its "add" at the top, the other at the foot of its list.
-             * Both are now "here is what exists, and here is how to add one".
-             */
-            ?>
-            <?php if ( $this->can_view_all( $user ) ) : ?>
-                <div class="uc-cat-new">
-                    <a href="<?php echo esc_url( $this->url( 'series/new' ) ); ?>" class="uc-btn uc-btn-sm uc-btn-primary">+ New series</a>
+            <div class="uc-section-head uc-section-head-act">
+                <div>
+                    <h2>Series</h2>
+                    <p class="uc-section-sub">Each series groups an event's dates. Open one to change its schedule or details.</p>
                 </div>
-            <?php endif; ?>
-        </div>
-        </section>
+                <?php if ( $this->can_view_all( $user ) ) : ?>
+                    <a href="<?php echo esc_url( $this->url( 'series/new' ) ); ?>" class="uc-btn uc-btn-sm uc-btn-primary" data-uc-series-new>+ New series</a>
+                <?php endif; ?>
+            </div>
 
-        <?php $this->render_categories( $user ); ?>
+            <div class="uc-card" data-uc-filter-scope>
+                <?php if ( empty( $series ) ) : ?>
+                    <p class="uc-empty">No series yet. Set a repeat on a new event and one is made for it.</p>
+                <?php else : ?>
+                    <form method="get" action="<?php echo esc_url( $base ); ?>" class="uc-filters-bar uc-series-search">
+                        <label class="uc-visually-hidden" for="uc-series-q">Search series</label>
+                        <input type="search" id="uc-series-q" name="q" value="<?php echo esc_attr( $q ); ?>" placeholder="Search series" autocomplete="off" data-uc-filter />
+                        <button type="submit" class="uc-btn uc-btn-sm">Search</button>
+                    </form>
+                    <p class="uc-empty" data-uc-filter-empty<?php echo ( '' === $q || $shown ) ? ' hidden' : ''; ?>>No series match.</p>
+                    <table class="uc-table uc-table-cards uc-series-table">
+                        <thead><tr><th></th><th>Series</th><th>Schedule</th><th>Upcoming</th><th>Next date</th><th class="uc-col-actions">Actions</th></tr></thead>
+                        <tbody data-uc-filter-list>
+                        <?php foreach ( $shown as $term ) :
+                            $edit  = $this->url( 'series/edit/' . $term->term_id );
+                            $count = SFAF_Series::upcoming_count( $term->term_id );
+                            $next  = SFAF_Series::next_date( $term->term_id );
+                            $img   = SFAF_Series::image_url( $term->term_id, 'medium' );
+                            $hay   = function_exists( 'mb_strtolower' ) ? mb_strtolower( $term->name ) : strtolower( $term->name );
+                            ?>
+                            <tr data-uc-filter-text="<?php echo esc_attr( $hay ); ?>">
+                                <td class="uc-series-thumb"><a href="<?php echo esc_url( $edit ); ?>"><?php
+                                    if ( $img ) {
+                                        echo '<img src="' . esc_url( $img ) . '" alt="" />';
+                                    } else {
+                                        echo '<span class="uc-series-thumb-none" aria-hidden="true">' . sfaf_icon( 'calendar', array( 'size' => '18px' ) ) . '</span>';
+                                    }
+                                ?></a></td>
+                                <td><a class="uc-tlink" href="<?php echo esc_url( $edit ); ?>"><strong><?php echo esc_html( $term->name ); ?></strong></a></td>
+                                <td><?php
+                                    // The cadence, from the first upcoming date, else the first date.
+                                    $row_ids = SFAF_Series::events( $term->term_id, array( 'upcoming' => true, 'status' => SFAF_Series::editable_statuses(), 'limit' => 1 ) );
+                                    if ( empty( $row_ids ) ) {
+                                        $row_ids = SFAF_Series::events( $term->term_id, array( 'status' => SFAF_Series::editable_statuses(), 'limit' => 1 ) );
+                                    }
+                                    if ( empty( $row_ids ) ) {
+                                        echo '<span class="uc-muted">No dates yet</span>';
+                                    } else {
+                                        $rid = (int) $row_ids[0];
+                                        echo esc_html( SFAF_Recurrence::schedule_sentence(
+                                            SFAF_Recurrence::pattern_of( $rid ),
+                                            (string) get_post_meta( $rid, '_uc_event_date', true ),
+                                            (string) get_post_meta( $rid, '_uc_start_time', true ),
+                                            (string) get_post_meta( $rid, '_uc_end_time', true )
+                                        ) );
+                                    }
+                                ?></td>
+                                <td><?php echo (int) $count; ?></td>
+                                <td><?php
+                                    echo $next
+                                        ? esc_html( sfaf_ap_date( $next, 'short_year' ) )
+                                        : '<span class="uc-muted">No dates yet</span>';
+                                ?></td>
+                                <td class="uc-row-actions">
+                                    <div class="uc-actions">
+                                        <a class="uc-action-link" href="<?php echo esc_url( $edit ); ?>">Schedule</a>
+                                        <a class="uc-action-link" href="<?php echo esc_url( SFAF_Series::url( $term->term_id ) ); ?>" target="_blank" rel="noopener">View</a>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
+            </div>
+            <?php
+            // Slugs left from an old name: for calendar admins, at the foot of the tab (3.140.0).
+            if ( $this->can_view_all( $user ) ) {
+                $this->render_not_their_name( 'uc_series' );
+            }
+            ?>
+        </section>
         <?php
         $this->chrome_close();
     }
+
 
     /**
      * Categories: what KIND of event this is, with the colour and icon that
@@ -10892,7 +10890,7 @@ class SFAF_Portal {
 
         $editing  = isset( $_GET['cat_edit'] ) ? (int) $_GET['cat_edit'] : 0;
         $creating = ! empty( $_GET['cat_new'] );
-        $base     = $this->url( 'series' );
+        $base     = add_query_arg( 'tab', 'categories', $this->url( 'series' ) );
 
         $err = get_transient( 'sfaf_category_error_' . $user->ID );
         if ( false !== $err ) {
@@ -10900,19 +10898,24 @@ class SFAF_Portal {
         }
         ?>
         <section class="uc-section" id="uc-categories">
-            <div class="uc-section-head">
-                <h2>Categories</h2>
-                <p class="uc-section-sub">What kind of event this is. The color and icon are what a card and its placeholder are drawn from.</p>
+            <div class="uc-section-head uc-section-head-act">
+                <div>
+                    <h2>Categories</h2>
+                    <p class="uc-section-sub">What kind of event this is. The color and icon are what a card and its placeholder are drawn from.</p>
+                </div>
+                <?php if ( $can_edit && ! $creating ) : ?>
+                    <a class="uc-btn uc-btn-sm uc-btn-primary" href="<?php echo esc_url( add_query_arg( 'cat_new', 1, $base ) . '#uc-categories' ); ?>" data-uc-cat-create>Create a category</a>
+                <?php endif; ?>
             </div>
             <?php $this->render_not_their_name( 'uc_event_category' ); ?>
 
             <div class="uc-card">
-                <?php // The same fold and the same threshold as the series list above. ?>
-                <details class="uc-list-fold"<?php echo sfaf_fold_open( count( $cats ) ) ? ' open' : ''; ?>>
-                <summary class="uc-card-head uc-list-fold-head">
-                    <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '16px' ) ); ?></span>
-                    <h2><?php echo count( $cats ); ?> <?php echo esc_html( 1 === count( $cats ) ? 'category' : 'categories' ); ?></h2>
-                </summary>
+                <?php // No fold (3.140.0): the tab is the section. A new category's form opens at the top. ?>
+                <?php if ( $can_edit && $creating ) : ?>
+                    <div class="uc-cat-new uc-cat-new-top">
+                        <?php $this->render_category_form( null, $base ); ?>
+                    </div>
+                <?php endif; ?>
 
                 <?php if ( $err ) : ?>
                     <div class="uc-flash uc-flash-error"><?php echo esc_html( $err ); ?></div>
@@ -10942,9 +10945,8 @@ class SFAF_Portal {
                                     <span class="uc-cat-id">
                                         <strong><?php echo esc_html( $cat->name ); ?></strong>
                                         <span class="uc-muted">
-                                            <?php echo esc_html( $palette[ $color ] ); ?>,
-                                            <?php echo esc_html( isset( $icons[ $icon ] ) ? strtolower( $icons[ $icon ] ) : $icon ); ?> icon,
-                                            <?php echo (int) $used; ?> <?php echo esc_html( 1 === $used ? 'event' : 'events' ); ?>
+                                            <?php // "Pink, hand · 225 events" (3.140.0). ?>
+                                            <?php echo esc_html( $palette[ $color ] . ', ' . ( isset( $icons[ $icon ] ) ? strtolower( $icons[ $icon ] ) : $icon ) . ' · ' . $used . ' ' . ( 1 === $used ? 'event' : 'events' ) ); ?>
                                         </span>
                                     </span>
                                     <?php if ( $can_edit ) : ?>
@@ -10968,17 +10970,6 @@ class SFAF_Portal {
                             </li>
                         <?php endforeach; ?>
                     </ul>
-                <?php endif; ?>
-                </details>
-
-                <?php if ( $can_edit ) : ?>
-                    <div class="uc-cat-new">
-                        <?php if ( ! $creating ) : ?>
-                            <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( add_query_arg( 'cat_new', 1, $base ) . '#uc-categories' ); ?>">Create a category</a>
-                        <?php else : ?>
-                            <?php $this->render_category_form( null, $base ); ?>
-                        <?php endif; ?>
-                    </div>
                 <?php endif; ?>
             </div>
         </section>
@@ -19785,7 +19776,10 @@ class SFAF_Portal {
      * See SFAF_Texts.
      */
     private function render_text_registrants( $user, $event_id ) {
-        $plan = SFAF_Texts::plan( $event_id );
+        // The waitlist is listed and shown by its tick (3.140.0), as in Email registrants.
+        $plan    = SFAF_Texts::plan( $event_id, true );
+        $tr_wait = SFAF_Waitlist::waiting_statuses();
+        $is_wait = function ( $p ) use ( $tr_wait ) { return in_array( (string) $p['row']->status, $tr_wait, true ); };
         if ( ! $plan && ! SFAF_Texts::sms_on() ) {
             return;
         }
@@ -19801,7 +19795,7 @@ class SFAF_Portal {
             'stopped'      => 'Nothing: this number sent STOP',
             'no_number'    => 'Nothing: no number',
         );
-        $to      = count( array_filter( $plan, function ( $p ) { return in_array( $p['state'], array( 'sms', 'whatsapp' ), true ); } ) );
+        $to      = count( array_filter( $plan, function ( $p ) use ( $is_wait ) { return ! $is_wait( $p ) && in_array( $p['state'], array( 'sms', 'whatsapp' ), true ); } ) );
         $wa_off  = count( array_filter( $plan, function ( $p ) { return 'whatsapp_off' === $p['state']; } ) );
         $log     = SFAF_Texts::log( $event_id );
         // The list (3.131.0): only who chose Text or WhatsApp, ticked when it
@@ -19812,7 +19806,7 @@ class SFAF_Portal {
             $tr_people[] = array(
                 'id' => (int) $p['row']->id, 'name' => SFAF_RSVP::display_name( $p['row'] ),
                 'detail' => trim( (string) $p['row']->phone ), 'how' => isset( $how[ $p['state'] ] ) ? $how[ $p['state'] ] : '',
-                'how_key' => $p['state'], 'reach' => in_array( $p['state'], array( 'sms', 'whatsapp' ), true ), 'wait' => false,
+                'how_key' => $p['state'], 'reach' => in_array( $p['state'], array( 'sms', 'whatsapp' ), true ), 'wait' => $is_wait( $p ),
                 'lang' => SFAF_Texts::lang_of( $p['row'] ),
             );
             $tr_names[ (int) $p['row']->id ] = SFAF_RSVP::display_name( $p['row'] );
@@ -19887,6 +19881,12 @@ class SFAF_Portal {
                                 </div>
                             </details>
                         <?php endif; ?>
+                        <div class="uc-rm-ticks">
+                            <label class="uc-check">
+                                <input type="checkbox" name="tr_waitlist" value="1" data-uc-rm-waitlist />
+                                Include the waitlist
+                            </label>
+                        </div>
                         <?php $this->render_recipient_picker( 'tr', $event_id, $tr_people, $log, 'message' ); ?>
                         <div class="uc-form-actions">
                             <button type="submit" class="uc-btn uc-btn-go" data-uc-tr-send<?php disabled( 0 === $to ); ?>

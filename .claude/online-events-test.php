@@ -286,6 +286,10 @@ $WHITELIST = array(
     // 3.106.0: the two above reach the link through this, and it reads it only
     // after SFAF_Online::joining_html() has answered with a block, the gate itself.
     'class-sfaf-notifications.php::joining'            => 'the confirmation and reminder variant, after the gate has passed',
+    // 3.140.0: a new link is a move. The change email carries it only through
+    // SFAF_Online::joining_html() for the confirmation, the same gate.
+    'class-sfaf-notifications.php::build_changed'      => 'the change email, only to a person the confirmation already sends it to',
+    'class-sfaf-portal.php::movable_facts'             => 'a 16-character hash of it, to see that it moved; the link itself is never stored or printed',
 
     'sfaf-calendar.php::sfaf_output_ics' => 'the .ics, and only on a request carrying a valid join token',
 

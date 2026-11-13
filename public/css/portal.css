@@ -1680,6 +1680,14 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-section-head h2 { margin: 0 0 4px; font-size: 20px; font-weight: 700;
     font-family: var(--uc-font-heading); color: var(--sfaf-darkgray); }
 .uc-section-sub { margin: 0; font-size: 13px; color: var(--p-muted); }
+/* A section's add button at the right of its heading (3.140.0): + New series,
+   Create a category. Under the heading on a phone. */
+.uc-section-head-act { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; }
+.uc-section-head-act > .uc-btn { flex: 0 0 auto; }
+/* The series search sits over the table, inside the card. */
+.uc-series-search { margin-bottom: 14px; }
+.uc-series-table tr[hidden] { display: none; }
+.uc-cat-new.uc-cat-new-top { margin: 0 0 16px; padding-top: 0; border-top: 0; }
 
 /* ---------- Users ---------- */
 /* Layout only. The box is the baseline's. */
@@ -2006,6 +2014,9 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-sl-note { color: var(--p-muted); }
 .uc-rcpt-more > summary { display: inline-flex; align-items: center; gap: 6px; list-style: none; cursor: pointer; font-size: 13px; font-weight: 600; }
 .uc-rcpt-more > summary::-webkit-details-marker { display: none; }
+/* The series page's People, folded (3.140.0): the count in the muted ink. */
+.uc-people-fold > summary .uc-muted { font-weight: 400; }
+.uc-people-fold-list { display: grid; gap: 6px; margin: 10px 0 0; padding: 0; border: 0; min-width: 0; }
 .uc-rcpt-pool { margin-top: 8px; }
 .uc-rcpt-pool .uc-email-pill input:not(:checked) ~ .uc-email-pill-text { text-decoration: none; opacity: 1; }
 .uc-rcpt-pool .uc-email-pill-x { display: none; }
@@ -2550,6 +2561,18 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-notify-arrow { color: var(--p-muted, #6B6764); padding: 0 4px; }
 .uc-notify-changes li > span:not(.uc-notify-change-label) { display: inline; }
 .uc-notify-actions { flex-wrap: wrap; }
+/* SHOULD THEY BE TOLD? ON ONE ROW (3.140.0): Back to the form a quiet link
+   (.uc-action-link) at the left, then the teal outline, then the green. Wide
+   enough on a desktop for the three; on a phone they stack. */
+.uc-notify-modal.uc-notify-quiet-back { width: min(620px, calc(100vw - 32px)); }
+.uc-notify-quiet-back .uc-notify-actions { flex-wrap: nowrap; align-items: center; }
+.uc-notify-quiet-back .uc-notify-actions .uc-btn { white-space: nowrap; }
+.uc-portal .uc-notify-quiet-back .uc-notify-back { margin-right: auto; }
+@media (max-width: 600px) {
+    .uc-notify-quiet-back .uc-notify-actions { flex-wrap: wrap; justify-content: flex-start; }
+    .uc-notify-quiet-back .uc-notify-actions .uc-btn { flex: 1 1 100%; justify-content: center; }
+    .uc-portal .uc-notify-quiet-back .uc-notify-back { order: 3; margin: 6px auto 0; }
+}
 
 /* ---------- Settings ---------- */
 .uc-settings-section h2 { margin-bottom: 14px; }

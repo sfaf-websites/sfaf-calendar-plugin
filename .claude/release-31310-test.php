@@ -128,9 +128,11 @@ class Tw_Db extends wpdb {
         return null;
     }
     function get_results( $sql ) {
-        if ( preg_match( "/event_id = (\d+) AND status = 'confirmed' AND text_channel IN/", $sql, $m ) ) {
-            return array_values( array_filter( $this->rsvps, function ( $r ) use ( $m ) {
-                return (int) $r->event_id === (int) $m[1] && 'confirmed' === $r->status && in_array( $r->text_channel, array( 'sms', 'whatsapp' ), true );
+        // Confirmed, or with the waitlist as status IN (...) (3.140.0).
+        if ( preg_match( "/event_id = (\d+) AND status (?:= 'confirmed'|IN \(([^)]*)\)) AND text_channel IN/", $sql, $m ) ) {
+            $ok = ( isset( $m[2] ) && '' !== $m[2] ) ? array_map( function ( $s ) { return trim( $s, " '" ); }, explode( ',', $m[2] ) ) : array( 'confirmed' );
+            return array_values( array_filter( $this->rsvps, function ( $r ) use ( $m, $ok ) {
+                return (int) $r->event_id === (int) $m[1] && in_array( $r->status, $ok, true ) && in_array( $r->text_channel, array( 'sms', 'whatsapp' ), true );
             } ) );
         }
         if ( preg_match( "/phone LIKE '%(\d+)'/", $sql, $m ) ) {

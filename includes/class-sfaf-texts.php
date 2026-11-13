@@ -341,13 +341,24 @@ class SFAF_Texts {
         return array( 'channel' => $channel, 'phone' => $phone, 'state' => $state );
     }
 
-    /** The registrations that chose Text or WhatsApp, confirmed, for one event. */
-    public static function chose( $event_id ) {
+    /**
+     * The registrations that chose Text or WhatsApp, confirmed, for one event,
+     * and with $waitlist the people waiting too (Include the waitlist, 3.140.0).
+     */
+    public static function chose( $event_id, $waitlist = false ) {
         global $wpdb;
         $t = $wpdb->prefix . 'uc_rsvps';
+        if ( ! $waitlist ) {
+            return (array) $wpdb->get_results( $wpdb->prepare(
+                "SELECT * FROM $t WHERE event_id = %d AND status = 'confirmed' AND text_channel IN ('sms','whatsapp') ORDER BY id ASC",
+                (int) $event_id
+            ) );
+        }
+        $statuses = array_merge( array( 'confirmed' ), SFAF_Waitlist::waiting_statuses() );
+        $in       = implode( ',', array_fill( 0, count( $statuses ), '%s' ) );
         return (array) $wpdb->get_results( $wpdb->prepare(
-            "SELECT * FROM $t WHERE event_id = %d AND status = 'confirmed' AND text_channel IN ('sms','whatsapp') ORDER BY id ASC",
-            (int) $event_id
+            "SELECT * FROM $t WHERE event_id = %d AND status IN ($in) AND text_channel IN ('sms','whatsapp') ORDER BY id ASC",
+            array_merge( array( (int) $event_id ), $statuses )
         ) );
     }
 
@@ -609,10 +620,10 @@ class SFAF_Texts {
      *
      * @return array<int,array{row:object,state:string,phone:string}>
      */
-    public static function plan( $event_id ) {
+    public static function plan( $event_id, $waitlist = false ) {
         $out  = array();
         $seen = array();
-        foreach ( self::chose( $event_id ) as $row ) {
+        foreach ( self::chose( $event_id, $waitlist ) as $row ) {
             $reach = self::reach( $row );
             // Neither is nobody's to list, whatever the query handed back.
             if ( 'none' === $reach['state'] ) {
@@ -645,10 +656,11 @@ class SFAF_Texts {
     /**
      * Text registrants: send the message to everybody the plan reaches, or
      * only the registration ids in $only (3.131.0), and log it with who got it.
+     * The waitlist only with $waitlist, its tick (3.140.0).
      *
      * @return array{sms:int,whatsapp:int,failed:int,error?:string}
      */
-    public static function send_update( $event_id, $message, $by_user_id, $only = null ) {
+    public static function send_update( $event_id, $message, $by_user_id, $only = null, $waitlist = false ) {
         $message = self::clean_message( $message );
         if ( '' === $message ) {
             return array( 'sms' => 0, 'whatsapp' => 0, 'failed' => 0, 'error' => 'Write the message first.' );
@@ -656,7 +668,7 @@ class SFAF_Texts {
         $keep = null === $only ? null : array_flip( array_map( 'intval', (array) $only ) );
         $out  = array( 'sms' => 0, 'whatsapp' => 0, 'failed' => 0 );
         $ids  = array();
-        foreach ( self::plan( $event_id ) as $p ) {
+        foreach ( self::plan( $event_id, $waitlist ) as $p ) {
             if ( ! in_array( $p['state'], array( 'sms', 'whatsapp' ), true ) ) {
                 continue;
             }

@@ -824,7 +824,30 @@ class SFAF_Notifications {
          */
         $kinds = array( 'Date' => 'date', 'Time' => 'time', 'Location' => 'location' );
         $rows  = array();
+        $join  = array( 'html' => '', 'text' => '' );
+        $extra = array();
         foreach ( $changes as $label => $pair ) {
+            /*
+             * THE MEETING LINK, SAID IN A WORD (3.140.0). Its two sides are
+             * fingerprints. The new link goes only to a person the event
+             * already sends it to with the confirmation, by SFAF_Online's own
+             * gates; anybody it would reach with the reminder is told so.
+             */
+            if ( 'Meeting link' === $label ) {
+                $word = ( 'not set' === $pair['from'] ) ? 'link_added' : ( ( 'not set' === $pair['to'] ) ? 'link_removed' : 'link_changed' );
+                $rows[ SFAF_Messages::label( 'meeting_link', $lang ) ] = array( '', SFAF_Messages::label( $word, $lang ) );
+                if ( ! $x && 'link_removed' !== $word ) {
+                    $format = self::person_format( $person );
+                    $join   = array(
+                        'html' => SFAF_Online::joining_html( $event_id, 'confirmation', $format, $lang ),
+                        'text' => SFAF_Online::joining_text( $event_id, 'confirmation', $format, $lang ),
+                    );
+                    if ( '' === $join['html'] && '' !== SFAF_Online::joining_html( $event_id, 'reminder', $format, $lang ) ) {
+                        $extra[] = SFAF_Messages::label( 'link_with_reminder', $lang );
+                    }
+                }
+                continue;
+            }
             $kind  = isset( $kinds[ $label ] ) ? $kinds[ $label ] : '';
             $from  = sfaf_ap_restate( $kind, (string) $pair['from'], $lang );
             $to    = sfaf_ap_restate( $kind, (string) $pair['to'], $lang );
@@ -837,6 +860,9 @@ class SFAF_Notifications {
 
         return SFAF_Messages::compose( 'changed', 'default', $lang, self::values( $event_id, $f, $person ), array(
             'changes'   => $rows,
+            'extra'     => $extra,
+            'joining'      => '' !== $join['html'] ? $join['html'] : null,
+            'joining_text' => $join['text'],
             'lead'      => 'now_is',
             'details'   => self::detail_rows( $f ),
             'calendar'  => array( 'label' => 'update_calendar',

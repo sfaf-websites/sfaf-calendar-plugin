@@ -259,6 +259,12 @@ class SFAF_Announce {
                 $bits  = array();
                 $kinds = array( 'Date' => 'date', 'Time' => 'time', 'Location' => 'location' );
                 foreach ( $changes_by_event[ $id ] as $label => $pair ) {
+                    // A meeting link's sides are fingerprints: said in a word (3.140.0).
+                    if ( 'Meeting link' === $label ) {
+                        $word   = ( 'not set' === $pair['from'] ) ? 'link_added' : ( ( 'not set' === $pair['to'] ) ? 'link_removed' : 'link_changed' );
+                        $bits[] = SFAF_Messages::label( 'meeting_link', $lang ) . ': ' . strtolower( SFAF_Messages::label( $word, $lang ) );
+                        continue;
+                    }
                     $kind = isset( $kinds[ $label ] ) ? $kinds[ $label ] : '';
                     $from = sfaf_ap_restate( $kind, (string) $pair['from'], $lang );
                     $to   = sfaf_ap_restate( $kind, (string) $pair['to'], $lang );

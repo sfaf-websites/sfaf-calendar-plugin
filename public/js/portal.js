@@ -156,6 +156,7 @@ function ucDismissOnBackdrop(dialog) {
         run('registrantMail', initRegistrantMail);
         run('recipientList', initRecipientList);
         run('textCount', initTextCount);
+        run('peopleFold', initPeopleFold);
         run('attachment', initAttachment);
         run('checkin', initCheckin);
         run('rsvpFilter', initRsvpFilter);
@@ -4164,6 +4165,20 @@ function ucDismissOnBackdrop(dialog) {
      * puts a searchable box over the select and shows the address box only
      * for Someone else. With no script the select and the box are both there.
      * ------------------------------------------------------------------- */
+    /* The series page's People, folded (3.140.0): the count beside the name
+     * follows the ticks. */
+    function initPeopleFold() {
+        document.querySelectorAll('[data-uc-people-fold]').forEach(function (fold) {
+            var out = fold.querySelector('[data-uc-people-count]');
+            if (!out) { return; }
+            function update() {
+                out.textContent = fold.querySelectorAll('input[type="checkbox"]:checked').length + ' chosen';
+            }
+            fold.addEventListener('change', update);
+            update();
+        });
+    }
+
     function initReplyTo() {
         document.querySelectorAll('[data-uc-replyto]').forEach(function (root) {
             var select = root.querySelector('[data-uc-replyto-pick]');
@@ -6743,6 +6758,37 @@ function ucDismissOnBackdrop(dialog) {
         return fallback ? fallback.value.trim() : '';
     }
 
+    /* A time as the server will store it. Since 3.98.0 a time is two selects,
+     * <name>_h and <name>_m, folded by sfaf_normalize_time_post(): no hour is
+     * no time, no minute is :00. Until 3.140.0 this read a field named
+     * start_time, which no longer exists, so every save reported the time as
+     * "not set". A plain field of the name, where one exists, still wins. */
+    function timeNow(form, name) {
+        var plain = form.querySelector('[name="' + name + '"]');
+        if (plain) { return plain.value; }
+        var h = form.querySelector('[name="' + name + '_h"]');
+        var m = form.querySelector('[name="' + name + '_m"]');
+        var hv = h ? String(h.value).replace(/\D/g, '') : '';
+        if (!hv) { return ''; }
+        var mv = m ? String(m.value).replace(/\D/g, '') : '';
+        var hi = parseInt(hv, 10), mi = mv ? parseInt(mv, 10) : 0;
+        if (hi > 23 || mi > 59) { return ''; }
+        return ('0' + hi).slice(-2) + ':' + ('0' + mi).slice(-2);
+    }
+
+    /* The meeting link as SFAF_Online::link() answers it: '' unless the event
+     * is online or hybrid. `initial` reads what the form was drawn with. */
+    function meetingLink(form, initial) {
+        var url = form.querySelector('input[name="meeting_url"]');
+        if (!url) { return ''; }
+        var on = false;
+        ['data-uc-online-toggle', 'data-uc-hybrid-toggle'].forEach(function (a) {
+            var t = form.querySelector('[' + a + ']');
+            if (t && (initial ? t.defaultChecked : t.checked)) { on = true; }
+        });
+        return on ? String(initial ? url.defaultValue : url.value).trim() : '';
+    }
+
     function factsNow(form) {
         function val(name) {
             var el = form.querySelector('[name="' + name + '"]');
@@ -6750,20 +6796,26 @@ function ucDismissOnBackdrop(dialog) {
         }
         return {
             Date: apDate(val('date')),
-            Time: apTimeRange(val('start_time'), val('end_time')),
-            Location: locationNow(form)
+            Time: apTimeRange(timeNow(form, 'start_time'), timeNow(form, 'end_time')),
+            Location: locationNow(form),
+            'Meeting link': meetingLink(form, false)
         };
     }
 
     /* movable_diff()'s rule: a fact that was empty and still is has not moved,
-     * and an empty side is written as "not set" rather than as nothing. */
+     * and an empty side is written as "not set" rather than as nothing. The
+     * meeting link is said as Added, Removed or Changed, not printed. */
     function factsDiff(before, after) {
         var out = [];
-        ['Date', 'Time', 'Location'].forEach(function (label) {
+        ['Date', 'Time', 'Location', 'Meeting link'].forEach(function (label) {
             var from = String(before[label] || '');
             var to = String(after[label] || '');
             if (from === to) { return; }
             if (!from && !to) { return; }
+            if ('Meeting link' === label) {
+                out.push({ label: label, from: '', to: !from ? 'Added' : (!to ? 'Removed' : 'Changed') });
+                return;
+            }
             out.push({ label: label, from: from || 'not set', to: to || 'not set' });
         });
         return out;
@@ -6827,19 +6879,23 @@ function ucDismissOnBackdrop(dialog) {
                 var name = document.createElement('span');
                 name.className = 'uc-notify-change-label';
                 name.textContent = c.label;
-                var was = document.createElement('span');
-                was.className = 'uc-notify-was';
-                was.textContent = c.from;
-                var arrow = document.createElement('span');
-                arrow.className = 'uc-notify-arrow';
-                arrow.setAttribute('aria-hidden', 'true');
-                arrow.textContent = '→';
                 var now = document.createElement('span');
                 now.className = 'uc-notify-now';
                 now.textContent = c.to;
                 li.appendChild(name);
-                li.appendChild(was);
-                li.appendChild(arrow);
+                /* No "from" is a change said in one word: the meeting link's
+                 * Added, Removed or Changed (3.140.0). */
+                if (c.from) {
+                    var was = document.createElement('span');
+                    was.className = 'uc-notify-was';
+                    was.textContent = c.from;
+                    var arrow = document.createElement('span');
+                    arrow.className = 'uc-notify-arrow';
+                    arrow.setAttribute('aria-hidden', 'true');
+                    arrow.textContent = '→';
+                    li.appendChild(was);
+                    li.appendChild(arrow);
+                }
                 li.appendChild(now);
                 list.appendChild(li);
             });
@@ -6852,8 +6908,9 @@ function ucDismissOnBackdrop(dialog) {
         var cancel = document.createElement('button');
         cancel.type = 'submit';
         cancel.value = 'cancel';
-        cancel.className = 'uc-btn uc-btn-sm';
+        cancel.className = opts.cancelQuiet ? 'uc-action-link uc-notify-back' : 'uc-btn uc-btn-sm';
         cancel.textContent = opts.cancelLabel;
+        if (opts.cancelQuiet) { dialog.classList.add('uc-notify-quiet-back'); }
 
         /*
          * AN EMPTY sendLabel MEANS THERE IS NO SEND, SO THERE IS ONE ACTION
@@ -7056,7 +7113,10 @@ function ucDismissOnBackdrop(dialog) {
         var before = {
             Date: block.getAttribute('data-uc-fact-date') || '',
             Time: block.getAttribute('data-uc-fact-time') || '',
-            Location: block.getAttribute('data-uc-fact-location') || ''
+            Location: block.getAttribute('data-uc-fact-location') || '',
+            /* What the form was drawn with, never stamped: the link is a
+             * credential and stays in its own field (SFAF_Online). */
+            'Meeting link': meetingLink(form, true)
         };
 
         var answered = false;
@@ -7088,7 +7148,10 @@ function ucDismissOnBackdrop(dialog) {
                 sendLabel: 'Save and email ' + (1 === people ? 'them' : 'them all'),
                 sendClass: 'uc-btn-go',
                 silentLabel: 'Save without telling them',
-                cancelLabel: 'Back to the form'
+                cancelLabel: 'Back to the form',
+                /* A way back, not a third answer (3.140.0): a quiet link, on
+                 * the left of the one row. */
+                cancelQuiet: true
             }, function (answer) {
                 if (null === answer) {
                     /* Nothing saved and nothing sent. Everything typed is still

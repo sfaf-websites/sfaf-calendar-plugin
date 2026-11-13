@@ -403,6 +403,12 @@ class SFAF_Messages {
                 'q_more'           => array( 'Additional info', 'Más información' ),
                 'q_required'       => array( 'Answer every required question to register.', 'Responda todas las preguntas obligatorias para inscribirse.' ),
                 'to'               => array( 'to', 'a' ),
+                // A meeting link change, said in a word (3.140.0).
+                'meeting_link'     => array( 'Meeting link', 'Enlace de la reunión' ),
+                'link_added'       => array( 'Added', 'Agregado' ),
+                'link_removed'     => array( 'Removed', 'Eliminado' ),
+                'link_changed'     => array( 'Changed', 'Cambió' ),
+                'link_with_reminder' => array( 'The new link will be sent with your reminder.', 'Le enviaremos el nuevo enlace con su recordatorio.' ),
                 'online_event'     => array( 'Online Event', 'Evento en línea' ),
                 'tbc'              => array( 'time to be confirmed', 'hora por confirmar' ),
                 'cancel_link'      => array( 'Cancel your registration', 'Cancele su inscripción' ),
@@ -953,6 +959,12 @@ class SFAF_Messages {
         if ( ! empty( $parts['changes'] ) ) {
             $rows = array();
             foreach ( $parts['changes'] as $label => $pair ) {
+                // No "from" is a change said in one word (3.140.0).
+                if ( '' === (string) $pair[0] ) {
+                    $rows[ $label ] = $pair[1];
+                    $text .= $label . ': ' . $pair[1] . "\n";
+                    continue;
+                }
                 $rows[ $label ] = $pair[0] . '  ' . self::label( 'to', $lang ) . '  ' . $pair[1];
                 $text .= $label . ': ' . $pair[0] . ' ' . self::label( 'to', $lang ) . ' ' . $pair[1] . "\n";
             }
