@@ -54,7 +54,7 @@ $plants = array(
         array( $R, "            \$result['texts'] = SFAF_Texts::send_reminders( \$event_id );", "            \$result['texts'] = array();" ),
     ) ),
     'Text registrants counts who it cannot reach' => array( $T, 'FAIL  D: the button counts only those it can reach', array(
-        array( $P, "        \$to      = count( array_filter( \$plan, function ( \$p ) { return in_array( \$p['state'], array( 'sms', 'whatsapp' ), true ); } ) );", "        \$to      = count( \$plan );" ),
+        array( $P, "        \$to      = count( array_filter( \$plan, function ( \$p ) use ( \$is_wait ) { return ! \$is_wait( \$p ) && in_array( \$p['state'], array( 'sms', 'whatsapp' ), true ); } ) );", "        \$to      = count( \$plan );" ),
     ) ),
     "WhatsApp isn't active yet is not said" => array( $T, "FAIL  D: the page says WhatsApp isn't active yet", array(
         array( $P, "                <?php if ( \$wa_off ) : ?>\n                    <p class=\"uc-notice\" data-uc-tr-wa-off>", "                <?php if ( false ) : ?>\n                    <p class=\"uc-notice\" data-uc-tr-wa-off>" ),

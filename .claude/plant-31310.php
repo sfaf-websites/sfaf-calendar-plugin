@@ -92,7 +92,7 @@ $plants = array(
         array( $P, "        return array_values( array_unique( array_filter( array_map( 'intval', \$ids ) ) ) );", "        return \$ids ? array_values( array_unique( array_filter( array_map( 'intval', \$ids ) ) ) ) : null;" ),
     ) ),
     'Text registrants lists everybody' => array( $T, 'FAIL  G: Text registrants lists only who chose a channel', array(
-        array( $P, "                'how_key' => \$p['state'], 'reach' => in_array( \$p['state'], array( 'sms', 'whatsapp' ), true ), 'wait' => false,", "                'how_key' => \$p['state'], 'reach' => false, 'wait' => false," ),
+        array( $P, "                'how_key' => \$p['state'], 'reach' => in_array( \$p['state'], array( 'sms', 'whatsapp' ), true ), 'wait' => \$is_wait( \$p ),", "                'how_key' => \$p['state'], 'reach' => false, 'wait' => \$is_wait( \$p )," ),
     ) ),
 );
 $missed = 0;

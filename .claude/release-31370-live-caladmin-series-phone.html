@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>Series - SFAF Calendar</title>
-    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.139.0" />
-<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.139.0" />
-<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.139.0" />
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.140.0" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.140.0" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.140.0" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
-    <link rel="stylesheet" href="../public/css/portal.css?ver=3.139.0" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.140.0" />
     <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
         <script>
     (function (d) {
@@ -148,137 +148,71 @@
             <h1>Series &amp; Categories</h1>
         </div>
 
-                <section class="uc-section" id="uc-series">
-            <div class="uc-section-head">
-                <h2>Series</h2>
-                <p class="uc-section-sub">An event and all of its dates, with the pattern it runs on.</p>
-            </div>
-            
-        <p class="uc-help">
-            Open a series to change the day or the time of everything still to come, add a date, or take one off.
-            To start a series, set a repeat on a new event; create one here only for a program whose dates are not known yet.
-        </p>
-
-        <div class="uc-card">
-                        <details class="uc-list-fold" open>
-                <summary class="uc-card-head uc-list-fold-head">
-                    <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
-                                        <h2>2 series</h2>
-                </summary>
-                            <table class="uc-table uc-table-cards">
-                    <thead><tr><th></th><th>Series</th><th>Schedule</th><th>Upcoming</th><th>Next date</th><th class="uc-col-actions">Actions</th></tr></thead>
-                    <tbody>
-                                            <tr>
-                            <td class="uc-series-thumb"><a href="https://resources.sfaf.org/caladmin/series/edit/11"><span class="uc-series-thumb-none" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-calendar" width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span></a></td>
-                            <td><a class="uc-tlink" href="https://resources.sfaf.org/caladmin/series/edit/11"><strong>Alpha</strong></a></td>
-                            <td>Friday, November 20, 2026, 10–11:30 am</td>
-                            <td>1</td>
-                            <td>Nov 20, 2026</td>
-                            <td class="uc-row-actions">
-                                <div class="uc-actions">
-                                    <a class="uc-action-link" href="https://resources.sfaf.org/caladmin/series/edit/11">Schedule</a>
-                                    <a class="uc-action-link" href="https://resources.sfaf.org/term/11/" target="_blank" rel="noopener">View</a>
-                                </div>
-                            </td>
-                        </tr>
-                                            <tr>
-                            <td class="uc-series-thumb"><a href="https://resources.sfaf.org/caladmin/series/edit/12"><span class="uc-series-thumb-none" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-calendar" width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span></a></td>
-                            <td><a class="uc-tlink" href="https://resources.sfaf.org/caladmin/series/edit/12"><strong>Beta</strong></a></td>
-                            <td>Friday, November 20, 2026, 10–11:30 am</td>
-                            <td>1</td>
-                            <td>Nov 20, 2026</td>
-                            <td class="uc-row-actions">
-                                <div class="uc-actions">
-                                    <a class="uc-action-link" href="https://resources.sfaf.org/caladmin/series/edit/12">Schedule</a>
-                                    <a class="uc-action-link" href="https://resources.sfaf.org/term/12/" target="_blank" rel="noopener">View</a>
-                                </div>
-                            </td>
-                        </tr>
-                                        </tbody>
-                </table>
-                        </details>
-
-                                        <div class="uc-cat-new">
-                    <a href="https://resources.sfaf.org/caladmin/series/new" class="uc-btn uc-btn-sm uc-btn-primary">+ New series</a>
-                </div>
+        <div class="uc-view-tabs" role="navigation" aria-label="Series or categories" data-uc-series-tabs>
+                            <a class="uc-view-tab uc-view-tab-active" href="https://resources.sfaf.org/caladmin/series" aria-current="page">
+                    Series                    <span class="uc-tab-count">2</span>
+                </a>
+                            <a class="uc-view-tab" href="https://resources.sfaf.org/caladmin/series?tab=categories">
+                    Categories                    <span class="uc-tab-count">2</span>
+                </a>
                     </div>
-        </section>
 
-                <section class="uc-section" id="uc-categories">
-            <div class="uc-section-head">
-                <h2>Categories</h2>
-                <p class="uc-section-sub">What kind of event this is. The color and icon are what a card and its placeholder are drawn from.</p>
-            </div>
-            
-            <div class="uc-card">
-                                <details class="uc-list-fold" open>
-                <summary class="uc-card-head uc-list-fold-head">
-                    <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
-                    <h2>2 categories</h2>
-                </summary>
-
-                
-                <p class="uc-hint">
-                    An event can be in several. The first one alphabetically supplies the color of its card and the
-                    picture shown when it has no image of its own.
-                </p>
-
-                                    <ul class="uc-cat-list">
-                                                    <li class="uc-cat-row">
-                                                                    <span class="uc-cat-swatch" style="--cat: #16BECF; --cat-ink: #373433;">
-                                        <svg class="sfaf-icon sfaf-icon-calendar" width="17px" height="17px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg>                                    </span>
-                                    <span class="uc-cat-id">
-                                        <strong>Alpha</strong>
-                                        <span class="uc-muted">
-                                            Teal,
-                                            calendar icon,
-                                            1 event                                        </span>
-                                    </span>
-                                                                            <span class="uc-cat-actions">
-                                            <a class="uc-btn uc-btn-sm" href="https://resources.sfaf.org/caladmin/series?cat_edit=11#uc-categories">Edit</a>
-                                            <form method="post" action="https://resources.sfaf.org/caladmin/series" class="uc-cat-delete"
-                                                  onsubmit="return confirm('Delete the category &quot;Alpha&quot;? 1 event will stay on the calendar and simply lose this category.');">
-                                                <input type="hidden" name="uc_action" value="delete_category" />
-                                                <input type="hidden" name="category_id" value="11" />
-                                                <input type="hidden" name="uc_nonce" value="nonce" />                                                <button type="submit" class="uc-link-danger uc-btn-sm">Delete</button>
-                                            </form>
-                                        </span>
-                                                                                                </li>
-                                                    <li class="uc-cat-row">
-                                                                    <span class="uc-cat-swatch" style="--cat: #16BECF; --cat-ink: #373433;">
-                                        <svg class="sfaf-icon sfaf-icon-calendar" width="17px" height="17px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg>                                    </span>
-                                    <span class="uc-cat-id">
-                                        <strong>Beta</strong>
-                                        <span class="uc-muted">
-                                            Teal,
-                                            calendar icon,
-                                            1 event                                        </span>
-                                    </span>
-                                                                            <span class="uc-cat-actions">
-                                            <a class="uc-btn uc-btn-sm" href="https://resources.sfaf.org/caladmin/series?cat_edit=12#uc-categories">Edit</a>
-                                            <form method="post" action="https://resources.sfaf.org/caladmin/series" class="uc-cat-delete"
-                                                  onsubmit="return confirm('Delete the category &quot;Beta&quot;? 1 event will stay on the calendar and simply lose this category.');">
-                                                <input type="hidden" name="uc_action" value="delete_category" />
-                                                <input type="hidden" name="category_id" value="12" />
-                                                <input type="hidden" name="uc_nonce" value="nonce" />                                                <button type="submit" class="uc-link-danger uc-btn-sm">Delete</button>
-                                            </form>
-                                        </span>
-                                                                                                </li>
-                                            </ul>
-                                </details>
-
-                                    <div class="uc-cat-new">
-                                                    <a class="uc-btn uc-btn-sm" href="https://resources.sfaf.org/caladmin/series?cat_new=1#uc-categories">Create a category</a>
-                                            </div>
+                <section class="uc-section" id="uc-series">
+            <div class="uc-section-head uc-section-head-act">
+                <div>
+                    <h2>Series</h2>
+                    <p class="uc-section-sub">Each series groups an event's dates. Open one to change its schedule or details.</p>
+                </div>
+                                    <a href="https://resources.sfaf.org/caladmin/series/new" class="uc-btn uc-btn-sm uc-btn-primary" data-uc-series-new>+ New series</a>
                             </div>
-        </section>
-                                </main>
+
+            <div class="uc-card" data-uc-filter-scope>
+                                    <form method="get" action="https://resources.sfaf.org/caladmin/series" class="uc-filters-bar uc-series-search">
+                        <label class="uc-visually-hidden" for="uc-series-q">Search series</label>
+                        <input type="search" id="uc-series-q" name="q" value="" placeholder="Search series" autocomplete="off" data-uc-filter />
+                        <button type="submit" class="uc-btn uc-btn-sm">Search</button>
+                    </form>
+                    <p class="uc-empty" data-uc-filter-empty hidden>No series match.</p>
+                    <table class="uc-table uc-table-cards uc-series-table">
+                        <thead><tr><th></th><th>Series</th><th>Schedule</th><th>Upcoming</th><th>Next date</th><th class="uc-col-actions">Actions</th></tr></thead>
+                        <tbody data-uc-filter-list>
+                                                    <tr data-uc-filter-text="alpha">
+                                <td class="uc-series-thumb"><a href="https://resources.sfaf.org/caladmin/series/edit/11"><span class="uc-series-thumb-none" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-calendar" width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span></a></td>
+                                <td><a class="uc-tlink" href="https://resources.sfaf.org/caladmin/series/edit/11"><strong>Alpha</strong></a></td>
+                                <td>Friday, November 20, 2026, 10–11:30 am</td>
+                                <td>1</td>
+                                <td>Nov 20, 2026</td>
+                                <td class="uc-row-actions">
+                                    <div class="uc-actions">
+                                        <a class="uc-action-link" href="https://resources.sfaf.org/caladmin/series/edit/11">Schedule</a>
+                                        <a class="uc-action-link" href="https://resources.sfaf.org/term/11/" target="_blank" rel="noopener">View</a>
+                                    </div>
+                                </td>
+                            </tr>
+                                                    <tr data-uc-filter-text="beta">
+                                <td class="uc-series-thumb"><a href="https://resources.sfaf.org/caladmin/series/edit/12"><span class="uc-series-thumb-none" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-calendar" width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5.5" width="18" height="15.5" rx="2.5"/><path d="M3 10.5h18M8 3v5M16 3v5"/></svg></span></a></td>
+                                <td><a class="uc-tlink" href="https://resources.sfaf.org/caladmin/series/edit/12"><strong>Beta</strong></a></td>
+                                <td>Friday, November 20, 2026, 10–11:30 am</td>
+                                <td>1</td>
+                                <td>Nov 20, 2026</td>
+                                <td class="uc-row-actions">
+                                    <div class="uc-actions">
+                                        <a class="uc-action-link" href="https://resources.sfaf.org/caladmin/series/edit/12">Schedule</a>
+                                        <a class="uc-action-link" href="https://resources.sfaf.org/term/12/" target="_blank" rel="noopener">View</a>
+                                    </div>
+                                </td>
+                            </tr>
+                                                </tbody>
+                    </table>
+                            </div>
+                    </section>
+                        </main>
             </div>
         </div>
         <script type="application/json" id="uc-session-config">{"ajax":"https:\/\/resources.sfaf.org\/wp-admin\/admin-ajax.php","action":"sfaf_caladmin_session","signin":"https:\/\/resources.sfaf.org\/caladmin","screen":"dashboard","signedIn":true}</script>
-<script src="../public/js/caladmin-session.js?ver=3.139.0"></script>
-<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.139.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.139.0"></script>
-<script src="../public/js/portal.js?ver=3.139.0"></script>
+<script src="../public/js/caladmin-session.js?ver=3.140.0"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.140.0"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.140.0"></script>
+<script src="../public/js/portal.js?ver=3.140.0"></script>
 <script>window.CS_PAGE="caladmin-series";(function () {
 var out = { page: window.CS_PAGE, errors: [], caps: [] };
 window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
