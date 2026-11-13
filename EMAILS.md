@@ -249,6 +249,11 @@ Labels, buttons and the calendar file's words. These are not edited on the Templ
 | Additional info | Más información |
 | Answer every required question to register. | Responda todas las preguntas obligatorias para inscribirse. |
 | to | a |
+| Meeting link | Enlace de la reunión |
+| Added | Agregado |
+| Removed | Eliminado |
+| Changed | Cambió |
+| The new link will be sent with your reminder. | Le enviaremos el nuevo enlace con su recordatorio. |
 | Online Event | Evento en línea |
 | time to be confirmed | hora por confirmar |
 | Cancel your registration | Cancele su inscripción |
