@@ -94,7 +94,7 @@ $html = array();
 $html['sidebar'] = lv_public( lv_capture( function () use ( $sc, $pin ) { echo $sc->render_sidebar( array( 'pin' => (string) $pin ), 5 ); } ) );
 $html['list']    = lv_public( lv_capture( function () use ( $sc, $pin ) { $b = $sc->render_calendar_block( array( 'view' => 'list', 'toggle' => 'no', 'pin' => (string) $pin ) ); echo $b['html']; } ) );
 $html['page']    = lv_capture( function () use ( $pin ) { $GLOBALS['lv_left'] = 1; $GLOBALS['kit_current'] = $pin; include $GLOBALS['kit_root'] . '/templates/single-uc_event.php'; } );
-$html['request'] = lv_capture( function () { SFAF_Submissions::page_open( 'Request an event' ); kit_call( 'SFAF_Request', 'render_form', null, array( 'tok', 'someone@sfaf.org', array(), array() ) ); SFAF_Submissions::page_close(); } );
+$html['request'] = lv_capture( function () { SFAF_Submissions::page_open( 'Request an event' ); kit_call( 'SFAF_Request', 'render_form', null, array( 'someone@sfaf.org', array(), array() ) ); SFAF_Submissions::page_close(); } );
 $html['submit']  = lv_capture( function () { SFAF_Submissions::page_open( 'Submit an event' ); kit_call( 'SFAF_Submit', 'render_form', null, array( (object) array( 'slug' => 'alpha', 'name' => 'Alpha', 'term_id' => 11 ), array(), array() ) ); SFAF_Submissions::page_close(); } );
 
 /* caladmin: Edit event, and a reviewer's Pending. */

@@ -140,7 +140,7 @@ $pages = array(
     'editor-yes'     => array( 'w' => 1200, 'html' => $new_event, 'set' => $complete + array( 'date' => '2026-11-26' ), 'press' => 'publish', 'answer' => 'ok' ),
     'editor-repeat'  => array( 'w' => 1200, 'html' => $new_event, 'set' => array( 'date' => '2026-11-19', 'repeat_mode' => 'weekly', 'repeat_days[]' => '4', 'repeat_ends' => 'on', 'repeat_until' => '2026-12-31' ) ),
     'editor-saved'   => array( 'w' => 1200, 'html' => cl_screen( 'render_event_form', array( $user, $live ) ), 'press' => 'keep' ),
-    'request-form'   => array( 'w' => 900,  'html' => cl_capture( function () { SFAF_Submissions::page_open( 'Request' ); kit_call( 'SFAF_Request', 'render_form', null, array( 'tok', 'someone@sfaf.org', array(), array() ) ); SFAF_Submissions::page_close(); } ), 'set' => array( 'date' => '2026-12-25' ) ),
+    'request-form'   => array( 'w' => 900,  'html' => cl_capture( function () { SFAF_Submissions::page_open( 'Request' ); kit_call( 'SFAF_Request', 'render_form', null, array( 'someone@sfaf.org', array(), array() ) ); SFAF_Submissions::page_close(); } ), 'set' => array( 'date' => '2026-12-25' ) ),
     'submit-form'    => array( 'w' => 900,  'html' => cl_capture( function () { SFAF_Submissions::page_open( 'Submit' ); kit_call( 'SFAF_Submit', 'render_form', null, array( (object) array( 'slug' => 'cycle-to-zero', 'name' => 'Cycle to Zero', 'term_id' => 11 ), array(), array() ) ); SFAF_Submissions::page_close(); } ), 'set' => array( 'date' => '2026-11-27' ) ),
     'pending'        => array( 'w' => 1200, 'html' => cl_screen( 'render_pending', array( $user ) ) ),
     'rsvps'          => array( 'w' => 1200, 'html' => cl_screen( 'render_rsvps', array( $user ), array( 'event_id' => $live ) ) ),

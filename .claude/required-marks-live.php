@@ -132,7 +132,7 @@ $GLOBALS['kit_organizers'] = true;
 $req_fields = SFAF_Request::required_fields();
 rm_check( isset( $req_fields['organizer'] ), 'with organizers on the site, the request form does not require one' );
 $pages['request'] = array(
-    'html'  => rm_capture( function () { kit_call( 'SFAF_Request', 'render_form', null, array( 'tok', 'someone@sfaf.org', array(), array() ) ); } ),
+    'html'  => rm_capture( function () { kit_call( 'SFAF_Request', 'render_form', null, array( 'someone@sfaf.org', array(), array() ) ); } ),
     'note'  => 'Fields marked * are required.',
     'steps' => array( array( 'label' => 'as it opens', 'act' => array(), 'expect' => rm_expect( $req_fields, SFAF_Request::required_values( array() ) ) ) ),
 );
@@ -140,7 +140,7 @@ $GLOBALS['kit_organizers'] = false;
 $req_none = SFAF_Request::required_fields();
 rm_check( ! isset( $req_none['organizer'] ), 'with no organizers on the site, the request form still requires one' );
 $pages['request-no-organizers'] = array(
-    'html'  => rm_capture( function () { kit_call( 'SFAF_Request', 'render_form', null, array( 'tok', 'someone@sfaf.org', array(), array() ) ); } ),
+    'html'  => rm_capture( function () { kit_call( 'SFAF_Request', 'render_form', null, array( 'someone@sfaf.org', array(), array() ) ); } ),
     'note'  => 'Fields marked * are required.',
     'steps' => array( array( 'label' => 'as it opens', 'act' => array(), 'expect' => rm_expect( $req_none, SFAF_Request::required_values( array() ) ) ) ),
 );

@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 431 items.** Quick 348, needs real conditions 78, blocked on other
+**Outstanding: 433 items.** Quick 350, needs real conditions 78, blocked on other
 people 5.
 
 ---
@@ -403,7 +403,7 @@ still what the manager chose rather than "off".
 ### 1.26 The staff form's picture picker, INCLUDING WITH JAVASCRIPT OFF (3.65.0)
 
 The no-script half is the point of this control and nothing in the build can see
-a browser. Open the staff request form from a real emailed link.
+a browser. Open the staff request form from its link (`/?uc_event_request=1`).
 
 - **With script.** The closed control says "No picture chosen". Open it: a
   search box, and a scrollable list of thumbnails with each file name beside
@@ -428,7 +428,7 @@ a browser. Open the staff request form from a real emailed link.
 ### 1.27 The favicon on the four self-built pages (3.66.0)
 
 Nothing in the build can see a browser tab. Open each of these and look at the
-tab: **caladmin**, the **staff request form** from a real emailed link, the
+tab: **caladmin**, the **staff request form** from its link, the
 **community submission form**, and the page a **follow confirmation link** or a
 **registration cancel link** lands on. All four must show the yellow calendar
 mark, and it must be the same mark on all four. A blank page icon on any one of
@@ -455,7 +455,7 @@ site root.
 
 ### 1.29 The team picker on the staff form, WITH SCRIPT OFF (3.66.0)
 
-Open the staff request form from a real emailed link. Under **Who should be able
+Open the staff request form from its link. Under **Who should be able
 to edit it**, tick one team and send the request. Then, as somebody who is on
 that team but is not an admin, open caladmin and confirm **the pending request is
 visible and editable** before anybody approves it. That is the whole point of
@@ -1430,7 +1430,7 @@ have **no Remove button at all**.
 ---
 ### 1.99 A co-hosted event, requested on the staff form (3.84.0)
 
-**The staff request form**, reached by the emailed link. The organizer question
+**The staff request form**, reached by its link. The organizer question
 is **tick boxes** now rather than a dropdown, and there is no "Not sure" option:
 leaving them all clear is what "not sure" means.
 
@@ -4704,6 +4704,18 @@ Open Series & Categories at a desk and on a phone. Two tabs, Series and Categori
 
 **Why it needs a person:** the check used two made-up series and categories; the live screen has the real list, its pictures and the real editors' view.
 
+### 1.351 The staff request link opens the form (3.140.1)
+
+In a private window, open `https://resources.sfaf.org/?uc_event_request=1`. The event request form must open straight away: no page asking for an address, and no email. **Your work email address** sits under Your name, empty, marked required. Above Send the request there is the Cloudflare Turnstile box. Send a test request with your own sfaf.org address: it reaches Pending badged Staff request, you get the copy, and the admins get theirs. Open the link again in the same window: the address is filled in. Try an address that is not sfaf.org: it is refused under the field, with nothing sent. Reject the test request afterwards.
+
+**Why it needs a person:** the check ran on a model of WordPress with Cloudflare answering from a script; the live page has the real widget, the real mail and the real queue.
+
+### 1.352 Turnstile is set up, or the staff form has no robot check (3.140.1)
+
+Open WP admin, Settings, Cloudflare Turnstile. It must say **Connected**. If it says Not configured, neither request form draws the box or checks anything, and from 3.140.1 the staff form has no other gate: anybody holding the link can send requests to the pending queue, 30 an hour per sfaf.org address they type. Both keys come from the Cloudflare account Gravity Forms uses.
+
+**Why it needs a person:** the keys live on the site, not in the repository.
+
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -4914,9 +4926,9 @@ Check an event created before this release still sends it, since absent means on
 
 ### 2.4 The staff form, end to end
 
-**This blocks other things.** It is at `/?uc_event_request=1` and nothing links
-to it on purpose, so its address has to be shared by hand. Enter your own
-sfaf.org address, wait for the link, fill it in, submit. Check it appears in
+**This blocks other things.** It is at `/?uc_event_request=1`; caladmin's Get a
+form link gives the address. From 3.140.1 the link opens the form straight away:
+fill it in with your own sfaf.org address in Your work email address, submit. Check it appears in
 Pending badged **Staff request**, that opening it shows the read-only panel with
 your notes, and that you and the admins each got mail. Then try a non-sfaf.org
 address and confirm it is refused. **Use a test event and reject it afterwards.**

@@ -9,14 +9,15 @@
  * SFAF has given access to. Every assertion here is written as what a submitter
  * MUST NOT be able to do, because that is the list that matters:
  *
- *   . get a link to an address that is not ours
- *   . open the form without a live token, or with somebody else's
+ *   . send a request from an address that is not ours
+ *   . get past the form without Turnstile (from 3.140.1, when the link step
+ *     that was this form's gate went)
  *   . attach a file that is not an image in the calendar folder
  *   . set a category, series or venue that does not exist
  *   . store markup, or an unbounded string
  *   . submit a date that is not a date, or a time that is not a time
  *   . choose the post status, the author, or anything not on the form
- *   . send mail to arbitrary addresses by asking for links in a loop
+ *   . send more than the hourly allowance from one address
  *
  * WHAT IT DOES NOT COVER, said plainly rather than left to be assumed: the
  * screens are not rendered here and the mail is not sent, so this proves what
@@ -248,6 +249,8 @@ function good_post( $over = array() ) {
     global $tomorrow;
     return array_merge( array(
         'requester_name' => 'Tester Reed',
+        /* REQUIRED FROM 3.140.1, when the address stopped coming from a link. */
+        'requester_email'=> 'tester@sfaf.org',
         'title'          => 'Board Social',
         'description'    => 'An evening for the board and volunteers.',
         'date'           => $tomorrow,
@@ -263,7 +266,7 @@ function good_post( $over = array() ) {
 }
 
 /* ---------------------------------------------------------------------------
- * 1. WHO MAY ASK FOR A LINK.
+ * 1. WHO MAY SEND A REQUEST.
  * ------------------------------------------------------------------------ */
 foreach ( array(
     'tester@sfaf.org'            => true,
@@ -281,36 +284,27 @@ foreach ( array(
 }
 
 /* ---------------------------------------------------------------------------
- * 2. TOKENS. Shape, resolution, and what an unknown one does.
+ * 2. THE ADDRESS IS TYPED, FROM 3.140.1, AND HELD TO THE DOMAIN.
+ *
+ * Until 3.140.1 an emailed link carried a token that proved it. The link and
+ * the token are gone, so what is left to check is what validate() keeps.
  * ------------------------------------------------------------------------ */
-$ref = new ReflectionMethod( 'SFAF_Request', 'issue_token' );
-$ref->setAccessible( true );
-$token = $ref->invoke( null, 'tester@sfaf.org' );
+$out = SFAF_Request::validate( good_post( array( 'requester_email' => '  Tester@SFAF.org ' ) ) );
+expect( 'the address is kept, lower case and trimmed', $out['clean']['email'], 'tester@sfaf.org' );
+expect( 'a staff address is no error', isset( $out['errors']['requester_email'] ), false );
 
-expect( 'a token is 32 hex characters', (bool) preg_match( '/^[a-f0-9]{32}$/', $token ), true );
-expect( 'a live token resolves to its address', SFAF_Request::resolve_token( $token ), 'tester@sfaf.org' );
-expect( 'an unknown token resolves to nothing', SFAF_Request::resolve_token( str_repeat( 'a', 32 ) ), '' );
-expect( 'a short token is refused',             SFAF_Request::resolve_token( 'abc' ), '' );
-expect( 'a non-hex token is refused',           SFAF_Request::resolve_token( str_repeat( 'z', 32 ) ), '' );
-expect( 'an empty token is refused',            SFAF_Request::resolve_token( '' ), '' );
+$out = SFAF_Request::validate( good_post( array( 'requester_email' => 'tester@sfaf.org.example.com' ) ) );
+expect( 'an address outside the domain is refused out loud',
+    isset( $out['errors']['requester_email'] ) && false !== strpos( $out['errors']['requester_email'], 'not an sfaf.org address' ), true );
 
-/* THE TOKEN IS NOT THE KEY. Whatever is written to the store, the usable
- * credential must not be findable in it. */
-foreach ( array_keys( $GLOBALS['transients'] ) as $key ) {
-    if ( false !== strpos( $key, $token ) ) {
-        $fails[] = 'the token itself is part of a stored key, so the store holds a working credential';
-    }
-}
-/* And the stored value is the address, which is what the form needs. */
-expect( 'the store holds the address', in_array( 'tester@sfaf.org', array_values( $GLOBALS['transients'] ), true ), true );
+$out = SFAF_Request::validate( good_post( array( 'requester_email' => '' ) ) );
+expect( 'no address is refused', isset( $out['errors']['requester_email'] ) ? $out['errors']['requester_email'] : '', 'Give your work email address.' );
 
-/* A token whose stored address stops being a staff one is dead. Somebody's
- * address is the only thing making a token usable. */
-$key = 'sfaf_evreq_tok_' . hash( 'sha256', $token );
-$GLOBALS['transients'][ $key ] = 'someone@example.org';
-expect( 'a token holding a non-staff address is dead', SFAF_Request::resolve_token( $token ), '' );
-$GLOBALS['transients'][ $key ] = 'tester@sfaf.org';
+$out = SFAF_Request::validate( good_post( array( 'requester_email' => array( 'a@sfaf.org' ) ) ) );
+expect( 'an array where the address belongs is refused, not kept', isset( $out['errors']['requester_email'] ), true );
 
+expect( 'the address is in the one required list',
+    array_key_exists( 'requester_email', SFAF_Request::required_fields() ), true );
 /* ---------------------------------------------------------------------------
  * 3. THE FIELDS. What a good submission keeps.
  * ------------------------------------------------------------------------ */
@@ -627,6 +621,41 @@ foreach ( array( 'wp.media', 'register_rest_route', 'add_rewrite_rule' ) as $men
         $fails[] = "$mentioned survives outside the comments, so the form does the thing it says it does not";
     }
 }
+/* THE LINK STEP IS GONE (3.140.1), not merely unreached. */
+foreach ( array( 'send_link', 'issue_token', 'resolve_token', 'uc_token', 'render_start', 'render_expired', 'render_link_sent' ) as $gone ) {
+    if ( false !== strpos( $code, $gone ) ) {
+        $fails[] = "$gone is still in the code, so the emailed-link step is still reachable";
+    }
+}
+/* THE LINK OPENS THE FORM: a GET renders it, with nothing in front. */
+$mr = substr( $code, strpos( $code, 'function maybe_render()' ) );
+$mr = substr( $mr, 0, strpos( $mr, 'function posted_email()' ) );
+if ( false === strpos( $mr, 'self::render_form( self::remembered(), array(), array() );' ) ) {
+    $fails[] = 'a plain visit to the link does not render the form';
+}
+/* TURNSTILE: drawn on the form, and checked first, before the limit, the
+ * fields and the upload, exactly as the community form orders it. */
+$hs = substr( $code, strpos( $code, 'function handle_submission(' ) );
+$hs = substr( $hs, 0, strpos( $hs, 'function create_event(' ) );
+$at_turn   = strpos( $hs, 'SFAF_Turnstile::verify()' );
+$at_wait   = strpos( $hs, "window_wait( 'request_addr'" );
+$at_store  = strpos( $hs, 'SFAF_Uploads::store(' );
+$at_create = strpos( $hs, 'self::create_event(' );
+if ( false === $at_turn || false === $at_wait || false === $at_store || false === $at_create
+    || ! ( $at_turn < $at_wait && $at_wait < $at_store && $at_store < $at_create ) ) {
+    $fails[] = 'Turnstile is not checked first, before the hourly limit, the upload and the insert';
+}
+$rf = substr( $code, strpos( $code, 'function render_form(' ) );
+if ( false === strpos( $rf, 'SFAF_Turnstile::field();' ) ) {
+    $fails[] = 'the request form does not draw the Turnstile widget';
+}
+if ( false === strpos( $rf, 'name="requester_email"' ) ) {
+    $fails[] = 'the request form has no address field';
+}
+/* The address that is saved is the one validate() accepted. */
+if ( false === strpos( $hs, "\$email = \$checked['clean']['email'];" ) ) {
+    $fails[] = 'the saved address is not the one validate() checked';
+}
 if ( ! preg_match( "#'post_status'\s*=>\s*'pending'#", $code ) ) {
     $fails[] = 'the insert does not name pending as the status, so the queue may never see a request';
 }
@@ -654,14 +683,16 @@ expect( 'a different subject is unaffected', $allow->invoke( null, 'test', 'some
 /* Two buckets do not share a counter either. */
 expect( 'a different bucket is unaffected', $allow->invoke( null, 'other', 'someone', 3, 60 ), true );
 
-/* From 3.125.0 the submission is limited per verified address, 'request_addr',
-   and no longer per link or per connection (release-31250-test.php has the rest). */
-foreach ( array( 'link_addr', 'link_ip', 'request_addr' ) as $bucket ) {
+/* From 3.125.0 the submission is limited per address, 'request_addr', and no
+   longer per link or per connection (release-31250-test.php has the rest).
+   From 3.140.1 the upload is counted per address too, 'upload_addr', and the
+   two link counters went with the link. */
+foreach ( array( 'request_addr', 'upload_addr' ) as $bucket ) {
     if ( false === strpos( $code, "'" . $bucket . "'" ) ) {
         $fails[] = "the $bucket rate limit is not applied anywhere";
     }
 }
-foreach ( array( 'submit_tok', 'submit_ip' ) as $bucket ) {
+foreach ( array( 'submit_tok', 'submit_ip', 'link_addr', 'link_ip', 'upload_tok' ) as $bucket ) {
     if ( false !== strpos( $code, "'" . $bucket . "'" ) ) {
         $fails[] = "the $bucket rate limit is back on the staff form";
     }
@@ -1151,4 +1182,4 @@ if ( $fails ) {
     echo "\n" . count( $fails ) . " failure(s).\n";
     exit( 1 );
 }
-echo "a submitter can send only what the form offers, and only with a live link.\n";
+echo "a submitter can send only what the form offers, from an sfaf.org address, past Turnstile.\n";

@@ -17,7 +17,7 @@ $P    = 'includes/class-sfaf-portal.php';
 
 $plants = array(
     'A: the connection is counted again' => array( 'PLANT A: the staff form still counts per connection', array(
-        array( $R, "        \$wait = SFAF_Submissions::window_wait( 'request_addr', \$email, self::SUBMIT_LIMIT );", "        self::allow( 'submit_ip', self::client(), 10, self::TOKEN_TTL );\n        \$wait = SFAF_Submissions::window_wait( 'request_addr', \$email, self::SUBMIT_LIMIT );" ),
+        array( $R, "        \$wait = SFAF_Submissions::window_wait( 'request_addr', \$email, self::SUBMIT_LIMIT );", "        self::allow( 'submit_ip', self::client(), 10, HOUR_IN_SECONDS );\n        \$wait = SFAF_Submissions::window_wait( 'request_addr', \$email, self::SUBMIT_LIMIT );" ),
     ) ),
     'A: the limit is lower' => array( 'PLANT A: the staff limit is', array(
         array( $R, '    const SUBMIT_LIMIT = 30;', '    const SUBMIT_LIMIT = 10;' ),

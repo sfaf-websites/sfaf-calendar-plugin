@@ -350,7 +350,7 @@ rt( false !== strpos( $single, '<span class="uc-fact-label"><?php echo esc_html(
  * G. THE FORMS
  * ====================================================================== */
 $forms = array(
-    'staff request'        => rt_capture( function () { kit_call( 'SFAF_Request', 'render_form', null, array( 'tok', 'someone@sfaf.org', array(), array() ) ); } ),
+    'staff request'        => rt_capture( function () { kit_call( 'SFAF_Request', 'render_form', null, array( 'someone@sfaf.org', array(), array() ) ); } ),
     'community submission' => rt_capture( function () { kit_call( 'SFAF_Submit', 'render_form', null, array( (object) array( 'slug' => 'alpha', 'name' => 'Alpha', 'term_id' => 11 ), array(), array() ) ); } ),
 );
 foreach ( $forms as $name => $html ) {

@@ -101,7 +101,8 @@ class SFAF_Credentials {
             'google_maps_embed_key'    => 'text',
 
             /*
-             * Cloudflare Turnstile, for the public community submission form.
+             * Cloudflare Turnstile, for the staff request form and the public
+             * community submission form (the staff form from 3.140.1).
              *
              * The site key is 'text' for the same reason the Maps key is: it is
              * rendered into the widget on a public page, so anybody can already

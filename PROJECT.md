@@ -214,28 +214,44 @@ Branches:
 
 **One page, no account, and not a restricted caladmin.** Most staff will never
 manage events; they want to ask MarCom to add one. `SFAF_Request` owns the whole
-of it: the link request, the form, the validation, the insert and the two
-emails.
+of it: the form, the validation, the insert and the two emails.
 
 > **A cut-down portal would have been the expensive answer.** Every caladmin
 > screen would grow a second set of permission questions, and "what can a
 > requester see" would be answered in forty places instead of one file. A
 > separate surface has one answer, in one place, and it is this file.
 
-**Access is a token in a link, and the token is the only credential.**
-`SFAF_Reminders::new_token()` is the same generator the cancel links use, so
-there is one answer to how strong it is. It lives 60 minutes.
+**The link is the form, and nothing proves who is asking (3.140.1).**
+`/?uc_event_request=1` renders the form with no step before it. Until 3.140.1
+somebody typed their sfaf.org address and an emailed link with a 60-minute token
+opened the form, so the mailbox was the gate. **Mark removed that step**: staff
+were to reach the form from the link alone, with no email first. What replaced
+the gate:
 
-- **Stored as a transient, keyed on a hash of the token.** No row, because
-  nothing about somebody who has not submitted anything is worth keeping; no
-  schema change and no `SFAF_DB_VERSION` bump for a value that lives an hour;
-  and the options table never holds a usable credential.
-- **Requesting a link renders one page whatever happens.** Sent, rate-limited,
-  or dropped for a mailbox that does not exist: identical. A different screen
-  for any of them answers "is that a real address here". A non-sfaf.org address
-  is refused out loud, because that reveals nothing about a person.
+- **The address is a required field**, `requester_email`, in the one required
+  list, held to the domain by `is_staff_address()` and refused out loud
+  otherwise, because the rule reveals nothing about a person. It is typed, not
+  proved: anybody holding the link can type any sfaf.org address, and the copy
+  of the request goes to whatever was typed.
+- **Cloudflare Turnstile, the community form's own**: `SFAF_Turnstile::field()`
+  above the send button and `verify()` first in `handle_submission()`, before
+  the hourly limit, the fields and the upload, in the order the community form
+  uses. Without both keys there is no widget and no check on either form.
 - **The domain test is `sfaf.org` or a subdomain of it**, so `notsfaf.org` and
   `sfaf.org.example.com` are both refused.
+- **The 30-day cookie only prefills the address field now.** It is written after
+  a request is saved, still signed and still re-checked against the domain, and
+  it proves nothing. Old emailed links and the old address page posted from an
+  open tab land on the form.
+
+**What the gate was holding up, and was kept on Mark's word that the rest of the
+form stay as it was:** the rich text description, the video URL field and the
+FAQ set picker were each offered here, and not on the community form, because
+the reader was staff behind a mailbox. **The set picker is the one with a cost**:
+the community form refuses it because set names disclose programmes (see "FAQs
+on the staff request form" below), and from 3.140.1 anybody holding this link
+sees them. The description is still cleaned by the narrow `prose()` list and
+every request is still a pending post somebody approves.
 
 **No REST route, and this is the reason to keep it that way.**
 `is_embed_request()` matches an exact string, so a new route would fail CORS
@@ -250,13 +266,9 @@ markup; and the picture must be an attachment, be an image, and already be in
 the calendar folder. **The status is named in the code**, never read from the
 form, and `post_author` stays 0 because nobody logged in made it.
 
-> **Rate limiting takes two subjects on the link, not one.** Per address and per
-> client. Without the per-address limit one inbox can be filled; without the
-> per-client limit every address in the organisation can be hit once each.
-> Neither closes it alone.
->
-> **The submission is limited on the person, never the connection (3.125.0):**
-> 30 saved requests an hour per verified address, in a fixed window
+> **The submission is limited on the address, never the connection (3.125.0):**
+> 30 saved requests an hour per address, typed from 3.140.1 and verified by the
+> emailed link before it, and the upload 10 an hour per address, in a fixed window
 > (`SFAF_Submissions::window_wait()` and `window_count()`), and the refusal
 > names the minutes left and keeps what was typed. Until 3.125.0 it was 5 per
 > link and 10 per client an hour, counting refused attempts too, and the client
@@ -432,8 +444,8 @@ function's own comment used as its example.
 
 **The description is rich text from 3.46.0, and is sanitised on the way in.**
 3.43.0 stripped markup from everything here and said why. Staff behind an
-emailed link is a lower risk than that rule was written for, so the description
-alone is prose now. What arrives is still a POST body whoever the form was drawn
+emailed link was a lower risk than that rule was written for, so the description
+alone is prose now; the link went in 3.140.1 and the field stayed prose. What arrives is still a POST body whoever the form was drawn
 for, so it goes through `SFAF_Submissions::prose()` rather than being trusted
 because an editor drew it.
 
@@ -607,8 +619,9 @@ adds it.
 
 ### The community submission form
 
-**`SFAF_Submit` is not the request form with the email check removed.** The
-request form's gate is an sfaf.org mailbox, and its questions assume a colleague
+**`SFAF_Submit` is not the request form with the email check removed**, even
+though from 3.140.1 the request form has no email check either. Its address must
+be an sfaf.org one, and its questions assume a colleague
 who knows what a series and a venue are. This has no gate at all, the submitter
 is a stranger, and the questions are the ones a stranger can answer. The two
 share `SFAF_Submissions` and nothing else.
@@ -905,7 +918,8 @@ has no author, and both shipped as faults.**
 > the form still works, and the only place it shows is that panel. Put both keys
 > in before the community form's address is shared with anybody.
 
-- **Turnstile stands in for the mailbox**, and is never the only protection: the
+- **Turnstile stands in for a mailbox**, here and on the staff form from 3.140.1,
+  and is never the only protection: the
   honeypot still runs, both rate limits still count, every field is still
   validated, and the result is still a row somebody has to approve. It **fails
   open on a Cloudflare outage**, which is only tolerable because of that list. A
@@ -7118,8 +7132,9 @@ removing somebody from a list must still work the day they go looking for it.
 The confirmation link lives **30 days**, matching `SFAF_Request::COOKIE_DAYS`,
 which answers the same question with a different verb — how long after somebody
 typed their address into a public form is it still reasonable to act on. It is
-deliberately not `SFAF_Request::TOKEN_TTL`, which is 60 minutes because that
-link opens a form that can create an event and is priced as a login link. This
+deliberately not the staff form's emailed link, 60 minutes until 3.140.1 removed
+it, because that link opened a form that can create an event and was priced as
+a login link. This
 one grants no capability and creates nothing.
 
 **Unconfirmed records are swept on write, not on a schedule.** They can only

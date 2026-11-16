@@ -46,7 +46,7 @@ wp_set_object_terms( $existing, array( 11 ), 'uc_organizer' );
 $_GET = array();
 $editor_new = pt_capture( function () use ( $portal ) { kit_call( 'SFAF_Portal', 'render_event_form', $portal, array( new WP_User(), 0 ) ); } );
 $editor_old = pt_capture( function () use ( $portal, $existing ) { kit_call( 'SFAF_Portal', 'render_event_form', $portal, array( new WP_User(), $existing ) ); } );
-$request    = pt_capture( function () { kit_call( 'SFAF_Request', 'render_form', null, array( 'tok', 'someone@sfaf.org', array(), array() ) ); } );
+$request    = pt_capture( function () { kit_call( 'SFAF_Request', 'render_form', null, array( 'someone@sfaf.org', array(), array() ) ); } );
 $submit     = pt_capture( function () { kit_call( 'SFAF_Submit', 'render_form', null, array( (object) array( 'slug' => 'cycle-to-zero', 'name' => 'Cycle to Zero', 'term_id' => 11 ), array(), array() ) ); } );
 
 /*

@@ -13,17 +13,15 @@
  * questions, and the answer to "what can a requester see" would live in
  * forty places instead of this file.
  *
- * ACCESS: A LINK, NOT A PASSWORD.
+ * ACCESS: THE LINK OPENS THE FORM (3.140.1).
  * ---------------------------------------------------------------------------
- * Somebody types their sfaf.org address, and a link arrives that opens the
- * form. The link carries a token, exactly as the reminder cancel link does:
- * `SFAF_Reminders::new_token()` is the same generator, so there is one answer
- * to "how strong is that token". The token IS the credential, which is what
- * lets this work with no account at all.
- *
- * A link beats a code because it is one click with nothing to type and no
- * second screen to build, and because a code somebody types is a code somebody
- * forwards in a Slack message that outlives its usefulness.
+ * `/?uc_event_request=1` is the form, with no step before it. Until 3.140.1
+ * somebody typed their sfaf.org address and an emailed link opened the form,
+ * so the mailbox was the gate; Mark removed that step. The address is now a
+ * field on the form, held to the domain and not proved, and what stands
+ * where the mailbox did is Cloudflare Turnstile, the same widget and keys the
+ * community form uses, plus the honeypot and the hourly limit per address.
+ * Every request is still a PENDING post a person approves.
  *
  * NO REST ROUTE, deliberately. `is_embed_request()` matches an exact string,
  * so a new route would fail CORS from sfaf.org. This hangs off a front-end
@@ -46,22 +44,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class SFAF_Request {
 
-    /** The only domain that may ask for a link. */
+    /** The only domain a request may come from. */
     const DOMAIN = 'sfaf.org';
-
-    /** How long a link works for. */
-    const TOKEN_TTL = 3600;
 
     /**
      * Requests one person may send in an hour (3.125.0), counted on the
-     * verified address and never on the connection: the whole office is one
+     * address and never on the connection: the whole office is one
      * connection, so a per-connection count let colleagues use up each
      * other's allowance.
      */
     const SUBMIT_LIMIT = 30;
 
-    /** Where a live link is stored, keyed on a hash of the token. */
-    const TOKEN_PREFIX = 'sfaf_evreq_tok_';
 
     /* What a request records about itself, beyond the event's own fields. */
     const META_NAME   = '_uc_request_name';
@@ -144,100 +137,29 @@ class SFAF_Request {
      * URLs
      * ================================================================== */
 
-    /** Where somebody starts: the page that asks for an address. */
+    /** The form's address, and where it posts. */
     public static function start_url() {
         return add_query_arg( 'uc_event_request', '1', home_url( '/' ) );
     }
 
-    /** The link that arrives by email. */
-    public static function form_url( $token ) {
-        return add_query_arg(
-            array( 'uc_event_request' => '1', 'uc_token' => $token ),
-            home_url( '/' )
-        );
-    }
-
     /* =====================================================================
-     * Tokens
-     * ================================================================== */
-
-    /**
-     * Store a token for an address and return it.
+     * Remembering an address for 30 days
      *
-     * A TRANSIENT, NOT A TABLE, AND NOT A ROW ON ANYTHING.
+     * WHAT IT IS AND WHAT IT IS NOT (3.140.1). Once somebody has sent a
+     * request, this browser remembers the address they gave so the field is
+     * filled in next time. It is NOT a login and NOT a proof of anything: it
+     * grants nothing anywhere, it is read on this one query var, and the only
+     * thing it does is prefill one field the person can still change. Until
+     * 3.140.1 it skipped the emailed-link step; that step is gone.
      *
-     * The reminder token hangs off a registration row that already exists.
-     * There is no row here: nothing about a person who has not submitted
-     * anything is worth keeping. A transient is the store WordPress already
-     * has for "this is true for the next hour", it expires without a cleanup
-     * job, and it means no schema change and no SFAF_DB_VERSION bump for a
-     * value whose entire life is sixty minutes.
+     * IT IS STILL SIGNED, so a value this server did not write is cleared
+     * rather than shown, and remembered() still re-asks is_staff_address().
+     * Neither makes the address proven: anybody can type any sfaf.org address
+     * into the field, which is the decision 3.140.1 made, with Turnstile and
+     * the hourly limit as the checks.
      *
-     * THE TOKEN IS NOT THE KEY. The transient is keyed on a hash of it, so the
-     * usable credential is never written to the options table. Somebody who can
-     * read the database can already read everything; somebody who can see a
-     * stray backup or a log of option names cannot turn one into a working
-     * link.
-     *
-     * @param string $email
-     * @return string The token to put in the link.
-     */
-    private static function issue_token( $email ) {
-        $token = SFAF_Reminders::new_token();
-        set_transient( self::TOKEN_PREFIX . self::key_for( $token ), $email, self::TOKEN_TTL );
-        return $token;
-    }
-
-    /** The lookup key for a token. Never the token itself. */
-    private static function key_for( $token ) {
-        return hash( 'sha256', (string) $token );
-    }
-
-    /**
-     * The address a token belongs to, or '' if it is not a live one.
-     *
-     * @param string $token
-     * @return string
-     */
-    public static function resolve_token( $token ) {
-        $token = trim( (string) $token );
-        // Shape-checked first, so a junk value never reaches the store and a
-        // very long one cannot be used to make very long option lookups.
-        if ( '' === $token || ! preg_match( '/^[a-f0-9]{32}$/', $token ) ) {
-            return '';
-        }
-        $email = get_transient( self::TOKEN_PREFIX . self::key_for( $token ) );
-        if ( ! is_string( $email ) || ! self::is_staff_address( $email ) ) {
-            return '';
-        }
-        return $email;
-    }
-
-    /* =====================================================================
-     * Remembering a confirmed address for 30 days
-     *
-     * WHAT IT IS AND WHAT IT IS NOT. Once somebody has followed a link sent to
-     * their sfaf.org mailbox, this browser is told to remember that address so
-     * they go straight to the form for a month instead of asking for a link
-     * every time. It is NOT a login: it grants nothing anywhere else, it is
-     * read on this one query var, and the only thing it can do is prefill the
-     * form and mint a fresh short-lived token for that same address.
-     *
-     * IT IS SIGNED, WHICH IS THE WHOLE OF ITS SECURITY. A cookie holding a
-     * plain address would let anybody submit as any colleague by editing one
-     * string. The value carries an HMAC over the address and its expiry, keyed
-     * on a WordPress salt, so a cookie this server did not write is refused. It
-     * still says nothing secret, so it does not need to be secret; it needs to
-     * be unforgeable.
-     *
-     * THE DOMAIN RULE STILL APPLIES ON THE WAY OUT. remembered() re-asks
-     * is_staff_address(), so an address that stopped qualifying, or a cookie
-     * from before the rule changed, is refused rather than trusted because it
-     * was trusted once.
-     *
-     * IT IS SHOWN, NOT SILENT. A shared machine is the case this has to be safe
-     * on, so the form says which address it is about to submit as, and offers a
-     * way to switch that clears the cookie.
+     * IT IS SHOWN, NOT SILENT. The address is the field's value, in plain
+     * sight, so on a shared machine the next person sees it and changes it.
      * ================================================================== */
 
     /** The cookie's name, and how long it lasts. */
@@ -263,8 +185,7 @@ class SFAF_Request {
     /**
      * Remember this address in this browser.
      *
-     * Called only after a token has resolved, which is the moment the mailbox
-     * has proved the address belongs to whoever is holding the link.
+     * Called only after a request has been saved, before anything is printed.
      *
      * @param string $email
      */
@@ -377,12 +298,6 @@ class SFAF_Request {
     /**
      * Count one action against a limit, and say whether it may proceed.
      *
-     * WHY BOTH AN ADDRESS AND AN ADDRESS-LESS COUNTER EXIST. An open form with
-     * an email step is a way to send mail to arbitrary sfaf.org addresses:
-     * without a per-address limit, one person's inbox can be filled, and
-     * without a per-client limit, every address in the organization can be
-     * hit once each. Neither limit alone closes it.
-     *
      * A COUNTER, NOT A LOCKOUT. It expires on its own, so nothing has to
      * unblock anybody and a mistake costs somebody an hour rather than an
      * account.
@@ -415,130 +330,31 @@ class SFAF_Request {
         $posted = ( isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'] );
         $action = isset( $_POST['uc_request_action'] ) ? sanitize_key( wp_unslash( $_POST['uc_request_action'] ) ) : '';
 
-        if ( $posted && 'send_link' === $action ) {
-            self::handle_link_request();
+        if ( $posted && 'submit_request' === $action ) {
+            self::handle_submission( self::posted_email() );
             exit;
         }
 
         /*
-         * SWITCHING ADDRESS IS AN ACTION, AND IT IS THE FIRST THING CHECKED.
-         * Somebody on a shared machine who has noticed a colleague's address on
-         * the form needs the way out to work whatever else is in the request.
+         * THE LINK OPENS THE FORM (3.140.1). Until then it asked for an
+         * address and emailed a link that opened it. Anything left over from
+         * that arrangement, an old emailed link with its uc_token or the
+         * address page posted from an open tab, lands here and gets the form.
          */
-        if ( ! empty( $_GET['uc_switch'] ) ) {
-            self::forget();
-            self::render_start();
-            exit;
-        }
-
-        $token = isset( $_GET['uc_token'] ) ? sanitize_text_field( wp_unslash( $_GET['uc_token'] ) ) : '';
-        if ( $posted && 'submit_request' === $action ) {
-            $token = isset( $_POST['uc_token'] ) ? sanitize_text_field( wp_unslash( $_POST['uc_token'] ) ) : '';
-        }
-
-        if ( '' === $token ) {
-            /*
-             * A REMEMBERED ADDRESS SKIPS THE EMAIL STEP, AND NOTHING ELSE.
-             *
-             * The cookie does not authorise a submission by itself: it names an
-             * address, and a FRESH token is minted for that address exactly as
-             * if a link had just been followed. So the submission path below is
-             * unchanged, the token still expires in an hour, and every rate
-             * limit still counts. What is saved is the round trip through a
-             * mailbox, not any of the checking.
-             */
-            $known = self::remembered();
-            if ( '' !== $known ) {
-                self::render_form( self::issue_token( $known ), $known, array(), array(), true );
-                exit;
-            }
-            self::render_start();
-            exit;
-        }
-
-        $email = self::resolve_token( $token );
-        if ( '' === $email ) {
-            /* The link failed, so whatever this browser was remembering about
-             * it is not worth keeping either. */
-            self::forget();
-            self::render_expired();
-            exit;
-        }
-
-        if ( $posted && 'submit_request' === $action ) {
-            self::handle_submission( $token, $email );
-            exit;
-        }
-
-        /* Following a live link is the proof that the mailbox is theirs, so
-         * this is the one place the cookie is written. */
-        self::remember( $email );
-        self::render_form( $token, $email, array(), array() );
+        self::render_form( self::remembered(), array(), array() );
         exit;
     }
 
-    /* =====================================================================
-     * Step one: ask for a link
-     * ================================================================== */
-
-    private static function handle_link_request() {
-        $email = isset( $_POST['email'] ) ? strtolower( trim( sanitize_text_field( wp_unslash( $_POST['email'] ) ) ) ) : '';
-
-        /*
-         * THE HONEYPOT. A field no person sees and every naive bot fills. It
-         * fails exactly as a success looks, because telling a bot it was caught
-         * is telling whoever wrote it what to change.
-         */
-        if ( ! empty( $_POST['uc_website'] ) ) {
-            self::render_link_sent();
-            return;
+    /** The address the request was sent from, as typed, normalised. */
+    private static function posted_email() {
+        if ( ! isset( $_POST['requester_email'] ) || ! is_string( $_POST['requester_email'] ) ) {
+            return '';
         }
-
-        if ( ! self::is_staff_address( $email ) ) {
-            /*
-             * SAID PLAINLY, because this reveals nothing about a person. The
-             * rule is the domain, and somebody who mistyped their own address
-             * needs to know that rather than watching a link never arrive.
-             */
-            self::render_start( 'That is not an ' . self::DOMAIN . ' address. This form is for SFAF staff, so use your work address.' );
-            return;
-        }
-
-        /*
-         * THE SAME ANSWER WHATEVER HAPPENS NEXT.
-         *
-         * Refused by a rate limit, sent, or silently dropped because the
-         * mailbox does not exist: all three render the identical page. A
-         * different screen for any of them would answer "is this a real
-         * address here" for anybody who asked, and would say which addresses
-         * are worth trying again later.
-         */
-        if ( self::allow( 'link_addr', $email, 3, self::TOKEN_TTL )
-            && self::allow( 'link_ip', self::client(), 10, self::TOKEN_TTL ) ) {
-            self::send_link( $email );
-        }
-
-        self::render_link_sent();
-    }
-
-    private static function send_link( $email ) {
-        $url  = self::form_url( self::issue_token( $email ) );
-        $mins = (int) round( self::TOKEN_TTL / 60 );
-
-        $html = SFAF_Email::heading( 'Request an event' )
-            . SFAF_Email::para( 'Here is your link to the event request form. It works for the next ' . $mins . ' minutes.' )
-            . SFAF_Email::button_row( array( SFAF_Email::button( $url, 'Open the form' ) ) )
-            . SFAF_Email::rule()
-            . SFAF_Email::small_para( 'If you did not ask for this, nothing has happened and you can ignore it. The link only opens a form; it gives no access to anything else.' );
-
-        $text = "Here is your link to the event request form. It works for the next {$mins} minutes.\n\n{$url}\n\n"
-            . "If you did not ask for this, nothing has happened and you can ignore it.";
-
-        SFAF_Email::send( $email, 'Your link to the event request form', SFAF_Email::shell( 'Your event request link', $html ), $text );
+        return strtolower( trim( sanitize_text_field( wp_unslash( $_POST['requester_email'] ) ) ) );
     }
 
     /* =====================================================================
-     * Step two: the request itself
+     * The request itself
      * ================================================================== */
 
     /**
@@ -556,8 +372,9 @@ class SFAF_Request {
      */
     public static function required_fields() {
         $fields = array(
-            'requester_name' => array( 'message' => 'Tell us who is asking.', 'inputs' => array( 'requester_name' ) ),
-            'title'          => array( 'message' => 'The event needs a name.', 'inputs' => array( 'title' ) ),
+            'requester_name'  => array( 'message' => 'Tell us who is asking.', 'inputs' => array( 'requester_name' ) ),
+            'requester_email' => array( 'message' => 'Give your work email address.', 'inputs' => array( 'requester_email' ) ),
+            'title'       => array( 'message' => 'The event needs a name.', 'inputs' => array( 'title' ) ),
             'description'    => array( 'message' => 'Write a description. An event with none is blank on the calendar.', 'inputs' => array( 'description' ), 'carry' => 'aria' ),
             'organizer'      => array( 'message' => 'Tick everybody putting this on.', 'inputs' => array( 'organizer[]' ), 'carry' => 'legend' ),
             'date'           => array( 'message' => 'Give the date, as a real calendar date.', 'inputs' => array( 'date' ) ),
@@ -582,7 +399,8 @@ class SFAF_Request {
         };
         return array(
             'requester_name' => $g( 'name' ),
-            'title'          => $g( 'title' ),
+            'requester_email' => $g( 'email' ),
+            'title'         => $g( 'title' ),
             'description'    => trim( wp_strip_all_tags( $g( 'description' ) ) ),
             'organizer[]'    => empty( $c['organizer'] ) ? '' : '1',
             'date'           => $g( 'date' ),
@@ -627,6 +445,16 @@ class SFAF_Request {
          * start, too many teams. */
         $clean['name'] = $str( 'requester_name', 120 );
 
+        /*
+         * THE ADDRESS IS TYPED, FROM 3.140.1, and nothing proves it: the
+         * emailed link that did is gone. The domain rule is what is left, and
+         * it is said plainly because it reveals nothing about a person.
+         */
+        $clean['email'] = strtolower( $str( 'requester_email', 200 ) );
+        if ( '' !== $clean['email'] && ! self::is_staff_address( $clean['email'] ) ) {
+            $errors['requester_email'] = 'That is not an ' . self::DOMAIN . ' address. This form is for SFAF staff, so use your work address.';
+        }
+
         $clean['title'] = $str( 'title', 200 );
 
         /*
@@ -634,9 +462,11 @@ class SFAF_Request {
          *
          * 3.43.0 stripped markup from everything here, and said why: nobody
          * needs to send HTML through a request form, and text can never become
-         * anything else later. Staff behind an emailed link is a lower risk
+         * anything else later. Staff behind an emailed link was a lower risk
          * than that rule was written for, so the description is a rich text
-         * field now.
+         * field now. The link went in 3.140.1 and the field stayed prose, on
+         * Mark's instruction that the form stay as it was; the narrow list
+         * below and the pending review are what hold.
          *
          * IT IS STILL SANITISED ON THE WAY IN, and by the narrow list rather
          * than by wp_kses_post(). The editor is trusted to be convenient, never
@@ -1005,19 +835,37 @@ class SFAF_Request {
         return $m[1] . ':' . $m[2];
     }
 
-    private static function handle_submission( $token, $email ) {
+    /**
+     * @param string $email The address as typed, normalised. It is only a
+     *                      counter key until validate() has accepted it.
+     */
+    private static function handle_submission( $email ) {
         if ( ! empty( $_POST['uc_website'] ) ) {
             self::render_done( '' );
             return;
         }
 
         /*
-         * RATE LIMITED ON THE PERSON (3.125.0), by the address the emailed link
-         * proved. Until 3.125.0 it was 5 per link and 10 per connection an
-         * hour, every attempt counted, refused ones included, and the
-         * connection count was the community form's own `submit_ip` counter:
-         * the office is one connection, so staff and community submissions
-         * from it used up one allowance between them.
+         * TURNSTILE FROM 3.140.1, BEFORE THE FIELDS AND BEFORE THE UPLOAD,
+         * exactly as the community form has it. The emailed link was this
+         * form's gate until then; with it gone, the widget is what stands in
+         * for it. Not configured means no widget and no check, as there.
+         */
+        if ( ! SFAF_Turnstile::verify() ) {
+            self::render_form( $email, self::validate( $_POST )['clean'], array(
+                'form' => 'That did not pass the robot check. Tick the box again and resend.',
+            ) );
+            return;
+        }
+
+        /*
+         * RATE LIMITED ON THE PERSON (3.125.0), by the address on the request.
+         * Until 3.125.0 it was 5 per link and 10 per connection an hour, every
+         * attempt counted, refused ones included, and the connection count was
+         * the community form's own `submit_ip` counter: the office is one
+         * connection, so staff and community submissions from it used up one
+         * allowance between them. From 3.140.1 the address is typed rather
+         * than proved by a link.
          *
          * ONLY A REQUEST THAT IS SAVED COUNTS, so correcting a missing field
          * costs nothing. The window is fixed from the first request, so the
@@ -1026,7 +874,7 @@ class SFAF_Request {
         $wait = SFAF_Submissions::window_wait( 'request_addr', $email, self::SUBMIT_LIMIT );
         if ( $wait > 0 ) {
             $mins = max( 1, (int) ceil( $wait / 60 ) );
-            self::render_form( $token, $email, self::validate( $_POST )['clean'], array(
+            self::render_form( $email, self::validate( $_POST )['clean'], array(
                 'form' => 'You have sent ' . self::SUBMIT_LIMIT . ' requests this hour. You can send this one in '
                     . $mins . ( 1 === $mins ? ' minute.' : ' minutes.' ),
             ) );
@@ -1041,8 +889,8 @@ class SFAF_Request {
          * without its own counter, the disk work rides on a limit that was set
          * for creating pending posts.
          */
-        $upload = SFAF_Uploads::store( 'uc_image', function () use ( $token ) {
-            return SFAF_Submissions::allow( 'upload_tok', $token, 10, self::TOKEN_TTL );
+        $upload = SFAF_Uploads::store( 'uc_image', function () use ( $email ) {
+            return SFAF_Submissions::allow( 'upload_addr', $email, 10, HOUR_IN_SECONDS );
         } );
         if ( '' !== $upload['error'] ) {
             $checked['errors']['uc_image'] = $upload['error'];
@@ -1055,9 +903,13 @@ class SFAF_Request {
             if ( $upload['id'] ) {
                 wp_delete_attachment( $upload['id'], true );
             }
-            self::render_form( $token, $email, $checked['clean'], $checked['errors'] );
+            self::render_form( $email, $checked['clean'], $checked['errors'] );
             return;
         }
+
+        /* Accepted by validate(), so from here it is the address that was
+         * checked rather than the one that was counted. */
+        $email = $checked['clean']['email'];
 
         $event_id = self::create_event( $checked['clean'], $email, (int) $upload['id'] );
         /* Same as the community form: the approver is the one who can act on
@@ -1069,13 +921,16 @@ class SFAF_Request {
             if ( $upload['id'] ) {
                 wp_delete_attachment( $upload['id'], true );
             }
-            self::render_form( $token, $email, $checked['clean'], array(
+            self::render_form( $email, $checked['clean'], array(
                 'form' => 'Something went wrong saving that. Try once more, and if it happens again email the MarCom team.',
             ) );
             return;
         }
 
         SFAF_Submissions::window_count( 'request_addr', $email, HOUR_IN_SECONDS );
+
+        /* Before anything is printed, because it is a header. */
+        self::remember( $email );
 
         self::notify_admins( $event_id, $checked['clean'], $email );
         self::confirm_to_requester( $event_id, $checked['clean'], $email );
@@ -1095,7 +950,7 @@ class SFAF_Request {
      * queue reads it from there.
      *
      * @param array  $c     Clean values from validate().
-     * @param string $email The address the token belongs to.
+     * @param string $email The address validate() accepted.
      * @return int Event id, or 0.
      */
     private static function create_event( $c, $email, $upload_id = 0 ) {
@@ -1537,70 +1392,6 @@ class SFAF_Request {
         SFAF_Submissions::page_close( $args );
     }
 
-    private static function render_start( $error = '' ) {
-        self::page_open( 'Request an event' );
-        ?>
-        <div class="uc-request-card">
-            <h1>Request an event</h1>
-            <p class="uc-hint">
-                Ask the MarCom team to put an event on the SFAF calendar. Enter your work address and
-                we will send you a link to the form.
-            </p>
-            <?php if ( '' !== $error ) : ?>
-                <p class="uc-field-error" role="alert"><?php echo esc_html( $error ); ?></p>
-            <?php endif; ?>
-            <form method="post" action="<?php echo esc_url( self::start_url() ); ?>" class="uc-form">
-                <input type="hidden" name="uc_request_action" value="send_link" />
-                <label class="uc-field">
-                    <span class="uc-field-label">Your work email address</span>
-                    <input type="email" name="email" required autocomplete="email"
-                           placeholder="you@<?php echo esc_attr( self::DOMAIN ); ?>" />
-                </label>
-                <?php self::honeypot(); ?>
-                <div class="uc-form-actions uc-form-actions-primary">
-                    <button type="submit" class="uc-btn uc-btn-primary">Send me the link</button>
-                </div>
-            </form>
-        </div>
-        <?php
-        self::page_close();
-    }
-
-    private static function render_link_sent() {
-        self::page_open( 'Check your email' );
-        ?>
-        <div class="uc-request-card">
-            <h1>Check your email</h1>
-            <p>
-                If that is an <?php echo esc_html( self::DOMAIN ); ?> address, a link to the form is on its way.
-                It works for the next <?php echo (int) round( self::TOKEN_TTL / 60 ); ?> minutes.
-            </p>
-            <p class="uc-hint">
-                Nothing arrived? Check the junk folder, then ask for another link. If you have asked
-                several times in the last hour, give it a few minutes first.
-            </p>
-            <div class="uc-form-actions uc-form-actions-primary">
-                <a class="uc-btn uc-btn-primary" href="<?php echo esc_url( self::start_url() ); ?>">Ask again</a>
-            </div>
-        </div>
-        <?php
-        self::page_close();
-    }
-
-    private static function render_expired() {
-        self::page_open( 'That link has expired' );
-        ?>
-        <div class="uc-request-card">
-            <h1>That link has expired</h1>
-            <p>Links work for <?php echo (int) round( self::TOKEN_TTL / 60 ); ?> minutes. Ask for a new one and it will open the form.</p>
-            <div class="uc-form-actions uc-form-actions-primary">
-                <a class="uc-btn uc-btn-primary" href="<?php echo esc_url( self::start_url() ); ?>">Get a new link</a>
-            </div>
-        </div>
-        <?php
-        self::page_close();
-    }
-
     private static function render_done( $title ) {
         self::page_open( 'Request sent' );
         ?>
@@ -1628,12 +1419,11 @@ class SFAF_Request {
     /**
      * The form itself.
      *
-     * @param string $token
-     * @param string $email
+     * @param string $email  The address to fill in when $c carries none.
      * @param array  $c      Values to put back, after a rejected submission.
      * @param array  $errors field => message.
      */
-    private static function render_form( $token, $email, $c, $errors, $remembered = false ) {
+    private static function render_form( $email, $c, $errors ) {
         $v = function ( $key, $fallback = '' ) use ( $c ) {
             return isset( $c[ $key ] ) ? $c[ $key ] : $fallback;
         };
@@ -1686,25 +1476,6 @@ class SFAF_Request {
             );
             ?>
             <h1>Request an event</h1>
-            <?php
-            /*
-             * WHOSE REQUEST THIS IS ABOUT TO BE, ON THE FORM.
-             *
-             * It always said the address. What it did not have was a way out,
-             * and a remembered address on a shared machine is exactly the case
-             * where somebody needs one: without it, a colleague's name goes on
-             * a request nobody notices was theirs.
-             */
-            ?>
-            <p class="uc-hint uc-request-who-line">
-                Asking as <strong><?php echo esc_html( $email ); ?></strong>; if that is not you,
-                <a href="<?php echo esc_url( add_query_arg( 'uc_switch', '1', self::start_url() ) ); ?>">use a different address</a>.
-            </p>
-            <?php if ( $remembered ) : ?>
-                <p class="uc-hint">
-                    Come straight back to this form from this browser for the next <?php echo (int) self::COOKIE_DAYS; ?> days.
-                </p>
-            <?php endif; ?>
 
             <?php if ( '' !== $err( 'form' ) ) : ?>
                 <p class="uc-field-error" role="alert"><?php echo esc_html( $err( 'form' ) ); ?></p>
@@ -1712,9 +1483,8 @@ class SFAF_Request {
                 <p class="uc-field-error" role="alert">Some of this needs another look. The fields are marked below.</p>
             <?php endif; ?>
 
-            <form method="post" action="<?php echo esc_url( self::form_url( $token ) ); ?>" class="uc-form" enctype="multipart/form-data">
+            <form method="post" action="<?php echo esc_url( self::start_url() ); ?>" class="uc-form" enctype="multipart/form-data">
                 <input type="hidden" name="uc_request_action" value="submit_request" />
-                <input type="hidden" name="uc_token" value="<?php echo esc_attr( $token ); ?>" />
                 <?php self::honeypot(); ?>
                 <?php SFAF_Submissions::required_note(); ?>
                 <?php SFAF_Submissions::required_payload( $req ); ?>
@@ -1919,6 +1689,20 @@ class SFAF_Request {
                     <?php self::field_error( $err( 'requester_name' ) ); ?>
                 </label>
 
+                <?php
+                /* WHOSE REQUEST IT IS, from 3.140.1, typed here rather than
+                 * proved by an emailed link. Filled in from this browser's last
+                 * request, and changed like any other field. */
+                $typed = (string) $v( 'email' );
+                ?>
+                <label class="uc-field">
+                    <span class="uc-field-label">Your work email address<?php echo $mark( 'requester_email' ); ?></span>
+                    <input type="email" name="requester_email"<?php echo $attr( 'requester_email' ); ?> maxlength="200" autocomplete="email"
+                           placeholder="you@<?php echo esc_attr( self::DOMAIN ); ?>"
+                           value="<?php echo esc_attr( '' !== $typed ? $typed : $email ); ?>" />
+                    <?php self::field_error( $err( 'requester_email' ) ); ?>
+                </label>
+
                 <label class="uc-field">
                     <span class="uc-field-label">Event name<?php echo $mark( 'title' ); ?></span>
                     <input type="text" name="title"<?php echo $attr( 'title' ); ?> maxlength="200" value="<?php echo esc_attr( $v( 'title' ) ); ?>" />
@@ -1942,11 +1726,13 @@ class SFAF_Request {
                 <?php
                 /*
                  * OFFERED HERE AND NOT ON THE COMMUNITY FORM, the same split
-                 * the FAQ picker has and for a plainer reason: this form is
+                 * the FAQ picker has and for a plainer reason: this form was
                  * behind an emailed token to an sfaf.org address, so whoever
-                 * fills it in is staff. The community form is open to anybody
+                 * filled it in was staff. The community form is open to anybody
                  * with the link, and a URL field on an open form is a place to
-                 * put a link to something else.
+                 * put a link to something else. From 3.140.1 this form opens
+                 * from its link too, and kept the field on Mark's instruction
+                 * that the form stay as it was.
                  */
                 ?>
                 <label class="uc-field">
@@ -2115,10 +1901,12 @@ class SFAF_Request {
                  *
                  * THE PICKER IS OFFERED HERE AND NOT ON THE COMMUNITY FORM, and
                  * that is a privacy decision rather than a simplicity one. This
-                 * form is behind an emailed token to an sfaf.org address, so
-                 * whoever is reading it already works here and the set names
-                 * tell them nothing they do not know. See the note where the
-                 * community form builds its own FAQ section.
+                 * form was behind an emailed token to an sfaf.org address, so
+                 * whoever read it already worked here and the set names told
+                 * them nothing they did not know. From 3.140.1 it opens from
+                 * its link, so anybody holding the link sees the set names;
+                 * kept on Mark's instruction that the form stay as it was. See
+                 * the note where the community form builds its own FAQ section.
                  *
                  * THE SET IS COPIED, NOT LINKED. faqs_for() does the combining,
                  * and SFAF_FAQ_Sets explains at the top of that file why a copy
@@ -2221,6 +2009,8 @@ class SFAF_Request {
                         <textarea name="notes" rows="3" maxlength="2000"><?php echo esc_textarea( $v( 'notes' ) ); ?></textarea>
                     </label>
                 </fieldset>
+
+                <?php SFAF_Turnstile::field(); ?>
 
                 <div class="uc-form-actions uc-form-actions-primary">
                     <p class="uc-form-actions-note">This goes to the MarCom team. You will get a copy of it by email.</p>

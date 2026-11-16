@@ -36,7 +36,7 @@ $S    = 'SFAF_Submissions';
 $GLOBALS['kit_query'] = function ( $a ) { return array(); };
 
 /* ======================================================================== A */
-$staff = rt_cap( function () { kit_call( 'SFAF_Request', 'render_form', null, array( 'tok', 'pat@sfaf.org', array(), array() ) ); } );
+$staff = rt_cap( function () { kit_call( 'SFAF_Request', 'render_form', null, array( 'pat@sfaf.org', array(), array() ) ); } );
 $series = SFAF_Series::get( 11 );
 $comm  = rt_cap( function () use ( $series ) { kit_call( 'SFAF_Submit', 'render_form', null, array( $series, array(), array() ) ); } );
 foreach ( array( 'staff' => $staff, 'community' => $comm ) as $w => $h ) {

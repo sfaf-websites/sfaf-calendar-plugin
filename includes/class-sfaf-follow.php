@@ -56,9 +56,9 @@ class SFAF_Follow {
      * THIRTY DAYS, MATCHED TO SFAF_Request::COOKIE_DAYS, and the match is the
      * argument. That constant answers "how long after somebody typed their
      * address into a public form is it still reasonable to act on", which is
-     * this question with a different verb. The other lifetime in the plugin,
-     * SFAF_Request::TOKEN_TTL, is sixty minutes because that link opens a form
-     * that can create an event: it is a login link and is priced like one. This
+     * this question with a different verb. The staff request form's emailed
+     * link, until 3.140.1, lived sixty minutes because it opened a form that
+     * can create an event: it was a login link and was priced like one. This
      * link creates nothing, opens nothing, and grants no capability. It says
      * yes to one row.
      *

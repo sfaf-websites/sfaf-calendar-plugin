@@ -80,7 +80,7 @@ rt( is_array( $v ) && abs( $v['until'] - ( time() + 600 ) ) <= 2, 'PLANT A: coun
 $GLOBALS['kit_trans'][ $key ] = array( 'n' => 30, 'until' => time() + 725 );
 $_POST = array( 'uc_request_action' => 'submit_request', 'title' => 'Harm reduction training', 'requester_name' => 'Emily' );
 $d = ob_get_level(); ob_start();
-try { kit_call( 'SFAF_Request', 'handle_submission', null, array( 'tok', $who ) ); } catch ( Throwable $e ) { echo 'THREW ' . $e->getMessage(); }
+try { kit_call( 'SFAF_Request', 'handle_submission', null, array( $who ) ); } catch ( Throwable $e ) { echo 'THREW ' . $e->getMessage(); }
 $h = ''; while ( ob_get_level() > $d ) { $h = ob_get_clean() . $h; }
 rt( false !== strpos( $h, 'You have sent 30 requests this hour. You can send this one in 13 minutes.' ),
     'PLANT A: the refusal does not say how long: ' . ( preg_match( '/You have sent[^<]*/', $h, $m ) ? $m[0] : substr( strip_tags( $h ), 0, 200 ) ) );

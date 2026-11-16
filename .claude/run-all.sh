@@ -258,6 +258,7 @@ for f in .claude/*.php; do
     plant-31360.php) continue ;;       # a fault planter for the 3.136.0 checks, run with the release, and it drives Chrome
     release-31400-live.php) continue ;;  # run below with --run
     plant-31400.php) continue ;;       # a fault planter for the 3.140.0 checks, run with the release, and it drives Chrome
+    plant-31401.php) continue ;;       # a fault planter for the 3.140.1 checks, not a check
     release-31390-live.php) continue ;;  # run below with --run
     plant-31390.php) continue ;;       # a fault planter for the 3.139.0 check, run with the release, and it drives Chrome
     release-31380-live.php) continue ;;  # run below with --run

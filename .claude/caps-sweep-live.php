@@ -142,7 +142,7 @@ $pages['public-closure-card'] = cs_public( '<div class="uc-calendar">' . $sc->re
 /* Both public forms, in the document they are served in. */
 $pages['public-request-form'] = cs_capture( function () {
     SFAF_Submissions::page_open( 'Request an event' );
-    kit_call( 'SFAF_Request', 'render_form', null, array( 'tok', 'someone@sfaf.org', array(), array() ) );
+    kit_call( 'SFAF_Request', 'render_form', null, array( 'someone@sfaf.org', array(), array() ) );
     SFAF_Submissions::page_close();
 } );
 $pages['public-submit-form'] = cs_capture( function () {

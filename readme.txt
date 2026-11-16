@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.140.0
+Stable tag: 3.140.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,18 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.140.1 =
+
+**The staff event request link opens the form. Every embed answer and header is 3.140.0's, proved by embed-identity-test.php.**
+
+**WHAT CHANGES ON PUBLIC PAGES:** nothing on the calendar, the event pages or the community submission form. The staff request form at `/?uc_event_request=1` opens straight away.
+
+* **No email step.** The page that asked for a work address and emailed a link to the form is gone, and so is the link email. Old emailed links, and the old address page left open in a tab, open the form.
+* **Your work email address** is a field on the form, under Your name, required, and sfaf.org only, as the address page was. The copy of the request goes to it. The browser fills it in next time.
+* **Cloudflare Turnstile on the staff form**, the same box, keys and check as the community form, above Send the request. Without both keys in WP admin Settings, neither form has the box.
+* Everything else on the form is as it was. Requests are still 30 an hour per address, and still arrive in Pending.
+* caladmin's Get a form link and WP admin's Cloudflare Turnstile panel say so.
 
 = 3.140.0 =
 

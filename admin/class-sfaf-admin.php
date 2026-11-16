@@ -2361,7 +2361,7 @@ class SFAF_Admin {
                         <span class="uc-panel-icon"><?php echo sfaf_icon( 'check', array( 'size' => '20px' ) ); ?></span>
                         <div class="uc-panel-info">
                             <h2>Cloudflare Turnstile</h2>
-                            <p>Spam protection for the public event submission form.</p>
+                            <p>Spam protection for the event request and community submission forms.</p>
                         </div>
                         <span class="uc-panel-status <?php echo SFAF_Turnstile::ready() ? 'uc-status-connected' : 'uc-status-pending'; ?>"><?php echo SFAF_Turnstile::ready() ? 'Connected' : 'Not configured'; ?></span>
                         <span class="uc-panel-toggle">&#9660;</span>
@@ -2379,7 +2379,7 @@ class SFAF_Admin {
                             <strong>Both keys, or the widget does not appear at all.</strong> A site key with no secret would draw a checkbox that nothing verifies. Use the same Cloudflare account and domain that Gravity Forms already uses on this site.
                         </p>
                         <p class="description">
-                            This protects the community submission form at <code><?php echo esc_html( SFAF_Submit::QUERY_VAR ); ?>=</code>, which has no login and no email check. The staff request form does not use it: a link sent to an sfaf.org mailbox is already a stronger check. If Cloudflare cannot be reached the submission still goes through, and the honeypot, the rate limits and the pending queue still apply.
+                            This protects the staff request form at <code>uc_event_request=1</code> and the community submission form at <code><?php echo esc_html( SFAF_Submit::QUERY_VAR ); ?>=</code>. Neither has a login or an email check. Without both keys, neither form has a robot check. If Cloudflare cannot be reached the submission still goes through, and the honeypot, the rate limits and the pending queue still apply.
                         </p>
                     </div>
                 </div>

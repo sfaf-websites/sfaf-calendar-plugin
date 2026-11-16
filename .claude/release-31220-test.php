@@ -328,7 +328,7 @@ $prev = (string) ob_get_clean();
 rt( 'E: a draft\'s page carries the Preview band above the title', false !== strpos( $prev, 'data-uc-preview' ) && strpos( $prev, 'data-uc-preview' ) < strpos( $prev, 'uc-single-header' ), true );
 
 /* ======================================================================== F */
-$staff = rt_cap( function () { kit_call( 'SFAF_Request', 'render_form', null, array( 'tok', 'pat@sfaf.org', array(), array() ) ); } );
+$staff = rt_cap( function () { kit_call( 'SFAF_Request', 'render_form', null, array( 'pat@sfaf.org', array(), array() ) ); } );
 $field = (string) strstr( $staff, 'id="uc-rsvp-updates-label"' );
 $field = substr( $field, 0, (int) strpos( $field, '</div>' ) );
 rt( 'F: the line under Who should get RSVP updates?', false !== strpos( $field, '<span class="uc-hint">They&#039;ll get the RSVP count the day before and the list of who&#039;s coming two hours before.</span>' ), true );

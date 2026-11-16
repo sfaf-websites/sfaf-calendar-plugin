@@ -1,13 +1,13 @@
 <?php
 /**
- * Cloudflare Turnstile, for the one form that has no other gate.
+ * Cloudflare Turnstile, for the two forms that have no other gate.
  *
- * WHY THIS FORM AND NOT THE OTHER ONE. The staff request form is reached by a
- * link emailed to an sfaf.org address, so the mailbox is the gate and a widget
- * on top of it would be a second obstacle for somebody who has already proved
- * more than it could. The community form has no gate at all: the URL is public,
- * linked from a campaign site, and anybody can post to it. Turnstile is what
- * stands in for the mailbox there.
+ * BOTH FORMS FROM 3.140.1. The community form has had it from the start: the
+ * URL is public, linked from a campaign site, and anybody can post to it. The
+ * staff request form was reached by a link emailed to an sfaf.org address, so
+ * the mailbox was its gate and it had no widget. Mark removed the emailed
+ * link in 3.140.1, so the form opens from its own URL, and Turnstile stands
+ * in for the mailbox there too. One widget, one set of keys, one verify().
  *
  * TURNSTILE RATHER THAN A CAPTCHA OF OUR OWN, because it is already on this
  * site for Gravity Forms, which means the keys exist, somebody already knows

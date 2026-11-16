@@ -6077,7 +6077,7 @@ class SFAF_Portal {
 
                 <div class="uc-form-link">
                     <h3>Staff form</h3>
-                    <p class="uc-hint">For anyone with an sfaf.org address. They enter it, and the form arrives by email.</p>
+                    <p class="uc-hint">For anyone with an sfaf.org address. The link opens the form.</p>
                     <div class="uc-form-link-row">
                         <input type="text" class="uc-form-link-url" readonly onfocus="this.select();"
                                aria-label="Staff form link"
