@@ -213,7 +213,7 @@ foreach ( $g as $name => $r ) {
             rl( isset( $r['typed'][ $k ] ) && $e === $r['typed'][ $k ], "PLANT K: $name: typing the $k message reads " . json_encode( $r['typed'][ $k ] ?? null, JSON_UNESCAPED_UNICODE ) . ', wanted ' . json_encode( $e ) );
         }
         rl( $r['under'], "$name: the count is not under the box" );
-        rl( 'What can I send by WhatsApp?' === $r['help']['summary'] && $r['help']['summarySeen'] && ! $r['help']['bodyClosed'] && $r['help']['bodyOpen'] && $r['help']['onScreen'] && $r['help']['under'],
+        rl( 'What can I send by Text and WhatsApp?' === $r['help']['summary'] && $r['help']['summarySeen'] && ! $r['help']['bodyClosed'] && $r['help']['bodyOpen'] && $r['help']['onScreen'] && $r['help']['under'],
             "PLANT K: $name: the WhatsApp panel " . json_encode( $r['help'] ) );
         rl( array( 'Ana:EN', 'Beto:ES', 'Cruz:ES' ) === $r['tags'], "PLANT K: $name: the tags read " . json_encode( $r['tags'] ) );
         rl( isset( $r['confirm']['bg'] ) && $GREEN === $r['confirm']['bg'] && 'Send' === $r['confirm']['label'], "PLANT K: $name: Send asks with " . json_encode( $r['confirm'] ?? null ) );

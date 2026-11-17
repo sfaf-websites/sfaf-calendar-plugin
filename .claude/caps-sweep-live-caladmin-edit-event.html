@@ -1155,7 +1155,7 @@
                 <div class="uc-field uc-replyto-field" data-uc-replyto>
                     <label class="uc-field-label" for="uc-event-replyto-pick">Replies go to</label>
                     <select name="event_replyto_pick" id="uc-event-replyto-pick" data-uc-replyto-pick>
-                                                    <option value=""  selected="selected">Admin (creator), admin@sfaf.org</option>
+                                                    <option value=""  selected="selected">The address the mail comes from</option>
                                                 <option value="__other" >Someone else</option>
                     </select>
                     <input type="email" name="event_replyto" id="uc-event-replyto" aria-label="Email address for replies"
@@ -1236,18 +1236,21 @@
             <h2 class="uc-bento-title">Team and access
                 <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-teams-501" aria-label="More about teams">?</button><span class="uc-help-body" id="uc-help-teams-501" data-uc-help-body>Adding somebody to a team gives them this event too, and taking them out takes it away. What they can do on it is set by their level.</span>            </h2>
 
-            <p class="uc-access-organizer">
-                <strong>Admin</strong>
-                <span class="uc-muted">
-                    created this event and can always edit it.                </span>
-            </p>
-            <p class="uc-hint">Calendar admins can open every event.</p>
+                        <p class="uc-access-organizer" data-uc-access-creator="none">
+                                    <span class="uc-muted">Nobody is recorded as creating this event.</span>
+                            </p>
+                            <p class="uc-access-organizer" data-uc-access-owner>
+                    <strong>Admin</strong>
+                    <span class="uc-muted">can always edit it.</span>
+                </p>
+                        <p class="uc-hint">Calendar admins can open every event.</p>
 
                             <div class="uc-access" data-uc-access
                      data-uc-access-series="{}"
-                     data-uc-access-own="0">
+                     data-uc-access-own="0"
+                                          >
                     <input type="hidden" name="access_present" value="1" />
-
+                    
                             <fieldset class="uc-access-group">
             <legend class="uc-field-label">Teams</legend>
                             <p class="uc-muted">No teams exist yet. Teams are created under Users &amp; Teams.</p>
@@ -1257,7 +1260,7 @@
             <legend class="uc-field-label">People</legend>
                             <p class="uc-muted">Nobody has calendar access yet.</p>
                     </fieldset>
-        
+                            
                                     </div>
                     </section>
                     </div>

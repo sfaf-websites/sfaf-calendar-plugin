@@ -38,6 +38,93 @@ class SFAF_Access {
     const SERIES_PEOPLE = '_sfaf_series_access_people';
     const MAX_PEOPLE    = 20;
 
+    /*
+     * WHO CREATED THE EVENT (3.141.0), written once, when it is made, and never
+     * again: not by a save, not by a reassign, not by whoever opens it.
+     * post_author stays what it was, the account that can always edit the
+     * event, which a reassign moves; this is the record of who made it. 0 is
+     * "made by nobody with an account": a request, a submission, an import.
+     */
+    const CREATOR_META = '_uc_creator';
+
+    /**
+     * Record the creator. add_post_meta( ..., unique ), so a second call is a
+     * no-op and the first answer stands.
+     */
+    public static function record_creator( $event_id, $user_id ) {
+        $event_id = (int) $event_id;
+        if ( $event_id <= 0 ) {
+            return;
+        }
+        add_post_meta( $event_id, self::CREATOR_META, (string) max( 0, (int) $user_id ), true );
+    }
+
+    /**
+     * The creator's user id, 0 for none. Not recorded (made before 3.141.0
+     * and not yet passed by schema 19, or in WordPress's own editor): the
+     * author, unless the event was imported, requested or submitted. An
+     * import's author is whoever pressed Fetch updates, and WordPress's own
+     * editor gives an event with no author whoever saves it, so for those
+     * three the author says who was looking, not who made it.
+     */
+    public static function creator_id( $event_id ) {
+        $event_id = (int) $event_id;
+        $raw      = get_post_meta( $event_id, self::CREATOR_META, true );
+        if ( '' !== (string) $raw ) {
+            return max( 0, (int) $raw );
+        }
+        if ( self::made_without_an_account( $event_id ) ) {
+            return 0;
+        }
+        return max( 0, (int) get_post_field( 'post_author', $event_id ) );
+    }
+
+    /** Imported, requested or submitted: made by nobody with an account. */
+    public static function made_without_an_account( $event_id ) {
+        if ( ! class_exists( 'SFAF_Submissions' ) ) {
+            return false;
+        }
+        return in_array( SFAF_Submissions::kind( (int) $event_id ), array( 'import', SFAF_Submissions::KIND_STAFF, SFAF_Submissions::KIND_COMMUNITY ), true );
+    }
+
+    /**
+     * Who created the event, as a person reads it.
+     *
+     *   account     a calendar user; email is theirs
+     *   gone        a user id whose account no longer exists
+     *   request     the staff request form; name and the address typed on it
+     *   submission  the community form; name only, never an address to reply to
+     *   import      fetched from a platform; name is the platform's
+     *   none        nothing is known
+     *
+     * @return array{kind:string,id:int,name:string,email:string}
+     */
+    public static function creator( $event_id ) {
+        $event_id = (int) $event_id;
+        $id       = self::creator_id( $event_id );
+        if ( $id > 0 ) {
+            $u = get_userdata( $id );
+            return $u
+                ? array( 'kind' => 'account', 'id' => $id, 'name' => (string) $u->display_name, 'email' => (string) $u->user_email )
+                : array( 'kind' => 'gone', 'id' => $id, 'name' => '', 'email' => '' );
+        }
+        $kind = class_exists( 'SFAF_Submissions' ) ? SFAF_Submissions::kind( $event_id ) : 'local';
+        if ( SFAF_Submissions::KIND_STAFF === $kind || SFAF_Submissions::KIND_COMMUNITY === $kind ) {
+            $who = SFAF_Submissions::submitter( $event_id );
+            return array(
+                'kind'  => SFAF_Submissions::KIND_STAFF === $kind ? 'request' : 'submission',
+                'id'    => 0,
+                'name'  => (string) $who['name'],
+                'email' => ( SFAF_Submissions::KIND_STAFF === $kind && $who['usable'] ) ? (string) $who['email'] : '',
+            );
+        }
+        if ( 'import' === $kind ) {
+            $slug = (string) get_post_meta( $event_id, SFAF_Sources::META_SOURCE, true );
+            return array( 'kind' => 'import', 'id' => 0, 'name' => (string) SFAF_Sources::source_label( $slug ), 'email' => '' );
+        }
+        return array( 'kind' => 'none', 'id' => 0, 'name' => '', 'email' => '' );
+    }
+
     /** Team ids that exist, in order, no repeats. */
     private static function clean_teams( $ids ) {
         $known = SFAF_Teams::all();

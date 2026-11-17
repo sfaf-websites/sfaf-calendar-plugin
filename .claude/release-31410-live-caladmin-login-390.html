@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html >
+<head>
+    <meta charset="" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Sign In - SFAF Calendar</title>
+    <link rel="icon" type="image/svg+xml" href="../public/images/favicon-caladmin.svg?ver=3.140.1" />
+<link rel="icon" type="image/png" sizes="32x32" href="../public/images/favicon-caladmin.png?ver=3.140.1" />
+<link rel="apple-touch-icon" href="../public/images/favicon-caladmin-180.png?ver=3.140.1" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&amp;display=swap" />
+    <link rel="stylesheet" href="../public/css/portal.css?ver=3.140.1" />
+    <style>:root{--uc-primary:#FFD900;--uc-accent:#16BECF;}</style>
+        <script>
+    (function (d) {
+        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        d.setAttribute('data-uc-motion', reduced ? 'reduced' : 'on');
+        if (reduced) { return; }
+        d.className += ' uc-anim';
+        // The nav stagger is once per session, not once per navigation: every
+        // screen here is a full page load. A storage failure means it simply
+        // runs again, which is the harmless outcome.
+        try {
+            if (window.sessionStorage.getItem('ucNavIntro') !== '1') {
+                window.sessionStorage.setItem('ucNavIntro', '1');
+                d.className += ' uc-anim-nav';
+            }
+        } catch (e) {
+            d.className += ' uc-anim-nav';
+        }
+    })(document.documentElement);
+    </script>
+    </head>
+<body class="uc-portal">        <div class="uc-login-wrap">
+            <div class="uc-login-card">
+                <div class="uc-login-brand">
+                    <img src="https://resources.sfaf.org/wp-content/uploads/logos/sfaf-logo.webp" alt="San Francisco AIDS Foundation"
+                         class="uc-login-logo" width="348" height="91" data-uc-login-logo />
+                </div>
+                <h1>SFAF Calendar Admin</h1>
+                                    <p class="uc-login-sub">Sign in to manage events</p>
+                                        
+                <form method="post" action="https://resources.sfaf.org/caladmin" class="uc-login-form">
+                    <input type="hidden" name="uc_action" value="login" />
+                                        <input type="hidden" name="uc_nonce" value="nonce" />                    <label>Username or Email
+                        <input type="text" name="log" autocomplete="username" required autofocus />
+                    </label>
+                    <label>Password
+                        <input type="password" name="pwd" autocomplete="current-password" required />
+                    </label>
+                    <label class="uc-login-remember">
+                        <input type="checkbox" name="rememberme" value="1" /> Remember me
+                    </label>
+                    <button type="submit" class="uc-btn uc-btn-primary uc-btn-block">Sign In</button>
+                </form>
+                <p class="uc-login-aside"><a href="https://resources.sfaf.org/caladmin/forgot" data-uc-forgot-link>Forgot your password?</a></p>
+                    </div>
+        </div>
+        <script type="application/json" id="uc-session-config-off">{"ajax":"https:\/\/resources.sfaf.org\/wp-admin\/admin-ajax.php","action":"sfaf_caladmin_session","signin":"https:\/\/resources.sfaf.org\/caladmin","screen":"dashboard","signedIn":true}</script>
+<script src="../public/js/caladmin-session.js?ver=3.140.1"></script>
+<script type="application/json" id="uc-rich-settings">{"tinymce":{"toolbar1":"formatselect,bold,italic,bullist,numlist,link,unlink,undo,redo","toolbar2":"","toolbar3":"","block_formats":"Paragraph=p;Heading=h3","menubar":false,"statusbar":true,"elementpath":false,"resize":true,"min_height":220,"content_css":"..\/public\/css\/editor-content.css?ver=3.140.1"},"quicktags":false,"mediaButtons":false}</script><script src="../public/js/sfaf-email.js?ver=3.140.1"></script>
+<script src="../public/js/portal.js?ver=3.140.1"></script>
+<script>window.CS_PAGE="caladmin-login";(function () {
+var out = { page: window.CS_PAGE, errors: [], caps: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function path(el) {
+  var p = [];
+  for (var n = el; n && n.nodeType === 1 && p.length < 4; n = n.parentNode) {
+    p.unshift(n.tagName.toLowerCase() + (n.className && typeof n.className === 'string' ? '.' + n.className.trim().split(/\s+/).join('.') : ''));
+  }
+  return p.join(' > ');
+}
+window.addEventListener('load', function () { setTimeout(function () {
+  Array.prototype.forEach.call(document.body.querySelectorAll('*'), function (el) {
+    if (el.closest('script, style, template, noscript, #out')) { return; }
+    var own = '';
+    Array.prototype.forEach.call(el.childNodes, function (n) { if (n.nodeType === 3) { own += n.textContent; } });
+    own = own.replace(/\s+/g, ' ').trim();
+    if (!/[a-z]/.test(own)) { return; }
+    var cs = getComputedStyle(el);
+    if (cs.textTransform !== 'uppercase' && cs.fontVariantCaps.indexOf('small-caps') < 0) { return; }
+    /* A heading's own text: the element itself, anything inside a table
+       header, or a plain wrapper inside a heading. Help panels, hints,
+       labels, controls and sentences inside a heading are NOT its text,
+       which is the whole of what this sweep is for. */
+    var heading = /^(H[1-6]|TH)$/.test(el.tagName) || !!el.closest('th')
+      || (!!el.closest('h1, h2, h3, h4, h5, h6') && !el.closest('.uc-help-body, .uc-hint, .uc-muted, .uc-field-label, label, button, p, small, select, a'));
+    var classes = [];
+    for (var n = el; n && n.nodeType === 1; n = n.parentNode) {
+      if (typeof n.className === 'string') { classes = classes.concat(n.className.trim().split(/\s+/)); }
+    }
+    out.caps.push({ text: own.slice(0, 70), heading: heading, path: path(el), classes: classes,
+      shown: el.getClientRects().length > 0 });
+  });
+  var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = JSON.stringify(out); document.body.appendChild(pre);
+}, 300); });
+})();</script><script>window.RL_PAGE="caladmin-login-390";(function () {
+var P = window.RL_PAGE, out = { page: P, errors: [], yellow: [], mains: [], markers: [] };
+window.addEventListener('beforeunload', function (e) { e.stopImmediatePropagation(); }, true);
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function q(s, r) { return (r || document).querySelector(s); }
+function qa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function text(el) { return el ? (el.textContent || '').replace(/\s+/g, ' ').trim() : ''; }
+function seen(el) { if (!el || el.closest('[hidden]') || !el.getClientRects().length) { return false; } var r = el.getBoundingClientRect(); if (r.width < 2 || r.height < 2) { return false; } var cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden'; }
+function rgb(s) { var m = String(s).match(/[\d.]+/g); return m ? [+m[0], +m[1], +m[2], m.length > 3 ? +m[3] : 1] : null; }
+function isYellow(s) { var c = rgb(s); return !!c && c[3] > 0.5 && c[0] > 215 && c[1] > 180 && c[2] < 90; }
+function finish() { out.pageWidth = document.documentElement.scrollWidth; window.parent.postMessage(JSON.stringify(out), '*'); }
+var sent = 0;
+document.addEventListener('submit', function (e) { if (!e.defaultPrevented) { sent++; } e.preventDefault(); }, false);
+setTimeout(function () {
+  // G: no yellow button; every main action green.
+  qa('button, input[type="submit"], input[type="button"], a.uc-btn, a.button, summary.uc-add-toggle, summary.uc-btn, .uc-form-links-open').forEach(function (b) {
+    if (!seen(b)) { return; }
+    var cs = getComputedStyle(b);
+    if (isYellow(cs.backgroundColor) || isYellow(cs.borderTopColor)) { out.yellow.push({ label: text(b).slice(0, 40), cls: (b.getAttribute('class') || '').slice(0, 80), face: cs.backgroundColor }); }
+  });
+  qa('.uc-btn-primary, .uc-add-toggle, .button-primary, .uc-form-links-open').forEach(function (b) {
+    if (!seen(b) || b.disabled) { return; }
+    var cs = getComputedStyle(b);
+    out.mains.push({ label: text(b).slice(0, 40), face: cs.backgroundColor, ink: cs.color });
+  });
+  // A: one arrow on every summary that carries the chevron.
+  qa('summary').forEach(function (s) {
+    var chev = s.querySelector(':scope > .uc-disclosure-chevron');
+    if (!chev) { return; }
+    var cs = getComputedStyle(s);
+    out.markers.push({ label: text(s).slice(0, 50), list: cs.listStyleType, display: cs.display, chevrons: s.querySelectorAll(':scope > .uc-disclosure-chevron').length,
+      inSeries: !!s.closest('.uc-schedule-edit, .uc-schedule-extend, .uc-schedule-add, .uc-schedule-pastfold') });
+  });
+  // N: + New Event.
+  var nb = q('[data-uc-new-event]');
+  if (nb) {
+    var cs = getComputedStyle(nb), ic = q('.uc-new-event-icon', nb), ics = ic ? getComputedStyle(ic) : null;
+    out.newEvent = { face: cs.backgroundColor, ink: cs.color, size: cs.fontSize, words: text(nb), icon: !!(ic && ic.querySelector('svg')), iconLeft: ic ? ic.getBoundingClientRect().left < nb.getBoundingClientRect().left + 40 : false,
+      trans: cs.transitionProperty, iconTrans: ics ? ics.transitionProperty : '', h: Math.round(nb.getBoundingClientRect().height), reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
+    var pl = q('.uc-btn-primary:not([data-uc-new-event])');
+    out.otherPrimaryH = pl && seen(pl) ? Math.round(pl.getBoundingClientRect().height) : 0;
+  }
+  // T: the team gate.
+  var box = q('[data-uc-access-need-team]');
+  if (box && P.indexOf('team-add') === 0) {
+    var form = box.closest('form');
+    var draft = q('button[name="save_mode"][value="draft"]'), pub = q('button[name="save_mode"][value="publish"]');
+    var err = q('[data-uc-access-team-error]', box);
+    out.team = { draftFace: draft ? getComputedStyle(draft).backgroundColor : '', pubFace: pub ? getComputedStyle(pub).backgroundColor : '' };
+    var before = sent;
+    form.requestSubmit(draft);
+    setTimeout(function () {
+      out.team.blockedDraft = sent === before;
+      out.team.errorShown = !!err && !err.hidden && seen(err);
+      var b2 = sent;
+      if (pub) { form.requestSubmit(pub); }
+      setTimeout(function () {
+        out.team.blockedPublish = sent === b2;
+        var t = q('input[name="access_teams[]"]', box);
+        if (t) { t.click(); }
+        out.team.errorHiddenAfterTick = !!err && err.hidden;
+        var b3 = sent;
+        form.requestSubmit(draft);
+        setTimeout(function () { out.team.wentWithTeam = sent > b3; finish(); }, 150);
+      }, 150);
+    }, 150);
+    return;
+  }
+  finish();
+}, 300);
+})();</script></body></html>

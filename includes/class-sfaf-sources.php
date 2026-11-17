@@ -591,6 +591,11 @@ class SFAF_Sources {
         if ( is_wp_error( $post_id ) ) {
             return $post_id;
         }
+        /* NOT WHOEVER PRESSED FETCH UPDATES (3.141.0). post_author stays that
+         * person, which is the access it always gave them; the creator is the
+         * platform, recorded as nobody with an account, so Team and access
+         * says Imported from it and replies never go to the fetcher. */
+        SFAF_Access::record_creator( (int) $post_id, 0 );
         if ( '' !== trim( $description ) ) {
             self::remember_description( (int) $post_id );
         }

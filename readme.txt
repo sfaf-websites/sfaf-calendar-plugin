@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.140.1
+Stable tag: 3.141.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,23 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.141.0 =
+
+**Main actions are green, + New Event, Text and WhatsApp, the creator kept for good, a team on Add event, and an email when something is published with no picture. Every embed answer and header is 3.140.1's, proved by embed-identity-test.php.**
+
+**WHAT CHANGES ON PUBLIC PAGES:** nothing on the calendar or the event pages. On the two public forms, Submit this event, Submit another event and Send the request are green (#46661F, the Green family's ink) where they were yellow.
+
+* **Every main action is green** in caladmin, WP admin and the two public forms: Save draft, Sign In, Add organizer, Add a venue, Publish N drafts, Set team on N events, Put it back on and tell them, + New series, Create a set, WP admin's Add closure and every other primary. Caladmin and WP admin use the Publish green #15803D, white words 5.02:1; the forms the palette's #46661F, 6.60:1. Yellow is kept for highlights and notices: the Pending count, the current page, the restore bar. `control-standard-audit.php` fails a yellow button from now on, through a token or a literal.
+* **+ New Event** on the Events page is larger, green, with a calendar beside the words, and rises a pixel on hover while the calendar tips. With reduced motion, only the colour changes.
+* **Text registrants:** "What can I send by WhatsApp?" is "What can I send by Text and WhatsApp?".
+* **Email registrants** with nobody registered says "Nobody has registered for this event yet." in place of the message box, as Text registrants does.
+* **Add event, Team and access:** somebody on exactly one team has it ticked from the start and can change it; on several teams or none, Save draft and Publish wait until a team is ticked. A save that arrives without one anyway is kept as a draft and says so. Edit event and the staff request form are unchanged.
+* **Who created an event is kept for good**, written once when it is made. Team and access names that person, never the person looking, and names who can always edit it apart when a reassign has moved that. An import says Imported from its platform, a request names the requester, a community submission the submitter.
+* **Replies go to defaults to the creator** and does not change with who views or saves. A staff request's replies go to the requester's work address. A copy is the copier's, and an original's own creator address is not copied onto it.
+* **Schema 19** records the creator of every existing event once, and clears Replies go to where it held the creator's own address or, on an import, request or submission, the address of whoever fetched or saved it. What it did is in the option `sfaf_creator_migration`.
+* **Published with no picture:** the calendar admins get one email, and Asana one copy, when an event or a series is published with nothing to show. A series picture counts. One email per series, however many dates; drafts send nothing. It names the event or series, who added it and links to it. Settings has its Asana tick.
+* **The series page shows one arrow** on Change the pattern, Extend the series, the past dates and Copy onto another date.
 
 = 3.140.1 =
 

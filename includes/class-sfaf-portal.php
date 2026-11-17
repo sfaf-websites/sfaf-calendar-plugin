@@ -3168,6 +3168,22 @@ class SFAF_Portal {
             $status = ( $existing_status && 'publish' !== $existing_status ) ? $existing_status : 'draft';
         }
 
+        /*
+         * NO TEAM ON A NEW EVENT (3.141.0). portal.js stops the save before it
+         * leaves; a post that arrives without a team anyway (no script) keeps
+         * everything typed as a draft, and the flash says to choose one. The
+         * rule is asked again here, never read from the form.
+         */
+        $team_held = false;
+        if ( $is_new && isset( $_POST['access_present'] ) ) {
+            $team_rule = $this->add_event_team_rule( $user );
+            $posted    = SFAF_Access::from_post( $_POST );
+            if ( $team_rule['need'] && empty( $posted['teams'] ) ) {
+                $team_held = true;
+                $status    = 'draft';
+            }
+        }
+
         /* The rules above let it through as a publish; it waits until $sched_at. */
         $scheduled = ( '' !== $sched_at && 'publish' === $status );
         if ( $scheduled ) {
@@ -3222,6 +3238,10 @@ class SFAF_Portal {
                 $postarr = array_merge( $postarr, SFAF_Privacy::born_private_args( isset( $postarr['post_title'] ) ? $postarr['post_title'] : '' ) );
             }
             $event_id = wp_insert_post( $postarr, true );
+            // Who made it, once (3.141.0). See SFAF_Access::CREATOR_META.
+            if ( ! is_wp_error( $event_id ) && $event_id ) {
+                SFAF_Access::record_creator( (int) $event_id, (int) $user->ID );
+            }
         } else {
             $postarr['ID'] = $event_id;
             wp_update_post( $postarr );
@@ -3836,6 +3856,8 @@ class SFAF_Portal {
          */
         if ( $org_held ) {
             $msg = 'publish_needs';
+        } elseif ( $team_held ) {
+            $msg = 'team_required';
         } elseif ( $sched_past ) {
             $msg = 'schedule_time_past';
         } elseif ( $scheduled ) {
@@ -4466,9 +4488,18 @@ class SFAF_Portal {
             SFAF_Attachments::META_ID, SFAF_Attachments::META_LABEL,
         );
 
+        SFAF_Access::record_creator( $new_id, (int) $user->ID );
+        /* REPLIES FOLLOW THE COPY'S CREATOR (3.141.0). An original whose own
+         * address is its creator's was saying "the creator", so the copy gets
+         * none and follows whoever made the copy; any other address was a
+         * choice, and travels. */
+        $src_creator = SFAF_Access::creator( $source_id );
         foreach ( $copy_keys as $key ) {
             $value = get_post_meta( $source_id, $key, true );
             if ( '' === $value || array() === $value || null === $value ) {
+                continue;
+            }
+            if ( '_uc_email_replyto' === $key && '' !== $src_creator['email'] && 0 === strcasecmp( trim( (string) $value ), $src_creator['email'] ) ) {
                 continue;
             }
             update_post_meta( $new_id, $key, $value );
@@ -5132,6 +5163,7 @@ class SFAF_Portal {
              * because what happened is not what the button said.
              */
             'organizer_required' => 'Nothing was saved. Tick at least one organizer.',
+            'team_required'  => 'Saved as a draft. Choose a team under Team and access, then save again.',
             'venue_made'     => 'That place is in the venue list now, and this event points at it. Correcting the address on the Venues screen will correct every event held there.',
             'venue_failed'   => 'That place could not be added. The event has no place name on it, or it already points at a venue.',
             'user_saved'     => 'User permissions updated.',
@@ -6919,7 +6951,8 @@ class SFAF_Portal {
         ?>
         <div class="uc-page-head">
             <h1><?php echo 'all' === $scope ? 'All Events' : 'My Events'; ?></h1>
-            <a href="<?php echo esc_url( $this->url( 'events/new' ) ); ?>" class="uc-btn uc-btn-primary">+ New Event</a>
+            <?php // The Events page's main action (3.141.0): larger, green, a calendar and a small lift on hover. ?>
+            <a href="<?php echo esc_url( $this->url( 'events/new' ) ); ?>" class="uc-btn uc-btn-primary uc-btn-new-event" data-uc-new-event><span class="uc-new-event-icon" aria-hidden="true"><?php echo sfaf_icon( 'calendar', array( 'size' => '20px' ) ); ?></span><span>+ New Event</span></a>
         </div>
 
         <?php if ( 'organizer' === $missing ) : ?>
@@ -16890,10 +16923,20 @@ class SFAF_Portal {
                  * portal.js (initReplyTo) makes the select searchable and
                  * shows the box only for Someone else.
                  */
-                $reply_post    = $event_id ? get_post( $event_id ) : null;
-                $reply_creator = $reply_post ? get_userdata( $reply_post->post_author ) : $user;
+                /* THE CREATOR FROM THE RECORD (3.141.0), SFAF_Access::creator(),
+                 * never the person viewing; on Add event the person adding it
+                 * will be the creator. '' always means "the creator", so it
+                 * follows them and nothing is stored. */
+                $reply_c = $event_id
+                    ? SFAF_Access::creator( $event_id )
+                    : array( 'kind' => 'account', 'name' => (string) $user->display_name, 'email' => (string) $user->user_email );
+                $reply_c_email = SFAF_Reminders::creator_address( $event_id );
+                if ( ! $event_id ) {
+                    $reply_c_email = is_email( $reply_c['email'] ) ? $reply_c['email'] : '';
+                }
+                $reply_creator = ( '' !== $reply_c_email ) ? (object) array( 'display_name' => '' !== $reply_c['name'] ? $reply_c['name'] : $reply_c_email, 'user_email' => $reply_c_email ) : null;
                 $reply_options = array();
-                if ( $reply_creator && is_email( $reply_creator->user_email ) ) {
+                if ( $reply_creator ) {
                     $reply_options[''] = $reply_creator->display_name . ' (creator), ' . $reply_creator->user_email;
                 } else {
                     $reply_settings = get_option( 'uc_settings', array() );
@@ -17727,6 +17770,30 @@ class SFAF_Portal {
     }
 
     /**
+     * Add event's team rule (3.141.0). Only for somebody who may set Team and
+     * access, and only while teams exist: on exactly one team, that team is
+     * ticked ('mine'); on several or none, one must be ticked before saving
+     * ('need'). A contributor's read-only card has neither.
+     *
+     * @param WP_User    $user
+     * @param array|null $teams SFAF_Teams::all(), when the caller has it.
+     * @return array{mine:string[],need:bool}
+     */
+    private function add_event_team_rule( $user, $teams = null ) {
+        $teams = null === $teams ? SFAF_Teams::all() : $teams;
+        if ( empty( $teams ) || ! $user || ! $this->may_assign_access( $user, 0 ) ) {
+            return array( 'mine' => array(), 'need' => false );
+        }
+        $mine = array();
+        foreach ( SFAF_Teams::for_user( (int) $user->ID ) as $team ) {
+            $mine[] = (string) $team['id'];
+        }
+        return 1 === count( $mine )
+            ? array( 'mine' => $mine, 'need' => false )
+            : array( 'mine' => array(), 'need' => true );
+    }
+
+    /**
      * Write Team and access, if this person may set it (3.110.1).
      *
      * ASKED AGAIN HERE, NOT ONLY ON THE RENDERER. A form that is not drawn is
@@ -17934,6 +18001,17 @@ class SFAF_Portal {
             $chosen_p = SFAF_Access::series_people( $series_id );
             $own      = false;
         }
+        /*
+         * THE CREATOR'S TEAM ON ADD EVENT (3.141.0, Mark's rule). On exactly
+         * one team, it is ticked from the start and stays changeable; on
+         * several or none, a team must be ticked before the event is saved.
+         * Edit event and the staff request form are untouched. See
+         * add_event_team_rule().
+         */
+        $team_rule = $event_id ? array( 'mine' => array(), 'need' => false ) : $this->add_event_team_rule( $user, $teams );
+        if ( $team_rule['mine'] ) {
+            $chosen_t = array_values( array_unique( array_merge( $chosen_t, $team_rule['mine'] ) ) );
+        }
         $notified = $event_id ? SFAF_Teams::for_event( $event_id ) : array();
         $series   = array();
         foreach ( SFAF_Series::all() as $term ) {
@@ -17955,20 +18033,42 @@ class SFAF_Portal {
                 ?>
             </h2>
 
-            <p class="uc-access-organizer">
-                <strong><?php echo esc_html( $organizer ? $organizer->display_name : 'Nobody' ); ?></strong>
-                <span class="uc-muted">
-                    <?php
-                    if ( ! $event_id ) {
-                        echo 'will be the organizer and can always edit this event.';
-                    } elseif ( $organizer ) {
-                        echo 'created this event and can always edit it.';
-                    } else {
-                        echo 'The account that created this event no longer exists. An administrator should reassign it.';
-                    }
-                    ?>
-                </span>
+            <?php
+            /*
+             * WHO CREATED IT, FROM THE RECORD (3.141.0), never the person
+             * looking. On Add event that is the person adding it. Who can
+             * always edit it is the author, which a reassign moves, so it is
+             * named apart only when it is somebody else.
+             */
+            $creator = $event_id ? SFAF_Access::creator( $event_id ) : array( 'kind' => 'account', 'id' => (int) $user->ID, 'name' => (string) $user->display_name, 'email' => '' );
+            $owner_other = ( $event_id && $organizer && (int) $organizer->ID !== (int) $creator['id'] ) ? $organizer : null;
+            ?>
+            <p class="uc-access-organizer" data-uc-access-creator="<?php echo esc_attr( $creator['kind'] ); ?>">
+                <?php if ( ! $event_id ) : ?>
+                    <strong><?php echo esc_html( $creator['name'] ); ?></strong>
+                    <span class="uc-muted">will be the organizer and can always edit this event.</span>
+                <?php elseif ( 'account' === $creator['kind'] ) : ?>
+                    <strong><?php echo esc_html( $creator['name'] ); ?></strong>
+                    <span class="uc-muted"><?php echo $owner_other ? 'created this event.' : 'created this event and can always edit it.'; ?></span>
+                <?php elseif ( 'request' === $creator['kind'] || 'submission' === $creator['kind'] ) : ?>
+                    <strong><?php echo esc_html( '' !== $creator['name'] ? $creator['name'] : 'Somebody' ); ?></strong>
+                    <span class="uc-muted"><?php echo 'request' === $creator['kind'] ? 'asked for this event on the staff request form.' : 'sent this event from the community form.'; ?></span>
+                <?php elseif ( 'import' === $creator['kind'] ) : ?>
+                    <span class="uc-muted">Imported from</span> <strong><?php echo esc_html( $creator['name'] ); ?></strong><span class="uc-muted">.</span>
+                <?php elseif ( 'gone' === $creator['kind'] ) : ?>
+                    <span class="uc-muted">The account that created this event no longer exists.</span>
+                <?php else : ?>
+                    <span class="uc-muted">Nobody is recorded as creating this event.</span>
+                <?php endif; ?>
             </p>
+            <?php if ( $owner_other ) : ?>
+                <p class="uc-access-organizer" data-uc-access-owner>
+                    <strong><?php echo esc_html( $owner_other->display_name ); ?></strong>
+                    <span class="uc-muted">can always edit it.</span>
+                </p>
+            <?php elseif ( $event_id && ! $organizer && 'gone' === $creator['kind'] ) : ?>
+                <p class="uc-hint">An administrator should reassign it.</p>
+            <?php endif; ?>
             <p class="uc-hint">Calendar admins can open every event.</p>
 
             <?php if ( ! $this->may_assign_access( $user, $event_id ) ) : ?>
@@ -17994,10 +18094,19 @@ class SFAF_Portal {
             <?php else : ?>
                 <div class="uc-access" data-uc-access
                      data-uc-access-series="<?php echo esc_attr( wp_json_encode( (object) $series ) ); ?>"
-                     data-uc-access-own="<?php echo $own ? '1' : '0'; ?>">
+                     data-uc-access-own="<?php echo $own ? '1' : '0'; ?>"
+                     <?php if ( $team_rule['mine'] ) : ?>data-uc-access-mine="<?php echo esc_attr( wp_json_encode( $team_rule['mine'] ) ); ?>"<?php endif; ?>
+                     <?php if ( $team_rule['need'] ) : ?>data-uc-access-need-team<?php endif; ?>>
                     <input type="hidden" name="access_present" value="1" />
+                    <?php if ( $team_rule['need'] ) : ?>
+                        <input type="hidden" name="access_team_required" value="1" data-uc-add-only="team-rule" />
+                    <?php endif; ?>
 
                     <?php $this->render_access_choices( $teams, $people, $chosen_t, $chosen_p, 'access' ); ?>
+                    <?php if ( $team_rule['need'] ) : ?>
+                        <p class="uc-hint" data-uc-access-team-hint data-uc-add-only="team-rule">Choose a team before saving.</p>
+                        <p class="uc-field-error" role="alert" data-uc-access-team-error data-uc-add-only="team-rule" hidden>Choose a team.</p>
+                    <?php endif; ?>
 
                     <?php if ( ! empty( $teams ) ) : ?>
                         <label class="uc-check uc-access-notify">
@@ -19685,6 +19794,10 @@ class SFAF_Portal {
                         }
                     ?></p>
                 <?php endif; ?>
+                <?php // Nobody to write to (3.141.0): the line in place of the form, as Text registrants has it. ?>
+                <?php if ( ! $rm_people ) : ?>
+                    <p class="uc-hint" data-uc-rm-nobody>Nobody has registered for this event yet.</p>
+                <?php else : ?>
                 <form method="post" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>" class="uc-registrant-mail-form" data-uc-rm-form
                       data-uc-rm-counts="<?php echo esc_attr( wp_json_encode( $rm_counts ) ); ?>"
                       data-uc-rcp-extra="<?php echo esc_attr( wp_json_encode( $rm_copies ) ); ?>"
@@ -19740,6 +19853,7 @@ class SFAF_Portal {
                         <iframe class="uc-rm-preview-frame" title="Preview of the message" data-uc-rm-preview-frame></iframe>
                     </div>
                 </form>
+                <?php endif; ?>
         <?php if ( $log ) : ?>
             <div class="uc-registrant-mail-log" data-uc-rm-log>
                 <h3 class="uc-subhead">Emails sent from this list</h3>
@@ -19860,7 +19974,7 @@ class SFAF_Portal {
                         </p>
                         <?php if ( SFAF_Texts::whatsapp_on() ) : ?>
                             <details class="uc-tr-wa-help" data-uc-tr-wa-help>
-                                <summary><span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '14px' ) ); ?></span>What can I send by WhatsApp?</summary>
+                                <summary><span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '14px' ) ); ?></span>What can I send by Text and WhatsApp?</summary>
                                 <div class="uc-tr-wa-help-body">
                                     <p class="uc-tr-wa-help-head">OK to send:</p>
                                     <ul>

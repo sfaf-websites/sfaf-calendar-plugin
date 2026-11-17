@@ -237,7 +237,9 @@ casually.
   event's link with its Copy button (3.110.0), and View event page with its
   copy icon, or Preview, at the top of the page (3.122.0). Team and access, "Who can edit
   this" until 3.110.1, is on both. The series
-  prefill is Add-only. Anything else that differs is a defect. Each allowed
+  prefill is Add-only, and so is Add event's team rule (3.141.0: the
+  creator's one team ticked, or a team before saving). Anything else that
+  differs is a defect. Each allowed
   difference carries `data-uc-saved-action` or `data-uc-add-only` in the
   markup, and `.claude/notifications-card-test.php` fails on any other.
 

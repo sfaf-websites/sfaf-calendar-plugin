@@ -1008,6 +1008,8 @@ class SFAF_Recurrence {
             return 0;
         }
         $id = (int) $id;
+        // The seed's creator made every date of it (3.141.0).
+        SFAF_Access::record_creator( $id, SFAF_Access::creator_id( (int) $seed->ID ) );
 
         foreach ( self::$copied_meta as $key ) {
             $value = get_post_meta( $seed->ID, $key, true );

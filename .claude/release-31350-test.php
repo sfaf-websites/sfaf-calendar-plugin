@@ -298,8 +298,8 @@ $tr   = rt_cap( function () use ( $portal, $me ) { kit_call( 'SFAF_Portal', 'ren
 $x    = rt_x( $tr );
 $help = $x->query( '//details[@data-uc-tr-wa-help]' );
 rt( 'C: Text registrants renders', false === strpos( $tr, 'THREW' ) && false !== strpos( $tr, 'data-uc-text-registrants' ) );
-rt( 'C: "What can I send by WhatsApp?" opens a panel, closed', 1 === $help->length && ! $help->item( 0 )->hasAttribute( 'open' )
-    && 'What can I send by WhatsApp?' === trim( $x->query( './summary', $help->item( 0 ) )->item( 0 )->textContent ) );
+rt( 'C: "What can I send by Text and WhatsApp?" (3.141.0) opens a panel, closed', 1 === $help->length && ! $help->item( 0 )->hasAttribute( 'open' )
+    && 'What can I send by Text and WhatsApp?' === trim( $x->query( './summary', $help->item( 0 ) )->item( 0 )->textContent ) );
 $items = array();
 foreach ( $x->query( '//details[@data-uc-tr-wa-help]//li' ) as $li ) { $items[] = trim( $li->textContent ); }
 rt( 'C: OK to send, the four', array( 'Changes to the time, date or location', 'Cancellations or postponements', 'What to bring, what to expect, accessibility or parking info', 'Check-in details or directions on the day' ) === array_slice( $items, 0, 4 ) );

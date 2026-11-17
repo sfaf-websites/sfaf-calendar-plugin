@@ -1,0 +1,71 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="../public/css/portal.css"></head><body class="uc-portal" style="margin:0"><div class="uc-portal-main"><div class="uc-portal-content"><div class="uc-card"><details class="uc-schedule-edit"><summary><span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="15px" height="15px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>Change the pattern</summary><p class="uc-hint">Inside.</p></details><details class="uc-schedule-extend"><summary><span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="15px" height="15px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>Extend the series</summary><p class="uc-hint">Inside.</p></details><details class="uc-schedule-pastfold"><summary><span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="15px" height="15px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>12 past dates</summary><p class="uc-hint">Inside.</p></details><details class="uc-schedule-add"><summary><span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="15px" height="15px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>Copy &ldquo;Walk&rdquo; onto another date</summary><p class="uc-hint">Inside.</p></details></div></div></div><script src="../public/js/portal.js"></script><script>window.RL_PAGE="series-four-1280";(function () {
+var P = window.RL_PAGE, out = { page: P, errors: [], yellow: [], mains: [], markers: [] };
+window.addEventListener('beforeunload', function (e) { e.stopImmediatePropagation(); }, true);
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function q(s, r) { return (r || document).querySelector(s); }
+function qa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function text(el) { return el ? (el.textContent || '').replace(/\s+/g, ' ').trim() : ''; }
+function seen(el) { if (!el || el.closest('[hidden]') || !el.getClientRects().length) { return false; } var r = el.getBoundingClientRect(); if (r.width < 2 || r.height < 2) { return false; } var cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden'; }
+function rgb(s) { var m = String(s).match(/[\d.]+/g); return m ? [+m[0], +m[1], +m[2], m.length > 3 ? +m[3] : 1] : null; }
+function isYellow(s) { var c = rgb(s); return !!c && c[3] > 0.5 && c[0] > 215 && c[1] > 180 && c[2] < 90; }
+function finish() { out.pageWidth = document.documentElement.scrollWidth; window.parent.postMessage(JSON.stringify(out), '*'); }
+var sent = 0;
+document.addEventListener('submit', function (e) { if (!e.defaultPrevented) { sent++; } e.preventDefault(); }, false);
+setTimeout(function () {
+  // G: no yellow button; every main action green.
+  qa('button, input[type="submit"], input[type="button"], a.uc-btn, a.button, summary.uc-add-toggle, summary.uc-btn, .uc-form-links-open').forEach(function (b) {
+    if (!seen(b)) { return; }
+    var cs = getComputedStyle(b);
+    if (isYellow(cs.backgroundColor) || isYellow(cs.borderTopColor)) { out.yellow.push({ label: text(b).slice(0, 40), cls: (b.getAttribute('class') || '').slice(0, 80), face: cs.backgroundColor }); }
+  });
+  qa('.uc-btn-primary, .uc-add-toggle, .button-primary, .uc-form-links-open').forEach(function (b) {
+    if (!seen(b) || b.disabled) { return; }
+    var cs = getComputedStyle(b);
+    out.mains.push({ label: text(b).slice(0, 40), face: cs.backgroundColor, ink: cs.color });
+  });
+  // A: one arrow on every summary that carries the chevron.
+  qa('summary').forEach(function (s) {
+    var chev = s.querySelector(':scope > .uc-disclosure-chevron');
+    if (!chev) { return; }
+    var cs = getComputedStyle(s);
+    out.markers.push({ label: text(s).slice(0, 50), list: cs.listStyleType, display: cs.display, chevrons: s.querySelectorAll(':scope > .uc-disclosure-chevron').length,
+      inSeries: !!s.closest('.uc-schedule-edit, .uc-schedule-extend, .uc-schedule-add, .uc-schedule-pastfold') });
+  });
+  // N: + New Event.
+  var nb = q('[data-uc-new-event]');
+  if (nb) {
+    var cs = getComputedStyle(nb), ic = q('.uc-new-event-icon', nb), ics = ic ? getComputedStyle(ic) : null;
+    out.newEvent = { face: cs.backgroundColor, ink: cs.color, size: cs.fontSize, words: text(nb), icon: !!(ic && ic.querySelector('svg')), iconLeft: ic ? ic.getBoundingClientRect().left < nb.getBoundingClientRect().left + 40 : false,
+      trans: cs.transitionProperty, iconTrans: ics ? ics.transitionProperty : '', h: Math.round(nb.getBoundingClientRect().height), reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
+    var pl = q('.uc-btn-primary:not([data-uc-new-event])');
+    out.otherPrimaryH = pl && seen(pl) ? Math.round(pl.getBoundingClientRect().height) : 0;
+  }
+  // T: the team gate.
+  var box = q('[data-uc-access-need-team]');
+  if (box && P.indexOf('team-add') === 0) {
+    var form = box.closest('form');
+    var draft = q('button[name="save_mode"][value="draft"]'), pub = q('button[name="save_mode"][value="publish"]');
+    var err = q('[data-uc-access-team-error]', box);
+    out.team = { draftFace: draft ? getComputedStyle(draft).backgroundColor : '', pubFace: pub ? getComputedStyle(pub).backgroundColor : '' };
+    var before = sent;
+    form.requestSubmit(draft);
+    setTimeout(function () {
+      out.team.blockedDraft = sent === before;
+      out.team.errorShown = !!err && !err.hidden && seen(err);
+      var b2 = sent;
+      if (pub) { form.requestSubmit(pub); }
+      setTimeout(function () {
+        out.team.blockedPublish = sent === b2;
+        var t = q('input[name="access_teams[]"]', box);
+        if (t) { t.click(); }
+        out.team.errorHiddenAfterTick = !!err && err.hidden;
+        var b3 = sent;
+        form.requestSubmit(draft);
+        setTimeout(function () { out.team.wentWithTeam = sent > b3; finish(); }, 150);
+      }, 150);
+    }, 150);
+    return;
+  }
+  finish();
+}, 300);
+})();</script></body></html>

@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.140.1
+ * Version: 3.141.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.140.1' );
+define( 'SFAF_VERSION', '3.141.0' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -24,7 +24,7 @@ define( 'SFAF_VERSION', '3.140.1' );
  * hook — still gets its new tables, instead of throwing "table doesn't exist"
  * the first time the runner looks for one.
  */
-define( 'SFAF_DB_VERSION', '18' );
+define( 'SFAF_DB_VERSION', '19' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -182,6 +182,8 @@ $sfaf_includes = array(
     'includes/class-sfaf-questions.php',
     'includes/class-sfaf-portal.php',
     'includes/class-sfaf-orphans.php',
+    // Published with no picture: one email to the calendar admins (3.141.0).
+    'includes/class-sfaf-no-picture.php',
     'includes/sfaf-sample-data.php',
     // Updates from GitHub releases. Last, because it depends on SFAF_VERSION
     // and on nothing else in the plugin.
@@ -263,6 +265,8 @@ function sfaf_init() {
     SFAF_Mailchimp::register();
     // Texts and WhatsApp: the settings, Test connection, and replies and STOP (3.130.0).
     SFAF_Texts::register();
+    // An event or a series published with no picture: one email to the calendar admins (3.141.0).
+    SFAF_No_Picture::register();
 
     // The public event request form. A front-end query var, like the cancel
     // link, so no rewrite rule and no REST route: see the note in the class.
@@ -1266,6 +1270,8 @@ function sfaf_install_tables() {
     sfaf_migrate_other_details();
     // Schema 16 (3.114.0): the place name the WordPress editor put in front of the address.
     sfaf_migrate_location_name_repeat();
+    // Schema 19 (3.141.0): who created each event, once; Replies go to where it said the creator or the person looking.
+    sfaf_migrate_creators();
 
     update_option( 'sfaf_db_version', SFAF_DB_VERSION );
 }
@@ -1649,6 +1655,88 @@ function sfaf_migrate_location_name_repeat() {
         'at'      => current_time( 'mysql' ),
     ), false );
     return count( $ids );
+}
+
+/**
+ * WHO CREATED EACH EVENT, RECORDED ONCE (schema 19, 3.141.0).
+ *
+ * Every event without SFAF_Access::CREATOR_META gets one: its author, except
+ * an import, a staff request and a community submission, which get 0. An
+ * import's author is whoever pressed Fetch updates, and WordPress's own editor
+ * gives an event with no author whoever saves it, so for those three the
+ * author named the person looking, and Team and access said they created it.
+ *
+ * REPLIES GO TO, where the stored address can be read:
+ *   - the creator's own address is removed, because it was "the creator"
+ *     written down by the 3.106.2 to 3.116.0 editor, which filled the box with
+ *     the address replies resolved to and stored it on the next save; the
+ *     event goes on replying to the creator and now follows them
+ *   - on an import, request or submission, the address of the account that
+ *     was its author is removed: that is the person who fetched or saved it,
+ *     not a choice, and replies fall back as they would for any such event
+ *   - any other address is kept: it may have been chosen, and nothing can tell
+ *
+ * ONCE, UNDER ITS OWN OPTION, which lists what it changed so Mark can read it.
+ */
+function sfaf_migrate_creators() {
+    if ( false !== get_option( 'sfaf_creator_migration', false ) ) {
+        return 0;
+    }
+    $q = new WP_Query( array(
+        'post_type'              => 'uc_event',
+        'post_status'            => array_keys( get_post_stati() ),
+        'posts_per_page'         => -1,
+        'fields'                 => 'ids',
+        'no_found_rows'          => true,
+        'update_post_term_cache' => false,
+    ) );
+    $report = array(
+        'recorded'         => 0,
+        'by_account'       => 0,
+        'without_account'  => 0,
+        'author_not_maker' => array(),
+        'replyto_creator'  => array(),
+        'replyto_viewer'   => array(),
+        'replyto_kept'     => array(),
+    );
+    foreach ( array_map( 'intval', (array) $q->posts ) as $id ) {
+        if ( '' !== (string) get_post_meta( $id, SFAF_Access::CREATOR_META, true ) ) {
+            continue;
+        }
+        $author  = (int) get_post_field( 'post_author', $id );
+        $without = SFAF_Access::made_without_an_account( $id );
+        SFAF_Access::record_creator( $id, $without ? 0 : $author );
+        $report['recorded']++;
+        $report[ $without ? 'without_account' : 'by_account' ]++;
+        if ( $without && $author > 0 ) {
+            $report['author_not_maker'][] = $id;
+        }
+
+        $own = trim( (string) get_post_meta( $id, '_uc_email_replyto', true ) );
+        if ( '' === $own ) {
+            continue;
+        }
+        $mine = SFAF_Reminders::creator_address( $id );
+        if ( '' !== $mine && 0 === strcasecmp( $own, $mine ) ) {
+            delete_post_meta( $id, '_uc_email_replyto' );
+            $report['replyto_creator'][] = $id;
+            continue;
+        }
+        $looker = ( $without && $author > 0 ) ? get_userdata( $author ) : null;
+        if ( $looker && 0 === strcasecmp( $own, (string) $looker->user_email ) ) {
+            delete_post_meta( $id, '_uc_email_replyto' );
+            $report['replyto_viewer'][] = $id;
+            continue;
+        }
+        $report['replyto_kept'][] = $id;
+    }
+    foreach ( array( 'author_not_maker', 'replyto_creator', 'replyto_viewer', 'replyto_kept' ) as $k ) {
+        $report[ $k . '_count' ] = count( $report[ $k ] );
+        $report[ $k ]            = array_slice( $report[ $k ], 0, 300 );
+    }
+    $report['at'] = current_time( 'mysql' );
+    update_option( 'sfaf_creator_migration', $report, false );
+    return $report['recorded'];
 }
 
 /**

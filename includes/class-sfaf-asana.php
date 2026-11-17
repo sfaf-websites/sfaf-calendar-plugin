@@ -2,10 +2,11 @@
 /**
  * ONE COPY OF EACH ADMIN ALERT FOR ASANA (3.112.1).
  *
- * Asana turns a message sent to a project's address into a task, so the five
+ * Asana turns a message sent to a project's address into a task, so the six
  * messages calendar admins are sent each become one task: an event requested,
  * an event submitted, a picture uploaded, the no-organizer alert and its
- * all-clear, and the scheduled-task failure and recovery.
+ * all-clear, the scheduled-task failure and recovery, and (3.141.0) an event
+ * or series published with no picture.
  *
  * A SEPARATE SEND, AFTER THE NORMAL ONES, NOT A Cc OR Bcc. A Cc would put the
  * Asana address in front of every admin and thread a reply-all into the task;
@@ -40,6 +41,8 @@ class SFAF_Asana {
             'picture' => 'Picture uploaded for an event',
             'orphans' => 'Events with no organizer, and the all-clear',
             'cron'    => 'Scheduled tasks failing, and working again',
+            // 3.141.0: SFAF_No_Picture.
+            'nopicture' => 'Event or series published with no picture',
         );
     }
 

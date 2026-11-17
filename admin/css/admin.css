@@ -194,10 +194,11 @@
     background: var(--uc-bg); font-family: inherit; font-size: 13px;
 }
 
-/* THE BUTTON FAMILY, THE SAME WEIGHTS AS THE PORTAL. Yellow is the primary
-   and appears once per screen; everything else is R (3.137.0), the portal's
+/* THE BUTTON FAMILY, THE SAME WEIGHTS AS THE PORTAL. Green is the primary
+   (3.141.0; yellow until then) and appears once per screen; everything else is R (3.137.0), the portal's
    secondary: white, a 1px teal edge, teal ink, the band on hover. #0E7680 on
-   white 5.35:1, on #E8F9FA 4.94:1. Dark Gray on SFAF yellow measures 8.92:1.
+   white 5.35:1, on #E8F9FA 4.94:1. White on the green #15803D 5.02:1, on its
+   hover #12652F 7.17:1.
    WordPress's own buttons are replaced only inside our wrap, so core screens
    keep core's. */
 .uc-admin-wrap .button, .uc-meta-box .button {
@@ -221,12 +222,12 @@
     outline: 2px solid var(--uc-teal-text); outline-offset: 2px; box-shadow: none;
 }
 .uc-admin-wrap .button-primary, .uc-meta-box .button-primary {
-    background: var(--uc-brand-yellow); border-color: #E0BE00;
-    color: var(--uc-dark); text-shadow: none;
+    background: #15803D; border-color: #15803D;
+    color: #fff; text-shadow: none;
 }
-.uc-admin-wrap .button-primary:hover, .uc-meta-box .button-primary:hover {
-    background: var(--uc-brand-yellow); border-color: #E0BE00;
-    color: var(--uc-dark); filter: brightness(0.94);
+.uc-admin-wrap .button-primary:hover, .uc-meta-box .button-primary:hover,
+.uc-admin-wrap .button-primary:focus, .uc-meta-box .button-primary:focus {
+    background: #12652F; border-color: #12652F; color: #fff;
 }
 
 /* Rules further down this file that used to set their own box now keep only

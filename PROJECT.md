@@ -2962,7 +2962,18 @@ cancelled event shows), `delete`, `access` (Who can edit this),
 no-JavaScript FAQ set form, which posts to the saved event), `private-link`,
 and from 3.122.0 the links at the top of Edit event: `rsvp-list`,
 `view-page`, `copy-link` and `preview`. The series prefill carries
-`data-uc-add-only="series-prefill"`.
+`data-uc-add-only="series-prefill"`, and Add event's team rule (3.141.0)
+`data-uc-add-only="team-rule"`.
+
+**Add event's team rule (3.141.0, Mark's).** For somebody who may set Team and
+access, while teams exist (`add_event_team_rule()`): on exactly one team, it
+is ticked from the start, kept ticked when the series dropdown changes the
+rest, and can be unticked; on several teams or none, Save draft and Publish do
+not leave until a team is ticked (portal.js stops the submit before caladmin's
+post check hears it). The server asks the rule again and keeps a post that
+arrives without a team as a draft, flash `team_required`, so nothing typed is
+lost. A contributor's card is read-only and has no rule; Edit event has none;
+the staff request form is untouched.
 
 `.claude/notifications-card-test.php` renders Add event, an existing draft and
 a published event, in a series, with FAQ sets: every control outside a marked
@@ -4748,6 +4759,53 @@ if it is switched back off.
 
 ---
 
+### Who created an event is a record of its own (3.141.0)
+
+**`_uc_creator` (`SFAF_Access::CREATOR_META`) is the user id of whoever made
+the event, written once when it is made, with `add_post_meta( ..., unique )`,
+and never again.** Not by a save, not by a reassign, not by whoever opens it.
+0 means made by nobody with an account: a staff request, a community
+submission, an import.
+
+**IT IS NOT `post_author`, AND IT GRANTS NOTHING.** `post_author` stays the
+account that can always edit the event (`PROJECT.md` 5), which the Users
+screen's reassign moves. The creator is who made it, for Team and access,
+Replies go to and the no-picture email. Two fields because they are two facts:
+a reassign changes who is responsible, never who made it.
+
+**WHY `post_author` COULD NOT BE THE RECORD.** It named the person looking in
+two places. An import's author is whoever pressed Fetch updates, so Team and
+access said they created it and replies went to them. And WordPress's own
+editor gives a post with no author whoever saves it (`_wp_translate_postdata()`
+falls back to `user_ID`), so a request or submission saved there took the
+saver's name.
+
+| Made by | `_uc_creator` | Team and access says |
+|---|---|---|
+| Add event | the person saving it | "Eli One created this event." |
+| Copy (duplicate, Copy onto another date) | the person copying | the same |
+| A date the recurrence generator makes | its seed's creator | the same |
+| An import | 0 | "Imported from EveryAction." |
+| The staff request form | none written; read as 0 | "Pat Reed asked for this event on the staff request form." |
+| The community form | none written; read as 0 | "... sent this event from the community form." |
+
+`SFAF_Access::creator_id()` reads the record, and **without one** (an event
+from before schema 19, or WordPress's own editor) the author, except for an
+import, request or submission, which are 0 whatever their author says.
+`SFAF_Access::creator()` answers who, as a person reads it: `account`, `gone`,
+`request`, `submission`, `import` or `none`, with a name and, for an account
+and a request only, an address. The two public forms' files write nothing new.
+
+**Schema 19** (`sfaf_migrate_creators()`, once, under `sfaf_creator_migration`)
+records every event's creator by that same rule and, for Replies go to, clears
+two kinds of stored address and keeps every other: the creator's own address
+(the 3.106.2 to 3.116.0 editor filled the box with whatever replies resolved to
+and stored it on the next save, so it meant "the creator"), and on an import,
+request or submission the address of the account that was its author (the
+fetcher or the saver). The option lists the ids of each, and the count of
+authors that were not the maker. An address that is neither may have been
+chosen, and nothing can tell, so it stays.
+
 ## 3. Integrations
 
 ### What a shared event link produces
@@ -5875,10 +5933,11 @@ are single times and do not.
 
 ### Admin alerts get one Asana copy each (3.112.1)
 
-**Five messages go to calendar admins**: Event requested (`SFAF_Request`),
+**Six messages go to calendar admins**: Event requested (`SFAF_Request`),
 Event submitted (`SFAF_Submit`), Picture uploaded (`SFAF_Media`), Events with no
-organizer and its all-clear (`SFAF_Orphans`), and Scheduled tasks failing and
-working again (`SFAF_Cron`, plain text through `wp_mail()`). Each sends **one**
+organizer and its all-clear (`SFAF_Orphans`), Scheduled tasks failing and
+working again (`SFAF_Cron`, plain text through `wp_mail()`), and from 3.141.0
+Published with no picture (`SFAF_No_Picture`, below). Each sends **one**
 copy to the Asana address on Settings, after its own recipients, through the
 same sender, so each becomes one Asana task. `SFAF_Asana` holds the address
 (default `x+1219554950091179@mail.asana.com`), one tick per message and the
@@ -5895,6 +5954,28 @@ sanitiser.
 - **Every key is written on every save.** The form posts a marker, so an
   unticked box is off; a save that did not come from the form keeps what is
   stored, and the defaults where nothing is. An empty address sends none.
+
+### Published with no picture (3.141.0)
+
+**When an event moves to Published and nothing would draw a picture for it,
+the calendar admins get one email and Asana one copy** (`SFAF_No_Picture`,
+Asana key `nopicture`). "Nothing" is `sfaf_event_image_url()` answering empty:
+not its own picture, not its platform's, not its series'. **A series picture
+counts**, so an event with none of its own in a series that has one sends
+nothing.
+
+- **Only the move to Published** (`transition_post_status`, new `publish`, old
+  anything else), so a draft, a pending event or a save of a published event
+  sends nothing. Scheduled events send when they go live.
+- **Decided at shutdown, not at the move.** The editor publishes first and
+  writes the picture after, so the move is noted and the question asked once
+  the request has written everything.
+- **One email per series, however many dates.** The series term is marked
+  (`_sfaf_nopic_told`), so its later dates send nothing; an event in no series
+  is its own email and is marked the same way. Nothing un-marks either.
+- **It names** the event or series, its date or how many dates, who added it
+  (`SFAF_Access::creator()`), and links to its caladmin screen.
+- **To `SFAF_Portal::admin_recipients()`**, the orphan alert's list.
 
 ### Icons in email are rasters, and never a platform mark
 
@@ -6368,7 +6449,10 @@ registrants (Confirmation and Morning-of reminder, always sent, no box) and
 Sent to the people above (the four with boxes).
 
 **Replies go to is a picker (3.129.0)**: the creator first, as the empty value,
-which has always meant "whoever created the event"; then calendar people; then
+which has always meant "whoever created the event" (from 3.141.0 the creator
+record, `SFAF_Access::creator()`, never the person viewing or saving; a staff
+request's requester counts, a community submitter does not, and
+`SFAF_Reminders::reply_to_for()` resolves the same way); then calendar people; then
 Someone else, with the address box beside it. A picked person's address is
 stored, not their id, as `_uc_email_replyto` always held. A stored address that
 is nobody on the list opens as Someone else with the box filled. What 3.117.0

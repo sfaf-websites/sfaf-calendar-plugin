@@ -115,7 +115,10 @@ class SFAF_Reminders {
      *
      * Resolution order, most specific first:
      *   1. the event's own address
-     *   2. the address of whoever created the event
+     *   2. the address of whoever created the event: SFAF_Access::creator(),
+     *      the record written when it was made (3.141.0), never whoever is
+     *      viewing or saving; a staff request's typed address counts, a
+     *      community submitter's does not
      *   3. the site-wide default in Settings
      *
      * Step 2 is what stops an event set up and forgotten from sending replies
@@ -130,17 +133,23 @@ class SFAF_Reminders {
             return $own;
         }
 
-        $post = get_post( (int) $event_id );
-        if ( $post ) {
-            $author = get_userdata( $post->post_author );
-            if ( $author && is_email( $author->user_email ) ) {
-                return $author->user_email;
-            }
+        $creator = self::creator_address( $event_id );
+        if ( '' !== $creator ) {
+            return $creator;
         }
 
         $settings = get_option( 'uc_settings', array() );
         $fallback = isset( $settings['email_reply_to'] ) ? trim( (string) $settings['email_reply_to'] ) : '';
         return ( $fallback && is_email( $fallback ) ) ? $fallback : '';
+    }
+
+    /** The creator's address for replies, or ''. One reader for both methods. */
+    public static function creator_address( $event_id ) {
+        if ( ! get_post( (int) $event_id ) ) {
+            return '';
+        }
+        $c = SFAF_Access::creator( (int) $event_id );
+        return ( in_array( $c['kind'], array( 'account', 'request' ), true ) && is_email( $c['email'] ) ) ? (string) $c['email'] : '';
     }
 
     /**
@@ -154,12 +163,8 @@ class SFAF_Reminders {
         if ( $own && is_email( $own ) ) {
             return 'event';
         }
-        $post = get_post( (int) $event_id );
-        if ( $post ) {
-            $author = get_userdata( $post->post_author );
-            if ( $author && is_email( $author->user_email ) ) {
-                return 'author';
-            }
+        if ( '' !== self::creator_address( $event_id ) ) {
+            return 'author';
         }
         $settings = get_option( 'uc_settings', array() );
         $fallback = isset( $settings['email_reply_to'] ) ? trim( (string) $settings['email_reply_to'] ) : '';

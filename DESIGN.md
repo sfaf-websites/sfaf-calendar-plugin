@@ -55,13 +55,13 @@ unknown backdrop cannot be contrast-checked.
 
 | Name | Hex | Role |
 |---|---|---|
-| Yellow | `#FFD900` | Primary actions ONLY. One per view. |
+| Yellow | `#FFD900` | Highlights and notices. Never a button (3.141.0) |
 | Orange | `#F7921E` | Category only |
 | Red | `#F04937` | Category, and destructive state |
 | Burgundy | `#A30C33` | Category only |
 | Pink | `#F1668C` | Category only |
 | Purple | `#8D54A2` | Category only |
-| Green | `#8CC745` | Category, and success state |
+| Green | `#8CC745` | Category, success state; its ink `#46661F` is the public forms' main action (3.141.0) |
 | Teal | `#16BECF` | The single structural accent |
 | Light Gray | `#D1D3D4` | Hairlines and text on dark surfaces (the secondary button's face until 3.137.0) |
 | Dark Gray | `#373433` | Body text, and the portal sidebar |
@@ -103,7 +103,38 @@ Read as three rules:
    5.47:1. A rule that is right on white is not automatically right on
    `#373433`, and vice versa.
 
-### Yellow is for primary actions only. One per view.
+### The main action is green. Yellow is a highlight, never a button (3.141.0)
+
+**MARK'S DECISION, 3.141.0.** Every main action, the button that creates, saves,
+publishes, adds, submits or approves, is green in caladmin, WP admin and the two
+public forms. Yellow stays for what is not a button: the sidebar's Pending count,
+the pager's current page, the restore bar's "Restore what you were typing?" and
+other highlights and notices.
+
+| Where | Face | Hover | White words |
+|---|---|---|---|
+| caladmin and WP admin | `#15803D`, the Publish green | `#12652F` | 5.02:1, 7.17:1 |
+| the two public forms | `#46661F`, the Green family's ink | `#37511A` | 6.60:1, 8.92:1 |
+
+**TWO VALUES, ONE TOKEN.** `portal.css` declares `--p-main` and `--p-main-hover`:
+the palette's ink at `:root`, caladmin's green on `.uc-portal`, and the palette's
+again on `.uc-request-page`. **The public forms are documents of their own whose
+body is `uc-portal uc-request-page`**, so a rule on `.uc-portal` alone reaches
+them; that is why the third declaration exists, and why system colour still
+never reaches a public page. WP admin's `.button-primary` inside our wrap is
+`#15803D` in `admin.css`.
+
+**CHECKED, NOT ASSERTED.** `control-standard-audit.php` check 8 resolves every
+`var()` to its value and fails any button selector (`.uc-btn*`, `.button*`, a
+toggle, `button`, the form-link pill, a submit) with a yellow face or edge, and
+fails `.uc-btn-primary` unless it resolves to `#15803D` in caladmin and `#46661F`
+on the forms. Every yellow button in 3.140.1 was yellow through a token, never a
+literal, which is what the resolving is for. `release-31410-live.php` reads every
+caladmin screen, both forms and WP admin's Closures in Chrome and fails a
+yellow button by its computed colour.
+
+**The rest of this section is the yellow rule it replaces**, kept so the
+reversal is visible. Where it says yellow for a button, read green.
 
 Yellow means "this is the thing to act on". It appears once on a form, once in
 the sidebar (the pending queue), and nowhere decorative.
@@ -184,7 +215,14 @@ yellow stays the single primary action there.
 end in Publish, so it takes Publish's green and size; Save draft keeps the
 in-between yellow.
 
+**SAVE DRAFT IS GREEN FROM 3.141.0**, Mark's call: there is no in-between yellow
+any more. Publish and Submit for Review keep the size that says which green is
+the main one; Save draft is `.uc-btn-primary` at the ordinary size.
+
 #### The yellow audit (3.135.0), Mark's call on each
+
+Superseded for buttons by 3.141.0: every yellow named here as a screen's main
+action is green now. The secondaries it made stay R.
 
 - **A dialog's confirming button takes its trigger's colour.** Publish, Approve
   and Save and email them confirm in green `.uc-btn-go`; Reject in red. Mail
@@ -517,7 +555,7 @@ places, nine of which handed it the decorative hairline instead of a boundary.
 | Text input, select, textarea | white | `--p-border-strong` | you type in this |
 | Select | white, plus a chevron **and an end cap** | `--p-border-strong` | it opens a list |
 | Secondary button, "R" | white, ink `#0E7680` | `#0E7680`; hover fills `#E8F9FA` | you press this |
-| Primary button | Yellow `#FFD900`, ink `#373433` | `#E0BE00` | this is THE action. One per view |
+| Primary button | Green (3.141.0): `#15803D` in caladmin and WP admin, `#46661F` on the public forms, white ink | its face | this is THE action. One per view |
 | Destructive button | `#c0392b`, white ink | its own | behind a disclosure |
 | Destructive outline | white, ink `#c0392b` | `#c0392b`; hover fills `#FEF2F2` | removes or deletes from a row or form |
 | Quiet action | none | none | a verb in a row of verbs |
@@ -1802,7 +1840,7 @@ Built from components already on the page; nothing here is a new colour.
 | EN or ES | `.uc-lang-tag`, the `.uc-texts-mark` pill, after the name on the RSVP list, its waitlist and both recipient lists | 12px/600, `--p-muted` on `--p-bg`, `--p-border` edge, .04em tracking; "English" or "Spanish" for a screen reader |
 | 0 RSVPs, 1 RSVP, 12 RSVPs | the Events list's RSVP cell, `.uc-rsvp-pill` (3.136.0): the status pill's shape with a 14px `person` icon, always with its number; a link to the list for whoever may open it, plain text for anyone else; a dash where the event takes none here | 12px/600, 4px by 10px, 99px radius, `--uc-band` #E8F9FA with `--uc-accent-text` ink, 4.94:1; the link's hover #D9F2F4 with #0C666F, 5.71:1; 26px tall |
 | 0 of 600 characters. By text, about 1 piece. | `.uc-hint.uc-tr-count` under the message box | the hint's type |
-| What can I send by WhatsApp? | a closed `details` under the count, the chevron then the words | 13px/600 `--uc-accent-text`; open, a `--p-border` box, 8px radius, 12px by 14px |
+| What can I send by Text and WhatsApp? (3.141.0) | a closed `details` under the count, the chevron then the words | 13px/600 `--uc-accent-text`; open, a `--p-border` box, 8px radius, 12px by 14px |
 
 ### Should they be told?, Series & Categories, the series People (3.140.0)
 
@@ -1814,11 +1852,25 @@ Measured in Chrome by `.claude/release-31400-live.php` at 1280px and 390px.
 | Should they be told? | the notify dialog, `.uc-notify-quiet-back`, 620px wide on a desktop | one row: Back to the form, the quiet `.uc-action-link`, at the left (`margin-right: auto`); Save without telling them, R; Save and email them, `.uc-btn-go` #15803D. At 600px and under the two buttons stack full width, the outline first, and the link sits centred under them |
 | A meeting link change | a row of the dialog's change list with one value, no strike and no arrow | "Meeting link", then Added, Removed or Changed |
 | Series and Categories | `.uc-view-tabs`, Pending's tabs, the count after each name | the tab is in the URL (`?tab=categories`); no list folds on either |
-| + New series, Create a category | the yellow primary, `.uc-btn-sm`, at the right of the section head (`.uc-section-head-act`) | under the heading and its line on a phone |
+| + New series, Create a category | the primary, green from 3.141.0, `.uc-btn-sm`, at the right of the section head (`.uc-section-head-act`) | under the heading and its line on a phone |
 | The series search | `.uc-filters-bar` in the card, over the table; `data-uc-filter` narrows the rows as you type, `?q=` without a script | "No series match." in `.uc-empty` when nothing does |
 | A category's line | `.uc-muted` under the name | "Pink, hand · 225 events" |
 | Slugs that are not their names | the attention note, at the foot of the Series tab, for calendar admins only | unchanged |
 | People, on the series page | `.uc-rcpt-more` `details`, closed: "People", the count in `--p-muted` 400 ("1 chosen"), the chevron | the boxes under it, 6px apart; the count follows the ticks |
+
+### + New Event, the team rule, the creator line, one arrow (3.141.0)
+
+Built from components already on the page. Measured in Chrome by
+`.claude/release-31410-live.php` at 1280px, 430px and 390px.
+
+| Part | What it is | Values |
+|---|---|---|
+| + New Event | the Events page's main action, `.uc-btn-primary.uc-btn-new-event`, a 20px `calendar` icon before "+ New Event" | 16px/600 (the subhead step), 12px by 22px, 10px gap, `#15803D` with white; 51px tall where the next primary is 32px |
+| Its hover | the button rises 1px with a soft green shadow, the calendar tips -10deg and grows 8%, over 180ms; focus does the same | **reduced motion: only the colour changes**, the transition names no transform |
+| A team before saving | Add event, somebody on several teams or none: "Choose a team before saving." in `.uc-hint` under the choices; pressing Save draft or Publish with none ticked shows "Choose a team." in `.uc-field-error` and moves to the first team | no asterisk: the editor's * means "required to publish", and this is required to save |
+| The creator line | Team and access's first line, `.uc-access-organizer`: the creator's name in 600, what they did in `--p-muted` | "Eli One created this event.", "Pat Reed asked for this event on the staff request form.", "Imported from EveryAction."; who can always edit it on a second line only when a reassign has made that somebody else |
+| One arrow | `:where(summary:has(> .uc-disclosure-chevron))` takes `list-style` and `::-webkit-details-marker` away | zero specificity, so a summary that styles its own marker still wins; **the Pending queue's import panel does (`list-style: revert`) and still shows two, reported in 3.141.0 and left on the brief's "nothing else"** |
+| Add a venue | the add toggle on Venues | `.uc-venue-new > summary` set teal ink at (0,1,1) over the toggle's (0,1,0): teal on yellow before, teal on green would have been unreadable; the wrapper rule keeps only the cursor now |
 
 ---
 

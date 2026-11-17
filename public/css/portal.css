@@ -58,6 +58,14 @@
        family's tint and ink, 6.10:1. */
     --p-ok-tint: #F1F8E9;
     --p-ok-ink: #46661F;
+
+    /* THE MAIN ACTION IS GREEN (3.141.0, Mark's decision): create, save,
+       publish, add, submit, approve. On the two public forms it is the Green
+       family's ink, white 6.60:1, because only palette colours are allowed
+       there; caladmin redefines both on .uc-portal as its system green, the
+       Publish green. Yellow stays for highlights and notices, never a button. */
+    --p-main: #46661F;
+    --p-main-hover: #37511A;
     --p-error-tint: #FDE9E7;
     --p-error-ink: #AD1C0D;
     --p-shadow-raised: 0 24px 60px rgba(0, 0, 0, 0.28);
@@ -708,7 +716,9 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
    it was Light Gray, because a white box with a GREY outline was byte for byte
    a text input; the teal is what answers that.
 
-     PRIMARY      yellow #FFD900, ink #373433, 8.92:1. ONE per view.
+     PRIMARY      GREEN (3.141.0): caladmin #15803D, the public forms #46661F,
+                  white ink 5.02:1 and 6.60:1. ONE per view. Yellow is never
+                  a button: highlights and notices only.
      SECONDARY    R: white, #0E7680 edge and ink, 5.35:1; hover #E8F9FA, 4.94:1.
      DESTRUCTIVE  solid #c0392b, white ink, 5.44:1. Behind a disclosure; as an
                   outline (.uc-btn-danger-outline) on a destructive row action.
@@ -727,8 +737,12 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 .uc-form-links-open:hover { background: var(--p-btn-face-hover); border-color: var(--p-btn-edge); color: var(--p-btn-edge); text-decoration: none; }
 .uc-btn:focus-visible,
 .uc-form-links-open:focus-visible { outline: 2px solid var(--uc-accent-text); outline-offset: 2px; }
+/* Caladmin's green, and back to the palette's on the two public forms, which
+   are documents of their own with body.uc-portal.uc-request-page. */
+.uc-portal { --p-main: #15803D; --p-main-hover: #12652F; }
+.uc-request-page { --p-main: #46661F; --p-main-hover: #37511A; }
 .uc-btn-primary,
-.uc-form-links-open { background: var(--uc-primary); border-color: #E0BE00; color: var(--sfaf-darkgray); }
+.uc-form-links-open { background: var(--p-main); border-color: var(--p-main); color: #fff; }
 /* THE FILL IS NAMED IN THE HOVER TOO, and that is not redundancy. Until the
    secondary button had a face of its own, `.uc-btn:hover` set no background
    and a yellow button simply kept its own through the hover. It sets one now,
@@ -736,7 +750,25 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
    Same shape as the 3.39.0 fault: a state rule inheriting a fill from the
    resting rule, which holds right up until the resting rule changes. */
 .uc-btn-primary:hover,
-.uc-form-links-open:hover { background: var(--uc-primary); filter: brightness(0.94); color: var(--sfaf-darkgray); border-color: #E0BE00; }
+.uc-form-links-open:hover { background: var(--p-main-hover); color: #fff; border-color: var(--p-main-hover); }
+/* + NEW EVENT (3.141.0), the Events page's main action: a step larger than
+   any other button, the calendar beside the words, and on hover the button
+   rises a pixel while the calendar tips. Without motion, only the colour moves. */
+.uc-portal .uc-btn-new-event { gap: 10px; padding: 12px 22px; font-size: 16px; font-weight: 600;
+    transition: background-color .15s ease, border-color .15s ease, transform .18s ease, box-shadow .18s ease; }
+.uc-btn-new-event .uc-new-event-icon { display: inline-flex; transition: transform .18s ease; }
+.uc-portal .uc-btn-new-event:hover,
+.uc-portal .uc-btn-new-event:focus-visible { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(21, 128, 61, 0.28); }
+.uc-btn-new-event:hover .uc-new-event-icon,
+.uc-btn-new-event:focus-visible .uc-new-event-icon { transform: rotate(-10deg) scale(1.08); }
+@media (prefers-reduced-motion: reduce) {
+    .uc-portal .uc-btn-new-event { transition: background-color .15s ease, border-color .15s ease; }
+    .uc-portal .uc-btn-new-event:hover,
+    .uc-portal .uc-btn-new-event:focus-visible { transform: none; }
+    .uc-btn-new-event .uc-new-event-icon,
+    .uc-btn-new-event:hover .uc-new-event-icon,
+    .uc-btn-new-event:focus-visible .uc-new-event-icon { transition: none; transform: none; }
+}
 /* ---------------------------------------------------------------------------
    THE UTILITY BUTTON: "go and get it again".
 
@@ -2340,7 +2372,9 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-venue-actions { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
 .uc-venue-delete { margin-top: 8px; }
 .uc-venue-new { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--p-border); }
-.uc-venue-new > summary { cursor: pointer; color: var(--uc-accent-text); font-weight: 600; }
+/* The summary is the add toggle (3.141.0): no colour or weight here, or this
+   (0,1,1) beats the toggle's (0,1,0) and paints teal words on its green. */
+.uc-venue-new > summary { cursor: pointer; }
 
 /* ---------- FAQ card ---------- */
 /* .uc-faq-saveset and .uc-offscreen-form went with "Save these as a set" in
@@ -3621,6 +3655,13 @@ body.uc-modal-open { overflow: hidden; }
 [open] > .uc-rsvp-settings-toggle .uc-disclosure-chevron,
 [open] > summary .uc-disclosure-chevron { transform: rotate(90deg); }
 @media (prefers-reduced-motion: reduce) { .uc-disclosure-chevron { transition: none; } }
+/* ONE ARROW (3.141.0). A summary that carries the chevron loses the browser's
+   own triangle, which is drawn two ways: list-style, and Chrome and Safari's
+   ::-webkit-details-marker. The series page's four (Change the pattern, Extend
+   the series, the past dates, Copy onto another date) showed both. Zero
+   specificity, so a summary that styles its own marker still wins. */
+:where(summary:has(> .uc-disclosure-chevron)) { list-style: none; }
+:where(summary:has(> .uc-disclosure-chevron))::-webkit-details-marker { display: none; }
 .uc-rsvp-settings-form { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
 .uc-rsvp-settings-form .uc-form-actions { margin-top: 4px; }
 
@@ -4491,22 +4532,22 @@ body.uc-modal-open { overflow: hidden; }
    stay quiet: on a screen of twelve organizers, twelve yellow controls would
    mean none of them led either.
 
-   YELLOW WITH INK, which is the only permitted text-on-yellow pair in the brand
-   guide, and yellow is reserved for actions. See DESIGN.md.
+   GREEN WITH WHITE INK (3.141.0), the main action's colours, from --p-main.
+   It was yellow until then. See DESIGN.md.
    ------------------------------------------------------------------------- */
 .uc-add-toggle {
     display: inline-flex; align-items: center; gap: 8px;
     cursor: pointer; list-style: none;
     padding: 9px 16px; margin: 0;
-    border: 1px solid var(--sfaf-yellow, #FFD900);
+    border: 1px solid var(--p-main);
     border-radius: 8px;
-    background: var(--sfaf-yellow, #FFD900);
-    color: var(--p-text);
+    background: var(--p-main);
+    color: #fff;
     font-size: 13.5px; font-weight: 700;
 }
 .uc-add-toggle::-webkit-details-marker { display: none; }
 .uc-add-toggle::marker { content: ""; }
-.uc-add-toggle:hover { filter: brightness(0.95); }
+.uc-add-toggle:hover { background: var(--p-main-hover); border-color: var(--p-main-hover); color: #fff; }
 .uc-add-toggle:focus-visible { outline: 2px solid var(--p-text); outline-offset: 2px; }
 
 /* ---------------------------------------------------------------------------
@@ -4522,9 +4563,9 @@ body.uc-modal-open { overflow: hidden; }
    inherited: .uc-card-head is a class this element does not carry, and giving a
    <summary> two classes that both set margin is how they come to disagree.
 
-   DELIBERATELY NOT .uc-add-toggle, which is yellow. Yellow means "act on this"
+   DELIBERATELY NOT .uc-add-toggle, the main action's green. Green means "act on this"
    and is reserved for the one control that leads a screen, which here is
-   "Create a set". A page of twelve yellow set headers would mean none of them
+   "Create a set". A page of twelve green set headers would mean none of them
    led. See DESIGN.md.
 
    NO name ATTRIBUTE ON THESE, so two can be open at once: somebody comparing

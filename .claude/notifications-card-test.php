@@ -110,7 +110,8 @@ nc( (string) get_post_meta( $new, '_uc_email_replyto', true ), 'events@example.o
  * ======================================================================== */
 // View event page, its copy icon and Preview, at the top of Edit event (3.122.0).
 $SAVED_ACTIONS = array( 'manage-series', 'edit-schedule', 'cancel', 'delete', 'faq-form', 'rsvp-list', 'private-link', 'view-page', 'copy-link', 'preview' );
-$ADD_ONLY      = array( 'series-prefill' );
+// Add event's team rule (3.141.0): the creator's team, or a team before saving.
+$ADD_ONLY      = array( 'series-prefill', 'team-rule' );
 
 function nc_controls( $html, $skip_attr, $skip_saves = false ) {
     $doc = new DOMDocument();

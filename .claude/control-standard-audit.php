@@ -26,6 +26,7 @@
 
 $root = dirname( __DIR__ );
 $css  = $root . '/public/css/portal.css';
+$admin_css = $root . '/admin/css/admin.css';
 
 $mode = 'run';
 foreach ( array_slice( $argv, 1 ) as $arg ) {
@@ -33,6 +34,8 @@ foreach ( array_slice( $argv, 1 ) as $arg ) {
     if ( '--report' === $arg )    { $mode = 'report'; }
     // Another stylesheet, for the self-test's probes of check 3.
     if ( 0 === strpos( $arg, '--css=' ) ) { $css = substr( $arg, 6 ); }
+    // WP admin's stylesheet, for check 8 (3.141.0).
+    if ( 0 === strpos( $arg, '--admin-css=' ) ) { $admin_css = substr( $arg, 12 ); }
 }
 
 /* =====================================================================
@@ -599,6 +602,109 @@ if ( 'report' !== $mode ) {
 }
 
 /* =====================================================================
+ * CHECK 8. THE MAIN ACTION IS GREEN, AND NO BUTTON IS YELLOW (3.141.0).
+ *
+ * Mark's decision: create, save, publish, add, submit and approve are green
+ * in caladmin, WP admin and the two public forms. Yellow stays for
+ * highlights and notices: the sidebar's Pending count, the pager's current
+ * page, the restore bar. So the check is about BUTTONS, by selector, and it
+ * resolves a var() to its :root value before it decides, because every yellow
+ * button in 3.140.1 was yellow through a token, never a literal.
+ *
+ *   a  no rule whose selector names a button (.uc-btn*, .button*, a toggle,
+ *      button, the form-link pill, a submit) has a yellow fill or edge
+ *   b  .uc-btn-primary's resting fill is --p-main, which is the Green
+ *      family's ink #46661F at :root (the public forms) and caladmin's
+ *      #15803D on .uc-portal, white ink on both
+ *   c  WP admin's .button-primary inside our wrap is #15803D
+ * ================================================================== */
+
+function cs_is_button_selector( $sel ) {
+    return (bool) preg_match( '/\.uc-btn|(^|[\s>+~(,])button\b|\.button\b|\.button-primary|-toggle\b|\.uc-form-links-open|type=["\']?submit/i', $sel );
+}
+function cs_root_vars( $rules, $scope = ':root' ) {
+    $vars = array();
+    foreach ( $rules as $r ) {
+        if ( $scope !== trim( $r['selector'] ) ) { continue; }
+        foreach ( $r['decls'] as $p => $v ) {
+            if ( 0 === strpos( $p, '--' ) ) { $vars[ $p ] = $v; }
+        }
+    }
+    return $vars;
+}
+function cs_resolve( $val, $vars ) {
+    for ( $n = 0; $n < 5; $n++ ) {
+        $next = preg_replace_callback( '/var\(\s*(--[A-Za-z0-9_-]+)\s*(?:,\s*([^)]*))?\)/', function ( $m ) use ( $vars ) {
+            if ( isset( $vars[ $m[1] ] ) ) { return $vars[ $m[1] ]; }
+            return isset( $m[2] ) ? $m[2] : $m[0];
+        }, $val );
+        if ( $next === $val ) { break; }
+        $val = $next;
+    }
+    return $val;
+}
+function cs_is_yellow( $val ) {
+    return (bool) preg_match( '/#(ffd900|e0be00|fff4b3)\b|\byellow\b/i', $val );
+}
+function cs_yellow_buttons( $rules, $vars, $file ) {
+    $out = array();
+    foreach ( $rules as $r ) {
+        if ( ! cs_is_button_selector( $r['selector'] ) ) { continue; }
+        foreach ( array( 'background', 'background-color', 'border', 'border-color' ) as $p ) {
+            if ( isset( $r['decls'][ $p ] ) && cs_is_yellow( cs_resolve( $r['decls'][ $p ], $vars ) ) ) {
+                $out[] = sprintf( '%s:%d `%s` is a button with a yellow %s (%s). Main actions are green; yellow is for highlights and notices.', $file, $r['line'], $r['selector'], $p, $r['decls'][ $p ] );
+            }
+        }
+    }
+    return $out;
+}
+
+$root_vars   = cs_root_vars( $rules );
+$portal_vars = array_merge( $root_vars, cs_root_vars( $rules, '.uc-portal' ) );
+/* THE TWO PUBLIC FORMS ARE body.uc-portal.uc-request-page, so caladmin's
+   .uc-portal reaches them too and .uc-request-page has to put the palette's
+   green back. Resolved in that order, as the browser does. */
+$public_vars = array_merge( $portal_vars, cs_root_vars( $rules, '.uc-request-page' ) );
+foreach ( cs_yellow_buttons( $rules, $root_vars, basename( $css ) ) as $y ) { $fail[] = $y; }
+$admin_rules = is_readable( $admin_css ) ? css_rules( file_get_contents( $admin_css ) ) : array();
+$admin_vars  = cs_root_vars( $admin_rules );
+foreach ( cs_yellow_buttons( $admin_rules, $admin_vars, basename( $admin_css ) ) as $y ) { $fail[] = $y; }
+
+$main_rest = null;
+$main_ink  = null;
+foreach ( $rules as $r ) {
+    $parts = array_map( 'trim', explode( ',', $r['selector'] ) );
+    if ( in_array( '.uc-btn-primary', $parts, true ) ) {
+        foreach ( array( 'background', 'background-color' ) as $p ) {
+            if ( isset( $r['decls'][ $p ] ) ) { $main_rest = $r['decls'][ $p ]; }
+        }
+        if ( isset( $r['decls']['color'] ) ) { $main_ink = $r['decls']['color']; }
+    }
+}
+$main_public = null === $main_rest ? '' : strtoupper( cs_resolve( $main_rest, $public_vars ) );
+$main_portal = null === $main_rest ? '' : strtoupper( cs_resolve( $main_rest, $portal_vars ) );
+if ( '#46661F' !== $main_public ) {
+    $fail[] = sprintf( '.uc-btn-primary on the public forms is %s, not the Green family\'s ink #46661F.', '' === $main_public ? 'undeclared' : $main_public );
+}
+if ( '#15803D' !== $main_portal ) {
+    $fail[] = sprintf( '.uc-btn-primary in caladmin (.uc-portal) is %s, not the green #15803D.', '' === $main_portal ? 'undeclared' : $main_portal );
+}
+if ( null === $main_ink || ! preg_match( '/^#fff(fff)?$/i', trim( $main_ink ) ) ) {
+    $fail[] = sprintf( '.uc-btn-primary\'s ink is %s, not white.', null === $main_ink ? 'undeclared' : $main_ink );
+}
+$admin_main = null;
+foreach ( $admin_rules as $r ) {
+    if ( false !== strpos( $r['selector'], '.button-primary' ) && false === strpos( $r['selector'], ':' ) ) {
+        foreach ( array( 'background', 'background-color' ) as $p ) {
+            if ( isset( $r['decls'][ $p ] ) ) { $admin_main = strtoupper( cs_resolve( $r['decls'][ $p ], $admin_vars ) ); }
+        }
+    }
+}
+if ( is_readable( $admin_css ) && '#15803D' !== $admin_main ) {
+    $fail[] = sprintf( 'WP admin\'s .button-primary is %s, not the green #15803D.', null === $admin_main ? 'undeclared' : $admin_main );
+}
+
+/* =====================================================================
  * CHECK 6. THE MEASURED PAIRS.
  *
  * The secondary button's face is the one new value in 3.64.0 and it is the
@@ -621,7 +727,13 @@ $MEASURED = array(
     array( 'checked in: white on teal',            '#FFFFFF', '#0E7680', 4.5 ),
     array( 'control boundary on a card',           '#8C8D8E', '#FFFFFF', 3.0 ),
     array( 'control boundary on the page',         '#8C8D8E', '#F5F6F7', 3.0 ),
-    array( 'primary ink on yellow',                '#373433', '#FFD900', 4.5 ),
+    // The main action, green from 3.141.0: caladmin and WP admin, then the public forms.
+    array( 'main: white on caladmin green',        '#FFFFFF', '#15803D', 4.5 ),
+    array( 'main: white on its hover',             '#FFFFFF', '#12652F', 4.5 ),
+    array( 'main: white on the forms green ink',   '#FFFFFF', '#46661F', 4.5 ),
+    array( 'main: white on its hover',             '#FFFFFF', '#37511A', 4.5 ),
+    array( 'main: green edge on the page',         '#15803D', '#F5F6F7', 3.0 ),
+    array( 'main: forms green edge on white',      '#46661F', '#FFFFFF', 3.0 ),
     array( 'chosen segment: white on teal ink',    '#FFFFFF', '#0E7680', 4.5 ),
 );
 
@@ -728,6 +840,33 @@ if ( 'selftest' === $mode ) {
     $probe( 'check 3 passes R', false === strpos( $out_r, 'R: --p-btn' ) && false === strpos( $out_r, 'is not R' ) && false === strpos( $out_r, 'declares no edge' ) && false !== strpos( $out_r, 'Measured pairs' ), true );
     $probe( 'check 3 fails the Light Gray button', false !== strpos( $r3( $tmp . '-grey.css' ), 'is not R' ) && false !== strpos( $r3( $tmp . '-grey.css' ), 'R: --p-btn-face is #d1d3d4' ), true );
     @unlink( $tmp . '-r.css' ); @unlink( $tmp . '-grey.css' );
+    // Check 8 (3.141.0): a yellow button through a token, a literal, and a green sheet.
+    $probe( 'check 8: a button selector', cs_is_button_selector( '.uc-portal .uc-btn-go:hover' ), true );
+    $probe( 'check 8: a toggle is a button', cs_is_button_selector( '.uc-add-toggle' ), true );
+    $probe( 'check 8: the Pending badge is not a button', cs_is_button_selector( '.uc-nav-badge' ), false );
+    $probe( 'check 8: a token resolves to yellow', cs_is_yellow( cs_resolve( 'var(--uc-primary)', array( '--uc-primary' => '#FFD900' ) ) ), true );
+    $green = ":root { --p-main: #46661F; --p-main-hover: #37511A; --p-btn-face: #fff; --p-btn-face-hover: #E8F9FA; --p-btn-edge: #0E7680; }\n.uc-portal { --p-main: #15803D; }\n.uc-request-page { --p-main: #46661F; }\n"
+        . ":where(.uc-portal) :where(input, select) { border: 1px solid var(--p-border-strong); background-color: #fff; }\n"
+        . ".uc-btn { border: 1px solid var(--p-btn-edge); background: var(--p-btn-face); color: var(--p-btn-edge); }\n.uc-btn:hover { background: var(--p-btn-face-hover); }\n"
+        . ".uc-btn-primary { background: var(--p-main); border-color: var(--p-main); color: #fff; }\n.uc-btn-primary:hover { background: var(--p-main-hover); }\n.uc-nav-badge { background: #FFD900; }\n";
+    file_put_contents( $tmp . '-g.css', $green );
+    file_put_contents( $tmp . '-y.css', str_replace( '.uc-nav-badge { background: #FFD900; }', ".uc-add-toggle { background: var(--uc-primary); }\n:root { --uc-primary: #FFD900; }", $green ) );
+    file_put_contents( $tmp . '-a.css', ".uc-admin-wrap .button-primary { background: #15803D; color: #fff; }\n" );
+    file_put_contents( $tmp . '-ay.css', ".uc-admin-wrap .button-primary { background: #FFD900; }\n" );
+    $r8 = function ( $sheet, $adm ) {
+        $cmd = escapeshellarg( PHP_BINARY ) . ' ' . escapeshellarg( __FILE__ ) . ' --css=' . escapeshellarg( $sheet ) . ' --admin-css=' . escapeshellarg( $adm );
+        return (string) shell_exec( $cmd . ' 2>&1' );
+    };
+    $o_g = $r8( $tmp . '-g.css', $tmp . '-a.css' );
+    $probe( 'check 8 passes the green sheets', false === strpos( $o_g, 'a yellow' ) && false === strpos( $o_g, 'not the green' ) && false === strpos( $o_g, 'not the Green' ) && false !== strpos( $o_g, 'Measured pairs' ), true );
+    $o_y = $r8( $tmp . '-y.css', $tmp . '-a.css' );
+    $probe( 'check 8 fails a yellow toggle through a token', false !== strpos( $o_y, '`.uc-add-toggle` is a button with a yellow background' ), true );
+    file_put_contents( $tmp . '-f.css', str_replace( ".uc-request-page { --p-main: #46661F; }\n", '', $green ) );
+    $probe( 'check 8 fails caladmin green reaching the public forms', false !== strpos( $r8( $tmp . '-f.css', $tmp . '-a.css' ), 'on the public forms is #15803D' ), true );
+    @unlink( $tmp . '-f.css' );
+    $o_ay = $r8( $tmp . '-g.css', $tmp . '-ay.css' );
+    $probe( 'check 8 fails a yellow WP admin primary', false !== strpos( $o_ay, 'button with a yellow' ) && false !== strpos( $o_ay, "WP admin's .button-primary is #FFD900" ), true );
+    foreach ( array( '-g', '-y', '-a', '-ay' ) as $sx ) { @unlink( $tmp . $sx . '.css' ); }
 
     echo "\n$t checks, $bad failed\n";
     exit( $bad ? 1 : 0 );

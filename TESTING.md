@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 433 items.** Quick 350, needs real conditions 78, blocked on other
+**Outstanding: 440 items.** Quick 355, needs real conditions 80, blocked on other
 people 5.
 
 ---
@@ -4716,6 +4716,63 @@ Open WP admin, Settings, Cloudflare Turnstile. It must say **Connected**. If it 
 
 **Why it needs a person:** the keys live on the site, not in the repository.
 
+### 1.353 Every main action is green, and + New Event (3.141.0)
+
+Open caladmin's Events page: **+ New Event** is green with white words, larger
+than the buttons around it, with a calendar before the words; point at it and
+it rises slightly and the calendar tips. Turn on your computer's reduce-motion
+setting (Windows: Settings, Accessibility, Visual effects, Animation effects
+off) and reload: pointing at it only darkens it. Then look at Add event (Save
+draft and Publish both green), Organizers (Add organizer), Venues (Add a venue),
+Users & Teams, the sign-in page (Sign In), WP admin's Closures (Add closure) and
+Settings, and both public forms (Submit this event, Send the request, a darker
+green there). Say any button that is still yellow, and any yellow that is not a
+button but should not be yellow either.
+
+**Why it needs a person:** the live screens, with the site's own fonts and any
+other plugin's stylesheet, and an eye on what reads as the main action.
+
+### 1.354 Add event's team, for people on one team, two and none (3.141.0)
+
+Sign in as an editor who is on exactly one team (or ask one) and open Add
+event: under Team and access that team is ticked already; untick it, tick
+another, and save: it keeps what was chosen. As an editor on two teams, and one
+on none: nothing is ticked, the card says "Choose a team before saving.", and
+Save draft and Publish both stay on the page with "Choose a team." until one is
+ticked. Choose a series with a default team on the one-team editor's form: their
+own team stays ticked beside the series'. The staff request form has no team
+question.
+
+**Why it needs a person:** real accounts on real teams, signed in.
+
+### 1.355 Team and access and Replies go to name the creator, not you (3.141.0)
+
+Ask somebody else to open, in caladmin, an event **you** created: Team and
+access says you created it, and Replies go to's first choice is you. Open an
+imported event: it says Imported from its platform, and Replies go to's first
+choice is the site default, not whoever pressed Fetch updates. Open an approved
+staff request: it names the requester, and replies go to their work address.
+Copy one of your events while signed in as somebody else: the copy is theirs.
+
+**Why it needs a person:** two real accounts and the live events.
+
+### 1.356 Email registrants with nobody registered, and Text and WhatsApp (3.141.0)
+
+Open the RSVP list of an event nobody has registered for and open Email
+registrants: it says "Nobody has registered for this event yet." where the
+message box was. On an event with registrants the box is there. With WhatsApp
+set up, Text registrants' panel reads **What can I send by Text and WhatsApp?**
+
+**Why it needs a person:** the live list and the live Twilio settings.
+
+### 1.357 One arrow on the series page (3.141.0)
+
+Open a repeating series in caladmin: Change the pattern, Extend the series, the
+past dates and Copy "..." onto another date each show one arrow, which turns when
+opened. Pending's "Set the fields this platform does not supply" on an imported
+event still shows two; that one was not part of this release.
+
+**Why it needs a person:** a series with a pattern and past dates, on the site.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -5842,6 +5899,31 @@ On a test online event with the link set to go with the confirmation, register a
 
 **Why it needs a person:** real mail through Postmark, and a mail client drawing the joining block.
 
+### 2.81 What schema 19 found and changed (3.141.0)
+
+After installing 3.141.0, open the option `sfaf_creator_migration` (Tools or a
+database view) and send Mark's chat its numbers: `recorded`, `by_account`,
+`without_account`, and the four lists with their counts: `author_not_maker`
+(imports, requests and submissions whose author was the person who fetched or
+saved them), `replyto_creator` (Replies go to held the creator's own address
+and now follows them), `replyto_viewer` (it held the fetcher's or saver's
+address and was cleared) and `replyto_kept` (any other address, left alone).
+Open two events from `replyto_viewer` and two from `replyto_kept`: say whether
+each kept address looks chosen or looks like it came from whoever was on the
+screen.
+
+**Why it needs a person:** the live database; nothing here can read it.
+
+### 2.82 The no-picture email, from a real publish (3.141.0)
+
+Publish an event in no series with no picture: every calendar admin gets
+"Published with no picture: ..." naming it, who added it and a link that opens
+it, and Asana gets one task. Publish three dates of a series with no picture in
+one go (Publish N drafts): one email naming the series and "3 dates published".
+Publish another date of it later: nothing. Publish a draft into a series that
+has a picture: nothing. Save a draft with no picture: nothing.
+
+**Why it needs a person:** real mail, the Asana project, and the real queue.
 ## 3. Blocked on other people
 
 Nothing here can move until somebody outside the build answers.
