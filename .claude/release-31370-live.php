@@ -223,7 +223,8 @@ foreach ( $files as $key => $f ) {
     }
     if ( 0 === strpos( $key, 'dialog-' ) ) {
         $okb = array_values( array_filter( (array) $r['buttons'], function ( $b ) { return 0 === strpos( $b['label'], 'dialog: Reset to default' ); } ) );
-        $want = array( 'dialog-plain' => $YEL, 'dialog-outline' => $RED, 'dialog-go' => 'rgb(21, 128, 61)' )[ strtok( $key, '@' ) ];
+        $want = array( 'dialog-plain' => 'rgb(21, 128, 61)', // the primary, green from 3.141.0
+                        'dialog-outline' => $RED, 'dialog-go' => 'rgb(21, 128, 61)' )[ strtok( $key, '@' ) ];
         rl( isset( $okb[0] ) && $want === $okb[0]['face'], "PLANT P: $key: the dialog's Reset to default is " . json_encode( $okb[0] ?? null ) . ", not $want" );
     }
     if ( ! empty( $r['asked'] ) ) { $asked[] = $key . ': ' . $r['asked']['label'] . ' opened ' . ( empty( $r['dialog'] ) ? 'no dialog' : $r['dialog'] . ' buttons' ); }
