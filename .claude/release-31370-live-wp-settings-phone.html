@@ -423,7 +423,7 @@ Details: {event_url}
                         <span class="uc-panel-icon"><svg class="sfaf-icon sfaf-icon-check" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6.5 9.5 17 4 11.5"/></svg></span>
                         <div class="uc-panel-info">
                             <h2>Cloudflare Turnstile</h2>
-                            <p>Spam protection for the public event submission form.</p>
+                            <p>Spam protection for the event request and community submission forms.</p>
                         </div>
                         <span class="uc-panel-status uc-status-pending">Not configured</span>
                         <span class="uc-panel-toggle">&#9660;</span>
@@ -441,7 +441,7 @@ Details: {event_url}
                             <strong>Both keys, or the widget does not appear at all.</strong> A site key with no secret would draw a checkbox that nothing verifies. Use the same Cloudflare account and domain that Gravity Forms already uses on this site.
                         </p>
                         <p class="description">
-                            This protects the community submission form at <code>uc_event_submit=</code>, which has no login and no email check. The staff request form does not use it: a link sent to an sfaf.org mailbox is already a stronger check. If Cloudflare cannot be reached the submission still goes through, and the honeypot, the rate limits and the pending queue still apply.
+                            This protects the staff request form at <code>uc_event_request=1</code> and the community submission form at <code>uc_event_submit=</code>. Neither has a login or an email check. Without both keys, neither form has a robot check. If Cloudflare cannot be reached the submission still goes through, and the honeypot, the rate limits and the pending queue still apply.
                         </p>
                     </div>
                 </div>
