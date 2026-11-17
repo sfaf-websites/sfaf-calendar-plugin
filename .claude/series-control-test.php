@@ -338,6 +338,8 @@ class SFAF_Reminders {
     public static function notify_list( $id ) { return array(); }
     public static function reply_to_for( $id ) { return 'events@sfaf.org'; }
     public static function reply_to_source( $id ) { return 'default'; }
+    // The real one's rule (3.141.0), asked of the real SFAF_Access loaded below.
+    public static function creator_address( $id ) { if ( ! class_exists( 'SFAF_Access' ) || ! get_post( (int) $id ) ) { return ''; } $c = SFAF_Access::creator( (int) $id ); return ( in_array( $c['kind'], array( 'account', 'request' ), true ) && is_email( $c['email'] ) ) ? (string) $c['email'] : ''; }
 }
 /**
  * The import side, modelled rather than emptied.
@@ -621,6 +623,8 @@ require_once $root . '/includes/class-sfaf-online.php';
 require_once $root . '/includes/class-sfaf-cancellation.php';
 require_once $root . '/includes/class-sfaf-notifications.php';
 require_once $root . '/includes/class-sfaf-messages.php';
+// Team and access and Replies go to read the creator (3.141.0).
+foreach ( array( 'class-sfaf-access', 'class-sfaf-submissions', 'class-sfaf-request' ) as $sc_f ) { if ( ! class_exists( str_replace( ' ', '_', ucwords( str_replace( array( 'class-', '-' ), array( '', ' ' ), $sc_f ) ) ) ) ) { require_once $root . '/includes/' . $sc_f . '.php'; } }
 require_once $root . '/includes/class-sfaf-questions.php'; // 3.106.2
 require_once $root . '/includes/class-sfaf-agreement.php'; // 3.110.0
 require_once $root . '/includes/class-sfaf-access.php';    // 3.110.1

@@ -355,9 +355,10 @@ check( (bool) preg_match( '/\.uc-portal \.uc-btn-go \{ background: #15803D;/', $
     'the green moved off the 700 weight measured at 5.02:1' );
 check( (bool) preg_match( '/\.uc-portal \.uc-btn-stop \{ background: #c0392b;/', $css ),
     'the red moved off the shade measured at 5.44:1' );
-/* AND YELLOW KEEPS ITS DARK GREY INK, which is the only text colour on it. */
-check( (bool) preg_match( '/\.uc-btn-primary,\s*\n\.uc-form-links-open \{ background: var\(--uc-primary\); border-color: #E0BE00; color: var\(--sfaf-darkgray\); \}/', $css ),
-    'the yellow button lost its dark gray ink; white on yellow measures 1.38:1' );
+/* THE PRIMARY IS GREEN WITH WHITE WORDS FROM 3.141.0 (it was yellow with dark
+ * grey); control-standard-audit.php check 8 measures it. */
+check( (bool) preg_match( '/\.uc-btn-primary,\s*\n\.uc-form-links-open \{ background: var\(--p-main\); border-color: var\(--p-main\); color: #fff; \}/', $css ),
+    'the primary is not the green main action with white words' );
 
 /* THE MAIN ACTION CARRIES "MAIN" BY SIZE now that it is not the only coloured
  * button in the row, and BOTH rows have one: Publish on a draft, Save changes on

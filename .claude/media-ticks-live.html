@@ -581,15 +581,38 @@ function ucDismissOnBackdrop(dialog) {
             var series = {};
             try { series = JSON.parse(box.getAttribute('data-uc-access-series') || '{}') || {}; } catch (e) { series = {}; }
             var own = '1' === box.getAttribute('data-uc-access-own');
+            /* ADD EVENT'S TEAM RULE (3.141.0). The creator's one team stays
+             * ticked when the series changes the rest; on several teams or
+             * none, the save waits until one is ticked. */
+            var mine = [];
+            try { mine = JSON.parse(box.getAttribute('data-uc-access-mine') || '[]') || []; } catch (e) { mine = []; }
+            var needTeam = box.hasAttribute('data-uc-access-need-team');
+            var teamError = box.querySelector('[data-uc-access-team-error]');
+            function teamTicked() { return !!box.querySelector('input[name="access_teams[]"]:checked'); }
             box.addEventListener('change', function (e) {
                 if (e.target && e.target.type === 'checkbox' && e.target.name !== 'access_teams_notify') { own = true; }
+                if (teamError && teamTicked()) { teamError.hidden = true; }
             });
+            var form = box.closest('form');
+            if (needTeam && form) {
+                form.addEventListener('submit', function (e) {
+                    if (teamTicked()) { return; }
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (teamError) { teamError.hidden = false; }
+                    var first = box.querySelector('input[name="access_teams[]"]');
+                    if (first) {
+                        if (first.scrollIntoView) { first.scrollIntoView({ block: 'center' }); }
+                        try { first.focus({ preventScroll: true }); } catch (err) { first.focus(); }
+                    }
+                });
+            }
             var select = document.querySelector('[data-uc-series-select]');
             if (!select) { return; }
             select.addEventListener('change', function () {
                 if (own) { return; }
                 var d = series[String(select.value)] || { teams: [], people: [] };
-                box.querySelectorAll('input[name="access_teams[]"]').forEach(function (i) { i.checked = d.teams.indexOf(i.value) > -1; });
+                box.querySelectorAll('input[name="access_teams[]"]').forEach(function (i) { i.checked = d.teams.indexOf(i.value) > -1 || mine.indexOf(i.value) > -1; });
                 box.querySelectorAll('input[name="access_people[]"]').forEach(function (i) { i.checked = d.people.indexOf(parseInt(i.value, 10)) > -1; });
             });
         });

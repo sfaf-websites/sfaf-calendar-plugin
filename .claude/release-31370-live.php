@@ -215,7 +215,8 @@ foreach ( $files as $key => $f ) {
         }
         foreach ( array( 'Publish ' => 'drafts', 'Set team on' => 'events', 'Add organizer' => '' ) as $start => $end ) {
             if ( 0 === strpos( $b['label'], $start ) && ( '' === $end || false !== strpos( $b['label'], $end ) ) && 0 === strpos( $key, 'caladmin-' ) ) {
-                rl( $YEL === $b['face'], "PLANT P: $id should be yellow: " . json_encode( $b ) );
+                // Green from 3.141.0, Mark's decision: every main action (DESIGN.md 1).
+                rl( 'rgb(21, 128, 61)' === $b['face'], "PLANT P: $id should be the main action's green: " . json_encode( $b ) );
             }
         }
         $seen[ $b['label'] ] = true;

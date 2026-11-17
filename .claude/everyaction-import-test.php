@@ -82,6 +82,8 @@ function delete_option( $n ) { unset( $GLOBALS['opt'][ $n ] ); return true; }
 
 function get_post_meta( $id, $k = '', $s = false ) { return isset( $GLOBALS['meta'][ $id ][ $k ] ) ? $GLOBALS['meta'][ $id ][ $k ] : ''; }
 function update_post_meta( $id, $k, $v ) { $GLOBALS['meta'][ (int) $id ][ $k ] = $v; return true; }
+// add_post_meta and get_post_field (3.141.0): the creator record, written once.
+if ( ! function_exists( 'add_post_meta' ) ) { function add_post_meta( $id, $k, $v, $u = false ) { if ( $u && isset( $GLOBALS['meta'][ (int) $id ][ $k ] ) ) { return false; } $GLOBALS['meta'][ (int) $id ][ $k ] = $v; return true; } }
 function delete_post_meta( $id, $k ) { unset( $GLOBALS['meta'][ (int) $id ][ $k ] ); return true; }
 function get_post( $id = 0 ) {
     $id = (int) ( is_object( $id ) ? $id->ID : $id );
@@ -189,7 +191,8 @@ function sfaf_event_location( $id ) {
  * The plugin, the real classes, and two readers lifted from source.
  * ------------------------------------------------------------------------ */
 require __DIR__ . '/everyaction-hub.php';
-foreach ( array( 'class-sfaf-credentials', 'class-sfaf-sources', 'class-sfaf-series', 'class-sfaf-venues', 'class-sfaf-everyaction', 'class-sfaf-source-everyaction' ) as $f ) {
+// class-sfaf-access and the two after it: an import's creator is recorded on insert (3.141.0).
+foreach ( array( 'class-sfaf-credentials', 'class-sfaf-sources', 'class-sfaf-series', 'class-sfaf-venues', 'class-sfaf-everyaction', 'class-sfaf-source-everyaction', 'class-sfaf-access', 'class-sfaf-submissions', 'class-sfaf-request' ) as $f ) {
     require_once $root . '/includes/' . $f . '.php';
 }
 

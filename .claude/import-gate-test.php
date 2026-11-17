@@ -82,6 +82,9 @@ function get_post_meta( $id, $k, $single = false ) {
     return isset( $GLOBALS['meta'][ $id ][ $k ] ) ? $GLOBALS['meta'][ $id ][ $k ] : '';
 }
 function update_post_meta( $id, $k, $v ) { $GLOBALS['meta'][ $id ][ $k ] = $v; return true; }
+// add_post_meta and get_post_field (3.141.0): the creator record, written once.
+if ( ! function_exists( 'add_post_meta' ) ) { function add_post_meta( $id, $k, $v, $u = false ) { if ( $u && isset( $GLOBALS['meta'][ (int) $id ][ $k ] ) ) { return false; } $GLOBALS['meta'][ (int) $id ][ $k ] = $v; return true; } }
+if ( ! function_exists( 'get_post_field' ) ) { function get_post_field( $f, $id = 0 ) { $p = get_post( $id ); if ( is_array( $p ) ) { return isset( $p[ $f ] ) ? $p[ $f ] : ''; } return ( $p && isset( $p->$f ) ) ? $p->$f : ''; } }
 function delete_post_meta( $id, $k ) { unset( $GLOBALS['meta'][ $id ][ $k ] ); return true; }
 function get_post_status( $id ) { return isset( $GLOBALS['posts'][ $id ] ) ? $GLOBALS['posts'][ $id ]['post_status'] : false; }
 function get_the_title( $id = 0 ) { return isset( $GLOBALS['posts'][ $id ] ) ? $GLOBALS['posts'][ $id ]['post_title'] : ''; }
@@ -152,6 +155,8 @@ class WP_Query {
 }
 
 require_once $root . '/includes/class-sfaf-sources.php';
+// An import's creator is recorded on insert (3.141.0).
+foreach ( array( 'class-sfaf-access', 'class-sfaf-submissions', 'class-sfaf-request' ) as $ig_f ) { require_once $root . '/includes/' . $ig_f . '.php'; }
 
 /** A source that returns exactly what a case hands it. */
 class Fake_Adapter extends SFAF_Source_Adapter {

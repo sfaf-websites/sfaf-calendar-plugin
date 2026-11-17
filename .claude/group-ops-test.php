@@ -38,6 +38,9 @@ function get_post_meta( $id, $key, $single = false ) {
     return $single ? $v : ( '' === $v ? array() : array( $v ) );
 }
 function update_post_meta( $id, $key, $value ) { $GLOBALS['meta'][ (int) $id ][ $key ] = $value; return true; }
+// add_post_meta and get_post_field (3.141.0): the creator record, written once.
+if ( ! function_exists( 'add_post_meta' ) ) { function add_post_meta( $id, $k, $v, $u = false ) { if ( $u && isset( $GLOBALS['meta'][ (int) $id ][ $k ] ) ) { return false; } $GLOBALS['meta'][ (int) $id ][ $k ] = $v; return true; } }
+if ( ! function_exists( 'get_post_field' ) ) { function get_post_field( $f, $id = 0 ) { $p = get_post( $id ); if ( is_array( $p ) ) { return isset( $p[ $f ] ) ? $p[ $f ] : ''; } return ( $p && isset( $p->$f ) ) ? $p->$f : ''; } }
 function delete_post_meta( $id, $key ) { unset( $GLOBALS['meta'][ (int) $id ][ $key ] ); return true; }
 function current_time( $fmt ) { return ( 'Y-m-d' === $fmt ) ? $GLOBALS['today'] : date( $fmt ); }
 function wp_timezone() { return new DateTimeZone( 'America/Los_Angeles' ); }
@@ -150,6 +153,8 @@ class WP_Query {
 }
 
 require __DIR__ . '/../includes/class-sfaf-recurrence.php';
+// The creator of each date it makes (3.141.0).
+foreach ( array( 'class-sfaf-access', 'class-sfaf-submissions', 'class-sfaf-request' ) as $go_f ) { require_once __DIR__ . '/../includes/' . $go_f . '.php'; }
 
 /* ------------------------------- runner --------------------------------- */
 $fails = 0;

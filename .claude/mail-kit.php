@@ -446,7 +446,9 @@ class SFAF_Optins {
 
 foreach ( array( 'class-sfaf-email', 'class-sfaf-online', 'class-sfaf-cancellation', 'class-sfaf-privacy', 'class-sfaf-teams', 'class-sfaf-venues', 'class-sfaf-series',
                  'class-sfaf-sources', 'class-sfaf-reminders', 'class-sfaf-notifications', 'class-sfaf-digest', 'class-sfaf-rsvp',
-                 'class-sfaf-organizers', 'class-sfaf-messages', 'class-sfaf-waitlist', 'class-sfaf-announce', 'class-sfaf-questions', 'class-sfaf-access', 'class-sfaf-agreement', 'class-sfaf-checkin', 'class-sfaf-registrant-mail' ) as $mk_f ) {
+                 'class-sfaf-organizers', 'class-sfaf-messages', 'class-sfaf-waitlist', 'class-sfaf-announce', 'class-sfaf-questions', 'class-sfaf-access', 'class-sfaf-agreement', 'class-sfaf-checkin', 'class-sfaf-registrant-mail',
+                 // The creator (3.141.0): SFAF_Access::creator() asks these two.
+                 'class-sfaf-submissions', 'class-sfaf-request' ) as $mk_f ) {
     require_once $mk_root . '/includes/' . $mk_f . '.php';
 }
 

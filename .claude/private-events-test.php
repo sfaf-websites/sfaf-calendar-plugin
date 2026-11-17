@@ -583,6 +583,7 @@ $WHITELIST = array(
      * browsing would ever see it happen. Ids and one meta key; renders nothing.
      */
     'sfaf-calendar.php::sfaf_migrate_location_name_repeat' => 'the 3.114.0 address repair, which must reach every event including private ones',
+    'sfaf-calendar.php::sfaf_migrate_creators' => 'the 3.141.0 creator record, which must reach every event including private ones',
     'sfaf-calendar.php::sfaf_migrate_capacity_zero' => 'the 3.107.0 capacity pass, which must reach every event including private ones',
 );
 
