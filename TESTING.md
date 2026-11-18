@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 440 items.** Quick 355, needs real conditions 80, blocked on other
+**Outstanding: 443 items.** Quick 357, needs real conditions 81, blocked on other
 people 5.
 
 ---
@@ -4773,6 +4773,35 @@ opened. Pending's "Set the fields this platform does not supply" on an imported
 event still shows two; that one was not part of this release.
 
 **Why it needs a person:** a series with a pattern and past dates, on the site.
+
+### 1.358 Add, edit and remove an announcement, with real files (3.142.0)
+
+In WP admin open Calendar > **Closures and announcements** (the menu and the
+heading both say so; closures work as before). Add an announcement over two
+days with a square PNG icon on a transparent background, a description, a
+1200 by 675 picture under 500KB and a link: it lists with Icon, Description,
+Image, Link. Edit it and swap the icon for a square SVG: the new icon shows on
+the calendar. Then try each refusal and read the message: a PNG with a white
+background (the server checks the corners only where it has GD, so say whether
+this one was refused), a wide SVG, an SVG from a design tool with a `<style>`
+block (it should be taken), a 1201px picture. A refused save stores no file in
+the Media Library. Remove the announcement: it leaves the calendar within ten
+minutes.
+
+**Why it needs a person:** real uploads through WordPress, and the server's GD.
+
+### 1.359 The bar, the card and the banner on sfaf.org (3.142.0)
+
+With an announcement on today and tomorrow, open sfaf.org's calendar on a
+laptop: a dark gray bar with yellow words at the top of both days, icon left.
+Hover it: the card opens with the picture, description and Learn more, which
+opens the link in a new tab; click it, then click elsewhere. Switch to the list:
+the banner sits above that day's events. A sidebar embed shows the bar today
+only. On a phone: the two days carry a thin dark strip; tap one and the bar is
+under the date, and tapping it opens the card. Tab to a bar and press Enter:
+Learn more is focused; Escape returns to the bar.
+
+**Why it needs a person:** the real host page, a real phone and a real mouse.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -5924,6 +5953,13 @@ Publish another date of it later: nothing. Publish a draft into a series that
 has a picture: nothing. Save a draft with no picture: nothing.
 
 **Why it needs a person:** real mail, the Asana project, and the real queue.
+
+### 2.83 The sidebar's announcement ends with its day (3.142.0)
+
+Put an announcement on today only. Tomorrow, open a sidebar embed on sfaf.org:
+the bar is gone, at the latest ten minutes after the first visit of the day.
+
+**Why it needs a person:** a real day turning over, and the embed's cache.
 ## 3. Blocked on other people
 
 Nothing here can move until somebody outside the build answers.

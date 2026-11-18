@@ -4246,6 +4246,56 @@ methods each of those files may call.
 - **Save draft never asks**, nor does Save changes on a live event, nor either
   public form: the question guards putting an event in front of people.
 
+### Announcements are not events either (3.142.0)
+
+An announcement is a title on a day or a run of days, with an optional icon,
+short description, picture and link. **`SFAF_Announcements` keeps them in one
+option, `sfaf_announcements`, for the closures' reason**: nothing that reaches
+events through `uc_event` can see a row in an option, so no queue, feed, search,
+reminder or registration path needed an exclusion. It does not mark a day
+closed, and it reads and writes nothing of `SFAF_Closures`.
+
+- **Edited on the closures screen**, now "Closures and announcements", in WP
+  admin under the closures (`?page=uc-closures`, unchanged so old links work).
+  The 3.142.0 brief called it caladmin's; the closures screen has been WP
+  admin's since it was built.
+- **The icon**: a square PNG with an alpha channel, 512px or smaller and under
+  100KB, into the Media Library's Other images; or a square SVG under 10KB that
+  carries nothing able to run or fetch (`svg_icon_error()`), which **never
+  becomes a file on this domain**: it is kept in the option as text and drawn as
+  a `data:` URI inside an `<img>`. Where the server has GD, a PNG also needs a
+  transparent corner. **The picture** answers to `SFAF_Uploads::inspect()`, the
+  event picture rule, exactly 1200 by 675 and 500KB or less. Every check runs
+  before any file is stored, so a refused save leaves nothing behind.
+- **`all()` rebuilds every row from a fixed list of keys**, as closures do; a
+  key `save()` writes and `all()` forgets is caught by `release-31420-test.php`.
+- **ONE BAR, `SFAF_Announcements::bar()`, FOR THREE PLACES**: the month grid's
+  cell under the day number (`month_grid_data()['announce']`, per day, beside
+  `closed` and never inside `events`), the card list's banner (woven by
+  `render_events()` like a closure card, above the first event on or after its
+  first day, within the list's dates), and the sidebar (`render_sidebar()`,
+  **only the announcements covering today**). The compact list draws none. The
+  bar is a `<button>` carrying the card's fields as `data-uc-ann-*` only when it
+  has a picture, description or link; otherwise a `<span>` that opens nothing.
+- **The cell's spoken label ends with "Announcement: title"**, never begins
+  with it: the phone day panel takes its heading from the label's first sentence.
+- **THE CARD IS ONE BLOCK OF SCRIPT IN TWO FILES**, between `SFAF-ANNOUNCE-START`
+  and `-END` in `calendar.js` and `embed.js`, byte for byte, for the hover
+  preview's reason (§7, "the calendar has no front end on resources.sfaf.org"),
+  and `release-31420-test.php` fails if they differ. One card per page, in the
+  preview's shadow mount on an isolated embed. Hover opens it where the device
+  hovers; a click or tap opens it anywhere and keeps it until a second click,
+  Escape or a click elsewhere; from the keyboard its link takes focus and Escape
+  gives focus back to the bar.
+- **WITH NONE SAVED, THE EMBED IS 3.141.0's TO THE BYTE.** Every insertion in
+  the renderers sits inside one PHP tag, so an empty day prints nothing; that is
+  what let `embed-identity-test.php` prove 3.142.0 changed only `calendar.css`,
+  `calendar.js` and `embed.js`.
+- **The embed's cache is flushed on the option's add, update and delete**, as
+  for closures. The sidebar's "today" is answered when the payload is built, so
+  a day's end reaches an embed within the cache's ten minutes.
+- **Every embed shows them.** There is no per-embed or per-announcement choice.
+
 ### Where the donation link goes is resolved in one place (3.105.0; email only from 3.106.0)
 
 **`sfaf_donate_resolve( $post_id )` is the one answer.** It returns the link and

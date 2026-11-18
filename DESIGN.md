@@ -239,6 +239,28 @@ action is green now. The secondaries it made stay R.
 - **Yellow again in 3.137.0, as the screen's main action, Mark's call**: the
   Events list's Publish N drafts and Set team on N events, and Organizers' Add
   organizer. Put it back on and tell them has been yellow throughout.
+### Announcements: yellow ink on dark gray (3.142.0)
+
+**MARK'S BRIEF, 3.142.0.** An announcement is drawn as a bar of Dark Gray
+`#373433` with Yellow `#FFD900` words, **8.92:1**, the same pair as the
+dark-on-yellow rule above with the roles swapped. It is a highlight, not a
+button colour: where the bar opens a card it is a `<button>`, and the face it
+wears is still dark gray. Hover and the open state darken the face to `#24211F`.
+
+| Where | Size | Height |
+|---|---|---|
+| month grid cell, under the day's number | 11px/700, a 14px icon | about 20px |
+| list banner, above the first event on or after its day | 13px/700, an 18px icon, the dates right | 32px, the list's width |
+| sidebar, today's only, above the rows | 12px/700, a 16px icon, the dates under | 28px |
+| phone-width cell (560px container, 640px viewport) | a 4px dark strip, no words | 4px |
+| the day panel under a phone-width grid | as the list banner | 32px |
+
+The icon sits left of the title and carries no `alt`: the title beside it says
+what it is. **Not the closure treatment**: no hatch, no word Closed, and the day
+keeps its own state. The card is white with the preview's edge and shadow, the
+picture 16:9, the title 15/700, the dates 13 in the secondary grey, the
+description 14 in Merriweather, and Learn more in the preview's teal pill.
+
 ### Teal is the single structural accent
 
 One accent, used for structure: focus rings, the active indicator, heading

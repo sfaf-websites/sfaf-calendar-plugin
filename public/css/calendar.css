@@ -5339,7 +5339,7 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
 
    ONE BAR, THREE PLACES: the top of each day on the month grid, a banner
    above that day's events in the list, and the sidebar on its own days. Dark
-   gray #373433 with yellow #FFD900 ink, which measures 9.9:1, so the title
+   gray #373433 with yellow #FFD900 ink, which measures 8.92:1, so the title
    reads at 11px. The icon sits left of the title when there is one.
 
    A <button> when it opens a card and a <span> when it has nothing to open, so

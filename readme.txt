@@ -531,6 +531,19 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.142.0 =
+
+**Announcements on the calendar.** An embed change, released on its own. With no announcement saved, every embed answer and header is 3.141.0's, proved by embed-identity-test.php; the three public files that changed are calendar.css, calendar.js and embed.js.
+
+**WHAT CHANGES ON PUBLIC PAGES:** an announcement shows on every calendar, on its own days. Nothing else changes.
+
+* **Closures and announcements.** WP admin's Closures screen is renamed and gains announcements under the closures, which work exactly as before. An announcement has a title and a date or a range (both required), and optionally an icon (a square PNG with a transparent background, 512px or smaller and under 100KB, or a square SVG under 10KB), a short description, a picture (1200 by 675 and 500KB or less) and a link. Add, edit and remove; Edit keeps the icon and picture unless Remove is ticked.
+* **The month grid:** a slim dark gray #373433 bar with yellow #FFD900 words (8.92:1) at the top of every day it covers, under the day's number, its icon left of the title. Hovering or clicking it opens a card with the picture, the description and Learn more, each only when set; a bar with none of those is a plain line. It does not mark the day closed. At phone width the day carries a thin dark strip and the day panel under the grid carries the bar.
+* **The list:** the same bar as a banner, with its dates, above the first event on or after its first day.
+* **The sidebar:** the announcement on its own days only, above the dates.
+* **One card script in calendar.js and embed.js**, byte for byte the same; on an isolated embed the card is in the embed's own shadow root. From the keyboard, Enter on a bar puts focus on Learn more and Escape gives it back.
+* **An SVG icon never becomes a file on the site:** it is checked for anything that could run or fetch, kept as text and drawn inside an image.
+
 = 3.141.0 =
 
 **Main actions are green, + New Event, Text and WhatsApp, the creator kept for good, a team on Add event, and an email when something is published with no picture. Every embed answer and header is 3.140.1's, proved by embed-identity-test.php.**
