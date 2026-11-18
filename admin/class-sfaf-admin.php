@@ -23,6 +23,7 @@ class SFAF_Admin {
         add_action( 'admin_init', array( $this, 'handle_cron_action' ) );
         add_action( 'admin_init', array( $this, 'handle_users_action' ) );
         add_action( 'admin_init', array( $this, 'handle_closure_actions' ) );
+        add_action( 'admin_init', array( $this, 'handle_announcement_actions' ) );
     }
 
     /**
@@ -174,8 +175,8 @@ class SFAF_Admin {
          */
         add_submenu_page(
             'edit.php?post_type=uc_event',
-            'Closures',
-            'Closures',
+            'Closures and announcements',
+            'Closures and announcements',
             'manage_options',
             'uc-closures',
             array( $this, 'render_closures_page' )
@@ -1001,8 +1002,8 @@ class SFAF_Admin {
         <div class="wrap uc-admin-wrap">
             <div class="uc-admin-header">
                 <div>
-                    <h1>Closures</h1>
-                    <p class="uc-subtitle">Days SFAF is shut. They are marked on the calendar and are not events.</p>
+                    <h1>Closures and announcements</h1>
+                    <p class="uc-subtitle">Days SFAF is shut, and notices for a day or a run of days. Both show on the calendar and neither is an event.</p>
                 </div>
             </div>
 
@@ -1201,6 +1202,8 @@ class SFAF_Admin {
                     </p>
                 <?php endif; ?>
             </div>
+
+            <?php $this->render_announcements_section(); ?>
         </div>
         <?php
     }
@@ -1234,6 +1237,302 @@ class SFAF_Admin {
                 <?php echo sfaf_time_field( 'closure_open_to_' . $i, isset( $o['to'] ) ? $o['to'] : '', array( 'label' => 'Closes' ) ); ?>
             </span>
             <button type="button" class="button-link button-link-delete" data-uc-open-remove>Remove</button>
+        </div>
+        <?php
+    }
+
+    /* =====================================================================
+     * ANNOUNCEMENTS (3.142.0)
+     *
+     * On the closures screen, under the closures. See SFAF_Announcements.
+     * ================================================================== */
+
+    /** Save or delete an announcement, from the section below. */
+    public function handle_announcement_actions() {
+        if ( ! isset( $_POST['uc_ann_action'] ) ) {
+            return;
+        }
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( 'You do not have permission to do that.' );
+        }
+        $nonce = isset( $_POST['uc_ann_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['uc_ann_nonce'] ) ) : '';
+        if ( ! wp_verify_nonce( $nonce, 'uc_ann_action' ) ) {
+            wp_die( 'Security check failed.' );
+        }
+
+        $action = sanitize_key( wp_unslash( $_POST['uc_ann_action'] ) );
+        $id     = isset( $_POST['ann_id'] ) ? sanitize_text_field( wp_unslash( $_POST['ann_id'] ) ) : '';
+        $base   = self::closures_url();
+        $fail   = function ( $message ) use ( $base, $id ) {
+            set_transient( 'sfaf_ann_error_' . get_current_user_id(), $message, 60 );
+            $args = array( 'msg' => 'ann_failed' );
+            if ( '' !== $id ) {
+                $args['edit_ann'] = $id;
+            }
+            wp_safe_redirect( add_query_arg( $args, $base ) . '#uc-announcements' );
+            exit;
+        };
+
+        if ( 'delete' === $action ) {
+            SFAF_Announcements::delete( $id );
+            wp_safe_redirect( add_query_arg( 'msg', 'ann_deleted', $base ) . '#uc-announcements' );
+            exit;
+        }
+        if ( 'save' !== $action ) {
+            return;
+        }
+
+        $was    = '' !== $id ? SFAF_Announcements::get( $id ) : null;
+        $fields = array(
+            'title'    => isset( $_POST['ann_title'] ) ? wp_unslash( $_POST['ann_title'] ) : '',
+            'start'    => isset( $_POST['ann_start'] ) ? sanitize_text_field( wp_unslash( $_POST['ann_start'] ) ) : '',
+            'end'      => isset( $_POST['ann_end'] ) ? sanitize_text_field( wp_unslash( $_POST['ann_end'] ) ) : '',
+            'desc'     => isset( $_POST['ann_desc'] ) ? wp_unslash( $_POST['ann_desc'] ) : '',
+            'link'     => isset( $_POST['ann_link'] ) ? trim( wp_unslash( $_POST['ann_link'] ) ) : '',
+            'icon_id'  => ( $was && empty( $_POST['ann_icon_remove'] ) ) ? $was['icon_id'] : 0,
+            'icon_svg' => ( $was && empty( $_POST['ann_icon_remove'] ) ) ? $was['icon_svg'] : '',
+            'image_id' => ( $was && empty( $_POST['ann_image_remove'] ) ) ? $was['image_id'] : 0,
+        );
+
+        /* EVERY CHECK BEFORE ANY FILE IS STORED, so a refused save leaves
+           nothing behind in the Media Library. */
+        $broken = SFAF_Announcements::field_error( $fields );
+        if ( '' !== $broken ) {
+            $fail( $broken );
+        }
+
+        $icon_kind = '';
+        $icon_tmp  = $this->announcement_file( 'ann_icon' );
+        if ( is_string( $icon_tmp ) && '' !== $icon_tmp ) {
+            $head = (string) @file_get_contents( $icon_tmp, false, null, 0, 8 );
+            if ( "\x89PNG\r\n\x1a\n" === $head ) {
+                if ( '' !== SFAF_Announcements::png_icon_error( $icon_tmp ) ) {
+                    $fail( SFAF_Announcements::ICON_RULE_MESSAGE );
+                }
+                $icon_kind = 'png';
+            } else {
+                $svg = (string) @file_get_contents( $icon_tmp, false, null, 0, SFAF_Announcements::ICON_SVG_BYTES + 1 );
+                if ( '' !== SFAF_Announcements::svg_icon_error( $svg ) ) {
+                    $fail( SFAF_Announcements::ICON_RULE_MESSAGE );
+                }
+                $icon_kind = 'svg';
+            }
+        } elseif ( false === $icon_tmp ) {
+            $fail( SFAF_Announcements::ICON_RULE_MESSAGE );
+        }
+
+        $image_new = false;
+        if ( ! empty( $_FILES['ann_image'] ) && isset( $_FILES['ann_image']['error'] ) && UPLOAD_ERR_NO_FILE !== (int) $_FILES['ann_image']['error'] ) {
+            $seen = SFAF_Uploads::inspect( 'ann_image' );
+            if ( ! $seen['ok'] ) {
+                $fail( '' !== $seen['error'] ? $seen['error'] : SFAF_Uploads::RULE_MESSAGE );
+            }
+            $image_new = true;
+        }
+
+        /* Now the files. */
+        if ( 'svg' === $icon_kind ) {
+            $fields['icon_svg'] = $svg;
+            $fields['icon_id']  = 0;
+        } elseif ( 'png' === $icon_kind ) {
+            $att = $this->announcement_store( 'ann_icon', array( 'png' => 'image/png' ) );
+            if ( ! $att ) {
+                $fail( 'That icon could not be saved. Try it again.' );
+            }
+            $fields['icon_id']  = $att;
+            $fields['icon_svg'] = '';
+        }
+        if ( $image_new ) {
+            $att = $this->announcement_store( 'ann_image', array( 'jpg|jpeg|jpe' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp' ) );
+            if ( ! $att ) {
+                $fail( 'That picture could not be saved. Try it again.' );
+            }
+            $fields['image_id'] = $att;
+        }
+
+        $done = SFAF_Announcements::save( $id, $fields );
+        if ( is_wp_error( $done ) ) {
+            $fail( $done->get_error_message() );
+        }
+        wp_safe_redirect( add_query_arg( 'msg', 'ann_saved', $base ) . '#uc-announcements' );
+        exit;
+    }
+
+    /**
+     * The uploaded file's temporary path: '' when nothing was sent, false
+     * when something was sent and did not arrive whole.
+     *
+     * @param string $field
+     * @return string|false
+     */
+    private function announcement_file( $field ) {
+        if ( empty( $_FILES[ $field ] ) || ! isset( $_FILES[ $field ]['error'] ) || is_array( $_FILES[ $field ]['error'] ) ) {
+            return '';
+        }
+        $code = (int) $_FILES[ $field ]['error'];
+        if ( UPLOAD_ERR_NO_FILE === $code ) {
+            return '';
+        }
+        $tmp = isset( $_FILES[ $field ]['tmp_name'] ) ? (string) $_FILES[ $field ]['tmp_name'] : '';
+        if ( UPLOAD_ERR_OK !== $code || '' === $tmp || ! is_uploaded_file( $tmp ) ) {
+            return false;
+        }
+        return $tmp;
+    }
+
+    /**
+     * Store an uploaded file in Other images, the folder the event form's own
+     * uploads go to. The attachment id, or 0.
+     *
+     * @param string $field
+     * @param array  $mimes
+     * @return int
+     */
+    private function announcement_store( $field, $mimes ) {
+        if ( ! function_exists( 'media_handle_upload' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+        }
+        add_filter( 'upload_dir', array( 'SFAF_Media_Folder', 'upload_to_other' ), 20 );
+        $att = media_handle_upload( $field, 0, array( 'post_author' => get_current_user_id() ), array(
+            'test_form' => false,
+            'mimes'     => $mimes,
+        ) );
+        remove_filter( 'upload_dir', array( 'SFAF_Media_Folder', 'upload_to_other' ), 20 );
+        return ( is_wp_error( $att ) || ! $att ) ? 0 : (int) $att;
+    }
+
+    /** The announcements section of the closures screen. */
+    private function render_announcements_section() {
+        $all   = SFAF_Announcements::all();
+        $today = current_time( 'Y-m-d' );
+        $err   = get_transient( 'sfaf_ann_error_' . get_current_user_id() );
+        if ( false !== $err ) {
+            delete_transient( 'sfaf_ann_error_' . get_current_user_id() );
+        }
+        $msg     = isset( $_GET['msg'] ) ? sanitize_key( wp_unslash( $_GET['msg'] ) ) : '';
+        $editing = isset( $_GET['edit_ann'] ) ? SFAF_Announcements::get( sanitize_text_field( wp_unslash( $_GET['edit_ann'] ) ) ) : null;
+        $e       = $editing ? $editing : array( 'id' => '', 'title' => '', 'start' => '', 'end' => '', 'desc' => '', 'link' => '', 'icon_id' => 0, 'icon_svg' => '', 'image_id' => 0 );
+        $e_end   = ( $editing && $editing['end'] !== $editing['start'] ) ? $editing['end'] : '';
+        $e_icon  = $editing ? SFAF_Announcements::icon_src( $editing ) : '';
+        $e_image = $editing ? SFAF_Announcements::image_src( $editing ) : '';
+        ?>
+        <div id="uc-announcements"></div>
+        <?php if ( $err ) : ?>
+            <div class="notice notice-error"><p><?php echo esc_html( $err ); ?></p></div>
+        <?php endif; ?>
+        <?php if ( 'ann_saved' === $msg ) : ?>
+            <div class="notice notice-success"><p>Announcement saved.</p></div>
+        <?php elseif ( 'ann_deleted' === $msg ) : ?>
+            <div class="notice notice-success"><p>Announcement removed.</p></div>
+        <?php endif; ?>
+        <?php if ( isset( $_GET['edit_ann'] ) && ! $editing ) : ?>
+            <div class="notice notice-error"><p>That announcement no longer exists, so there is nothing to edit.</p></div>
+        <?php endif; ?>
+
+        <div class="uc-admin-card">
+            <h2><?php echo $editing ? 'Edit this announcement' : 'Add an announcement'; ?></h2>
+            <p class="description">
+                Shown on every calendar: a bar on each of its days in the month grid, a banner in the list,
+                and in the sidebar on its days. It does not mark the day closed.
+            </p>
+            <form method="post" enctype="multipart/form-data">
+                <?php wp_nonce_field( 'uc_ann_action', 'uc_ann_nonce' ); ?>
+                <input type="hidden" name="uc_ann_action" value="save" />
+                <input type="hidden" name="ann_id" value="<?php echo esc_attr( $e['id'] ); ?>" />
+                <p>
+                    <label for="uc_ann_title">Title</label><br />
+                    <input type="text" name="ann_title" id="uc_ann_title" class="regular-text" required
+                           maxlength="<?php echo (int) SFAF_Announcements::TITLE_MAX; ?>" value="<?php echo esc_attr( $e['title'] ); ?>" />
+                </p>
+                <p>
+                    <label for="uc_ann_start">First day</label><br />
+                    <input type="date" name="ann_start" id="uc_ann_start" required value="<?php echo esc_attr( $e['start'] ); ?>" />
+                </p>
+                <p>
+                    <label for="uc_ann_end">Last day</label><br />
+                    <input type="date" name="ann_end" id="uc_ann_end" value="<?php echo esc_attr( $e_end ); ?>" />
+                    <br /><span class="description">Leave empty for a single day.</span>
+                </p>
+                <p>
+                    <label for="uc_ann_icon">Icon</label><br />
+                    <?php if ( '' !== $e_icon ) : ?>
+                        <img src="<?php echo esc_attr( $e_icon ); ?>" alt="" width="24" height="24" style="vertical-align:middle;background:#373433;border-radius:4px;padding:3px" />
+                        <label><input type="checkbox" name="ann_icon_remove" value="1" /> Remove the icon</label><br />
+                    <?php endif; ?>
+                    <input type="file" name="ann_icon" id="uc_ann_icon" accept="image/png,image/svg+xml,.svg" />
+                    <br /><span class="description">Optional. <?php echo esc_html( SFAF_Announcements::ICON_RULE_MESSAGE ); ?></span>
+                </p>
+                <p>
+                    <label for="uc_ann_desc">Short description</label><br />
+                    <textarea name="ann_desc" id="uc_ann_desc" class="large-text" rows="2"
+                              maxlength="<?php echo (int) SFAF_Announcements::DESC_MAX; ?>"><?php echo esc_textarea( $e['desc'] ); ?></textarea>
+                    <br /><span class="description">Optional. Shown in the card that opens from the bar.</span>
+                </p>
+                <p>
+                    <label for="uc_ann_image">Image</label><br />
+                    <?php if ( '' !== $e_image ) : ?>
+                        <img src="<?php echo esc_url( $e_image ); ?>" alt="" width="160" height="90" style="vertical-align:middle;object-fit:cover;border-radius:4px" />
+                        <label><input type="checkbox" name="ann_image_remove" value="1" /> Remove the image</label><br />
+                    <?php endif; ?>
+                    <input type="file" name="ann_image" id="uc_ann_image" accept="<?php echo esc_attr( SFAF_Uploads::picture_accept() ); ?>" />
+                    <br /><span class="description">Optional. <?php echo esc_html( SFAF_Uploads::RULE_MESSAGE ); ?></span>
+                </p>
+                <p>
+                    <label for="uc_ann_link">Link</label><br />
+                    <input type="url" name="ann_link" id="uc_ann_link" class="regular-text" placeholder="https://"
+                           value="<?php echo esc_attr( $e['link'] ); ?>" />
+                    <br /><span class="description">Optional.</span>
+                </p>
+                <p>
+                    <button type="submit" class="button button-primary"><?php echo $editing ? 'Save changes' : 'Add announcement'; ?></button>
+                    <?php if ( $editing ) : ?>
+                        <a class="button" href="<?php echo esc_url( self::closures_url() . '#uc-announcements' ); ?>">Cancel</a>
+                    <?php endif; ?>
+                </p>
+            </form>
+        </div>
+
+        <div class="uc-admin-card">
+            <h2><?php echo count( $all ); ?> <?php echo esc_html( 1 === count( $all ) ? 'announcement' : 'announcements' ); ?></h2>
+            <?php if ( empty( $all ) ) : ?>
+                <p class="uc-no-data">None yet. The calendar shows no announcements.</p>
+            <?php else : ?>
+                <table class="uc-admin-table">
+                    <thead><tr><th>When</th><th>Title</th><th>Shows</th><th></th></tr></thead>
+                    <tbody>
+                        <?php foreach ( $all as $row ) :
+                            $shows = array();
+                            if ( '' !== SFAF_Announcements::icon_src( $row ) ) { $shows[] = 'Icon'; }
+                            if ( '' !== $row['desc'] ) { $shows[] = 'Description'; }
+                            if ( '' !== SFAF_Announcements::image_src( $row ) ) { $shows[] = 'Image'; }
+                            if ( '' !== $row['link'] ) { $shows[] = 'Link'; }
+                            ?>
+                            <tr>
+                                <td>
+                                    <?php echo esc_html( SFAF_Announcements::when( $row ) ); ?>
+                                    <?php if ( $row['end'] < $today ) : ?>
+                                        <br /><span class="uc-muted">Past</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?php echo esc_html( $row['title'] ); ?></td>
+                                <td><?php echo esc_html( $shows ? implode( ', ', $shows ) : 'Title only' ); ?></td>
+                                <td>
+                                    <form method="post" onsubmit="return confirm('Remove this announcement from the calendar?');">
+                                        <?php wp_nonce_field( 'uc_ann_action', 'uc_ann_nonce' ); ?>
+                                        <input type="hidden" name="uc_ann_action" value="delete" />
+                                        <input type="hidden" name="ann_id" value="<?php echo esc_attr( $row['id'] ); ?>" />
+                                        <a class="button button-small"
+                                           href="<?php echo esc_url( add_query_arg( 'edit_ann', $row['id'], self::closures_url() ) . '#uc-announcements' ); ?>">Edit</a>
+                                        <button type="submit" class="button button-small uc-button-danger-outline">Remove</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
         </div>
         <?php
     }

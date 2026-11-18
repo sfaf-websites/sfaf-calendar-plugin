@@ -259,7 +259,7 @@
  * drop the reset into :where() where it is only meant to be a floor.
  * ======================================================================== */
 
-.uc-calendar, .uc-sidebar, .uc-upcoming-widget, .uc-single, .uc-rsvp-modal-overlay, .uc-mp {
+.uc-calendar, .uc-sidebar, .uc-upcoming-widget, .uc-single, .uc-rsvp-modal-overlay, .uc-mp, .uc-ann-card {
     font-family: var(--uc-font-heading);
     font-size: 15px;
     line-height: 1.5;
@@ -268,11 +268,11 @@
     box-sizing: border-box;
 }
 .uc-calendar *, .uc-sidebar *, .uc-upcoming-widget *,
-.uc-single *, .uc-rsvp-modal-overlay *, .uc-mp * { box-sizing: border-box; }
+.uc-single *, .uc-rsvp-modal-overlay *, .uc-mp *, .uc-ann-card * { box-sizing: border-box; }
 
 /* Links. The host's underline-everything rule was the most visible bleed. */
 .uc-calendar a, .uc-sidebar a, .uc-upcoming-widget a,
-.uc-single a, .uc-rsvp-modal-overlay a, .uc-mp a {
+.uc-single a, .uc-rsvp-modal-overlay a, .uc-mp a, .uc-ann-card a {
     text-decoration: none;
     box-shadow: none;
     border-bottom: 0;
@@ -5333,3 +5333,108 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
    leaves a <p> with no margin. */
 .uc-agree-dialog .uc-agree-text p { margin: 0 0 10px; }
 .uc-agree-dialog .uc-agree-text p:last-child { margin-bottom: 0; }
+
+/* ===========================================================================
+   ANNOUNCEMENTS (3.142.0)
+
+   ONE BAR, THREE PLACES: the top of each day on the month grid, a banner
+   above that day's events in the list, and the sidebar on its own days. Dark
+   gray #373433 with yellow #FFD900 ink, which measures 9.9:1, so the title
+   reads at 11px. The icon sits left of the title when there is one.
+
+   A <button> when it opens a card and a <span> when it has nothing to open, so
+   the cursor only promises a click the bar keeps. Two classes throughout: the
+   button reset above is (0,1,1) and a theme's `button:hover` is too.
+
+   NOT A CLOSURE. Nothing here touches .uc-day-closed or the hatch.
+   ======================================================================== */
+.uc-calendar .uc-ann-bars, .uc-calendar .uc-ann-side, .uc-sidebar .uc-ann-side {
+    display: flex; flex-direction: column; gap: 2px; margin: 0 0 4px;
+}
+.uc-calendar .uc-ann-bar, .uc-sidebar .uc-ann-bar {
+    display: flex; align-items: center; gap: 5px;
+    width: 100%; min-height: 20px; margin: 0; padding: 2px 6px;
+    border: 0; border-radius: 4px;
+    background: var(--uc-dark); color: var(--uc-yellow);
+    font-family: var(--uc-font-heading); font-size: 11px; font-weight: 700; line-height: 1.3;
+    text-align: left; text-decoration: none; cursor: default;
+    -webkit-appearance: none; appearance: none;
+}
+.uc-calendar button.uc-ann-bar, .uc-sidebar button.uc-ann-bar { cursor: pointer; }
+.uc-calendar button.uc-ann-bar:hover, .uc-sidebar button.uc-ann-bar:hover,
+.uc-calendar button.uc-ann-bar[aria-expanded="true"], .uc-sidebar button.uc-ann-bar[aria-expanded="true"] {
+    background: #24211F; color: var(--uc-yellow);
+}
+.uc-calendar button.uc-ann-bar:focus-visible, .uc-sidebar button.uc-ann-bar:focus-visible {
+    outline: 2px solid var(--uc-teal-text); outline-offset: 1px;
+}
+.uc-calendar .uc-ann-icon, .uc-sidebar .uc-ann-icon {
+    flex: 0 0 auto; display: block; width: 14px; height: 14px; max-width: none;
+    margin: 0; border: 0; border-radius: 0; box-shadow: none; object-fit: contain;
+}
+.uc-calendar .uc-ann-title, .uc-sidebar .uc-ann-title { min-width: 0; overflow-wrap: anywhere; color: inherit; }
+.uc-calendar .uc-ann-when, .uc-sidebar .uc-ann-when {
+    flex: 0 0 auto; margin-left: auto; padding-left: 8px;
+    font-weight: 500; white-space: nowrap; color: inherit;
+}
+
+/* The list banner: the same bar at a reading size, spaced like a card. */
+.uc-calendar .uc-ann-banner { min-height: 32px; margin: 0 0 12px; padding: 6px 12px; gap: 8px; border-radius: 8px; font-size: 13px; }
+.uc-calendar .uc-ann-banner .uc-ann-icon { width: 18px; height: 18px; }
+
+/* The sidebar: between the two. */
+.uc-calendar .uc-ann-side, .uc-sidebar .uc-ann-side { margin: 0 0 10px; }
+.uc-calendar .uc-ann-side .uc-ann-bar, .uc-sidebar .uc-ann-side .uc-ann-bar { min-height: 28px; padding: 5px 10px; gap: 7px; border-radius: 6px; font-size: 12px; }
+.uc-calendar .uc-ann-side .uc-ann-icon, .uc-sidebar .uc-ann-side .uc-ann-icon { width: 16px; height: 16px; }
+.uc-calendar .uc-ann-side .uc-ann-bar, .uc-sidebar .uc-ann-side .uc-ann-bar { flex-wrap: wrap; }
+.uc-calendar .uc-ann-side .uc-ann-when, .uc-sidebar .uc-ann-side .uc-ann-when { margin-left: 0; padding-left: 0; flex-basis: 100%; font-size: 11px; }
+
+/* THE STRIP: what a phone-width cell draws in place of the bars, which go to
+   the day panel when the day is tapped. Hidden at every other width. */
+.uc-calendar .uc-ann-strip { display: none; }
+
+@container uc-calendar (max-width: 560px) {
+    .uc-calendar td .uc-ann-bars { display: none; }
+    .uc-calendar .uc-ann-strip { display: block; height: 4px; margin: 0 3px 3px; border-radius: 2px; background: var(--uc-dark); }
+    .uc-calendar .uc-month-day-panel .uc-ann-bars { display: flex; gap: 4px; margin: 0 0 10px; }
+    .uc-calendar .uc-month-day-panel .uc-ann-bar { min-height: 32px; padding: 6px 12px; gap: 8px; border-radius: 8px; font-size: 13px; }
+    .uc-calendar .uc-month-day-panel .uc-ann-icon { width: 18px; height: 18px; }
+}
+/* The viewport copy, for a browser without container queries. Kept in step. */
+@media (max-width: 640px) {
+    .uc-calendar td .uc-ann-bars { display: none; }
+    .uc-calendar .uc-ann-strip { display: block; height: 4px; margin: 0 3px 3px; border-radius: 2px; background: var(--uc-dark); }
+    .uc-calendar .uc-month-day-panel .uc-ann-bars { display: flex; gap: 4px; margin: 0 0 10px; }
+    .uc-calendar .uc-month-day-panel .uc-ann-bar { min-height: 32px; padding: 6px 12px; gap: 8px; border-radius: 8px; font-size: 13px; }
+    .uc-calendar .uc-month-day-panel .uc-ann-icon { width: 18px; height: 18px; }
+}
+
+/* THE CARD. One per page, appended to <body> (or to the embed's own shadow
+   root), so it is a reset root of its own and every rule is two classes. In
+   the top layer through the popover API where there is one, which is why the
+   z-index is only for a browser without it. */
+.uc-ann-card {
+    display: none;
+    position: fixed; top: 0; left: 0; right: auto; bottom: auto; z-index: 2147483000;
+    margin: 0; padding: 0;
+    width: 300px; max-width: calc(100vw - 16px);
+    border: 1px solid var(--uc-border-strong); border-radius: 12px;
+    background: #fff; box-shadow: 0 12px 32px rgba(26, 29, 33, 0.18);
+    overflow: hidden;
+}
+.uc-ann-card.is-open { display: block; }
+.uc-ann-card.is-measuring { visibility: hidden; }
+.uc-ann-card:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; }
+.uc-ann-card [hidden] { display: none !important; }
+.uc-ann-card .uc-ann-card-media { display: block; width: 100%; aspect-ratio: 16 / 9; background: var(--uc-bg); overflow: hidden; }
+.uc-ann-card .uc-ann-card-media img { display: block; width: 100%; height: 100%; max-width: 100%; margin: 0; border: 0; object-fit: cover; }
+.uc-ann-card .uc-ann-card-body { display: block; padding: 12px 14px 14px; }
+.uc-ann-card .uc-ann-card-title { display: block; margin: 0 0 2px; font-size: 15px; font-weight: 700; line-height: 1.3; color: var(--uc-text); }
+.uc-ann-card .uc-ann-card-when { display: block; font-size: 13px; line-height: 1.45; color: var(--uc-secondary); }
+.uc-ann-card .uc-ann-card-desc { display: block; margin: 8px 0 0; font-family: var(--uc-font-body, inherit); font-size: 14px; line-height: 1.5; color: var(--uc-text); }
+.uc-ann-card .uc-ann-card-link {
+    display: inline-block; margin: 12px 0 0; padding: 7px 12px; border-radius: 8px;
+    background: var(--uc-teal-text); color: #fff; font-size: 13px; font-weight: 600; line-height: 1.2;
+}
+.uc-ann-card .uc-ann-card-link:hover { background: #0B666F; color: #fff; }
+.uc-ann-card .uc-ann-card-link:focus-visible { outline: 2px solid var(--uc-teal-text); outline-offset: 2px; }

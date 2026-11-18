@@ -19,7 +19,8 @@
  *      except embed.js's EMBED_JS_VERSION line, and the caladmin files in
  *      CALADMIN_ONLY, which no public calendar page loads.
  *
- * BASE is the release compared against: 3.140.1's released commit, 706c360d, for 3.141.0
+ * BASE is the release compared against: 3.141.0's released commit, 6fc367d9, for 3.142.0
+ * (3.140.1's, 706c360d, for 3.141.0)
  * (3.140.0's, 1da835af, for 3.140.1)
  * (3.137.0's, 7eac1ad, for 3.138.0 to 3.140.0)
  * (3.136.0's, ceb126a, for 3.137.0)
@@ -56,13 +57,18 @@
  * name, in ALLOWED or ALLOWED_FILES.
  */
 
-const BASE      = '706c360d';
-const BASE_NAME = '3.140.1';
+const BASE      = '6fc367d9';
+const BASE_NAME = '3.141.0';
 
 /* Files under public/ and templates/ a release means to change, as path =>
    why. Probe A still compares every embed answer, so none of these can reach
    the embed unseen. */
 const ALLOWED_FILES = array(
+    /* 3.142.0, announcements. With none saved, probe A proves every embed answer is
+       3.141.0's byte for byte; these three draw them when there are some. */
+    'public/css/calendar.css' => 'the announcement bar, the list and sidebar banner, the phone strip and the card',
+    'public/js/calendar.js'   => 'the card (SFAF-ANNOUNCE block), the day panel carrying the bars, a key on a bar left to the bar',
+    'public/js/embed.js'      => 'the same card block, started in the preview\'s mount, and the day panel carrying the bars',
     // None in 3.141.0: portal.css and portal.js are caladmin's and the two forms', admin.css WP admin's.
     // None in 3.140.1: its changes are the staff request form, caladmin and WP admin.
     // None in 3.138.0: portal.css and portal.js are caladmin's.

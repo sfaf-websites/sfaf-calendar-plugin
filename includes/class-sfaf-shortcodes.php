@@ -1149,10 +1149,21 @@ class SFAF_Shortcodes {
             }
         }
 
+        /* ANNOUNCEMENTS, PER DAY (3.142.0), in their own key for the reason
+           closures are: not events, never counted as one. */
+        $announce = array();
+        foreach ( $grid['days'] as $day ) {
+            $rows = SFAF_Announcements::covering( $day );
+            if ( $rows ) {
+                $announce[ $day ] = $rows;
+            }
+        }
+
         return array(
             'grid'     => $grid,
             'events'   => $by_day,
             'closed'   => $closed,
+            'announce' => $announce,
             'total'    => count( $query->posts ),
             'in_month' => $in_month,
         );
@@ -1415,12 +1426,14 @@ class SFAF_Shortcodes {
                             $readable  = sfaf_ap_date( $day, 'full' );
 
                             $closed_row = isset( $data['closed'][ $day ] ) ? $data['closed'][ $day ] : null;
+                            $ann_rows   = isset( $data['announce'][ $day ] ) ? $data['announce'][ $day ] : array();
 
                             $classes = array( 'uc-day' );
                             if ( ! $in_month ) { $classes[] = 'uc-day-out'; }
                             if ( $is_today )   { $classes[] = 'uc-day-today'; }
                             if ( empty( $ids ) ) { $classes[] = 'uc-day-empty'; }
                             if ( $closed_row )  { $classes[] = 'uc-day-closed'; }
+                            if ( $ann_rows )    { $classes[] = 'uc-day-ann'; }
 
                             // Roving tabindex: one cell in the grid is in the tab
                             // order, the arrow keys move focus between the rest.
@@ -1465,6 +1478,13 @@ class SFAF_Shortcodes {
                                 }
                                 $label = $closed_said . '. ' . $label;
                             }
+                            /* Announcements are spoken last, in the order they
+                               are drawn (3.142.0). Never first: the day panel
+                               takes its heading from the label's first sentence,
+                               which must stay the date. */
+                            foreach ( $ann_rows as $ann_row ) {
+                                $label .= '. Announcement: ' . $ann_row['title'];
+                            }
                             ?>
                             <td class="<?php echo esc_attr( implode( ' ', $classes ) ); ?>"
                                 data-day="<?php echo esc_attr( $day ); ?>"
@@ -1472,7 +1492,21 @@ class SFAF_Shortcodes {
                                 tabindex="<?php echo (int) $tabindex; ?>"
                                 role="gridcell"
                                 aria-label="<?php echo esc_attr( $label ); ?>">
-                                <span class="uc-day-num" aria-hidden="true"><?php echo (int) $day_num; ?></span>
+                                <span class="uc-day-num" aria-hidden="true"><?php echo (int) $day_num; ?></span><?php
+                                /* ANNOUNCEMENTS (3.142.0): one bar each, under the
+                                   number. A phone-width grid draws the strip instead,
+                                   and the day panel clones the bars. Inside one PHP
+                                   tag so a day with none prints not one byte more
+                                   than 3.141.0 did: embed-identity-test holds it. */
+                                if ( $ann_rows ) {
+                                    echo "\n" . '<div class="uc-ann-bars">';
+                                    foreach ( $ann_rows as $ann_row ) {
+                                        echo SFAF_Announcements::bar( $ann_row, 'cell' );
+                                    }
+                                    echo '</div><span class="uc-ann-strip" aria-hidden="true"></span>';
+                                }
+                                ?>
+
                                 <?php if ( $closed_row ) : ?>
                                     <?php
                                     /*
@@ -1873,7 +1907,20 @@ class SFAF_Shortcodes {
                       // of the section it was pasted into. ?>
                 <h3 class="uc-sidebar-heading"><?php echo esc_html( $head ); ?></h3>
             <?php endif; ?>
-            <div class="uc-sidebar-list">
+            <?php
+            /* ANNOUNCEMENTS ONLY ON THEIR OWN DAYS (3.142.0): today's, above
+               the list. The embed cache lasts minutes, so the day's end
+               reaches it on the next fetch. One PHP tag, so a day with none
+               prints nothing at all. */
+            $ann_today = SFAF_Announcements::covering( current_time( 'Y-m-d' ) );
+            if ( $ann_today ) {
+                echo '<div class="uc-ann-side">';
+                foreach ( $ann_today as $ann_row ) {
+                    echo SFAF_Announcements::bar( $ann_row, 'sidebar' );
+                }
+                echo "</div>\n            ";
+            }
+            ?><div class="uc-sidebar-list">
                 <?php if ( '' !== $events['html'] ) : ?>
                     <?php echo $events['html']; ?>
                 <?php else : ?>
@@ -2953,6 +3000,9 @@ class SFAF_Shortcodes {
              * the sequence rather than in a block at the top.
              */
             $pending = ( 'card' === $render ) ? $this->closures_for( wp_list_pluck( $query->posts, 'ID' ) ) : array();
+            /* ANNOUNCEMENTS (3.142.0), woven the same way: a banner above the
+               first event on or after the day it starts. */
+            $ann_due = ( 'card' === $render ) ? $this->announcements_for( wp_list_pluck( $query->posts, 'ID' ) ) : array();
 
             while ( $query->have_posts() ) {
                 $query->the_post();
@@ -2961,6 +3011,12 @@ class SFAF_Shortcodes {
                     $this_day = (string) get_post_meta( get_the_ID(), '_uc_event_date', true );
                     while ( $pending && '' !== $this_day && $pending[0]['start'] <= $this_day ) {
                         echo $this->render_closure_card( array_shift( $pending ) );
+                    }
+                }
+                if ( $ann_due ) {
+                    $this_day = (string) get_post_meta( get_the_ID(), '_uc_event_date', true );
+                    while ( $ann_due && '' !== $this_day && $ann_due[0]['start'] <= $this_day ) {
+                        echo SFAF_Announcements::bar( array_shift( $ann_due ), 'list' );
                     }
                 }
 
@@ -2976,6 +3032,9 @@ class SFAF_Shortcodes {
             // Anything left starts after the last event on this page.
             foreach ( $pending as $row ) {
                 echo $this->render_closure_card( $row );
+            }
+            foreach ( $ann_due as $row ) {
+                echo SFAF_Announcements::bar( $row, 'list' );
             }
 
             wp_reset_postdata();
@@ -3085,6 +3144,28 @@ class SFAF_Shortcodes {
 
         sort( $dates );
         return SFAF_Closures::spans( $dates[0], end( $dates ) );
+    }
+
+    /**
+     * The announcements that belong in a list showing these events (3.142.0):
+     * those overlapping the first event's date to the last, as closures_for().
+     *
+     * @param int[] $ids
+     * @return array[]
+     */
+    private function announcements_for( $ids ) {
+        $dates = array();
+        foreach ( (array) $ids as $id ) {
+            $d = (string) get_post_meta( $id, '_uc_event_date', true );
+            if ( '' !== $d ) {
+                $dates[] = $d;
+            }
+        }
+        if ( empty( $dates ) ) {
+            return array();
+        }
+        sort( $dates );
+        return SFAF_Announcements::spans( $dates[0], end( $dates ) );
     }
 
     /** Pagination control markup for the chosen style. */

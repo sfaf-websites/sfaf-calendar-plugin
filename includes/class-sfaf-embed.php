@@ -92,6 +92,10 @@ class SFAF_Embed {
         add_action( 'add_option_' . SFAF_Closures::OPTION, array( $this, 'flush_cache' ) );
         add_action( 'update_option_' . SFAF_Closures::OPTION, array( $this, 'flush_cache' ) );
         add_action( 'delete_option_' . SFAF_Closures::OPTION, array( $this, 'flush_cache' ) );
+        // Announcements are an option too (3.142.0), for the same reason.
+        add_action( 'add_option_' . SFAF_Announcements::OPTION, array( $this, 'flush_cache' ) );
+        add_action( 'update_option_' . SFAF_Announcements::OPTION, array( $this, 'flush_cache' ) );
+        add_action( 'delete_option_' . SFAF_Announcements::OPTION, array( $this, 'flush_cache' ) );
 
         /*
          * AND ON A PLUGIN UPDATE (3.88.0), WHICH CLOSES A GAP FLAGGED TWICE.

@@ -529,7 +529,7 @@
      * build if this string is not SFAF_VERSION. It cannot drift by being
      * forgotten at release time.
      */
-    var EMBED_JS_VERSION = '3.141.0';
+    var EMBED_JS_VERSION = '3.142.0';
     var staleReported = false;
 
     /**
@@ -1232,6 +1232,18 @@
            about being closed. aria-hidden comes off the clone: it is set in the
            cell because the cell aria-label already carries the sentence, and
            this panel has no such label. */
+        /* The day's announcements come with it (3.142.0): the cell draws only
+           a strip at this width. */
+        var ann = cell.querySelector('.uc-ann-bars');
+        if (ann) {
+            var bars = ann.cloneNode(true);
+            var opened = bars.querySelectorAll('[aria-expanded]');
+            for (var a = 0; a < opened.length; a++) {
+                opened[a].setAttribute('aria-expanded', 'false');
+            }
+            panel.appendChild(bars);
+        }
+
         var closed = cell.querySelector('.uc-day-closed-mark');
         if (closed) {
             var mark = closed.cloneNode(true);
@@ -1242,7 +1254,7 @@
 
         var events = cell.querySelector('.uc-day-events');
         if (!events || !events.children.length) {
-            if (!closed) {
+            if (!closed && !ann) {
                 var none = document.createElement('p');
                 none.className = 'uc-day-panel-empty';
                 none.textContent = 'Nothing scheduled on this day.';
@@ -2364,6 +2376,223 @@
     }
     /* SFAF-PREVIEW-END */
 
+/* SFAF-ANNOUNCE-START
+     *
+     * THE ANNOUNCEMENT CARD (3.142.0). EVERYTHING BETWEEN THESE MARKERS EXISTS
+     * TWICE, BYTE FOR BYTE, IN calendar.js AND embed.js, for the reason the
+     * hover preview above does, and `.claude/release-31420-test.php` fails if
+     * the two copies differ by a character. No jQuery and nothing from either
+     * file's scope.
+     *
+     * ONE CARD FOR THE PAGE, filled from the bar's data attributes: picture,
+     * description and link, each only when the bar carries it. Hovering opens
+     * it on a device that hovers. A click or a tap opens it anywhere and keeps
+     * it open until a second click, Escape, or a click somewhere else. From the
+     * keyboard, Enter opens it and moves focus to its link, or to the card when
+     * there is no link; Escape or Tab closes it and puts focus back on the bar.
+     */
+    var ANN_OPEN_DELAY  = 200;
+    var ANN_CLOSE_DELAY = 160;
+
+    function initAnnouncements(mount) {
+        var card = document.createElement('div');
+        if (typeof card.closest !== 'function' || !card.classList) {
+            return;
+        }
+        var canHover = !!(window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches);
+        var layer = (typeof card.showPopover === 'function');
+
+        card.className = 'uc-ann-card';
+        card.setAttribute('role', 'dialog');
+        card.setAttribute('tabindex', '-1');
+        if (layer) { card.setAttribute('popover', 'manual'); }
+        card.innerHTML =
+            '<span class="uc-ann-card-media"><img alt="" decoding="async" /></span>' +
+            '<span class="uc-ann-card-body">' +
+                '<span class="uc-ann-card-title"></span>' +
+                '<span class="uc-ann-card-when"></span>' +
+                '<span class="uc-ann-card-desc"></span>' +
+                '<a class="uc-ann-card-link" href="#" target="_blank" rel="noopener">Learn more' +
+                    '<span class="uc-sr-only"> (opens in a new tab)</span></a>' +
+            '</span>';
+        (mount || document.body).appendChild(card);
+
+        var media  = card.querySelector('.uc-ann-card-media');
+        var img    = media.querySelector('img');
+        var link   = card.querySelector('.uc-ann-card-link');
+        var current = null;
+        var pinned  = false;
+        var openT   = null;
+        var closeT  = null;
+
+        function line(sel, text) {
+            var el = card.querySelector(sel);
+            el.textContent = text || '';
+            el.hidden = !text;
+        }
+
+        function fill(bar) {
+            var src = bar.getAttribute('data-uc-ann-img') || '';
+            if (src) {
+                img.src = src;
+                media.hidden = false;
+            } else {
+                img.removeAttribute('src');
+                media.hidden = true;
+            }
+            line('.uc-ann-card-title', bar.getAttribute('data-uc-ann-title'));
+            line('.uc-ann-card-when', bar.getAttribute('data-uc-ann-when'));
+            line('.uc-ann-card-desc', bar.getAttribute('data-uc-ann-desc'));
+            var href = bar.getAttribute('data-uc-ann-link') || '';
+            link.setAttribute('href', href || '#');
+            link.hidden = !href;
+            card.setAttribute('aria-label', bar.getAttribute('data-uc-ann-title') || 'Announcement');
+        }
+
+        /* Below the bar, or above it when there is no room below, and inside
+           the viewport sideways either way. */
+        function place(bar) {
+            var r    = bar.getBoundingClientRect();
+            var box  = card.getBoundingClientRect();
+            var gap  = 6;
+            var edge = 8;
+            var top;
+            if (window.innerHeight - r.bottom >= box.height + gap + edge) {
+                top = r.bottom + gap;
+            } else if (r.top >= box.height + gap + edge) {
+                top = r.top - box.height - gap;
+            } else {
+                top = Math.max(edge, window.innerHeight - box.height - edge);
+            }
+            var left = Math.max(edge, Math.min(r.left, window.innerWidth - box.width - edge));
+            card.style.top  = Math.round(top) + 'px';
+            card.style.left = Math.round(left) + 'px';
+        }
+
+        function show(bar, pin) {
+            if (current && current !== bar) {
+                current.setAttribute('aria-expanded', 'false');
+            }
+            current = bar;
+            pinned = !!pin;
+            fill(bar);
+            card.classList.add('is-open');
+            card.classList.add('is-measuring');
+            if (layer) {
+                try {
+                    if (!card.matches(':popover-open')) { card.showPopover(); }
+                } catch (e) { /* already open */ }
+            }
+            place(bar);
+            card.classList.remove('is-measuring');
+            bar.setAttribute('aria-expanded', 'true');
+        }
+
+        function hide(refocus) {
+            var bar = current;
+            current = null;
+            pinned = false;
+            card.classList.remove('is-open');
+            if (layer) {
+                try {
+                    if (card.matches(':popover-open')) { card.hidePopover(); }
+                } catch (e) { /* already closed */ }
+            }
+            if (bar) {
+                bar.setAttribute('aria-expanded', 'false');
+                if (refocus) { bar.focus(); }
+            }
+        }
+
+        function clearTimers() {
+            if (openT) { window.clearTimeout(openT); openT = null; }
+            if (closeT) { window.clearTimeout(closeT); closeT = null; }
+        }
+
+        function later() {
+            clearTimers();
+            if (!pinned) {
+                closeT = window.setTimeout(function () { hide(false); }, ANN_CLOSE_DELAY);
+            }
+        }
+
+        /* The element really under the pointer: a block in a shadow root
+           (embed.js) reaches a document listener as its host. */
+        function barFrom(e) {
+            var t = (typeof e.composedPath === 'function' && e.composedPath()[0]) || e.target;
+            if (!t || typeof t.closest !== 'function') { return null; }
+            return t.closest('button[data-uc-ann]');
+        }
+
+        function inCard(e) {
+            var path = (typeof e.composedPath === 'function') ? e.composedPath() : [];
+            for (var i = 0; i < path.length; i++) {
+                if (path[i] === card) { return true; }
+            }
+            return card.contains(e.target);
+        }
+
+        document.addEventListener('click', function (e) {
+            var bar = barFrom(e);
+            if (bar) {
+                clearTimers();
+                if (current === bar && pinned) {
+                    hide(false);
+                    return;
+                }
+                show(bar, true);
+                /* detail 0 is a click from the keyboard. */
+                if (0 === e.detail) {
+                    (link.hidden ? card : link).focus();
+                }
+                return;
+            }
+            if (current && !inCard(e)) {
+                hide(false);
+            }
+        });
+
+        if (canHover) {
+            document.addEventListener('mouseover', function (e) {
+                var bar = barFrom(e);
+                if (!bar) { return; }
+                clearTimers();
+                if (current === bar || pinned) { return; }
+                openT = window.setTimeout(function () { show(bar, false); }, ANN_OPEN_DELAY);
+            });
+            document.addEventListener('mouseout', function (e) {
+                if (barFrom(e)) { later(); }
+            });
+            card.addEventListener('mouseover', clearTimers);
+            card.addEventListener('mouseout', later);
+        }
+
+        card.addEventListener('keydown', function (e) {
+            if ('Escape' === e.key || 'Tab' === e.key) {
+                e.preventDefault();
+                e.stopPropagation();
+                hide(true);
+            }
+        });
+        document.addEventListener('keydown', function (e) {
+            if ('Escape' === e.key && current) {
+                hide(true);
+            }
+        });
+
+        /* A scroll moves the bar: a card somebody opened follows it, a hover
+           card closes. A resize closes either. */
+        window.addEventListener('scroll', function () {
+            if (!current) { return; }
+            if (pinned) { place(current); } else { clearTimers(); hide(false); }
+        }, true);
+        window.addEventListener('resize', function () {
+            clearTimers();
+            hide(false);
+        });
+    }
+    /* SFAF-ANNOUNCE-END */
+
     window.sfafCalendarEmbed = { scan: scan };
 
     /* THE PREVIEW IS BUILT ONCE FOR THE PAGE, NOT ONCE PER BLOCK, and not
@@ -2374,13 +2603,24 @@
      *
      * It refuses to build itself where the device cannot hover, so on a phone
      * this costs one matchMedia call and nothing else. */
+    /* One mount for the preview and the announcement card (3.142.0). */
+    var SHARED_MOUNT = null;
     try {
-        initMonthPreview(previewMount());
+        SHARED_MOUNT = previewMount();
+        initMonthPreview(SHARED_MOUNT);
     } catch (e) {
         /* Same contract as everything else here: a failed enhancement must not
          * take the calendar with it. The tiles are still links. */
         if (window.console && window.console.error) {
             window.console.error('SFAF calendar: the hover preview failed to start.', e);
+        }
+    }
+
+    try {
+        initAnnouncements(SHARED_MOUNT);
+    } catch (e) {
+        if (window.console && window.console.error) {
+            window.console.error('SFAF calendar: the announcement card failed to start.', e);
         }
     }
 
