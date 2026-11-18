@@ -1,8 +1,8 @@
 <!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="../admin/css/admin.css"></head><body class="wp-admin" style="margin:0;background:#f0f0f1;font-family:sans-serif">        <div class="wrap uc-admin-wrap">
             <div class="uc-admin-header">
                 <div>
-                    <h1>Closures</h1>
-                    <p class="uc-subtitle">Days SFAF is shut. They are marked on the calendar and are not events.</p>
+                    <h1>Closures and announcements</h1>
+                    <p class="uc-subtitle">Days SFAF is shut, and notices for a day or a run of days. Both show on the calendar and neither is an event.</p>
                 </div>
             </div>
 
@@ -190,7 +190,65 @@
 
                                     <p class="uc-no-data">Nothing recorded. The calendar shows no closed days.</p>
                             </div>
+
+                    <div id="uc-announcements"></div>
+                        
+        <div class="uc-admin-card">
+            <h2>Add an announcement</h2>
+            <p class="description">
+                Shown on every calendar: a bar on each of its days in the month grid, a banner in the list,
+                and in the sidebar on its days. It does not mark the day closed.
+            </p>
+            <form method="post" enctype="multipart/form-data">
+                <input type="hidden" name="uc_ann_nonce" value="nonce" />                <input type="hidden" name="uc_ann_action" value="save" />
+                <input type="hidden" name="ann_id" value="" />
+                <p>
+                    <label for="uc_ann_title">Title</label><br />
+                    <input type="text" name="ann_title" id="uc_ann_title" class="regular-text" required
+                           maxlength="80" value="" />
+                </p>
+                <p>
+                    <label for="uc_ann_start">First day</label><br />
+                    <input type="date" name="ann_start" id="uc_ann_start" required value="" />
+                </p>
+                <p>
+                    <label for="uc_ann_end">Last day</label><br />
+                    <input type="date" name="ann_end" id="uc_ann_end" value="" />
+                    <br /><span class="description">Leave empty for a single day.</span>
+                </p>
+                <p>
+                    <label for="uc_ann_icon">Icon</label><br />
+                                        <input type="file" name="ann_icon" id="uc_ann_icon" accept="image/png,image/svg+xml,.svg" />
+                    <br /><span class="description">Optional. Icons must be a square PNG or SVG with a transparent background, 512 by 512 pixels or smaller, under 100KB (10KB for an SVG).</span>
+                </p>
+                <p>
+                    <label for="uc_ann_desc">Short description</label><br />
+                    <textarea name="ann_desc" id="uc_ann_desc" class="large-text" rows="2"
+                              maxlength="300"></textarea>
+                    <br /><span class="description">Optional. Shown in the card that opens from the bar.</span>
+                </p>
+                <p>
+                    <label for="uc_ann_image">Image</label><br />
+                                        <input type="file" name="ann_image" id="uc_ann_image" accept="image/jpeg,image/png,image/webp" />
+                    <br /><span class="description">Optional. Pictures must be 1200 by 675 pixels and under 500KB.</span>
+                </p>
+                <p>
+                    <label for="uc_ann_link">Link</label><br />
+                    <input type="url" name="ann_link" id="uc_ann_link" class="regular-text" placeholder="https://"
+                           value="" />
+                    <br /><span class="description">Optional.</span>
+                </p>
+                <p>
+                    <button type="submit" class="button button-primary">Add announcement</button>
+                                    </p>
+            </form>
         </div>
+
+        <div class="uc-admin-card">
+            <h2>0 announcements</h2>
+                            <p class="uc-no-data">None yet. The calendar shows no announcements.</p>
+                    </div>
+                </div>
         <script>window.RL_PAGE="wp-closures-430";(function () {
 var P = window.RL_PAGE, out = { page: P, errors: [], yellow: [], mains: [], markers: [] };
 window.addEventListener('beforeunload', function (e) { e.stopImmediatePropagation(); }, true);

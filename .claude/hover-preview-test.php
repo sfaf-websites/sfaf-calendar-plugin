@@ -72,7 +72,11 @@ function hp_slice( $js ) {
 /** The preview's own block of calendar.css. */
 function hp_css_block( $css ) {
     $at = strpos( $css, 'THE MONTH GRID\'S HOVER PREVIEW' );
-    return ( false === $at ) ? '' : substr( $css, $at );
+    if ( false === $at ) { return ''; }
+    /* Up to the announcement card's section (3.142.0), which is not the preview
+       and declares a z-index of its own for a browser without the top layer. */
+    $end = strpos( $css, 'ANNOUNCEMENTS (3.142.0)', $at );
+    return ( false === $end ) ? substr( $css, $at ) : substr( $css, $at, $end - $at );
 }
 
 $ejs   = file_get_contents( $root . '/public/js/embed.js' );
@@ -108,7 +112,7 @@ if ( '' === $eslice ) {
         . 'files and they have to be identical; copy whichever is right over the other' );
 }
 // A call, with or without the root it draws in (3.111.0), that is not the definition.
-if ( ! preg_match( '/(?<!function )initMonthPreview\((?:\)|previewMount\(\)\))/', $ejs ) ) {
+if ( ! preg_match( '/(?<!function )initMonthPreview\((?:\)|previewMount\(\)\)|SHARED_MOUNT\))/', $ejs ) ) {
     hp_fail( 'embed.js defines the preview and never calls it, which is the same outcome as not having it' );
 }
 if ( false === strpos( $js, "run('monthPreview'" ) ) {
@@ -239,7 +243,7 @@ foreach ( array( 'data-uc-preview', 'data-uc-pv-title', 'data-uc-pv-img', 'data-
 /* AND IT IS A RESET ROOT. The panel is appended to <body>, outside
  * .uc-calendar, so nothing else in calendar.css reaches it and the host
  * theme's rules do. Same reason .uc-rsvp-modal-overlay is one. */
-if ( ! preg_match( '/\.uc-rsvp-modal-overlay,\s*\.uc-mp\s*\{/', $css ) ) {
+if ( ! preg_match( '/\.uc-rsvp-modal-overlay,\s*\.uc-mp\s*[{,]/', $css ) ) {
     hp_fail( 'the preview is not in the reset root list, so a host theme styles it and this file does not' );
 }
 

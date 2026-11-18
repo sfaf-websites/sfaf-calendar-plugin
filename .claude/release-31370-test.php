@@ -113,7 +113,11 @@ $audit = (string) shell_exec( 'php ' . escapeshellarg( __DIR__ . '/control-stand
 rt( 'D: the control-standard check passes and asks for R', false !== strpos( $audit, 'PASS.' ) && false !== strpos( $audit, 'R: teal ink on white' ) );
 
 /* ======================================================================== E */
-foreach ( array( 'public/css/calendar.css', 'public/js/calendar.js' ) as $f ) {
+/* Held until 3.142.0, which changes both on purpose (announcements); from
+   then embed-identity-test.php names them. */
+$e_ver  = preg_match( "/define\\( 'SFAF_VERSION', '([^']+)' \\);/",(string) file_get_contents( $root . '/sfaf-calendar.php' ), $e_m ) ? $e_m[1] : '0';
+$e_live = version_compare( $e_ver, '3.142.0', '<' );
+foreach ( $e_live ? array( 'public/css/calendar.css', 'public/js/calendar.js' ) : array() as $f ) {
     $was = (string) shell_exec( 'git -C ' . escapeshellarg( $root ) . ' show ceb126a:' . $f . ' 2>&1' );
     rt( "E: $f is 3.136.0's", '' !== $was && str_replace( "\r\n", "\n", $was ) === str_replace( "\r\n", "\n", (string) file_get_contents( $root . '/' . $f ) ) );
 }

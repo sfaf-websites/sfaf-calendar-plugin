@@ -108,11 +108,12 @@ $EDITOR_META = array( '_uc_event_date', '_uc_start_time', '_uc_end_time', '_uc_l
 /* ---- the plugin's two classes, and the stand-ins for the two constants -- */
 class SFAF_Shortcodes {}
 class SFAF_Closures { const OPTION = 'sfaf_closures'; }
+class SFAF_Announcements { const OPTION = 'sfaf_announcements'; } // its cache hooks (3.142.0)
 class SFAF_Series { const TAXONOMY = 'uc_series'; }
 class SFAF_Cancellation { const META = '_uc_cancelled'; const VISIBILITY_META = '_uc_cancelled_visibility'; }
 require $root . '/includes/class-sfaf-litespeed.php';
 require $root . '/includes/class-sfaf-embed.php';
-foreach ( array( 'SFAF_Closures' => 'class-sfaf-closures.php', 'SFAF_Series' => 'class-sfaf-series.php', 'SFAF_Cancellation' => 'class-sfaf-cancellation.php' ) as $c => $f ) {
+foreach ( array( 'SFAF_Closures' => 'class-sfaf-closures.php', 'SFAF_Announcements' => 'class-sfaf-announcements.php', 'SFAF_Series' => 'class-sfaf-series.php', 'SFAF_Cancellation' => 'class-sfaf-cancellation.php' ) as $c => $f ) {
     $src = file_get_contents( $root . '/includes/' . $f );
     foreach ( ( new ReflectionClass( $c ) )->getConstants() as $k => $v ) {
         rt( "the stand-in $c::$k is the plugin's", 1 === preg_match( '/const ' . $k . '\s*=\s*\'' . preg_quote( $v, '/' ) . '\';/', $src ), true );

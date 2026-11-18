@@ -305,6 +305,7 @@ class WP_REST_Request {
 if ( ! function_exists( 'sfaf_calendar_home_url' ) ) { function sfaf_calendar_home_url() { return ''; } }
 require_once $root . '/includes/class-sfaf-slug-aliases.php';
 require_once $root . '/includes/class-sfaf-attachments.php'; // the list row's PDF button (3.111.0)
+require_once $root . '/includes/class-sfaf-announcements.php'; // the renderers draw announcements (3.142.0)
 require_once $root . '/includes/class-sfaf-shortcodes.php';
 require_once $root . '/includes/class-sfaf-embed.php';
 
