@@ -266,7 +266,7 @@ rt( 'A: Remove the icon and Remove the image did not', $pp && '' === $pp['icon_s
 $count = count( SFAF_Announcements::all() );
 $went  = $post( array( 'uc_ann_action' => 'save', 'ann_id' => '', 'ann_title' => '', 'ann_start' => $today ) );
 rt( 'A: a save with no title was not refused with its reason: ' . $went, $count === count( SFAF_Announcements::all() ) && false !== strpos( $went, 'msg=ann_failed' )
-    && 'Give the announcement a title.' === get_transient( 'sfaf_ann_error_1' ) );
+    && 'Give the announcement a title.' === ( is_array( get_transient( 'sfaf_ann_error_1' ) ) ? get_transient( 'sfaf_ann_error_1' )['message'] : get_transient( 'sfaf_ann_error_1' ) ) ); // the message and what was typed, from 3.142.1
 $post( array( 'uc_ann_action' => 'delete', 'ann_id' => $move ) );
 rt( 'A: Remove did not remove', null === SFAF_Announcements::get( $move ) );
 $GLOBALS['kit_cannot'] = array( 'manage_options' );

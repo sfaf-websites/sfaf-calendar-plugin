@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.142.0
+Stable tag: 3.142.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,14 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.142.1 =
+
+**Saving an announcement says what happened.** A fix release. The embed is 3.142.0's, proved by embed-identity-test.php.
+
+* **The message is shown where the save lands.** WordPress moves every admin notice under the page's first heading, and an announcement's save returns to the announcements section further down, so the message, saved or refused, was above the window and the page looked refreshed. The notices now stay beside the form.
+* **A refused save keeps what was typed** and names the icon or image to choose again.
+* **Files too large for the site to take in one save** are said so, with the site's limit, instead of the page drawing as if nothing was pressed.
 
 = 3.142.0 =
 

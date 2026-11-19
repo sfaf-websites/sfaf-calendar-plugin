@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 443 items.** Quick 357, needs real conditions 81, blocked on other
+**Outstanding: 444 items.** Quick 358, needs real conditions 81, blocked on other
 people 5.
 
 ---
@@ -4802,6 +4802,21 @@ under the date, and tapping it opens the card. Tab to a bar and press Enter:
 Learn more is focused; Escape returns to the bar.
 
 **Why it needs a person:** the real host page, a real phone and a real mouse.
+
+### 1.360 Saving an announcement says so beside the form (3.142.1)
+
+On the site, at WP admin > Calendar > Closures and announcements, add an
+announcement with a title and a date only and press Add announcement: the page
+lands at the announcements with "Announcement saved." just above the form, and
+the list below has it. Then add one with a picture that is not 1200 by 675: the
+reason shows in the same place, the title and description are still typed in,
+and it says to choose the image again. Then try once more with the icon and
+picture Mark used on 3.142.0, and say what the message was: that is the reason
+those two saves were refused, which nothing recorded. Remove the test
+announcements afterwards.
+
+**Why it needs a person:** the real WordPress admin page with its own scripts,
+the site's real upload limits and its file-type reader.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event

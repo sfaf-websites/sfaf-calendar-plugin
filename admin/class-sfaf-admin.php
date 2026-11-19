@@ -1250,6 +1250,22 @@ class SFAF_Admin {
     /** Save or delete an announcement, from the section below. */
     public function handle_announcement_actions() {
         if ( ! isset( $_POST['uc_ann_action'] ) ) {
+            /*
+             * A POST LARGER THAN post_max_size ARRIVES EMPTY (3.142.1). PHP
+             * drops every field and every file, so there is no action to read
+             * and the page would draw as if nothing had been pressed. Said
+             * out loud instead, with the site's own limit.
+             */
+            if ( $this->announcement_post_lost() ) {
+                $limit = size_format( wp_convert_hr_to_bytes( (string) ini_get( 'post_max_size' ) ) );
+                set_transient( 'sfaf_ann_error_' . get_current_user_id(), array(
+                    'message' => 'Nothing was saved: the files were larger than this site takes in one save'
+                        . ( $limit ? ' (' . $limit . ')' : '' ) . '. Use smaller files and try again.',
+                    'fields'  => array(),
+                ), 60 );
+                wp_safe_redirect( add_query_arg( 'msg', 'ann_failed', self::closures_url() ) . '#uc-announcements' );
+                exit;
+            }
             return;
         }
         if ( ! current_user_can( 'manage_options' ) ) {
@@ -1263,8 +1279,28 @@ class SFAF_Admin {
         $action = sanitize_key( wp_unslash( $_POST['uc_ann_action'] ) );
         $id     = isset( $_POST['ann_id'] ) ? sanitize_text_field( wp_unslash( $_POST['ann_id'] ) ) : '';
         $base   = self::closures_url();
+        /*
+         * A REFUSED SAVE KEEPS WHAT WAS TYPED (3.142.1). Until then the form
+         * came back empty, which with the message out of sight looked like a
+         * refresh. A file cannot be put back in a file field, so the message
+         * says which to choose again.
+         */
         $fail   = function ( $message ) use ( $base, $id ) {
-            set_transient( 'sfaf_ann_error_' . get_current_user_id(), $message, 60 );
+            $again = array();
+            foreach ( array( 'ann_icon' => 'icon', 'ann_image' => 'image' ) as $field => $name ) {
+                if ( ! empty( $_FILES[ $field ] ) && isset( $_FILES[ $field ]['error'] ) && ! is_array( $_FILES[ $field ]['error'] )
+                    && UPLOAD_ERR_NO_FILE !== (int) $_FILES[ $field ]['error'] ) {
+                    $again[] = $name;
+                }
+            }
+            if ( $again ) {
+                $message .= ' Choose the ' . implode( ' and ', $again ) . ' again.';
+            }
+            $kept = array();
+            foreach ( array( 'title', 'start', 'end', 'desc', 'link' ) as $k ) {
+                $kept[ $k ] = isset( $_POST[ 'ann_' . $k ] ) ? (string) wp_unslash( $_POST[ 'ann_' . $k ] ) : '';
+            }
+            set_transient( 'sfaf_ann_error_' . get_current_user_id(), array( 'message' => $message, 'fields' => $kept ), 60 );
             $args = array( 'msg' => 'ann_failed' );
             if ( '' !== $id ) {
                 $args['edit_ann'] = $id;
@@ -1359,6 +1395,19 @@ class SFAF_Admin {
     }
 
     /**
+     * Was a POST to this screen dropped by PHP for being over post_max_size?
+     * Then there is a body and nothing parsed from it.
+     *
+     * @return bool
+     */
+    private function announcement_post_lost() {
+        $method = isset( $_SERVER['REQUEST_METHOD'] ) ? strtoupper( (string) $_SERVER['REQUEST_METHOD'] ) : '';
+        $page   = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+        $length = isset( $_SERVER['CONTENT_LENGTH'] ) ? (int) $_SERVER['CONTENT_LENGTH'] : 0;
+        return 'POST' === $method && 'uc-closures' === $page && $length > 0 && empty( $_POST ) && empty( $_FILES );
+    }
+
+    /**
      * The uploaded file's temporary path: '' when nothing was sent, false
      * when something was sent and did not arrive whole.
      *
@@ -1407,28 +1456,47 @@ class SFAF_Admin {
     private function render_announcements_section() {
         $all   = SFAF_Announcements::all();
         $today = current_time( 'Y-m-d' );
-        $err   = get_transient( 'sfaf_ann_error_' . get_current_user_id() );
-        if ( false !== $err ) {
+        $stored = get_transient( 'sfaf_ann_error_' . get_current_user_id() );
+        if ( false !== $stored ) {
             delete_transient( 'sfaf_ann_error_' . get_current_user_id() );
         }
-        $msg     = isset( $_GET['msg'] ) ? sanitize_key( wp_unslash( $_GET['msg'] ) ) : '';
+        $err  = is_array( $stored ) ? ( isset( $stored['message'] ) ? (string) $stored['message'] : '' ) : (string) $stored;
+        $kept = ( is_array( $stored ) && isset( $stored['fields'] ) && is_array( $stored['fields'] ) ) ? $stored['fields'] : array();
+        $msg  = isset( $_GET['msg'] ) ? sanitize_key( wp_unslash( $_GET['msg'] ) ) : '';
+        if ( 'ann_failed' === $msg && '' === $err ) {
+            // The reason did not survive to this page. Still never silent.
+            $err = 'The announcement was not saved. Try it again.';
+        }
         $editing = isset( $_GET['edit_ann'] ) ? SFAF_Announcements::get( sanitize_text_field( wp_unslash( $_GET['edit_ann'] ) ) ) : null;
         $e       = $editing ? $editing : array( 'id' => '', 'title' => '', 'start' => '', 'end' => '', 'desc' => '', 'link' => '', 'icon_id' => 0, 'icon_svg' => '', 'image_id' => 0 );
         $e_end   = ( $editing && $editing['end'] !== $editing['start'] ) ? $editing['end'] : '';
+        if ( $kept ) {
+            foreach ( array( 'title', 'start', 'desc', 'link' ) as $k ) {
+                $e[ $k ] = isset( $kept[ $k ] ) ? (string) $kept[ $k ] : '';
+            }
+            $e_end = isset( $kept['end'] ) ? (string) $kept['end'] : '';
+        }
         $e_icon  = $editing ? SFAF_Announcements::icon_src( $editing ) : '';
         $e_image = $editing ? SFAF_Announcements::image_src( $editing ) : '';
+        /*
+         * EVERY NOTICE HERE IS .inline (3.142.1). WordPress's common.js moves
+         * every div.notice without it to under the page's first heading, and
+         * this section's redirects land at #uc-announcements, a screen or more
+         * below that. So in 3.142.0 the message, saved or refused, was always
+         * above the window, and a refused save looked like a refresh.
+         */
         ?>
         <div id="uc-announcements"></div>
-        <?php if ( $err ) : ?>
-            <div class="notice notice-error"><p><?php echo esc_html( $err ); ?></p></div>
+        <?php if ( '' !== $err ) : ?>
+            <div class="notice notice-error inline uc-ann-notice" role="alert"><p><?php echo esc_html( $err ); ?></p></div>
         <?php endif; ?>
         <?php if ( 'ann_saved' === $msg ) : ?>
-            <div class="notice notice-success"><p>Announcement saved.</p></div>
+            <div class="notice notice-success inline uc-ann-notice" role="status"><p>Announcement saved.</p></div>
         <?php elseif ( 'ann_deleted' === $msg ) : ?>
-            <div class="notice notice-success"><p>Announcement removed.</p></div>
+            <div class="notice notice-success inline uc-ann-notice" role="status"><p>Announcement removed.</p></div>
         <?php endif; ?>
         <?php if ( isset( $_GET['edit_ann'] ) && ! $editing ) : ?>
-            <div class="notice notice-error"><p>That announcement no longer exists, so there is nothing to edit.</p></div>
+            <div class="notice notice-error inline uc-ann-notice" role="alert"><p>That announcement no longer exists, so there is nothing to edit.</p></div>
         <?php endif; ?>
 
         <div class="uc-admin-card">

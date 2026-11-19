@@ -9008,6 +9008,21 @@ and a source read all passed it. **The browser check found it, by asserting
 the outcome**: a click, thirty idle minutes later, sends a keepalive. In a long
 IIFE, a new function name is grepped for in the whole file before it is used.
 
+---
+
+### A WP admin notice below the first heading is moved above the window (3.142.1)
+
+WordPress's `common.js` moves every `div.notice` that is not `.inline` to under
+the page's first heading. 3.142.0's announcement save redirected to
+`#uc-announcements`, a screen or more below that heading, so the message, saved
+or refused, was always above the window; a refused save also came back with the
+form empty. On the site it looked like a refresh, twice, and nothing recorded
+what the refusal said. Every check had read the notice's markup and none had
+loaded the page and looked at the window. **A notice on a screen that redirects
+to an anchor is `.inline` and sits at that anchor**, and a refused save keeps
+what was typed. `release-31421-live.php` posts the real form with real files
+and asserts the message is in the window.
+
 ## 8. Agreed, not built
 
 Decisions settled in conversation that have no code yet. They live here because
