@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.142.1
+Stable tag: 3.143.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,16 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.143.0 =
+
+**Also show this event in series.** Treated as an embed change because it reaches the public event page. The embed's answers, headers and public files are 3.142.1's, proved by embed-identity-test.php; the event page's series list is the one thing that differs, and only for a series some event is also shown in.
+
+* **Edit event and Add event:** "Also show this event in series…" under Series, a chip picker with + Add series, several allowed. The event's own series is not offered, and moving the event into one of its extra series takes that one off. Unticking them all clears them.
+* **The event stays in its own series** for its schedule, picture, description and every other setting. The extra series pass it nothing: no defaults, no FAQ set, no language, no schedule change.
+* **The public event page:** an event of an extra series lists this event under "Upcoming in this series" with that series' own dates, in date order. An ended event's page lists the same dates. Private and hidden cancelled events stay out, as they do from every public listing. The series archive page still lists only the series' own events.
+* **The caladmin series page:** under Upcoming, "Also shown here" lists them, each tagged "also shown here" in teal (6.02:1) and naming its own series, with a pencil for anyone who may edit it and no Remove, so no schedule action on this series reaches it.
+* **Removing a series** takes it off every event shown in it.
 
 = 3.142.1 =
 

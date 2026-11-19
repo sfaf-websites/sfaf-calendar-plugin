@@ -3798,6 +3798,33 @@ A series carries name, description, image, video, a default FAQ set, and from
 3.103.0 default categories and default organizers. **A series with no events is
 valid** and is not cleaned up.
 
+### Also shown in another series (3.143.0)
+
+**An event belongs to one series and can be shown in others.** "Also show this
+event in series…" on Add event and Edit event stores the others in
+`_uc_also_series`, one post-meta row per series term id (`SFAF_Series::META_ALSO`),
+so `SFAF_Series::also_events()` finds a series' extra events with one meta query.
+The taxonomy stays one term per event: the own series is the one
+`for_event()` answers, and it alone gives the schedule, the picture, the
+description, the defaults, the FAQ set and the language. **An extra series passes
+the event nothing**; the save writes the meta and touches nothing else.
+
+**Where it shows.** `sfaf_series_dates_shown()` is a series' upcoming public dates
+as its event pages list them: its own and its extra events, in date order (then
+id), private and hidden-cancelled ones out as everywhere public. Both "Upcoming in
+this series" and an ended event's dates use it, so an event of the extra series
+lists the event with its own dates. With nothing shown in a series it is
+exactly `sfaf_get_series_events( $term_id, true )`. The series archive
+(`taxonomy-uc_series.php`) and the embed list only a series' own events. On the
+caladmin series page "Also shown here" follows Upcoming in a list of its own, each
+row tagged and naming its own series, with no Remove, so no schedule action on
+this series reaches another series' event.
+
+**The rules that keep it one series.** Its own series is never stored as an extra:
+`set_also_for_event()` drops it, the field hides it (`initAlsoSeries()` follows the
+Series select) and moving the event into an extra series takes that one off.
+Removing a series takes it off every event shown in it.
+
 ### What new events in a series start with (3.119.0)
 
 **The series page sets them**: start and end time, venue, cost, age range and
@@ -9028,6 +9055,17 @@ and asserts the message is in the window.
 Decisions settled in conversation that have no code yet. They live here because
 a chat ends and this file does not. Move an entry into the body of this document
 when it ships, and delete it here.
+
+### Series followers count events shown in the series (agreed 2026-11-19)
+
+Nothing tells series followers about new dates yet (they get only the follow
+confirmation). **When series follower notifications are
+built, an event shown in a series through "Also show this event in series"
+counts for that series' followers too**, as if it were one of its own dates:
+followers of each extra series hear about it as well as followers of its own
+series. Read the set from `SFAF_Series::also_events()` beside `events()`, and
+send one message per person, never one per series (`SFAF_Announce` groups by
+address the same way), so somebody who follows both series is told once.
 
 ### Left to decide after the event-page alignment (2026-10-25)
 

@@ -529,7 +529,7 @@
      * build if this string is not SFAF_VERSION. It cannot drift by being
      * forgotten at release time.
      */
-    var EMBED_JS_VERSION = '3.142.1';
+    var EMBED_JS_VERSION = '3.143.0';
     var staleReported = false;
 
     /**

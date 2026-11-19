@@ -2526,6 +2526,14 @@ form > .uc-form-actions:last-child { margin-bottom: 36px; }
 .uc-tag-extra { display: inline-block; padding: 1px 8px; border-radius: 999px;
     background: #F1EAF4; color: #7F3A98; font-size: 11px; font-weight: 700;
     letter-spacing: 0.01em; }
+/* An event of another series shown in this one (3.143.0). The Teal family's
+   measured pair, 6.02:1, so it is not read as one of the purple extra dates. */
+.uc-tag-also { display: inline-block; padding: 1px 8px; border-radius: 999px;
+    background: #E3F7F9; color: #0C666F; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.01em; }
+/* The event's own series in "Also show this event in series": .uc-check's
+   flex would otherwise beat the hidden attribute. */
+.uc-also-field .uc-check[hidden] { display: none; }
 /* A warning that is read before a button is pressed rather than after. Amber,
    like .uc-scope-banner-all and .uc-flash-attention, which are the other two
    "this will do something wide" surfaces. #92400E on #FFFBEB is 7.53:1. */

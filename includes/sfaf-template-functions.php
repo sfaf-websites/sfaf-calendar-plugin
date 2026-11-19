@@ -1557,6 +1557,33 @@ function sfaf_get_series_events( $term_id, $upcoming_only = false ) {
 }
 
 /**
+ * A series' upcoming public dates as its event pages list them (3.143.0): its
+ * own, and the events shown in it through "Also show this event in series",
+ * in date order together. With none of those it is exactly
+ * sfaf_get_series_events( $term_id, true ). The series archive
+ * (taxonomy-uc_series.php) still lists only its own.
+ *
+ * @param int $term_id
+ * @return int[]
+ */
+function sfaf_series_dates_shown( $term_id ) {
+    $own  = sfaf_get_series_events( $term_id, true );
+    $also = SFAF_Series::also_events( (int) $term_id, array( 'upcoming' => true, 'public_only' => true, 'limit' => 50 ) );
+    $also = array_values( array_diff( $also, $own ) );
+    if ( ! $also ) {
+        return $own;
+    }
+    $all  = array_merge( $own, $also );
+    $keys = array();
+    foreach ( $all as $id ) {
+        // The order events() uses: the date, then the id.
+        $keys[ $id ] = (string) get_post_meta( $id, '_uc_event_date', true ) . '|' . str_pad( (string) $id, 12, '0', STR_PAD_LEFT );
+    }
+    asort( $keys );
+    return array_slice( array_map( 'intval', array_keys( $keys ) ), 0, 50 );
+}
+
+/**
  * "Part of series: Name" — the badge on a card and on the single event page.
  *
  * WHERE IT NOW POINTS, AND WHY. It used to link to the series PARENT POST,
@@ -1605,7 +1632,7 @@ function sfaf_series_list_html( $post_id ) {
     if ( ! $term_id ) {
         return '';
     }
-    $events = sfaf_get_series_events( $term_id, true );
+    $events = sfaf_series_dates_shown( $term_id );
 
     // Drop the event we're currently viewing.
     $events = array_values( array_filter( $events, function( $id ) use ( $post_id ) {
@@ -1735,7 +1762,7 @@ function sfaf_event_upcoming_dates( $post_id ) {
     if ( ! $term_id ) {
         return array();
     }
-    return array_values( array_filter( sfaf_get_series_events( $term_id, true ), function ( $id ) use ( $post_id ) {
+    return array_values( array_filter( sfaf_series_dates_shown( $term_id ), function ( $id ) use ( $post_id ) {
         return (int) $id !== (int) $post_id && ! sfaf_event_has_ended( $id );
     } ) );
 }

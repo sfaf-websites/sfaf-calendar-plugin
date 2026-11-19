@@ -108,6 +108,14 @@ class SFAF_Series {
     const META_EVENT_FILLED = '_uc_series_filled';
 
     /**
+     * Post meta on the EVENT (3.143.0): the other series it is also shown in,
+     * one row per series term id, so a series can find its events with one
+     * meta query. Display only: the event stays in its own series for its
+     * schedule and every setting, and these pass it nothing.
+     */
+    const META_ALSO = '_uc_also_series';
+
+    /**
      * Term meta: the post ID of the uc_event that used to BE this series.
      *
      * THIS IS WHAT KEEPS EXISTING EMBED CODE WORKING. Every [sfaf_calendar]
@@ -286,6 +294,111 @@ class SFAF_Series {
     public static function id_for_event( $post_id ) {
         $term = self::for_event( $post_id );
         return $term ? (int) $term->term_id : 0;
+    }
+
+    /**
+     * The other series an event is also shown in (3.143.0): ids of series
+     * that exist, never its own, in name order.
+     *
+     * @param int $post_id
+     * @return int[]
+     */
+    public static function also_for_event( $post_id ) {
+        $own = self::id_for_event( $post_id );
+        $ids = array();
+        foreach ( (array) get_post_meta( (int) $post_id, self::META_ALSO, false ) as $id ) {
+            $id = (int) $id;
+            if ( $id && $id !== $own && ! in_array( $id, $ids, true ) && self::exists( $id ) ) {
+                $ids[] = $id;
+            }
+        }
+        $names = array();
+        foreach ( $ids as $id ) {
+            $t = self::get( $id );
+            $names[ $id ] = $t ? strtolower( $t->name ) : '';
+        }
+        asort( $names );
+        return array_map( 'intval', array_keys( $names ) );
+    }
+
+    /**
+     * Store the other series an event is shown in, replacing what it had.
+     * Its own series and any that do not exist are dropped. Nothing else on
+     * the event is touched.
+     *
+     * @param int   $post_id
+     * @param int[] $ids
+     * @return int[] What is stored.
+     */
+    public static function set_also_for_event( $post_id, $ids ) {
+        $post_id = (int) $post_id;
+        $own     = self::id_for_event( $post_id );
+        $keep    = array();
+        foreach ( (array) $ids as $id ) {
+            $id = (int) $id;
+            if ( $id && $id !== $own && ! in_array( $id, $keep, true ) && self::exists( $id ) ) {
+                $keep[] = $id;
+            }
+        }
+        delete_post_meta( $post_id, self::META_ALSO );
+        foreach ( $keep as $id ) {
+            add_post_meta( $post_id, self::META_ALSO, $id );
+        }
+        return $keep;
+    }
+
+    /**
+     * The events shown in a series through "Also show this event in series"
+     * (3.143.0): not in it, and listed with it. The same arguments as
+     * events(), with public_only as false by default for the same reason.
+     *
+     * @param int   $term_id
+     * @param array $args
+     * @return int[]
+     */
+    public static function also_events( $term_id, $args = array() ) {
+        $term_id = (int) $term_id;
+        if ( ! $term_id ) {
+            return array();
+        }
+        $args  = wp_parse_args( $args, array(
+            'upcoming'    => false,
+            'status'      => array( 'publish' ),
+            'limit'       => 200,
+            'public_only' => false,
+        ) );
+        $query = array(
+            'post_type'              => 'uc_event',
+            'post_status'            => (array) $args['status'],
+            'posts_per_page'         => (int) $args['limit'],
+            'fields'                 => 'ids',
+            'no_found_rows'          => true,
+            'update_post_term_cache' => false,
+            'orderby'                => array( 'event_date' => 'ASC', 'ID' => 'ASC' ),
+            'meta_query'             => array(
+                'event_date' => array( 'key' => '_uc_event_date', 'compare' => 'EXISTS' ),
+                'also'       => array( 'key' => self::META_ALSO, 'value' => (string) $term_id, 'compare' => '=' ),
+            ),
+            // Its own series is never also its extra one; said again here so a
+            // stale row cannot list an event twice.
+            'tax_query'              => array(
+                array( 'taxonomy' => self::TAXONOMY, 'field' => 'term_id', 'terms' => $term_id, 'operator' => 'NOT IN' ),
+            ),
+        );
+        if ( $args['upcoming'] ) {
+            $query['meta_query']['upcoming'] = array(
+                'key'     => '_uc_event_date',
+                'value'   => current_time( 'Y-m-d' ),
+                'compare' => '>=',
+                'type'    => 'DATE',
+            );
+        }
+        if ( ! empty( $args['public_only'] ) ) {
+            SFAF_Privacy::exclude( $query );
+            SFAF_Cancellation::exclude( $query );
+        }
+        $q = new WP_Query( $query );
+        return array_map( 'intval', $q->posts );
     }
 
     /**
@@ -1814,6 +1927,11 @@ class SFAF_Series {
             'status' => self::editable_statuses(),
             'limit'  => -1,
         ) ) );
+
+        // Events of other series shown in this one stop naming it (3.143.0).
+        foreach ( self::also_events( $term_id, array( 'status' => self::editable_statuses(), 'limit' => -1 ) ) as $eid ) {
+            delete_post_meta( $eid, self::META_ALSO, $term_id );
+        }
 
         // wp_delete_term removes the relationships for us.
         wp_delete_term( $term_id, self::TAXONOMY );

@@ -3642,6 +3642,18 @@ class SFAF_Portal {
         }
 
         /*
+         * ALSO SHOWN IN (3.143.0), after the series above, so the one it is in
+         * now is the one dropped. Only when the form carried the control.
+         */
+        if ( isset( $_POST['uc_also_series_present'] ) ) {
+            $also = ( isset( $_POST['also_series'] ) && is_array( $_POST['also_series'] ) ) ? array_map( 'intval', wp_unslash( $_POST['also_series'] ) ) : array();
+            SFAF_Series::set_also_for_event( $event_id, $also );
+        } elseif ( isset( $_POST['series'] ) ) {
+            // A form without the control still cannot leave its new own series as an extra.
+            SFAF_Series::set_also_for_event( $event_id, SFAF_Series::also_for_event( $event_id ) );
+        }
+
+        /*
          * THE LANGUAGE ITS REGISTRANTS ARE WRITTEN TO IN (3.106.0). After the
          * series is saved, so what it inherits is the series it is in now. An
          * event that has never had one of its own and is left on what it
@@ -8758,6 +8770,40 @@ class SFAF_Portal {
                     <?php endforeach; ?>
                 </select>
             </label>
+
+            <?php
+            /*
+             * ALSO SHOW THIS EVENT IN SERIES (3.143.0). The categories' chip
+             * picker over a list of checkboxes, which are the form. The event's
+             * own series is in the list but hidden, and initAlsoSeries() keeps
+             * it hidden and unticked as the Series select changes; the save
+             * drops it as well. The marker says the form carried the control,
+             * so unticking every one clears them.
+             */
+            $also_now = $event_id ? SFAF_Series::also_for_event( $event_id ) : array();
+            ?>
+            <div class="uc-field uc-cat-field uc-also-field" data-uc-chips data-uc-also-series>
+                <span class="uc-field-label">Also show this event in series&hellip;</span>
+                <input type="hidden" name="uc_also_series_present" value="1" />
+                <div class="uc-chips" data-uc-chips-list hidden></div>
+                <p class="uc-chips-empty" data-uc-chips-empty hidden>Only in its own series.</p>
+                <div class="uc-chips-add" data-uc-chips-add hidden>
+                    <button type="button" class="uc-btn uc-btn-sm" data-uc-chips-toggle
+                            aria-expanded="false"><span>+ Add series</span>
+                        <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '14px' ) ); ?></span></button>
+                </div>
+                <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
+                    <?php foreach ( $all_series as $term ) :
+                        $own = ( (int) $cur_series === (int) $term->term_id ); ?>
+                        <label class="uc-check" data-uc-chip-label="<?php echo esc_attr( $term->name ); ?>"<?php echo $own ? ' hidden' : ''; ?>>
+                            <input type="checkbox" name="also_series[]" value="<?php echo (int) $term->term_id; ?>"
+                                   <?php checked( ! $own && in_array( (int) $term->term_id, $also_now, true ) ); ?> />
+                            <?php echo esc_html( $term->name ); ?>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+                <span class="uc-hint">Listed with those series' dates on their event pages. Its schedule and settings stay with its own series.</span>
+            </div>
             <?php else : ?>
             <h2 class="uc-bento-title">Language</h2>
             <?php endif; ?>
@@ -13926,6 +13972,21 @@ class SFAF_Portal {
                     </ul>
                 <?php endif; ?>
 
+                <?php
+                /*
+                 * EVENTS OF OTHER SERIES SHOWN IN THIS ONE (3.143.0), in a list
+                 * of their own so no schedule action here can reach them, each
+                 * tagged and naming the series it belongs to.
+                 */
+                $also_ids = SFAF_Series::also_events( $term_id, array( 'status' => SFAF_Series::editable_statuses(), 'limit' => -1 ) );
+                ?>
+                <?php if ( $also_ids ) : ?>
+                    <h4 class="uc-schedule-head">Also shown here</h4>
+                    <ul class="uc-schedule-list uc-schedule-also" data-uc-also-list>
+                        <?php foreach ( $also_ids as $eid ) : $this->render_also_row( $eid ); ?><?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+
                 <?php if ( ! empty( $past ) ) : ?>
                     <?php
                     /*
@@ -14652,6 +14713,40 @@ class SFAF_Portal {
                         <button type="submit" class="uc-link-danger uc-btn-sm"
                                 data-uc-confirm="Remove <?php echo esc_attr( '' !== $shown ? $shown : 'this date' ); ?> from the schedule?<?php echo $rsvps > 0 ? ' ' . (int) $rsvps . ' people have registered; their registrations are kept and stay in the RSVP list.' : ''; ?> Nothing puts it back.">Remove</button>
                     </form>
+                </span>
+            <?php endif; ?>
+        </li>
+        <?php
+    }
+
+    /**
+     * One event of another series shown in this one (3.143.0): its date,
+     * time and status, "also shown here" and its own series, and a pencil
+     * for anyone who may edit it. No Remove: this series' schedule is not
+     * where it is changed.
+     *
+     * @param int $eid
+     */
+    private function render_also_row( $eid ) {
+        $eid   = (int) $eid;
+        $date  = (string) get_post_meta( $eid, '_uc_event_date', true );
+        $shown = $date ? sfaf_ap_date( $date, 'full' ) : '';
+        $home  = SFAF_Series::name_for_event( $eid );
+        $post  = get_post( $eid );
+        $edit  = $post && $this->can_edit_event( wp_get_current_user(), $post );
+        ?>
+        <li class="uc-schedule-row" data-uc-also-row="<?php echo (int) $eid; ?>">
+            <span class="uc-schedule-date"><?php echo '' !== $shown ? esc_html( $shown ) : '<span class="uc-muted">No date</span>'; ?></span>
+            <span class="uc-schedule-time"><?php echo esc_html( get_the_title( $eid ) ); ?> &middot; <?php echo esc_html( SFAF_Recurrence::time_phrase( (string) get_post_meta( $eid, '_uc_start_time', true ), (string) get_post_meta( $eid, '_uc_end_time', true ) ) ); ?></span>
+            <span class="uc-schedule-meta">
+                <span class="uc-tag-also">also shown here</span>
+                <?php if ( '' !== $home ) : ?>&middot; in <?php echo esc_html( $home ); ?><?php else : ?>&middot; <span class="uc-muted">in no series</span><?php endif; ?>
+                &middot; <?php echo esc_html( sfaf_status_label( get_post_status( $eid ) ) ); ?>
+            </span>
+            <?php if ( $edit ) : ?>
+                <span class="uc-schedule-actions">
+                    <a class="uc-btn uc-btn-sm" href="<?php echo esc_url( $this->url( 'events/edit/' . $eid ) ); ?>"
+                       title="Edit this event" aria-label="Edit <?php echo esc_attr( get_the_title( $eid ) ); ?>"><?php echo sfaf_icon( 'pencil', array( 'size' => '15px' ) ); ?></a>
                 </span>
             <?php endif; ?>
         </li>

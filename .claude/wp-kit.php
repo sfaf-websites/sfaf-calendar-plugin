@@ -260,15 +260,25 @@ function kit_write_post( $arr ) {
 if ( ! function_exists( 'wp_trash_post' ) ) { function wp_trash_post( $id ) { $p = get_post( $id ); if ( ! $p ) { return false; } kit_write_post( array( 'ID' => (int) $id, 'post_status' => 'trash' ) ); return $p; } }
 function wp_insert_post( $arr, $err = false ) { return kit_write_post( $arr ); }
 function wp_update_post( $arr, $err = false ) { return kit_write_post( is_object( $arr ) ? (array) $arr : $arr ); }
+/* kit_multi_meta (3.143.0): keys a check names here keep one row per
+   add_post_meta(), as WordPress does. Off unless a check sets it. */
+function kit_multi( $k ) { return ! empty( $GLOBALS['kit_multi_meta'] ) && in_array( $k, (array) $GLOBALS['kit_multi_meta'], true ); }
 function get_post_meta( $id, $k = '', $s = false ) {
     $m = isset( $GLOBALS['kit_meta'][ (int) $id ] ) ? $GLOBALS['kit_meta'][ (int) $id ] : array();
     if ( '' === $k ) { return $m; }
     if ( ! array_key_exists( $k, $m ) ) { return $s ? '' : array(); }
+    if ( kit_multi( $k ) ) { $rows = array_values( (array) $m[ $k ] ); return $s ? ( $rows ? $rows[0] : '' ) : $rows; }
     return $s ? $m[ $k ] : array( $m[ $k ] );
 }
-function update_post_meta( $id, $k, $v, $prev = '' ) { $GLOBALS['kit_meta'][ (int) $id ][ $k ] = $v; return true; }
-function add_post_meta( $id, $k, $v, $u = false ) { if ( $u && isset( $GLOBALS['kit_meta'][ (int) $id ][ $k ] ) ) { return false; } $GLOBALS['kit_meta'][ (int) $id ][ $k ] = $v; return true; }
-function delete_post_meta( $id, $k, $v = '' ) { unset( $GLOBALS['kit_meta'][ (int) $id ][ $k ] ); return true; }
+function update_post_meta( $id, $k, $v, $prev = '' ) { $GLOBALS['kit_meta'][ (int) $id ][ $k ] = kit_multi( $k ) ? array( $v ) : $v; return true; }
+function add_post_meta( $id, $k, $v, $u = false ) { if ( $u && isset( $GLOBALS['kit_meta'][ (int) $id ][ $k ] ) ) { return false; } if ( kit_multi( $k ) ) { $GLOBALS['kit_meta'][ (int) $id ][ $k ][] = $v; return true; } $GLOBALS['kit_meta'][ (int) $id ][ $k ] = $v; return true; }
+function delete_post_meta( $id, $k, $v = '' ) {
+    if ( kit_multi( $k ) && '' !== $v && isset( $GLOBALS['kit_meta'][ (int) $id ][ $k ] ) ) {
+        $GLOBALS['kit_meta'][ (int) $id ][ $k ] = array_values( array_filter( (array) $GLOBALS['kit_meta'][ (int) $id ][ $k ], function ( $r ) use ( $v ) { return (string) $r !== (string) $v; } ) );
+        return true;
+    }
+    unset( $GLOBALS['kit_meta'][ (int) $id ][ $k ] ); return true;
+}
 function get_term_meta( $id, $k = '', $s = false ) { if ( isset( $GLOBALS['kit_term_meta'][ (int) $id ][ $k ] ) ) { $v = $GLOBALS['kit_term_meta'][ (int) $id ][ $k ]; return $s ? $v : array( $v ); } return $s ? '' : array(); }
 function update_term_meta( $id, $k, $v, $p = '' ) { $GLOBALS['kit_term_meta'][ (int) $id ][ $k ] = $v; return true; }
 function delete_term_meta( $id, $k, $v = '' ) { unset( $GLOBALS['kit_term_meta'][ (int) $id ][ $k ] ); return true; }
@@ -292,7 +302,8 @@ function wp_editor( $content, $id, $s = array() ) { echo '<textarea name="' . es
 function kit_fake_terms( $tax ) {
     if ( 'uc_organizer' === $tax && empty( $GLOBALS['kit_organizers'] ) ) { return array(); }
     $o = array();
-    foreach ( array( 11 => 'Alpha', 12 => 'Beta' ) as $id => $n ) {
+    // kit_more_terms (3.143.0): id => name, added by a check that needs more than two.
+    foreach ( array( 11 => 'Alpha', 12 => 'Beta' ) + ( isset( $GLOBALS['kit_more_terms'] ) ? (array) $GLOBALS['kit_more_terms'] : array() ) as $id => $n ) {
         $t = new WP_Term(); $t->term_id = $id; $t->term_taxonomy_id = $id; $t->name = $n; $t->slug = strtolower( $n ); $t->taxonomy = (string) $tax;
         if ( isset( $GLOBALS['kit_term_desc'][ $id ] ) && 'uc_series' === $tax ) { $t->description = $GLOBALS['kit_term_desc'][ $id ]; }
         $o[] = $t;

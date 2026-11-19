@@ -19,7 +19,8 @@
  *      except embed.js's EMBED_JS_VERSION line, and the caladmin files in
  *      CALADMIN_ONLY, which no public calendar page loads.
  *
- * BASE is the release compared against: 3.142.0's released commit, 5700728c, for 3.142.1
+ * BASE is the release compared against: 3.142.1's released commit, d4557692, for 3.143.0
+ * (3.142.0's, 5700728c, for 3.142.1)
  * (3.141.0's, 6fc367d9, for 3.142.0)
  * (3.140.1's, 706c360d, for 3.141.0)
  * (3.140.0's, 1da835af, for 3.140.1)
@@ -58,13 +59,14 @@
  * name, in ALLOWED or ALLOWED_FILES.
  */
 
-const BASE      = '5700728c';
-const BASE_NAME = '3.142.0';
+const BASE      = 'd4557692';
+const BASE_NAME = '3.142.1';
 
 /* Files under public/ and templates/ a release means to change, as path =>
    why. Probe A still compares every embed answer, so none of these can reach
    the embed unseen. */
 const ALLOWED_FILES = array(
+    // None in 3.143.0: the event page's series list is built in includes/, which probe A's answers do not reach; see the release's own check.
     // None in 3.142.1: its fix is WP admin's Closures and announcements screen.
     // 3.142.0 named public/css/calendar.css, public/js/calendar.js and public/js/embed.js, the announcements.
     // None in 3.141.0: portal.css and portal.js are caladmin's and the two forms', admin.css WP admin's.
