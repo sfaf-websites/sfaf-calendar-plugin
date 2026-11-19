@@ -45,7 +45,9 @@ $plants = array(
         array( $AD, "        \$image_new = false;\n        if ( ! empty( \$_FILES['ann_image'] )", "        if ( ! empty( \$_FILES['ann_image'] ) && UPLOAD_ERR_OK === (int) \$_FILES['ann_image']['error'] ) { \$this->announcement_store( 'ann_image', array( 'png' => 'image/png' ) ); }\n        \$image_new = false;\n        if ( ! empty( \$_FILES['ann_image'] )" ),
     ) ),
     'the embed changes' => array( $I, 'differs from 3.142.0', array(
-        array( $CS, ".uc-calendar .uc-ann-strip { display: block;", ".uc-calendar .uc-ann-strip { display: block; " ),
+        array( $CS, "@container uc-calendar (max-width: 560px) {
+    .uc-calendar td .uc-ann-bars { display: none; }", "@container uc-calendar (max-width: 560px) {
+    .uc-calendar td .uc-ann-bars { display: none;  }" ),
     ) ),
 );
 $missed = 0;
