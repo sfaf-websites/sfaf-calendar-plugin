@@ -34,7 +34,7 @@ $plants = array(
         array( $PO, "<label class=\"uc-check\" data-uc-chip-label=\"<?php echo esc_attr( \$term->name ); ?>\"<?php echo \$own ? ' hidden' : ''; ?>>", "<label class=\"uc-check\" data-uc-chip-label=\"<?php echo esc_attr( \$term->name ); ?>\">" ),
     ) ),
     'the picker does not follow Series' => array( $L, 'PLANT F:', array(
-        array( $PJ, "        select.addEventListener('change', sync);\n", '' ),
+        array( $PJ, "        select.addEventListener('change', sync);\n        sync();\n    }\n\n    function initCategoryChips() {", "        sync();\n    }\n\n    function initCategoryChips() {" ),
     ) ),
     'nothing extra on the event page' => array( $T, 'P: Alpha\'s dates are not its own and Beta night', array(
         array( $TF, "    \$also = array_values( array_diff( \$also, \$own ) );", "    \$also = array();" ),
