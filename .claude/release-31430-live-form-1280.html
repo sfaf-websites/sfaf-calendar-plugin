@@ -1,0 +1,92 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="../public/css/portal.css"></head><body class="uc-portal" style="margin:0"><div class="uc-portal-main"><div class="uc-portal-content"><div class="uc-bento"><div class="uc-bento-main">                <section class="uc-bento-card uc-series-first" data-uc-card="series">
+                        <h2 class="uc-bento-title">Series and language
+                <button type="button" class="uc-help-btn" data-uc-help-toggle aria-expanded="false" aria-controls="uc-help-series-504" aria-label="More about series">?</button><span class="uc-help-body" id="uc-help-series-504" data-uc-help-body>Add and remove repeating dates on the series schedule screen.</span>            </h2>
+
+            <label class="uc-field">
+                <span class="uc-field-label">Series</span>
+                <select name="series" data-uc-series-select>
+                    <option value="0">Not part of a series</option>
+                                            <option value="11" >
+                            Alpha                        </option>
+                                            <option value="12"  selected="selected">
+                            Beta                        </option>
+                                            <option value="13" >
+                            Gamma                        </option>
+                                    </select>
+            </label>
+
+                        <div class="uc-field uc-cat-field uc-also-field" data-uc-chips data-uc-also-series>
+                <span class="uc-field-label">Also show this event in series&hellip;</span>
+                <input type="hidden" name="uc_also_series_present" value="1" />
+                <div class="uc-chips" data-uc-chips-list hidden></div>
+                <p class="uc-chips-empty" data-uc-chips-empty hidden>Only in its own series.</p>
+                <div class="uc-chips-add" data-uc-chips-add hidden>
+                    <button type="button" class="uc-btn uc-btn-sm" data-uc-chips-toggle
+                            aria-expanded="false"><span>+ Add series</span>
+                        <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="14px" height="14px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span></button>
+                </div>
+                <div class="uc-check-grid uc-cat-grid" data-uc-chips-source>
+                                            <label class="uc-check" data-uc-chip-label="Alpha">
+                            <input type="checkbox" name="also_series[]" value="11"
+                                    checked="checked" />
+                            Alpha                        </label>
+                                            <label class="uc-check" data-uc-chip-label="Beta" hidden>
+                            <input type="checkbox" name="also_series[]" value="12"
+                                    />
+                            Beta                        </label>
+                                            <label class="uc-check" data-uc-chip-label="Gamma">
+                            <input type="checkbox" name="also_series[]" value="13"
+                                    />
+                            Gamma                        </label>
+                                    </div>
+                <span class="uc-hint">Listed with those series' dates on their event pages. Its schedule and settings stay with its own series.</span>
+            </div>
+            
+                        <label class="uc-field">
+                <span class="uc-field-label">Language</span>
+                <select name="event_language" data-uc-event-language
+                        data-uc-series-langs="{&quot;11&quot;:&quot;en&quot;,&quot;12&quot;:&quot;en&quot;,&quot;13&quot;:&quot;en&quot;}"
+                        >
+                                            <option value="en"  selected="selected">English</option>
+                                            <option value="es" >Spanish</option>
+                                    </select>
+                <span class="uc-hint">Emails to people who register go out in this language.</span>
+            </label>
+
+                                            <p class="uc-hint">Moving it changes only which series it is listed under.</p>
+                    </section>
+        </div></div></div></div><script src="../public/js/portal.js"></script><script>window.RL_PAGE="form-1280";(function () {
+var P = window.RL_PAGE, out = { page: P, errors: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function q(s, r) { return (r || document).querySelector(s); }
+function qa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function text(el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }
+function seen(el) { if (!el || el.closest('[hidden]') || !el.getClientRects().length) { return false; } var cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden'; }
+function inside(a, b) { var r = a.getBoundingClientRect(), c = b.getBoundingClientRect(); return r.left >= c.left - 0.5 && r.right <= c.right + 0.5 && r.right <= document.documentElement.clientWidth + 0.5; }
+function chips(root) { return qa('[data-uc-chips-list] .uc-chip-text', root).filter(seen).map(text); }
+function boxes(root) { return qa('[data-uc-chips-source] label', root).filter(seen).map(text); }
+function finish() { out.pageWidth = document.documentElement.scrollWidth; window.parent.postMessage(JSON.stringify(out), '*'); }
+window.addEventListener('load', function () { setTimeout(function () {
+  if (P.indexOf('event') === 0) {
+    var box = q('.uc-series-box');
+    out.heading = box ? text(q('.uc-series-heading', box)) : '';
+    out.items = qa('.uc-series-list li a', box || document).map(function (a) { return { title: text(q('.uc-series-title', a)), shown: seen(a), href: a.getAttribute('href'), inBox: !!box && inside(a, box) }; });
+  } else if (P.indexOf('form') === 0) {
+    var f = q('[data-uc-also-series]'), sel = q('[data-uc-series-select]');
+    out.label = f ? text(q('.uc-field-label', f)) : '';
+    out.under = !!(f && sel && (sel.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING));
+    out.before = { chips: chips(f), boxes: boxes(f) };
+    var t = q('[data-uc-chips-toggle]', f); if (t) { t.click(); }
+    out.open = { chips: chips(f), boxes: boxes(f), inCard: !!f && qa('[data-uc-chips-source] label', f).filter(seen).every(function (l) { return inside(l, f); }) };
+    sel.value = '11'; sel.dispatchEvent(new Event('change', { bubbles: true }));
+    out.moved = { chips: chips(f), boxes: boxes(f), alphaTicked: !!q('input[name="also_series[]"][value="11"]:checked', f) };
+  } else {
+    var heads = qa('h4.uc-schedule-head').map(text);
+    out.heads = heads;
+    out.rows = qa('[data-uc-also-row]').length;
+    var row = qa('[data-uc-also-row]').filter(function (r) { return /Beta night/.test(r.textContent); })[0], tag = row && q('.uc-tag-also', row), card = row && row.closest('.uc-card, .uc-bento-card, section');
+    out.row = row ? { text: text(row), shown: seen(row), tag: tag ? text(tag) : '', tagShown: seen(tag), ink: tag ? getComputedStyle(tag).color : '', fill: tag ? getComputedStyle(tag).backgroundColor : '', inCard: !!card && inside(row, card) } : null;
+  }
+  finish();
+}, 400); });
+})();</script></body></html>

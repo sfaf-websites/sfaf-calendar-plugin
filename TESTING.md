@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 444 items.** Quick 358, needs real conditions 81, blocked on other
+**Outstanding: 445 items.** Quick 359, needs real conditions 81, blocked on other
 people 5.
 
 ---
@@ -4817,6 +4817,21 @@ announcements afterwards.
 
 **Why it needs a person:** the real WordPress admin page with its own scripts,
 the site's real upload limits and its file-type reader.
+
+### 1.361 An event shown in a second series (3.143.0)
+
+In caladmin, open Edit event on a published upcoming event in one series. Under
+Series, "Also show this event in series…": press + Add series and check its own
+series is not offered; pick two others and save. Open the public page of an
+upcoming event in one of those two: under "Upcoming in this series" the event is
+listed with that series' dates, in date order. Open that series' page in
+caladmin: under Upcoming, "Also shown here" lists it with the teal "also shown
+here" tag and its own series' name, and no Remove. Then check the event's own
+page still shows its own series' picture, description and dates, and nothing
+from the other two. Untick both and save: it leaves both lists.
+
+**Why it needs a person:** the real database's meta query, the real event page
+in the site's theme, and a cached page clearing.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
