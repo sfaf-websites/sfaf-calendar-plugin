@@ -239,20 +239,31 @@ action is green now. The secondaries it made stay R.
 - **Yellow again in 3.137.0, as the screen's main action, Mark's call**: the
   Events list's Publish N drafts and Set team on N events, and Organizers' Add
   organizer. Put it back on and tell them has been yellow throughout.
-### Announcements: yellow ink on dark gray (3.142.0)
+### Announcements: Dark Gray words on Yellow's tint (3.143.1)
 
-**MARK'S BRIEF, 3.142.0.** An announcement is drawn as a bar of Dark Gray
-`#373433` with Yellow `#FFD900` words, **8.92:1**, the same pair as the
-dark-on-yellow rule above with the roles swapped. It is a highlight, not a
-button colour: where the bar opens a card it is a `<button>`, and the face it
-wears is still dark gray. Hover and the open state darken the face to `#24211F`.
+**MARK'S BRIEF, 3.143.1, replacing 3.142.0's dark gray bar with yellow
+words.** The fill is Yellow's own tint `#FFFAE0`, the edge 1px of Yellow's ink
+`#705F00`, the words Dark Gray `#373433`: all three are Yellow's approved stops
+(`sfaf_category_shades()`, measured by `palette-audit.php`). The words measure
+**11.76:1** on the fill and **11.52:1** on the hover and open fill `#FFF8D1`,
+Yellow's media stop; the edge measures **6.31:1** on a white cell. It is a
+highlight, not a button colour: where the bar opens a card it is a `<button>`,
+and its face is still the tint. The list banner, the sidebar's bar, the phone
+strip and the day panel's bar are the same bar and wear the same colours.
+
+**The cell's bar runs edge to edge**, over the cell's 5px padding, square, with
+4px sides and a 4px gap after the icon, so "Pride week" is one line in
+sfaf.org's 700px block.
+
+**An icon drawn for the dark bar may vanish on the tint.** Icons are shown as
+uploaded; a yellow or white one needs replacing (`TESTING.md` 1.363).
 
 | Where | Size | Height |
 |---|---|---|
-| month grid cell, under the day's number | 11px/700, a 14px icon | about 20px |
+| month grid cell, under the day's number, the cell's full width | 11px/700, a 14px icon | about 20px |
 | list banner, above the first event on or after its day | 13px/700, an 18px icon, the dates right | 32px, the list's width |
 | sidebar, today's only, above the rows | 12px/700, a 16px icon, the dates under | 28px |
-| phone-width cell (560px container, 640px viewport) | a 4px dark strip, no words | 4px |
+| phone-width cell (560px container, 640px viewport) | a strip: 4px of the tint inside the 1px edge, no words | 6px |
 | the day panel under a phone-width grid | as the list banner | 32px |
 
 The icon sits left of the title and carries no `alt`: the title beside it says
@@ -885,6 +896,16 @@ is a minimum width and a maximum count: two sub-columns wherever two will hold a
 name, one where they will not. `columns: 2` alone put no floor under the column
 at all, so the arithmetic could have become the cause even after the inherited
 rule stopped being it.
+
+**The month grid's titles hyphenate (3.143.1).** `.uc-day-event-title` declares
+`hyphens: auto` and each title carries its event's `lang` (`en` or `es`), so a
+word too long for its cell breaks at a syllable with a hyphen: "Transfor- /
+maciones" in sfaf.org's 700px block. `overflow-wrap: anywhere` stays as the
+fallback for a word with no dictionary. Two limits, both the browser's, measured
+in Chrome 158: **Chrome hyphenates nothing until it has fetched its dictionaries**
+(the `hyphen-data` component), and **it never hyphenates a capitalised English
+word**, so a Title Case English title still breaks anywhere. Spanish capitalised
+words do hyphenate. Every other list here keeps `hyphens: manual`.
 
 ### Coloured text is not separation; a band is (3.93.0)
 

@@ -3815,7 +3815,22 @@ id), private and hidden-cancelled ones out as everywhere public. Both "Upcoming 
 this series" and an ended event's dates use it, so an event of the extra series
 lists the event with its own dates. With nothing shown in a series it is
 exactly `sfaf_get_series_events( $term_id, true )`. The series archive
-(`taxonomy-uc_series.php`) and the embed list only a series' own events. On the
+(`taxonomy-uc_series.php`) and a block or embed scoped to a series (`series=`)
+list only a series' own events.
+
+**The calendar's series filter (3.143.1).** A visitor choosing a series (the
+groups, `uc_group` / `active_groups`) gets its own events and the events shown in
+it. `SFAF_Shortcodes::apply_groups()` is the one clause, used by both builders
+(`build_query_args()` and `month_grid_data()`): while no event is shown in any
+chosen series it is the slug taxonomy clause it always was; once one is, a term
+and a meta row cannot be ORed in one `WP_Query`, so it becomes `post__in`, every
+published event in those series plus `SFAF_Series::also_in()`, with the pins
+taken out by hand because `WP_Query` ignores `post__not_in` beside `post__in`.
+The rest of the query still applies to that list, which is what keeps the past,
+private, draft and hidden-cancelled ones out. The series offered
+(`available_groups()`) and their counts (`who_counts()`) include the series an
+event is also shown in, through `SFAF_Series::also_map()`, so a series reached
+only that way is offered and survives the clamp. On the
 caladmin series page "Also shown here" follows Upcoming in a list of its own, each
 row tagged and naming its own series, with no Remove, so no schedule action on
 this series reaches another series' event.

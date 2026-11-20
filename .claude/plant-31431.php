@@ -56,7 +56,14 @@ $plants = array(
     'the hover dark gray' => array( $T, "K: the bar's hover is not #FFF8D1", array(
         array( $CS, "    background: #FFF8D1; color: var(--uc-dark);\n}", "    background: #24211F; color: var(--uc-yellow);\n}" ),
     ) ),
+    /* Both copies: the 640px one also applies at 430 and 390 and comes later. */
     'the strip dark, in Chrome' => array( $L, 'PLANT A:', array(
+        array( $CS, "@container uc-calendar (max-width: 560px) {\n    .uc-calendar td .uc-ann-bars { display: none; }\n    .uc-calendar .uc-ann-strip { display: block; box-sizing: content-box; height: 4px; margin: 0 3px 3px; border: 1px solid #705F00; border-radius: 2px; background: #FFFAE0; }",
+            "@container uc-calendar (max-width: 560px) {\n    .uc-calendar td .uc-ann-bars { display: none; }\n    .uc-calendar .uc-ann-strip { display: block; height: 4px; margin: 0 3px 3px; border-radius: 2px; background: var(--uc-dark); }" ),
+        array( $CS, "@media (max-width: 640px) {\n    .uc-calendar td .uc-ann-bars { display: none; }\n    .uc-calendar .uc-ann-strip { display: block; box-sizing: content-box; height: 4px; margin: 0 3px 3px; border: 1px solid #705F00; border-radius: 2px; background: #FFFAE0; }",
+            "@media (max-width: 640px) {\n    .uc-calendar td .uc-ann-bars { display: none; }\n    .uc-calendar .uc-ann-strip { display: block; height: 4px; margin: 0 3px 3px; border-radius: 2px; background: var(--uc-dark); }" ),
+    ) ),
+    'one strip copy dark' => array( $T, "K: 1 of the strip's two copies", array(
         array( $CS, "@container uc-calendar (max-width: 560px) {\n    .uc-calendar td .uc-ann-bars { display: none; }\n    .uc-calendar .uc-ann-strip { display: block; box-sizing: content-box; height: 4px; margin: 0 3px 3px; border: 1px solid #705F00; border-radius: 2px; background: #FFFAE0; }",
             "@container uc-calendar (max-width: 560px) {\n    .uc-calendar td .uc-ann-bars { display: none; }\n    .uc-calendar .uc-ann-strip { display: block; height: 4px; margin: 0 3px 3px; border-radius: 2px; background: var(--uc-dark); }" ),
     ) ),

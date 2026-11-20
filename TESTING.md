@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 445 items.** Quick 359, needs real conditions 81, blocked on other
+**Outstanding: 448 items.** Quick 362, needs real conditions 81, blocked on other
 people 5.
 
 ---
@@ -4832,6 +4832,49 @@ from the other two. Untick both and save: it leaves both lists.
 
 **Why it needs a person:** the real database's meta query, the real event page
 in the site's theme, and a cached page clearing.
+
+### 1.362 Choosing a series on the calendar lists the events also shown in it (3.143.1)
+
+Use the event from 1.361, or set an upcoming published Cycle to Zero event to
+also show in World AIDS Day. On sfaf.org/calendar, open Organizers and groups and
+tick World AIDS Day: the month grid and the list show World AIDS Day's own
+events and that Cycle to Zero event. Its count beside World AIDS Day includes it.
+Then tick Cycle to Zero instead: the event is there, World AIDS Day's own events
+are not. Make the event private (or hide it as cancelled) and reload with World
+AIDS Day ticked: it is gone. A block or embed scoped to one series is unchanged:
+it still lists that series' own events only.
+
+**Why it needs a person:** the real database's taxonomy and meta queries, the
+real embed on sfaf.org, and LiteSpeed's cache clearing.
+
+### 1.363 The announcement bar's new colors, with the real icons (3.143.1)
+
+On sfaf.org/calendar, with an announcement on a day this month: the bar under
+the day's number is pale yellow with a thin darker yellow edge and dark gray
+words, and runs from the cell's left edge to its right; a short title is on one
+line. The list's banner and, on a phone, the strip under the date are the same
+colors. **Look at each announcement's icon**: icons are shown as uploaded, and
+one drawn in yellow or white for the old dark bar will be faint or invisible on
+the pale fill. Replace any that are. WP admin's Closures and announcements
+screen still previews each icon on a dark gray square; that preview was not
+changed.
+
+**Why it needs a person:** the real icons Mark uploaded, and the real host page.
+
+### 1.364 A long Spanish title breaks at a syllable (3.143.1)
+
+Give a Spanish event (its own Language, or its series') a title with a long
+word, such as "Transformaciones", on a day this month. On sfaf.org/calendar at
+a desktop width, in Chrome, Safari and Firefox: where the word does not fit its
+day, it breaks with a hyphen at a syllable ("Transfor- / maciones" or
+"Transforma- / ciones"), never mid-syllable. An English title with a long
+capitalised word still breaks without a hyphen in Chrome: that is Chrome's own
+rule for English, measured here, not a fault. Note what Safari and Firefox do
+with it.
+
+**Why it needs a person:** each browser's own hyphenation dictionaries; Chrome
+hyphenates nothing until it has downloaded them, which the build machine's
+headless Chrome only does with a copied profile.
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event

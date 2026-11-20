@@ -531,6 +531,15 @@ restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
 
+= 3.143.1 =
+
+**The series filter, the announcement colors and the grid's hyphens.** An embed change. Against 3.143.0, embed-identity-test.php finds two differences and no others: calendar.css, and every month grid title carrying its event's language (lang="en" or lang="es").
+
+* **Choosing a series on the calendar** also lists the events added to it with "Also show this event in series…", in the month grid, the list and the day panel, as "Upcoming in this series" does. Private, draft, hidden cancelled and past events stay out, as elsewhere. A series reached only that way is offered, and its count includes them. A block or embed scoped to one series is unchanged.
+* **The announcement bar** is Yellow's tint #FFFAE0 under a 1px edge of Yellow's ink #705F00, with Dark Gray #373433 words (11.76:1); hover #FFF8D1 (11.52:1). The list banner, the sidebar's bar, the phone strip and the day panel's bar are the same colors. The phone strip is 6px: 4px of fill inside the edge.
+* **The bar in a day cell runs the cell's full width**, square, with 4px sides, so a short title is on one line in a 700px block.
+* **Long titles in the month grid break at a syllable with a hyphen**, in the event's language. Chrome does this for Spanish; it never hyphenates a capitalized English word, so those still break without one.
+
 = 3.143.0 =
 
 **Also show this event in series.** Treated as an embed change because it reaches the public event page. The embed's answers, headers and public files are 3.142.1's, proved by embed-identity-test.php; the event page's series list is the one thing that differs, and only for a series some event is also shown in.
