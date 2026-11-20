@@ -562,6 +562,9 @@ class SFAF_Series {
         return $id ? self::get( $id ) : null;
     }
 
+    /** No event in this world is also shown in another series (3.143.0). */
+    public static function also_for_event( $post_id ) { return array(); }
+
     public static function id_for_event( $post_id ) {
         $t = self::for_event( $post_id );
         return $t ? (int) $t->term_id : 0;

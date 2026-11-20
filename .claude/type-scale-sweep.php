@@ -84,6 +84,7 @@ $exempt = array(
 	'uc-rchip'            => 'a chip',
 	'uc-email-pill'       => 'a pill',
 	'uc-tag-extra'        => 'a tag',
+	'uc-tag-also'         => 'a tag',
 	'uc-img-source-tag'   => 'a tag',
 	'uc-count-badge'      => 'a badge',
 	'uc-source-badge'     => 'a badge',

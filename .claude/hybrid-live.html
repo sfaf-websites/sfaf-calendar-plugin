@@ -190,6 +190,7 @@ function ucDismissOnBackdrop(dialog) {
         // to update twelve events should never then be asked about a missing
         // image on an event they have just decided not to save.
         run('helpToggles', initHelpToggles);
+        run('alsoSeries', initAlsoSeries);
         run('categoryChips', initCategoryChips);
         run('recurrence', initRecurrence);
         // After recurrence, which publishes the dates this names.
@@ -2844,6 +2845,34 @@ function ucDismissOnBackdrop(dialog) {
      * checkbox and its × unticks the checkbox. There is no second list to fall
      * out of step with the first.
      * ------------------------------------------------------------------- */
+    /**
+     * ALSO SHOW THIS EVENT IN SERIES (3.143.0). The event's own series cannot
+     * be one of its extra ones: its checkbox is hidden and unticked whenever
+     * the Series select names it, before the chips are drawn and on every
+     * change after. The save drops it too.
+     */
+    function initAlsoSeries() {
+        var root = document.querySelector('[data-uc-also-series]');
+        var select = document.querySelector('[data-uc-series-select]');
+        if (!root || !select) {
+            return;
+        }
+        function sync() {
+            var own = String(select.value);
+            root.querySelectorAll('input[name="also_series[]"]').forEach(function (box) {
+                var label = box.closest('label');
+                var mine = (box.value === own);
+                if (label) { label.hidden = mine; }
+                if (mine && box.checked) {
+                    box.checked = false;
+                    box.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+        select.addEventListener('change', sync);
+        sync();
+    }
+
     function initCategoryChips() {
         document.querySelectorAll('[data-uc-chips]').forEach(function (root) {
             var source = root.querySelector('[data-uc-chips-source]');

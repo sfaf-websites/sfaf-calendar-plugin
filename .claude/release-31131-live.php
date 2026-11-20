@@ -87,7 +87,7 @@ wait(50, function () {
   wait(80, function () {
     if (sum) { sum.click(); out.fold.closed = state(sum, function (o) { o.open = fold.open; o.list = listSeen(); }); }
     var togs = Array.prototype.slice.call(document.querySelectorAll('[data-uc-chips-toggle]'));
-    out.buttonCount = togs.length;
+    out.buttonCount = togs.filter(function (b) { var t = b.textContent.replace(/\s+/g, ' ').trim(); return t === '+ Add category' || t === '+ Add organizer'; }).length;
     (function next(i) {
       if (i >= togs.length) { wait(50, finish); return; }
       var b = togs[i], name = b.textContent.replace(/\s+/g, ' ').trim(), src = b.closest('[data-uc-chips]').querySelector('[data-uc-chips-source]');
@@ -152,7 +152,7 @@ foreach ( $g as $name => $r ) {
         foreach ( (array) $r['buttons'] as $n => $b ) { rl( ! $b['shown'], "$name: with no script, $n shows, though the list is already open" ); }
         continue;
     }
-    rl( 2 === (int) $r['buttonCount'], "$name: " . (int) $r['buttonCount'] . ' add buttons, not two' );
+    rl( 2 === (int) $r['buttonCount'], "$name: " . (int) $r['buttonCount'] . ' category and organizer add buttons, not two' );
     foreach ( array( '+ Add category', '+ Add organizer' ) as $n ) {
         $b = isset( $r['buttons'][ $n ] ) ? $r['buttons'][ $n ] : null;
         if ( ! $b || ! $b['shown'] ) { rl( false, "$name: $n is not on the page" ); continue; }
