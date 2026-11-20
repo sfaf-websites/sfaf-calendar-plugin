@@ -5389,9 +5389,10 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
 }
 
 /* THE CELL'S BAR RUNS EDGE TO EDGE (3.143.1), over the td's 5px padding, so
-   a title has the cell's whole width. Square, against the cell's own edges. */
+   a title has the cell's whole width, and 4px sides and gap, so "Pride week"
+   is one line in sfaf.org's 700px block. Square, against the cell's edges. */
 .uc-calendar td .uc-ann-bars { margin: 0 -5px 4px; }
-.uc-calendar td .uc-ann-bar { border-radius: 0; padding-left: 5px; padding-right: 5px; }
+.uc-calendar td .uc-ann-bar { gap: 4px; border-radius: 0; padding-left: 4px; padding-right: 4px; }
 
 /* The list banner: the same bar at a reading size, spaced like a card. */
 .uc-calendar .uc-ann-banner { min-height: 32px; margin: 0 0 12px; padding: 6px 12px; gap: 8px; border-radius: 8px; font-size: 13px; }

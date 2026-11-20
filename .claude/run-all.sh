@@ -268,6 +268,9 @@ for f in .claude/*.php; do
     release-31430-live.php) continue ;;  # run below with --run
     plant-31430.php) continue ;;       # a fault planter for the 3.143.0 checks, run with the release, and it drives Chrome
     series-query-kit.php) continue ;;  # loaded by the 3.143.0 checks, not a check
+    release-31431-live.php) continue ;;  # run below with --run
+    plant-31431.php) continue ;;       # a fault planter for the 3.143.1 checks, run with the release, and it drives Chrome
+    series-filter-kit.php) continue ;;  # loaded by the 3.143.1 checks, not a check
     release-31390-live.php) continue ;;  # run below with --run
     plant-31390.php) continue ;;       # a fault planter for the 3.139.0 check, run with the release, and it drives Chrome
     release-31380-live.php) continue ;;  # run below with --run
@@ -606,6 +609,7 @@ run "release-31410-live --run" php .claude/release-31410-live.php --run
 run "release-31420-live --run" php .claude/release-31420-live.php --run
 run "release-31421-live --run" php .claude/release-31421-live.php --run
 run "release-31430-live --run" php .claude/release-31430-live.php --run
+run "release-31431-live --run" php .claude/release-31431-live.php --run
 # The embed in its shadow root under a hostile host stylesheet, and the combined
 # sidebar ending at its content (3.111.0 J and K), at 1280px and 390px.
 run "embed-isolation-live --run" php .claude/embed-isolation-live.php --run

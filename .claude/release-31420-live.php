@@ -16,8 +16,8 @@
  * 390):
  *
  *   month    the Pride week bar on today's cell, right under the number, icon
- *            left of the title, dark gray #373433 with yellow #FFD900 ink, inside
- *            its cell; at 430 and 390 the cell draws the strip instead and the
+ *            left of the title, #FFFAE0 with Dark Gray #373433 words (3.143.1;
+ *            dark gray with yellow ink until then), inside its cell; at 430 and 390 the cell draws the strip instead and the
  *            day panel carries the bar. A click opens the card with the picture,
  *            the description and the link, inside the viewport; a second click,
  *            Escape and a click elsewhere close it. From the keyboard the link
@@ -269,7 +269,8 @@ if ( ! in_array( '--run', $args, true ) ) { echo 'wrote ' . count( $files ) . " 
 $chrome = getenv( 'SFAF_CHROME' ) ?: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 if ( ! file_exists( $chrome ) ) { echo "Chrome not found at $chrome\n"; exit( 1 ); }
 
-$DARK = 'rgb(55, 52, 51)'; $YELLOW = 'rgb(255, 217, 0)';
+/* 3.143.1: Yellow's tint with Dark Gray words, no longer dark gray with yellow. */
+$DARK = 'rgb(55, 52, 51)'; $FILL = 'rgb(255, 250, 224)';
 $no_fonts = ' --host-resolver-rules="MAP fonts.googleapis.com ~NOTFOUND"';
 foreach ( $files as $name => $file ) {
     $p   = $pages[ $name ];
@@ -283,10 +284,10 @@ foreach ( $files as $name => $file ) {
     rl( (int) $r['pageWidth'] <= $w, "$name: the page scrolls sideways, " . $r['pageWidth'] . "px in $w" );
     if ( 'shadow' === $p['mode'] ) { rl( ! empty( $r['shadow'] ), "$name: the embed did not draw into its shadow root" ); }
     $phone = $w < 600;
-    $look = function ( $b, $what ) use ( $name, $DARK, $YELLOW ) {
+    $look = function ( $b, $what ) use ( $name, $DARK, $FILL ) {
         rl( is_array( $b ) && $b['seen'], "PLANT B: $name: $what is not on screen" );
         if ( ! is_array( $b ) || ! $b['seen'] ) { return; }
-        rl( $DARK === $b['bg'] && $YELLOW === $b['ink'] && $YELLOW === $b['titleInk'], "PLANT B: $name: $what is " . $b['bg'] . ' with ' . $b['ink'] . " ink, not #373433 with #FFD900" );
+        rl( $FILL === $b['bg'] && $DARK === $b['ink'] && $DARK === $b['titleInk'], "PLANT B: $name: $what is " . $b['bg'] . ' with ' . $b['ink'] . " ink, not #FFFAE0 with #373433" );
         rl( $b['contrast'] >= 4.5, "$name: $what measures " . $b['contrast'] . ':1' );
         rl( $b['icon'] && $b['icon']['seen'] && $b['icon']['r']['right'] <= $b['titleR']['left'] && $b['icon']['r']['w'] >= 12, "$name: $what does not draw its icon left of the title: " . json_encode( $b['icon'] ) );
         rl( 'Pride week' === $b['title'], "$name: $what reads " . json_encode( $b['title'] ) );
@@ -295,7 +296,7 @@ foreach ( $files as $name => $file ) {
         rl( false === strpos( (string) $r['cellClass'], 'uc-day-closed' ) && false !== strpos( (string) $r['cellClass'], 'uc-day-ann' ), "$name: today's cell is " . $r['cellClass'] );
         if ( $phone ) {
             rl( ! $r['cellBar']['seen'], "$name: the cell still draws the bar at $w" );
-            rl( $r['strip'] && $r['strip']['seen'] && $DARK === $r['strip']['bg'] && $r['strip']['r']['h'] >= 3, "PLANT B: $name: the cell draws no dark strip at $w: " . json_encode( $r['strip'] ) );
+            rl( $r['strip'] && $r['strip']['seen'] && $FILL === $r['strip']['bg'] && $r['strip']['r']['h'] >= 3, "PLANT B: $name: the cell draws no #FFFAE0 strip at $w: " . json_encode( $r['strip'] ) );
             $look( $r['panelBar'], 'the bar in the day panel' );
             rl( (bool) preg_match( '/20[0-9][0-9]$/', (string) $r['panelTitle'] ), "$name: the day panel's heading is not the date: " . json_encode( $r['panelTitle'] ) );
             rl( $r['panelBar'] && $r['panelBar']['r']['h'] >= 28, "$name: the day panel's bar is " . ( $r['panelBar'] ? $r['panelBar']['r']['h'] : 0 ) . 'px tall, under a tap target' );
