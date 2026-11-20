@@ -580,7 +580,7 @@ class SFAF_Shortcodes {
             $args['tax_query'][] = $tax;
             return;
         }
-        $own = new WP_Query( array(
+        $own_query = array(
             'post_type'              => 'uc_event',
             'post_status'            => 'publish',
             'posts_per_page'         => -1,
@@ -589,7 +589,10 @@ class SFAF_Shortcodes {
             'update_post_meta_cache' => false,
             'update_post_term_cache' => false,
             'tax_query'              => array( $tax ),
-        ) );
+        );
+        SFAF_Privacy::exclude( $own_query );
+        SFAF_Cancellation::exclude( $own_query );
+        $own = new WP_Query( $own_query );
         $ids = array_unique( array_merge( array_map( 'intval', (array) $own->posts ), $also ) );
         // WP_Query ignores post__not_in beside post__in, so the pins come out here.
         if ( ! empty( $args['post__not_in'] ) ) {

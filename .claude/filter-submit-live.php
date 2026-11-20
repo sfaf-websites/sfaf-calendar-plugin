@@ -280,6 +280,10 @@ class SFAF_Series {
 	public static function url( $series_id ) { return ''; }
 	public static function events( $series_id, $args = array() ) { return array(); }
 	public static function resolve( $raw ) { return 0; }
+	// 3.143.1: the series filter's two reads and the term lookup; nothing is shown in another series here.
+	public static function also_in( $ids ) { return array(); }
+	public static function also_map( $ids ) { return array(); }
+	public static function get( $id ) { return null; }
 }
 class SFAF_Categories {
 	public static function icon( $term_id, $name = '' ) { return 'calendar'; }

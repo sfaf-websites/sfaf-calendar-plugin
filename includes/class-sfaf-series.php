@@ -415,7 +415,7 @@ class SFAF_Series {
         if ( ! $term_ids ) {
             return array();
         }
-        $q = new WP_Query( array(
+        $query = array(
             'post_type'              => 'uc_event',
             'post_status'            => array( 'publish' ),
             'posts_per_page'         => -1,
@@ -426,7 +426,11 @@ class SFAF_Series {
             'meta_query'             => array(
                 array( 'key' => self::META_ALSO, 'value' => array_map( 'strval', $term_ids ), 'compare' => 'IN' ),
             ),
-        ) );
+        );
+        // Public by construction, as well as by the caller's own query.
+        SFAF_Privacy::exclude( $query );
+        SFAF_Cancellation::exclude( $query );
+        $q = new WP_Query( $query );
         return array_values( array_unique( array_map( 'intval', $q->posts ) ) );
     }
 
@@ -443,9 +447,9 @@ class SFAF_Series {
         if ( ! $ids ) {
             return array();
         }
-        $q = new WP_Query( array(
+        $query = array(
             'post_type'              => 'uc_event',
-            'post_status'            => 'any',
+            'post_status'            => array( 'publish' ),
             'post__in'               => $ids,
             'posts_per_page'         => -1,
             'fields'                 => 'ids',
@@ -454,7 +458,10 @@ class SFAF_Series {
             'meta_query'             => array(
                 array( 'key' => self::META_ALSO, 'compare' => 'EXISTS' ),
             ),
-        ) );
+        );
+        // Its answer reaches the public filter, so a private event offers nothing.
+        SFAF_Privacy::exclude( $query );
+        $q = new WP_Query( $query );
         $out = array();
         foreach ( (array) $q->posts as $id ) {
             $id   = (int) $id;
