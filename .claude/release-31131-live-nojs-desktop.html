@@ -421,13 +421,13 @@
                         </label>
                                             <label class="uc-day">
                             <input type="checkbox" name="repeat_days[]" value="4"
-                                    checked="checked" data-uc-repeat-day />
+                                    data-uc-repeat-day />
                             <span aria-hidden="true">T</span>
                             <span class="uc-visually-hidden">Thursday</span>
                         </label>
                                             <label class="uc-day">
                             <input type="checkbox" name="repeat_days[]" value="5"
-                                    data-uc-repeat-day />
+                                    checked="checked" data-uc-repeat-day />
                             <span aria-hidden="true">F</span>
                             <span class="uc-visually-hidden">Friday</span>
                         </label>
@@ -463,8 +463,8 @@
                                                     <option value="1" >Monday</option>
                                                     <option value="2" >Tuesday</option>
                                                     <option value="3" >Wednesday</option>
-                                                    <option value="4"  selected="selected">Thursday</option>
-                                                    <option value="5" >Friday</option>
+                                                    <option value="4" >Thursday</option>
+                                                    <option value="5"  selected="selected">Friday</option>
                                                     <option value="6" >Saturday</option>
                                             </select>
                     <span>of each month</span>
@@ -1392,7 +1392,7 @@ wait(50, function () {
   wait(80, function () {
     if (sum) { sum.click(); out.fold.closed = state(sum, function (o) { o.open = fold.open; o.list = listSeen(); }); }
     var togs = Array.prototype.slice.call(document.querySelectorAll('[data-uc-chips-toggle]'));
-    out.buttonCount = togs.length;
+    out.buttonCount = togs.filter(function (b) { var t = b.textContent.replace(/\s+/g, ' ').trim(); return t === '+ Add category' || t === '+ Add organizer'; }).length;
     (function next(i) {
       if (i >= togs.length) { wait(50, finish); return; }
       var b = togs[i], name = b.textContent.replace(/\s+/g, ' ').trim(), src = b.closest('[data-uc-chips]').querySelector('[data-uc-chips-source]');
