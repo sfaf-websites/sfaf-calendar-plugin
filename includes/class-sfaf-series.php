@@ -402,6 +402,71 @@ class SFAF_Series {
     }
 
     /**
+     * The published events shown in any of these series through "Also show
+     * this event in series" (3.143.1), for the calendar's series filter. Ids
+     * only: the calendar's own query, which these are handed to, keeps out
+     * the past, private and hidden cancelled ones.
+     *
+     * @param int[] $term_ids
+     * @return int[]
+     */
+    public static function also_in( $term_ids ) {
+        $term_ids = array_values( array_unique( array_filter( array_map( 'intval', (array) $term_ids ) ) ) );
+        if ( ! $term_ids ) {
+            return array();
+        }
+        $q = new WP_Query( array(
+            'post_type'              => 'uc_event',
+            'post_status'            => array( 'publish' ),
+            'posts_per_page'         => -1,
+            'fields'                 => 'ids',
+            'no_found_rows'          => true,
+            'update_post_meta_cache' => false,
+            'update_post_term_cache' => false,
+            'meta_query'             => array(
+                array( 'key' => self::META_ALSO, 'value' => array_map( 'strval', $term_ids ), 'compare' => 'IN' ),
+            ),
+        ) );
+        return array_values( array_unique( array_map( 'intval', $q->posts ) ) );
+    }
+
+    /**
+     * The extra series of each of these events that has any (3.143.1), as
+     * event id => series ids, for the calendar's list of series to offer.
+     * One query finds the few events with a row; only those are read.
+     *
+     * @param int[] $ids
+     * @return array<int,int[]>
+     */
+    public static function also_map( $ids ) {
+        $ids = array_values( array_unique( array_filter( array_map( 'intval', (array) $ids ) ) ) );
+        if ( ! $ids ) {
+            return array();
+        }
+        $q = new WP_Query( array(
+            'post_type'              => 'uc_event',
+            'post_status'            => 'any',
+            'post__in'               => $ids,
+            'posts_per_page'         => -1,
+            'fields'                 => 'ids',
+            'no_found_rows'          => true,
+            'update_post_term_cache' => false,
+            'meta_query'             => array(
+                array( 'key' => self::META_ALSO, 'compare' => 'EXISTS' ),
+            ),
+        ) );
+        $out = array();
+        foreach ( (array) $q->posts as $id ) {
+            $id   = (int) $id;
+            $also = in_array( $id, $ids, true ) ? self::also_for_event( $id ) : array();
+            if ( $also ) {
+                $out[ $id ] = $also;
+            }
+        }
+        return $out;
+    }
+
+    /**
      * The series name for an event, or ''.
      *
      * @param int $post_id

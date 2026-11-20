@@ -537,14 +537,69 @@ class SFAF_Shortcodes {
          * groups this block actually contains. See effective_groups().
          */
         if ( '' !== $filters['groups'] ) {
-            $args['tax_query'][] = array(
-                'taxonomy' => SFAF_Series::TAXONOMY,
-                'field'    => 'slug',
-                'terms'    => explode( ',', $filters['groups'] ),
-            );
+            $this->apply_groups( $args, $filters['groups'] );
         }
 
         return $args;
+    }
+
+    /**
+     * The groups a visitor chose, as a clause on $args (3.143.1).
+     *
+     * An event is in a chosen series by its own series or through "Also show
+     * this event in series". While no event is shown that way in any of them,
+     * this is the taxonomy clause it always was. When some are, a taxonomy and
+     * a meta row cannot be ORed in one WP_Query, so the clause becomes a list
+     * of ids: every published event in those series and every one shown in
+     * them. Everything else on $args still applies to that list, so the past,
+     * private and hidden cancelled ones stay out, as in "Upcoming in this
+     * series".
+     *
+     * @param array  $args   WP_Query args, changed in place.
+     * @param string $groups Slug list, already clamped.
+     */
+    private function apply_groups( &$args, $groups ) {
+        $slugs = array_values( array_filter( explode( ',', (string) $groups ) ) );
+        if ( ! $slugs ) {
+            return;
+        }
+        $tax      = array(
+            'taxonomy' => SFAF_Series::TAXONOMY,
+            'field'    => 'slug',
+            'terms'    => $slugs,
+        );
+        $term_ids = array();
+        foreach ( $slugs as $slug ) {
+            $term = get_term_by( 'slug', $slug, SFAF_Series::TAXONOMY );
+            if ( $term && ! is_wp_error( $term ) ) {
+                $term_ids[] = (int) $term->term_id;
+            }
+        }
+        $also = SFAF_Series::also_in( $term_ids );
+        if ( ! $also ) {
+            $args['tax_query'][] = $tax;
+            return;
+        }
+        $own = new WP_Query( array(
+            'post_type'              => 'uc_event',
+            'post_status'            => 'publish',
+            'posts_per_page'         => -1,
+            'fields'                 => 'ids',
+            'no_found_rows'          => true,
+            'update_post_meta_cache' => false,
+            'update_post_term_cache' => false,
+            'tax_query'              => array( $tax ),
+        ) );
+        $ids = array_unique( array_merge( array_map( 'intval', (array) $own->posts ), $also ) );
+        // WP_Query ignores post__not_in beside post__in, so the pins come out here.
+        if ( ! empty( $args['post__not_in'] ) ) {
+            $ids = array_diff( $ids, array_map( 'intval', (array) $args['post__not_in'] ) );
+            unset( $args['post__not_in'] );
+        }
+        if ( ! empty( $args['post__in'] ) ) {
+            $ids = array_intersect( $ids, array_map( 'intval', (array) $args['post__in'] ) );
+        }
+        $args['post__in'] = $ids ? array_values( $ids ) : array( 0 );
     }
 
     /* ---------------------------------------------------------------------
@@ -624,14 +679,29 @@ class SFAF_Shortcodes {
             'orderby'    => 'name',
             'order'      => 'ASC',
         ) );
-        if ( is_wp_error( $terms ) || empty( $terms ) ) {
-            return array();
+        if ( is_wp_error( $terms ) ) {
+            $terms = array();
         }
 
         // object_ids can return the same term once per object it is on.
         $unique = array();
-        foreach ( $terms as $term ) {
+        foreach ( (array) $terms as $term ) {
             $unique[ (int) $term->term_id ] = $term;
+        }
+        // And the series these events are also shown in (3.143.1), which
+        // choosing lists them under.
+        foreach ( SFAF_Series::also_map( $q->posts ) as $also ) {
+            foreach ( $also as $term_id ) {
+                if ( ! isset( $unique[ $term_id ] ) ) {
+                    $term = SFAF_Series::get( $term_id );
+                    if ( $term ) {
+                        $unique[ $term_id ] = $term;
+                    }
+                }
+            }
+        }
+        if ( empty( $unique ) ) {
+            return array();
         }
         $terms = array_values( $unique );
         usort( $terms, function ( $a, $b ) {
@@ -1073,11 +1143,7 @@ class SFAF_Shortcodes {
         // The chosen groups, so the grid cannot contradict the list beside it.
         // Already clamped by whoever built these filters.
         if ( ! empty( $filters['groups'] ) ) {
-            $args['tax_query'][] = array(
-                'taxonomy' => SFAF_Series::TAXONOMY,
-                'field'    => 'slug',
-                'terms'    => explode( ',', $filters['groups'] ),
-            );
+            $this->apply_groups( $args, $filters['groups'] );
         }
 
         $query  = new WP_Query( $args );
@@ -1703,7 +1769,7 @@ class SFAF_Shortcodes {
                                                         <?php if ( $ev_off ) : ?>
                                                             <span class="uc-day-event-off">Cancelled</span>
                                                         <?php endif; ?>
-                                                        <span class="uc-day-event-title"><?php echo esc_html( get_the_title( $id ) ); ?></span>
+                                                        <span class="uc-day-event-title" lang="<?php echo esc_attr( sfaf_event_language( $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ); ?></span>
                                                         <?php if ( '' !== $start ) : ?>
                                                             <span class="uc-day-event-time"><?php echo esc_html( sfaf_ap_time( $start ) ); ?></span>
                                                         <?php endif; ?>
@@ -2245,6 +2311,16 @@ class SFAF_Shortcodes {
                 $org_of[ $eid ][] = $row->slug;
             } elseif ( SFAF_Series::TAXONOMY === $row->taxonomy ) {
                 $group_of[ $eid ][] = $row->slug;
+            }
+        }
+        /* An event counts in the series it is also shown in (3.143.1), as
+         * choosing that series lists it. */
+        foreach ( SFAF_Series::also_map( $ids ) as $eid => $also ) {
+            foreach ( $also as $term_id ) {
+                $term = SFAF_Series::get( $term_id );
+                if ( $term && ! in_array( $term->slug, isset( $group_of[ $eid ] ) ? $group_of[ $eid ] : array(), true ) ) {
+                    $group_of[ $eid ][] = $term->slug;
+                }
             }
         }
 

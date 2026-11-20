@@ -27,6 +27,9 @@ function at_clause( $id, $c ) {
                 case '!=':     if ( $r !== (string) $v ) { return true; } break;
                 case '>=':     if ( $r >= (string) $v ) { return true; } break;
                 case '<':      if ( $r < (string) $v ) { return true; } break;
+                case '<=':     if ( $r <= (string) $v ) { return true; } break;
+                case '>':      if ( $r > (string) $v ) { return true; } break;
+                case 'BETWEEN': $v = (array) $v; if ( $r >= (string) $v[0] && $r <= (string) $v[1] ) { return true; } break;
                 case 'IN':     if ( in_array( $r, array_map( 'strval', (array) $v ), true ) ) { return true; } break;
                 case 'NOT IN': if ( ! in_array( $r, array_map( 'strval', (array) $v ), true ) ) { return true; } break;
             }

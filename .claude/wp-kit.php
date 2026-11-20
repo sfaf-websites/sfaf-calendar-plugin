@@ -304,7 +304,8 @@ function kit_fake_terms( $tax ) {
     $o = array();
     // kit_more_terms (3.143.0): id => name, added by a check that needs more than two.
     foreach ( array( 11 => 'Alpha', 12 => 'Beta' ) + ( isset( $GLOBALS['kit_more_terms'] ) ? (array) $GLOBALS['kit_more_terms'] : array() ) as $id => $n ) {
-        $t = new WP_Term(); $t->term_id = $id; $t->term_taxonomy_id = $id; $t->name = $n; $t->slug = strtolower( $n ); $t->taxonomy = (string) $tax;
+        // kit_term_slugs (3.143.1): id => slug, for a name with spaces in it.
+        $t = new WP_Term(); $t->term_id = $id; $t->term_taxonomy_id = $id; $t->name = $n; $t->slug = isset( $GLOBALS['kit_term_slugs'][ $id ] ) ? $GLOBALS['kit_term_slugs'][ $id ] : strtolower( $n ); $t->taxonomy = (string) $tax;
         if ( isset( $GLOBALS['kit_term_desc'][ $id ] ) && 'uc_series' === $tax ) { $t->description = $GLOBALS['kit_term_desc'][ $id ]; }
         $o[] = $t;
     }
@@ -314,6 +315,18 @@ function get_terms( $a = array(), $b = null ) {
     $tax = is_array( $a ) ? ( isset( $a['taxonomy'] ) ? $a['taxonomy'] : 'x' ) : $a;
     if ( is_array( $tax ) ) { $tax = reset( $tax ); }
     $r = kit_fake_terms( $tax );
+    // kit_object_ids (3.143.1): object_ids keeps the terms those posts have, opt-in.
+    if ( ! empty( $GLOBALS['kit_object_ids'] ) && is_array( $a ) && isset( $a['object_ids'] ) ) {
+        $on = array(); foreach ( (array) $a['object_ids'] as $oid ) { foreach ( isset( $GLOBALS['kit_terms'][ (int) $oid ][ $tax ] ) ? (array) $GLOBALS['kit_terms'][ (int) $oid ][ $tax ] : array() as $tid ) { $on[ (int) $tid ] = true; } }
+        $r = array_values( array_filter( $r, function ( $t ) use ( $on ) { return isset( $on[ (int) $t->term_id ] ); } ) );
+    }
+    // And a key = value meta_query on term meta, under the same opt-in.
+    if ( ! empty( $GLOBALS['kit_object_ids'] ) && is_array( $a ) && ! empty( $a['meta_query'] ) ) {
+        foreach ( (array) $a['meta_query'] as $mq ) {
+            if ( ! is_array( $mq ) || ! isset( $mq['key'] ) ) { continue; }
+            $r = array_values( array_filter( $r, function ( $t ) use ( $mq ) { return isset( $mq['value'] ) && (string) get_term_meta( $t->term_id, $mq['key'], true ) === (string) $mq['value']; } ) );
+        }
+    }
     if ( is_array( $a ) && isset( $a['fields'] ) && 'ids' === $a['fields'] ) { return wp_list_pluck( $r, 'term_id' ); }
     return $r;
 }
@@ -332,7 +345,14 @@ function wp_get_post_terms( $id, $tax = '', $a = array() ) {
     if ( isset( $a['fields'] ) && 'names' === $a['fields'] ) { return wp_list_pluck( $out, 'name' ); }
     return $out;
 }
-function wp_get_object_terms( $id, $tax, $a = array() ) { return wp_get_post_terms( is_array( $id ) ? reset( $id ) : $id, is_array( $tax ) ? reset( $tax ) : $tax, $a ); }
+function wp_get_object_terms( $id, $tax, $a = array() ) {
+    // kit_object_ids (3.143.1): every id and every taxonomy, with object_id, opt-in.
+    if ( ! empty( $GLOBALS['kit_object_ids'] ) && is_array( $id ) ) {
+        $out = array();
+        foreach ( $id as $oid ) { foreach ( (array) $tax as $tx ) { foreach ( wp_get_post_terms( $oid, $tx ) as $t ) { $c = clone $t; $c->object_id = (int) $oid; $c->taxonomy = $tx; $out[] = $c; } } }
+        return $out;
+    }
+    return wp_get_post_terms( is_array( $id ) ? reset( $id ) : $id, is_array( $tax ) ? reset( $tax ) : $tax, $a ); }
 function get_the_terms( $id, $tax ) { $t = wp_get_post_terms( $id, $tax ); return $t ? $t : false; }
 function wp_set_object_terms( $id, $terms, $tax, $append = false ) { $GLOBALS['kit_terms'][ (int) $id ][ $tax ] = array_values( array_map( 'intval', (array) $terms ) ); return $GLOBALS['kit_terms'][ (int) $id ][ $tax ]; }
 function wp_set_post_terms( $id, $terms, $tax, $append = false ) { return wp_set_object_terms( $id, $terms, $tax, $append ); }

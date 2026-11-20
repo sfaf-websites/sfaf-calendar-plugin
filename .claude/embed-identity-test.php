@@ -19,7 +19,8 @@
  *      except embed.js's EMBED_JS_VERSION line, and the caladmin files in
  *      CALADMIN_ONLY, which no public calendar page loads.
  *
- * BASE is the release compared against: 3.142.1's released commit, d4557692, for 3.143.0
+ * BASE is the release compared against: 3.143.0's released commit, 817aa512, for 3.143.1
+ * (3.142.1's, d4557692, for 3.143.0)
  * (3.142.0's, 5700728c, for 3.142.1)
  * (3.141.0's, 6fc367d9, for 3.142.0)
  * (3.140.1's, 706c360d, for 3.141.0)
@@ -59,13 +60,14 @@
  * name, in ALLOWED or ALLOWED_FILES.
  */
 
-const BASE      = 'd4557692';
-const BASE_NAME = '3.142.1';
+const BASE      = '817aa512';
+const BASE_NAME = '3.143.0';
 
 /* Files under public/ and templates/ a release means to change, as path =>
    why. Probe A still compares every embed answer, so none of these can reach
    the embed unseen. */
 const ALLOWED_FILES = array(
+    'public/css/calendar.css' => '3.143.1: the announcement colors, the cell\'s bar edge to edge, the strip, and hyphens: auto on the grid\'s titles',
     // None in 3.143.0: the event page's series list is built in includes/, which probe A's answers do not reach; see the release's own check.
     // None in 3.142.1: its fix is WP admin's Closures and announcements screen.
     // 3.142.0 named public/css/calendar.css, public/js/calendar.js and public/js/embed.js, the announcements.
@@ -99,6 +101,8 @@ $root    = str_replace( '\\', '/', dirname( __DIR__ ) );
    this tree's text (3.113.8). Applied to the base's answers before they are
    compared, so the embed may differ by exactly these and by nothing else. */
 const EXPECTED_EDITS = array(
+    // 3.143.1: each grid title carries its event's language, for hyphens: auto.
+    '<span class="uc-day-event-title">' => '<span class="uc-day-event-title" lang="en">',
     // None in 3.114.0.
 );
 
@@ -212,6 +216,7 @@ if ( ! isset( $now['error'] ) ) {
         count( (array) $now['taxonomies'] ), count( (array) $now['post_types'] ), count( (array) $now['rest'] ), count( (array) $now['rewrite'] ),
         count( (array) $now['scripts'] ), count( (array) $now['styles'] ), count( (array) $now['cron_tasks'] ), count( (array) $now['embed'] ), count( (array) $now['shortcode'] ) );
     printf( "files: %d under public/ and templates/ identical, %d caladmin-only not compared\n", $files_same, count( CALADMIN_ONLY ) );
+    if ( EXPECTED_EDITS ) { printf( "expected edits: %d made in %s's answers (%s); allowed files: %s\n", $edits_made, BASE_NAME, implode( '; ', array_map( function ( $f, $t ) { return "$f => $t"; }, array_keys( EXPECTED_EDITS ), EXPECTED_EDITS ) ), implode( ', ', array_keys( ALLOWED_FILES ) ) ); }
 }
 if ( $fails ) {
     echo count( $fails ) . " difference(s):\n  - " . implode( "\n  - ", $verbose ? $fails : array_slice( $fails, 0, 25 ) ) . "\n";

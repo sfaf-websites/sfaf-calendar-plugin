@@ -3548,10 +3548,17 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
    accepted cost rather than a regression.
 
    overflow-wrap: anywhere, because a single long word in a seventh of a
-   calendar has nowhere to break and would otherwise push the cell wider. */
+   calendar has nowhere to break and would otherwise push the cell wider.
+
+   A LONG WORD BREAKS AT A SYLLABLE, WITH A HYPHEN (3.143.1): "Transforma-
+   ciones", not "Transformac / iones". hyphens: auto, in the event's own
+   language, which the title carries as lang="en" or lang="es". A break
+   between words still comes first; overflow-wrap only takes a word the
+   browser has no dictionary for. */
 .uc-day-event-title {
     display: block;
     overflow-wrap: anywhere;
+    -webkit-hyphens: auto; hyphens: auto;
     font-weight: 600;
 }
 /* UNDER THE TITLE, NOT BESIDE IT. Pinned right, the time was taking width from
@@ -5338,9 +5345,12 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
    ANNOUNCEMENTS (3.142.0)
 
    ONE BAR, THREE PLACES: the top of each day on the month grid, a banner
-   above that day's events in the list, and the sidebar on its own days. Dark
-   gray #373433 with yellow #FFD900 ink, which measures 8.92:1, so the title
-   reads at 11px. The icon sits left of the title when there is one.
+   above that day's events in the list, and the sidebar on its own days.
+   Yellow's own tint #FFFAE0 under a 1px edge of Yellow's ink #705F00, with
+   Dark Gray #373433 words (3.143.1). The words measure 11.76:1 on the fill
+   and 11.52:1 on the hover fill #FFF8D1, Yellow's media stop; the edge
+   measures 6.31:1 on a white cell. The icon sits left of the title when
+   there is one.
 
    A <button> when it opens a card and a <span> when it has nothing to open, so
    the cursor only promises a click the bar keeps. Two classes throughout: the
@@ -5354,8 +5364,8 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
 .uc-calendar .uc-ann-bar, .uc-sidebar .uc-ann-bar {
     display: flex; align-items: center; gap: 5px;
     width: 100%; min-height: 20px; margin: 0; padding: 2px 6px;
-    border: 0; border-radius: 4px;
-    background: var(--uc-dark); color: var(--uc-yellow);
+    border: 1px solid #705F00; border-radius: 4px;
+    background: #FFFAE0; color: var(--uc-dark);
     font-family: var(--uc-font-heading); font-size: 11px; font-weight: 700; line-height: 1.3;
     text-align: left; text-decoration: none; cursor: default;
     -webkit-appearance: none; appearance: none;
@@ -5363,7 +5373,7 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
 .uc-calendar button.uc-ann-bar, .uc-sidebar button.uc-ann-bar { cursor: pointer; }
 .uc-calendar button.uc-ann-bar:hover, .uc-sidebar button.uc-ann-bar:hover,
 .uc-calendar button.uc-ann-bar[aria-expanded="true"], .uc-sidebar button.uc-ann-bar[aria-expanded="true"] {
-    background: #24211F; color: var(--uc-yellow);
+    background: #FFF8D1; color: var(--uc-dark);
 }
 .uc-calendar button.uc-ann-bar:focus-visible, .uc-sidebar button.uc-ann-bar:focus-visible {
     outline: 2px solid var(--uc-teal-text); outline-offset: 1px;
@@ -5377,6 +5387,11 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
     flex: 0 0 auto; margin-left: auto; padding-left: 8px;
     font-weight: 500; white-space: nowrap; color: inherit;
 }
+
+/* THE CELL'S BAR RUNS EDGE TO EDGE (3.143.1), over the td's 5px padding, so
+   a title has the cell's whole width. Square, against the cell's own edges. */
+.uc-calendar td .uc-ann-bars { margin: 0 -5px 4px; }
+.uc-calendar td .uc-ann-bar { border-radius: 0; padding-left: 5px; padding-right: 5px; }
 
 /* The list banner: the same bar at a reading size, spaced like a card. */
 .uc-calendar .uc-ann-banner { min-height: 32px; margin: 0 0 12px; padding: 6px 12px; gap: 8px; border-radius: 8px; font-size: 13px; }
@@ -5395,7 +5410,7 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
 
 @container uc-calendar (max-width: 560px) {
     .uc-calendar td .uc-ann-bars { display: none; }
-    .uc-calendar .uc-ann-strip { display: block; height: 4px; margin: 0 3px 3px; border-radius: 2px; background: var(--uc-dark); }
+    .uc-calendar .uc-ann-strip { display: block; box-sizing: content-box; height: 4px; margin: 0 3px 3px; border: 1px solid #705F00; border-radius: 2px; background: #FFFAE0; }
     .uc-calendar .uc-month-day-panel .uc-ann-bars { display: flex; gap: 4px; margin: 0 0 10px; }
     .uc-calendar .uc-month-day-panel .uc-ann-bar { min-height: 32px; padding: 6px 12px; gap: 8px; border-radius: 8px; font-size: 13px; }
     .uc-calendar .uc-month-day-panel .uc-ann-icon { width: 18px; height: 18px; }
@@ -5403,7 +5418,7 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
 /* The viewport copy, for a browser without container queries. Kept in step. */
 @media (max-width: 640px) {
     .uc-calendar td .uc-ann-bars { display: none; }
-    .uc-calendar .uc-ann-strip { display: block; height: 4px; margin: 0 3px 3px; border-radius: 2px; background: var(--uc-dark); }
+    .uc-calendar .uc-ann-strip { display: block; box-sizing: content-box; height: 4px; margin: 0 3px 3px; border: 1px solid #705F00; border-radius: 2px; background: #FFFAE0; }
     .uc-calendar .uc-month-day-panel .uc-ann-bars { display: flex; gap: 4px; margin: 0 0 10px; }
     .uc-calendar .uc-month-day-panel .uc-ann-bar { min-height: 32px; padding: 6px 12px; gap: 8px; border-radius: 8px; font-size: 13px; }
     .uc-calendar .uc-month-day-panel .uc-ann-icon { width: 18px; height: 18px; }
