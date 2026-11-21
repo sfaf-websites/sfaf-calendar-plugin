@@ -20,11 +20,11 @@
  *      is kept by the clamp; the group counts count the event in it.
  *   L  every grid title carries its event's language: es for Transformaciones,
  *      en for the rest.
- *   K  the bar: Yellow's tint #FFFAE0 under 1px of Yellow's ink #705F00, Dark
- *      Gray words, hover #FFF8D1, all three from sfaf_category_shades(); the
- *      words over 4.5:1 on both fills, the edge over 3:1 on white; the cell's
- *      bar over the td's padding; the strip and the banner the same colors;
- *      hyphens: auto on the grid's titles.
+ *   K  the bar: Yellow's tint #FFFAE0, Dark Gray words, hover #FFF8D1, from
+ *      sfaf_category_shades(); the words over 4.5:1 on both fills; the
+ *      banner sets no colors of its own; hyphens: auto on the grid's titles.
+ *      The edge, the cell's margin and the strip moved in 3.143.2 and are
+ *      checked by release-31432-test.php.
  *
  * Browser: release-31431-live.php. PLANT in plant-31431.php.
  */
@@ -116,9 +116,8 @@ $css = (string) file_get_contents( dirname( __DIR__ ) . '/public/css/calendar.cs
 $rule = function ( $sel ) use ( $css ) { return preg_match( '/(?:^|\})\s*' . preg_quote( $sel, '/' ) . '\s*\{([^}]*)\}/m', $css, $x ) ? $x[1] : ''; };
 $bar   = $rule( '.uc-calendar .uc-ann-bar, .uc-sidebar .uc-ann-bar' );
 $hover = $rule( ".uc-calendar button.uc-ann-bar:hover, .uc-sidebar button.uc-ann-bar:hover,\n.uc-calendar button.uc-ann-bar[aria-expanded=\"true\"], .uc-sidebar button.uc-ann-bar[aria-expanded=\"true\"]" );
-rt( 'K: the bar is not Yellow\'s tint #FFFAE0 under 1px of #705F00 with Dark Gray words: ' . trim( $bar ),
-    false !== strpos( $bar, 'border: 1px solid #705F00;' ) && false !== strpos( $bar, 'background: #FFFAE0; color: var(--uc-dark);' ) );
-rt( 'K: the bar\'s hover is not #FFF8D1 with Dark Gray words: ' . trim( $hover ), false !== strpos( $hover, 'background: #FFF8D1; color: var(--uc-dark);' ) );
+rt( 'K: the bar is not Yellow\'s tint #FFFAE0 with Dark Gray words: ' . trim( $bar ), false !== strpos( $bar, 'background-color: #FFFAE0; color: var(--uc-dark);' ) );
+rt( 'K: the bar\'s hover is not #FFF8D1 with Dark Gray words: ' . trim( $hover ), false !== strpos( $hover, 'background-color: #FFF8D1; color: var(--uc-dark);' ) );
 rt( 'K: the bar still names the yellow ink or the dark face', false === strpos( $bar . $hover, 'var(--uc-yellow)' ) && false === strpos( $bar . $hover, '#24211F' ) );
 $shades = sfaf_category_shades( '#FFD900' );
 rt( 'K: the three are not Yellow\'s approved stops: ' . json_encode( $shades ), array( '#FFFAE0', '#FFF8D1', '#705F00' ) === array( strtoupper( $shades['tint'] ), strtoupper( $shades['media'] ), strtoupper( $shades['ink'] ) ) );
@@ -126,11 +125,6 @@ $lum = function ( $h ) { $h = ltrim( $h, '#' ); $c = array(); foreach ( array( 0
 $ratio = function ( $a, $b ) use ( $lum ) { $x = $lum( $a ); $y = $lum( $b ); return round( ( max( $x, $y ) + 0.05 ) / ( min( $x, $y ) + 0.05 ), 2 ); };
 rt( 'K: Dark Gray on #FFFAE0 measures ' . $ratio( '#373433', '#FFFAE0' ), $ratio( '#373433', '#FFFAE0' ) >= 4.5 );
 rt( 'K: Dark Gray on #FFF8D1 measures ' . $ratio( '#373433', '#FFF8D1' ), $ratio( '#373433', '#FFF8D1' ) >= 4.5 );
-rt( 'K: the edge #705F00 on white measures ' . $ratio( '#705F00', '#FFFFFF' ), $ratio( '#705F00', '#FFFFFF' ) >= 3 );
-rt( 'K: the cell\'s bars do not run over the td\'s 5px padding', '' !== $rule( '.uc-calendar td .uc-ann-bars' ) && false !== strpos( $rule( '.uc-calendar td .uc-ann-bars' ), 'margin: 0 -5px 4px;' )
-    && (bool) preg_match( '/\.uc-calendar \.uc-month-grid td \{[^}]*padding: 5px;/', $css ) );
-$strips = preg_match_all( '/\.uc-calendar \.uc-ann-strip \{ display: block;[^}]*border: 1px solid #705F00;[^}]*background: #FFFAE0; \}/', $css );
-rt( "K: $strips of the strip's two copies are the bar's colors", 2 === $strips );
 rt( 'K: a strip is still dark', false === strpos( $css, 'uc-ann-strip { display: block; height: 4px; margin: 0 3px 3px; border-radius: 2px; background: var(--uc-dark); }' ) );
 $banner = $rule( '.uc-calendar .uc-ann-banner' );
 rt( 'K: the banner sets its own colors: ' . $banner, false === stripos( $banner, 'background' ) && false === stripos( $banner, 'color' ) && false === stripos( $banner, 'border:' ) );

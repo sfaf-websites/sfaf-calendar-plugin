@@ -5,9 +5,10 @@
  *     php .claude/plant-31431.php [part of a plant's name]
  *
  * Plants, one at a time, a fault in each part of 3.143.1 (the series filter,
- * the announcement colors, the cell's bar, the grid's hyphens) and runs the
- * check that must catch it. Every file is put back from memory. Commit
- * first, and never run this while run-all.sh is running.
+ * the announcement colors, the grid's hyphens) and runs the check that must
+ * catch it. The edge, the strip and the cell's margin changed in 3.143.2, and
+ * their plants are in plant-31432.php. Every file is put back from memory.
+ * Commit first, and never run this while run-all.sh is running.
  */
 
 $root = dirname( __DIR__ );
@@ -45,35 +46,18 @@ $plants = array(
         array( $CS, "    -webkit-hyphens: auto; hyphens: auto;\n    font-weight: 600;", "    font-weight: 600;" ),
     ) ),
     'the bar dark gray again' => array( $T, "K: the bar is not Yellow's tint", array(
-        array( $CS, "    background: #FFFAE0; color: var(--uc-dark);\n    font-family: var(--uc-font-heading); font-size: 11px;", "    background: var(--uc-dark); color: var(--uc-yellow);\n    font-family: var(--uc-font-heading); font-size: 11px;" ),
+        array( $CS, "    background-color: #FFFAE0; color: var(--uc-dark);\n", "    background-color: var(--uc-dark); color: var(--uc-yellow);\n" ),
     ) ),
     'the bar dark gray again, in Chrome' => array( $L, 'PLANT A:', array(
-        array( $CS, "    background: #FFFAE0; color: var(--uc-dark);\n    font-family: var(--uc-font-heading); font-size: 11px;", "    background: var(--uc-dark); color: var(--uc-yellow);\n    font-family: var(--uc-font-heading); font-size: 11px;" ),
-    ) ),
-    'no edge' => array( $T, "K: the bar is not Yellow's tint", array(
-        array( $CS, "    border: 1px solid #705F00; border-radius: 4px;\n    background: #FFFAE0;", "    border: 0; border-radius: 4px;\n    background: #FFFAE0;" ),
+        array( $CS, "    background-color: #FFFAE0; color: var(--uc-dark);\n", "    background-color: var(--uc-dark); color: var(--uc-yellow);\n" ),
     ) ),
     'the hover dark gray' => array( $T, "K: the bar's hover is not #FFF8D1", array(
-        array( $CS, "    background: #FFF8D1; color: var(--uc-dark);\n}", "    background: #24211F; color: var(--uc-yellow);\n}" ),
-    ) ),
-    /* Both copies: the 640px one also applies at 430 and 390 and comes later. */
-    'the strip dark, in Chrome' => array( $L, 'PLANT A:', array(
-        array( $CS, "@container uc-calendar (max-width: 560px) {\n    .uc-calendar td .uc-ann-bars { display: none; }\n    .uc-calendar .uc-ann-strip { display: block; box-sizing: content-box; height: 4px; margin: 0 3px 3px; border: 1px solid #705F00; border-radius: 2px; background: #FFFAE0; }",
-            "@container uc-calendar (max-width: 560px) {\n    .uc-calendar td .uc-ann-bars { display: none; }\n    .uc-calendar .uc-ann-strip { display: block; height: 4px; margin: 0 3px 3px; border-radius: 2px; background: var(--uc-dark); }" ),
-        array( $CS, "@media (max-width: 640px) {\n    .uc-calendar td .uc-ann-bars { display: none; }\n    .uc-calendar .uc-ann-strip { display: block; box-sizing: content-box; height: 4px; margin: 0 3px 3px; border: 1px solid #705F00; border-radius: 2px; background: #FFFAE0; }",
-            "@media (max-width: 640px) {\n    .uc-calendar td .uc-ann-bars { display: none; }\n    .uc-calendar .uc-ann-strip { display: block; height: 4px; margin: 0 3px 3px; border-radius: 2px; background: var(--uc-dark); }" ),
-    ) ),
-    'one strip copy dark' => array( $T, "K: 1 of the strip's two copies", array(
-        array( $CS, "@container uc-calendar (max-width: 560px) {\n    .uc-calendar td .uc-ann-bars { display: none; }\n    .uc-calendar .uc-ann-strip { display: block; box-sizing: content-box; height: 4px; margin: 0 3px 3px; border: 1px solid #705F00; border-radius: 2px; background: #FFFAE0; }",
-            "@container uc-calendar (max-width: 560px) {\n    .uc-calendar td .uc-ann-bars { display: none; }\n    .uc-calendar .uc-ann-strip { display: block; height: 4px; margin: 0 3px 3px; border-radius: 2px; background: var(--uc-dark); }" ),
-    ) ),
-    'the bar inside the padding, in Chrome' => array( $L, 'PLANT W:', array(
-        array( $CS, ".uc-calendar td .uc-ann-bars { margin: 0 -5px 4px; }\n", '' ),
+        array( $CS, "    background-color: #FFF8D1; color: var(--uc-dark);\n}", "    background-color: #24211F; color: var(--uc-yellow);\n}" ),
     ) ),
     'the banner its own colors' => array( $T, 'K: the banner sets its own colors', array(
         array( $CS, ".uc-calendar .uc-ann-banner { min-height: 32px;", ".uc-calendar .uc-ann-banner { background: var(--uc-dark); min-height: 32px;" ),
     ) ),
-    'a public file changes' => array( $I, 'differs from 3.143.0', array(
+    'a public file changes' => array( $I, 'differs from 3.143.1', array(
         array( $CJ, " * SFAF Calendar Frontend JS\n", " * SFAF Calendar Frontend JS \n" ),
     ) ),
 );

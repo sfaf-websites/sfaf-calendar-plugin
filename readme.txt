@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.143.1
+Stable tag: 3.143.2
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,13 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.143.2 =
+
+**The announcement bar restyled.** An embed change. Against 3.143.1, embed-identity-test.php finds one difference and no others: calendar.css. Every embed answer and header is 3.143.1's.
+
+* **The bar on the month grid** sits 3px in from each side of the day cell, with no side edges: a 1px line along the top and the bottom, Dark Gray #373433 in the middle fading to Light Gray #D1D3D4 at both ends. Still Yellow's tint #FFFAE0 with its icon; corners rounded 3px; the title in medium weight, not bold.
+* **The list banner, the phone strip, the day panel's bar and the sidebar's bar** have the same lines, corners and weight.
 
 = 3.143.1 =
 

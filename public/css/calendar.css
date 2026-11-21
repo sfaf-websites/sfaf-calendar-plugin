@@ -5346,10 +5346,13 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
 
    ONE BAR, THREE PLACES: the top of each day on the month grid, a banner
    above that day's events in the list, and the sidebar on its own days.
-   Yellow's own tint #FFFAE0 under a 1px edge of Yellow's ink #705F00, with
-   Dark Gray #373433 words (3.143.1). The words measure 11.76:1 on the fill
-   and 11.52:1 on the hover fill #FFF8D1, Yellow's media stop; the edge
-   measures 6.31:1 on a white cell. The icon sits left of the title when
+   Yellow's own tint #FFFAE0 with Dark Gray #373433 words (3.143.1), in
+   medium weight (3.143.2). No side edges: a 1px line along the top and the
+   bottom, Dark Gray in the middle fading to Light Gray #D1D3D4 at both ends
+   (3.143.2), drawn as two background images so the corners stay rounded.
+   The words measure 11.76:1 on the fill and 11.52:1 on the hover fill
+   #FFF8D1, Yellow's media stop. The hover sets background-color only: the
+   shorthand would take the lines away. The icon sits left of the title when
    there is one.
 
    A <button> when it opens a card and a <span> when it has nothing to open, so
@@ -5363,17 +5366,20 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
 }
 .uc-calendar .uc-ann-bar, .uc-sidebar .uc-ann-bar {
     display: flex; align-items: center; gap: 5px;
-    width: 100%; min-height: 20px; margin: 0; padding: 2px 6px;
-    border: 1px solid #705F00; border-radius: 4px;
-    background: #FFFAE0; color: var(--uc-dark);
-    font-family: var(--uc-font-heading); font-size: 11px; font-weight: 700; line-height: 1.3;
+    width: 100%; min-height: 20px; margin: 0; padding: 3px 6px;
+    border: 0; border-radius: 3px;
+    --uc-ann-line: linear-gradient(90deg, #D1D3D4, #373433 50%, #D1D3D4);
+    background-color: #FFFAE0; color: var(--uc-dark);
+    background-image: var(--uc-ann-line), var(--uc-ann-line);
+    background-position: left top, left bottom; background-size: 100% 1px; background-repeat: no-repeat;
+    font-family: var(--uc-font-heading); font-size: 11px; font-weight: 500; line-height: 1.3;
     text-align: left; text-decoration: none; cursor: default;
     -webkit-appearance: none; appearance: none;
 }
 .uc-calendar button.uc-ann-bar, .uc-sidebar button.uc-ann-bar { cursor: pointer; }
 .uc-calendar button.uc-ann-bar:hover, .uc-sidebar button.uc-ann-bar:hover,
 .uc-calendar button.uc-ann-bar[aria-expanded="true"], .uc-sidebar button.uc-ann-bar[aria-expanded="true"] {
-    background: #FFF8D1; color: var(--uc-dark);
+    background-color: #FFF8D1; color: var(--uc-dark);
 }
 .uc-calendar button.uc-ann-bar:focus-visible, .uc-sidebar button.uc-ann-bar:focus-visible {
     outline: 2px solid var(--uc-teal-text); outline-offset: 1px;
@@ -5388,19 +5394,19 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
     font-weight: 500; white-space: nowrap; color: inherit;
 }
 
-/* THE CELL'S BAR RUNS EDGE TO EDGE (3.143.1), over the td's 5px padding, so
-   a title has the cell's whole width, and 4px sides and gap, so "Pride week"
-   is one line in sfaf.org's 700px block. Square, against the cell's edges. */
-.uc-calendar td .uc-ann-bars { margin: 0 -5px 4px; }
-.uc-calendar td .uc-ann-bar { gap: 4px; border-radius: 0; padding-left: 4px; padding-right: 4px; }
+/* THE CELL'S BAR SITS 3PX IN FROM EACH SIDE OF THE CELL (3.143.2), 2px into
+   the td's 5px padding, with 3px sides and a 4px gap, so "Pride week" is one
+   line in sfaf.org's 700px block. */
+.uc-calendar td .uc-ann-bars { margin: 0 -2px 4px; }
+.uc-calendar td .uc-ann-bar { gap: 4px; padding-left: 3px; padding-right: 3px; }
 
 /* The list banner: the same bar at a reading size, spaced like a card. */
-.uc-calendar .uc-ann-banner { min-height: 32px; margin: 0 0 12px; padding: 6px 12px; gap: 8px; border-radius: 8px; font-size: 13px; }
+.uc-calendar .uc-ann-banner { min-height: 32px; margin: 0 0 12px; padding: 6px 12px; gap: 8px; font-size: 13px; }
 .uc-calendar .uc-ann-banner .uc-ann-icon { width: 18px; height: 18px; }
 
 /* The sidebar: between the two. */
 .uc-calendar .uc-ann-side, .uc-sidebar .uc-ann-side { margin: 0 0 10px; }
-.uc-calendar .uc-ann-side .uc-ann-bar, .uc-sidebar .uc-ann-side .uc-ann-bar { min-height: 28px; padding: 5px 10px; gap: 7px; border-radius: 6px; font-size: 12px; }
+.uc-calendar .uc-ann-side .uc-ann-bar, .uc-sidebar .uc-ann-side .uc-ann-bar { min-height: 28px; padding: 5px 10px; gap: 7px; font-size: 12px; }
 .uc-calendar .uc-ann-side .uc-ann-icon, .uc-sidebar .uc-ann-side .uc-ann-icon { width: 16px; height: 16px; }
 .uc-calendar .uc-ann-side .uc-ann-bar, .uc-sidebar .uc-ann-side .uc-ann-bar { flex-wrap: wrap; }
 .uc-calendar .uc-ann-side .uc-ann-when, .uc-sidebar .uc-ann-side .uc-ann-when { margin-left: 0; padding-left: 0; flex-basis: 100%; font-size: 11px; }
@@ -5411,17 +5417,17 @@ body.uc-calendar-page [data-wg-hidden] { display: none !important; }
 
 @container uc-calendar (max-width: 560px) {
     .uc-calendar td .uc-ann-bars { display: none; }
-    .uc-calendar .uc-ann-strip { display: block; box-sizing: content-box; height: 4px; margin: 0 3px 3px; border: 1px solid #705F00; border-radius: 2px; background: #FFFAE0; }
+    .uc-calendar .uc-ann-strip { display: block; box-sizing: border-box; height: 6px; margin: 0 3px 3px; border: 0; border-radius: 2px; --uc-ann-line: linear-gradient(90deg, #D1D3D4, #373433 50%, #D1D3D4); background-color: #FFFAE0; background-image: var(--uc-ann-line), var(--uc-ann-line); background-position: left top, left bottom; background-size: 100% 1px; background-repeat: no-repeat; }
     .uc-calendar .uc-month-day-panel .uc-ann-bars { display: flex; gap: 4px; margin: 0 0 10px; }
-    .uc-calendar .uc-month-day-panel .uc-ann-bar { min-height: 32px; padding: 6px 12px; gap: 8px; border-radius: 8px; font-size: 13px; }
+    .uc-calendar .uc-month-day-panel .uc-ann-bar { min-height: 32px; padding: 6px 12px; gap: 8px; font-size: 13px; }
     .uc-calendar .uc-month-day-panel .uc-ann-icon { width: 18px; height: 18px; }
 }
 /* The viewport copy, for a browser without container queries. Kept in step. */
 @media (max-width: 640px) {
     .uc-calendar td .uc-ann-bars { display: none; }
-    .uc-calendar .uc-ann-strip { display: block; box-sizing: content-box; height: 4px; margin: 0 3px 3px; border: 1px solid #705F00; border-radius: 2px; background: #FFFAE0; }
+    .uc-calendar .uc-ann-strip { display: block; box-sizing: border-box; height: 6px; margin: 0 3px 3px; border: 0; border-radius: 2px; --uc-ann-line: linear-gradient(90deg, #D1D3D4, #373433 50%, #D1D3D4); background-color: #FFFAE0; background-image: var(--uc-ann-line), var(--uc-ann-line); background-position: left top, left bottom; background-size: 100% 1px; background-repeat: no-repeat; }
     .uc-calendar .uc-month-day-panel .uc-ann-bars { display: flex; gap: 4px; margin: 0 0 10px; }
-    .uc-calendar .uc-month-day-panel .uc-ann-bar { min-height: 32px; padding: 6px 12px; gap: 8px; border-radius: 8px; font-size: 13px; }
+    .uc-calendar .uc-month-day-panel .uc-ann-bar { min-height: 32px; padding: 6px 12px; gap: 8px; font-size: 13px; }
     .uc-calendar .uc-month-day-panel .uc-ann-icon { width: 18px; height: 18px; }
 }
 

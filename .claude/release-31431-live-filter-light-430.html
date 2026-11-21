@@ -35,13 +35,13 @@
                 <span class="uc-who-label" data-uc-who-label>World AIDS Day</span>
                 <svg class="sfaf-icon sfaf-icon-chevron uc-who-chevron" width="1em" height="1em" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg>            </summary>
 
-            <div class="uc-who-panel" id="uc-who-9647" data-uc-who-panel>
+            <div class="uc-who-panel" id="uc-who-2825" data-uc-who-panel>
                                 <button type="button" class="uc-who-clear" data-uc-who-clear>Clear all</button>
                                 <div class="uc-who-cols">
                     
                                             <section class="uc-who-col uc-who-col-grp">
-                            <p class="uc-who-heading" id="uc-who-9647-grp">Groups</p>
-                                                        <div class="uc-who-list uc-who-list-2col" role="group" aria-labelledby="uc-who-9647-grp" data-uc-who-groups>
+                            <p class="uc-who-heading" id="uc-who-2825-grp">Groups</p>
+                                                        <div class="uc-who-list uc-who-list-2col" role="group" aria-labelledby="uc-who-2825-grp" data-uc-who-groups>
                                                                     <label class="uc-who-opt" data-uc-who-group-orgs="">
                                         <input type="checkbox" name="uc_group[]"
                                                value="alpha"
@@ -577,13 +577,13 @@
                 <span class="uc-who-label" data-uc-who-label>World AIDS Day</span>
                 <svg class="sfaf-icon sfaf-icon-chevron uc-who-chevron" width="1em" height="1em" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg>            </summary>
 
-            <div class="uc-who-panel" id="uc-who-7922" data-uc-who-panel>
+            <div class="uc-who-panel" id="uc-who-1785" data-uc-who-panel>
                                 <button type="button" class="uc-who-clear" data-uc-who-clear>Clear all</button>
                                 <div class="uc-who-cols">
                     
                                             <section class="uc-who-col uc-who-col-grp">
-                            <p class="uc-who-heading" id="uc-who-7922-grp">Groups</p>
-                                                        <div class="uc-who-list uc-who-list-2col" role="group" aria-labelledby="uc-who-7922-grp" data-uc-who-groups>
+                            <p class="uc-who-heading" id="uc-who-1785-grp">Groups</p>
+                                                        <div class="uc-who-list uc-who-list-2col" role="group" aria-labelledby="uc-who-1785-grp" data-uc-who-groups>
                                                                     <label class="uc-who-opt" data-uc-who-group-orgs="">
                                         <input type="checkbox" name="uc_group[]"
                                                value="alpha"
@@ -711,7 +711,8 @@ function click(el) { el.dispatchEvent(new MouseEvent('click', { bubbles: true, c
 function texts(root, sel) { return Array.prototype.filter.call(root.querySelectorAll(sel), seen).map(function (x) { var c = x.cloneNode(true); Array.prototype.forEach.call(c.querySelectorAll('.uc-visually-hidden, .uc-new-tab-note, .screen-reader-text'), function (h) { h.remove(); }); return c.textContent.replace(/\s+/g, ' ').trim().replace(/ \(opens in a new tab\)$/, ''); }); }
 function edges(el) {
   var cs = getComputedStyle(el);
-  return { bg: cs.backgroundColor, ink: cs.color, bc: [cs.borderTopColor, cs.borderRightColor, cs.borderBottomColor, cs.borderLeftColor], bw: [cs.borderTopWidth, cs.borderRightWidth, cs.borderBottomWidth, cs.borderLeftWidth], bs: [cs.borderTopStyle, cs.borderRightStyle, cs.borderBottomStyle, cs.borderLeftStyle] };
+  return { bg: cs.backgroundColor, ink: cs.color, bc: [cs.borderTopColor, cs.borderRightColor, cs.borderBottomColor, cs.borderLeftColor], bw: [cs.borderTopWidth, cs.borderRightWidth, cs.borderBottomWidth, cs.borderLeftWidth], bs: [cs.borderTopStyle, cs.borderRightStyle, cs.borderBottomStyle, cs.borderLeftStyle],
+    bi: cs.backgroundImage, bsz: cs.backgroundSize, bpos: cs.backgroundPosition, brep: cs.backgroundRepeat, rad: [cs.borderTopLeftRadius, cs.borderTopRightRadius, cs.borderBottomRightRadius, cs.borderBottomLeftRadius], fw: cs.fontWeight };
 }
 function bar(el) {
   if (!el) { return null; }

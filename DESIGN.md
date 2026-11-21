@@ -239,31 +239,38 @@ action is green now. The secondaries it made stay R.
 - **Yellow again in 3.137.0, as the screen's main action, Mark's call**: the
   Events list's Publish N drafts and Set team on N events, and Organizers' Add
   organizer. Put it back on and tell them has been yellow throughout.
-### Announcements: Dark Gray words on Yellow's tint (3.143.1)
+### Announcements: Dark Gray words on Yellow's tint (3.143.1, 3.143.2)
 
 **MARK'S BRIEF, 3.143.1, replacing 3.142.0's dark gray bar with yellow
-words.** The fill is Yellow's own tint `#FFFAE0`, the edge 1px of Yellow's ink
-`#705F00`, the words Dark Gray `#373433`: all three are Yellow's approved stops
-(`sfaf_category_shades()`, measured by `palette-audit.php`). The words measure
-**11.76:1** on the fill and **11.52:1** on the hover and open fill `#FFF8D1`,
-Yellow's media stop; the edge measures **6.31:1** on a white cell. It is a
+words.** The fill is Yellow's own tint `#FFFAE0` and the words Dark Gray
+`#373433`, Yellow's approved stops (`sfaf_category_shades()`, measured by
+`palette-audit.php`). The words measure **11.76:1** on the fill and
+**11.52:1** on the hover and open fill `#FFF8D1`, Yellow's media stop.
+
+**MARK'S BRIEF, 3.143.2, replacing 3.143.1's edge of Yellow's ink `#705F00`.**
+No side edges: a 1px line along the top and the bottom only, each a
+horizontal gradient from Light Gray `#D1D3D4` at the ends to Dark Gray
+`#373433` in the middle. The lines are two background images over the fill,
+not borders, so the 3px corners stay rounded and the ends fade into them.
+The hover and open state set `background-color` only: the `background`
+shorthand would take the lines away. The words are 500, medium, not 700. It is a
 highlight, not a button colour: where the bar opens a card it is a `<button>`,
 and its face is still the tint. The list banner, the sidebar's bar, the phone
 strip and the day panel's bar are the same bar and wear the same colours.
 
-**The cell's bar runs edge to edge**, over the cell's 5px padding, square, with
-4px sides and a 4px gap after the icon, so "Pride week" is one line in
-sfaf.org's 700px block.
+**The cell's bar sits 3px in from each side of the cell** (3.143.2), 2px into
+its 5px padding, with 3px sides and a 4px gap after the icon, so "Pride week"
+is one line in sfaf.org's 700px block.
 
 **An icon drawn for the dark bar may vanish on the tint.** Icons are shown as
 uploaded; a yellow or white one needs replacing (`TESTING.md` 1.363).
 
 | Where | Size | Height |
 |---|---|---|
-| month grid cell, under the day's number, the cell's full width | 11px/700, a 14px icon | about 20px |
-| list banner, above the first event on or after its day | 13px/700, an 18px icon, the dates right | 32px, the list's width |
-| sidebar, today's only, above the rows | 12px/700, a 16px icon, the dates under | 28px |
-| phone-width cell (560px container, 640px viewport) | a strip: 4px of the tint inside the 1px edge, no words | 6px |
+| month grid cell, under the day's number, 3px in from each side | 11px/500, a 14px icon | about 20px |
+| list banner, above the first event on or after its day | 13px/500, an 18px icon, the dates right | 32px, the list's width |
+| sidebar, today's only, above the rows | 12px/500, a 16px icon, the dates under | 28px |
+| phone-width cell (560px container, 640px viewport) | a strip: the tint between the two lines, no words | 6px |
 | the day panel under a phone-width grid | as the list banner | 32px |
 
 The icon sits left of the title and carries no `alt`: the title beside it says

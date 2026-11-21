@@ -20,12 +20,14 @@
  *      added through "Also show", and none of Cycle to Zero's private, draft,
  *      hidden cancelled or other events; the list not the past one; World
  *      AIDS Day ticked
- *   A  (1280, 700, 430, 390) the bar in today's cell: fill #FFFAE0, a 1px
- *      #705F00 edge on every side, Dark Gray words, measured over 4.5:1; from
- *      the cell's left edge to its right; its title on one line wherever the
- *      title's own width fits the bar. At 430 and 390 the strip instead, the
- *      same fill and edge, and the day panel's bar the same colors. The list
- *      banner the same colors.
+ *   A  (1280, 700, 430, 390) the bar in today's cell, as 3.143.2 has it:
+ *      fill #FFFAE0, no border on any side, a 1px line at the top and the
+ *      bottom drawn as two gradients of Light Gray #D1D3D4 and Dark Gray
+ *      #373433, corners rounded 3px or less, Dark Gray words in weight 500,
+ *      measured over 4.5:1. At 430 and 390 the strip instead, the same fill
+ *      and lines, and the day panel's bar the same. The list banner the same.
+ *   W  (1280, 700) the cell's bar 3px in from each side of the cell, and its
+ *      title on one line wherever the title's own width fits the bar.
  *   H  (1280, 700, 430, 390) "Transformaciones", a Spanish event: lang="es"
  *      and hyphens: auto; any break inside the word is at a syllable
  *      (Trans-for-ma-cio-nes) and draws a hyphen. At 700, where the grid's
@@ -81,7 +83,8 @@ function click(el) { el.dispatchEvent(new MouseEvent('click', { bubbles: true, c
 function texts(root, sel) { return Array.prototype.filter.call(root.querySelectorAll(sel), seen).map(function (x) { var c = x.cloneNode(true); Array.prototype.forEach.call(c.querySelectorAll('.uc-visually-hidden, .uc-new-tab-note, .screen-reader-text'), function (h) { h.remove(); }); return c.textContent.replace(/\s+/g, ' ').trim().replace(/ \(opens in a new tab\)$/, ''); }); }
 function edges(el) {
   var cs = getComputedStyle(el);
-  return { bg: cs.backgroundColor, ink: cs.color, bc: [cs.borderTopColor, cs.borderRightColor, cs.borderBottomColor, cs.borderLeftColor], bw: [cs.borderTopWidth, cs.borderRightWidth, cs.borderBottomWidth, cs.borderLeftWidth], bs: [cs.borderTopStyle, cs.borderRightStyle, cs.borderBottomStyle, cs.borderLeftStyle] };
+  return { bg: cs.backgroundColor, ink: cs.color, bc: [cs.borderTopColor, cs.borderRightColor, cs.borderBottomColor, cs.borderLeftColor], bw: [cs.borderTopWidth, cs.borderRightWidth, cs.borderBottomWidth, cs.borderLeftWidth], bs: [cs.borderTopStyle, cs.borderRightStyle, cs.borderBottomStyle, cs.borderLeftStyle],
+    bi: cs.backgroundImage, bsz: cs.backgroundSize, bpos: cs.backgroundPosition, brep: cs.backgroundRepeat, rad: [cs.borderTopLeftRadius, cs.borderTopRightRadius, cs.borderBottomRightRadius, cs.borderBottomLeftRadius], fw: cs.fontWeight };
 }
 function bar(el) {
   if (!el) { return null; }
@@ -240,7 +243,8 @@ $has_dicts = is_dir( $dicts ) && (bool) glob( $dicts . '/*/hyph-es.hyb' );
 rl( $has_dicts, "Chrome's hyphenation dictionaries are not at $dicts, so hyphenation could not be checked: open Chrome on this machine once and let it fetch them" );
 if ( $has_dicts ) { $copy( $dicts, $prof . '/hyphen-data' ); }
 
-$INK = 'rgb(55, 52, 51)'; $FILL = 'rgb(255, 250, 224)'; $EDGE = 'rgb(112, 95, 0)';
+$INK = 'rgb(55, 52, 51)'; $FILL = 'rgb(255, 250, 224)';
+$LINE = 'linear-gradient(90deg, rgb(209, 211, 212), rgb(55, 52, 51) 50%, rgb(209, 211, 212))';
 $SYLLABLES = array( 5, 8, 10, 13 ); // Trans-for-ma-cio-nes
 $no_fonts = ' --host-resolver-rules="MAP fonts.googleapis.com ~NOTFOUND"';
 foreach ( $files as $name => $file ) {
@@ -270,13 +274,17 @@ foreach ( $files as $name => $file ) {
     }
 
     /* A: the colors. */
-    $look = function ( $b, $what, $sides = 4 ) use ( $name, $INK, $FILL, $EDGE ) {
+    $look = function ( $b, $what, $sides = 4 ) use ( $name, $INK, $FILL, $LINE ) {
         rl( is_array( $b ) && $b['seen'], "PLANT A: $name: $what is not on screen" );
         if ( ! is_array( $b ) || ! $b['seen'] ) { return; }
         rl( $FILL === $b['bg'] && ( 'the strip' === $what || ( $INK === $b['ink'] && $INK === $b['titleInk'] ) ), "PLANT A: $name: $what is " . $b['bg'] . ' with ' . $b['ink'] . ' words, not #FFFAE0 with #373433' );
-        $ok = true;
-        for ( $i = 0; $i < 4; $i++ ) { if ( $EDGE !== $b['bc'][ $i ] || '1px' !== $b['bw'][ $i ] || 'solid' !== $b['bs'][ $i ] ) { $ok = false; } }
-        rl( $ok, "PLANT A: $name: $what's edge is " . json_encode( array( $b['bc'], $b['bw'], $b['bs'] ) ) . ', not 1px solid #705F00 all round' );
+        rl( array( '0px', '0px', '0px', '0px' ) === $b['bw'], "PLANT A: $name: $what has a border: " . json_encode( array( $b['bc'], $b['bw'], $b['bs'] ) ) );
+        rl( "$LINE, $LINE" === $b['bi'], "PLANT A: $name: $what's lines are " . json_encode( $b['bi'] ) . ', not two Light Gray, Dark Gray, Light Gray gradients' );
+        rl( '0% 0%, 0% 100%' === $b['bpos'] && (bool) preg_match( '/^100% 1px(, 100% 1px)?$/', $b['bsz'] ) && (bool) preg_match( '/^no-repeat(, no-repeat)?$/', $b['brep'] ),
+            "PLANT A: $name: $what's lines are not 1px along the top and the bottom: " . json_encode( array( $b['bpos'], $b['bsz'], $b['brep'] ) ) );
+        $rad = array_map( 'floatval', (array) $b['rad'] );
+        rl( min( $rad ) > 0 && max( $rad ) <= 3, "PLANT A: $name: $what's corners are " . json_encode( $b['rad'] ) . ', not slightly rounded' );
+        if ( 'the strip' !== $what ) { rl( '500' === (string) $b['fw'], "PLANT A: $name: $what's words are weight " . $b['fw'] . ', not 500' ); }
         if ( isset( $b['contrast'] ) ) { rl( $b['contrast'] >= 4.5, "$name: $what's words measure " . $b['contrast'] . ':1' ); }
     };
     if ( $phone ) {
@@ -287,11 +295,13 @@ foreach ( $files as $name => $file ) {
     } else {
         $look( $r['cellBar'], 'the bar in today\'s cell' );
         $cb = $r['cellBar']; $ci = $r['cellInner'];
-        rl( $cb && $ci && abs( $cb['r']['left'] - $ci['left'] ) <= 1 && abs( $ci['right'] - $cb['r']['right'] ) <= 1,
-            "PLANT W: $name: the bar does not run from the cell's left edge to its right: bar " . ( $cb ? round( $cb['r']['left'], 1 ) . '-' . round( $cb['r']['right'], 1 ) : '?' ) . ', cell ' . ( $ci ? round( $ci['left'], 1 ) . '-' . round( $ci['right'], 1 ) : '?' ) );
+        rl( $cb && $ci && abs( $cb['r']['left'] - $ci['left'] - 3 ) <= 0.6 && abs( $ci['right'] - $cb['r']['right'] - 3 ) <= 0.6,
+            "PLANT W: $name: the bar is not 3px in from each side of the cell: bar " . ( $cb ? round( $cb['r']['left'], 1 ) . '-' . round( $cb['r']['right'], 1 ) : '?' ) . ', cell ' . ( $ci ? round( $ci['left'], 1 ) . '-' . round( $ci['right'], 1 ) : '?' ) );
         if ( $cb && isset( $cb['natural'] ) ) {
             $fits = $cb['natural'] <= $cb['room'] + 0.5;
             rl( ! $fits || $cb['titleH'] < $cb['lineH'] * 1.5, "PLANT W: $name: \"Pride week\" is " . round( $cb['natural'], 1 ) . 'px and fits the bar\'s ' . round( $cb['room'], 1 ) . 'px, yet takes ' . round( $cb['titleH'] ) . 'px' );
+            // sfaf.org's block is 700px: "Pride week" has to fit there, as calendar.css says it does (3.143.2).
+            rl( $fits, "PLANT W: $name: \"Pride week\" is " . round( $cb['natural'], 1 ) . 'px and the bar has ' . round( $cb['room'], 1 ) . 'px for it, so it is two lines' );
         }
         rl( $r['strip'] && ! $r['strip']['seen'], "$name: the strip shows at $w" );
     }
@@ -314,7 +324,7 @@ foreach ( $files as $name => $file ) {
 $rm = function ( $d ) use ( &$rm ) { foreach ( (array) @scandir( $d ) as $f ) { if ( '.' === $f || '..' === $f ) { continue; } is_dir( "$d/$f" ) ? $rm( "$d/$f" ) : @unlink( "$d/$f" ); } @rmdir( $d ); };
 $rm( $prof );
 
-echo "\n3.143.1: the series filter, the bar, the banner, the strip and a Spanish title, in Chrome\n" . str_repeat( '=', 72 ) . "\n";
+echo "\n3.143.1 and 3.143.2: the series filter, the bar, the banner, the strip and a Spanish title, in Chrome\n" . str_repeat( '=', 72 ) . "\n";
 if ( $fails ) { echo count( $fails ) . " FAILURE(S):\n  - " . implode( "\n  - ", $fails ) . "\n"; exit( 1 ); }
 echo count( $files ) . " pages: calendar.js and embed.js; the series filter at 1280, 430 and 390px; the bar, banner, strip and Spanish title at 1280, 700, 430 and 390px.\n";
 exit( 0 );

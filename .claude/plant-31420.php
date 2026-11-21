@@ -73,7 +73,7 @@ $plants = array(
         array( $SC, "                                ?>\n\n                                <?php if ( \$closed_row ) : ?>", "                                ?>\n\n\n                                <?php if ( \$closed_row ) : ?>" ),
     ) ),
     'the bar is teal' => array( $L, 'PLANT B:', array(
-        array( $CS, "    background: #FFFAE0; color: var(--uc-dark);\n    font-family: var(--uc-font-heading); font-size: 11px;", "    background: var(--uc-teal-text); color: var(--uc-dark);\n    font-family: var(--uc-font-heading); font-size: 11px;" ),
+        array( $CS, "    background-color: #FFFAE0; color: var(--uc-dark);\n", "    background-color: var(--uc-teal-text); color: var(--uc-dark);\n" ),
     ) ),
     'no strip on a phone' => array( $L, 'PLANT B:', array(
         array( $CS, "@container uc-calendar (max-width: 560px) {\n    .uc-calendar td .uc-ann-bars { display: none; }\n    .uc-calendar .uc-ann-strip { display: block;", "@container uc-calendar (max-width: 560px) {\n    .uc-calendar td .uc-ann-bars { display: none; }\n    .uc-calendar .uc-ann-strip { display: none;" ),

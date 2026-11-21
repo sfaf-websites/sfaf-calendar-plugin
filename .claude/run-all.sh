@@ -270,6 +270,7 @@ for f in .claude/*.php; do
     series-query-kit.php) continue ;;  # loaded by the 3.143.0 checks, not a check
     release-31431-live.php) continue ;;  # run below with --run
     plant-31431.php) continue ;;       # a fault planter for the 3.143.1 checks, run with the release, and it drives Chrome
+    plant-31432.php) continue ;;       # a fault planter for the 3.143.2 checks, run with the release, and it drives Chrome
     series-filter-kit.php) continue ;;  # loaded by the 3.143.1 checks, not a check
     release-31390-live.php) continue ;;  # run below with --run
     plant-31390.php) continue ;;       # a fault planter for the 3.139.0 check, run with the release, and it drives Chrome
