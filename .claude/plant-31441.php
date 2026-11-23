@@ -76,7 +76,9 @@ $plants = array(
         array( $PC, "    background: var(--p-error-ink); color: #fff;\n    font-size: 12px; font-weight: 700;", "    background: var(--p-danger); color: #fff;\n    font-size: 12px; font-weight: 700;" ),
     ) ),
     'the badge wraps under the RSVP count, in Chrome' => array( $L, 'PLANT B:', array(
+        // As first drafted, and seen wrapping at 1280: a space between them, no row.
         array( $PC, ".uc-rsvp-with-replies { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }\n", '' ),
+        array( $PT, "\$rsvp_cell = '<span class=\"uc-rsvp-with-replies\">' . \$rsvp_cell\n", "\$rsvp_cell = '<span class=\"uc-rsvp-with-replies\">' . \$rsvp_cell . ' '\n" ),
     ) ),
     'the new reply not tinted, in Chrome' => array( $L, 'PLANT N:', array(
         array( $PC, ".uc-text-replies .uc-reply-msg.is-new { padding: 8px 10px; border: 1px solid var(--uc-primary); border-radius: 8px; background: #FFFAE0; }\n", '' ),
