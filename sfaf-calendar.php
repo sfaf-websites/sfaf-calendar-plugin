@@ -3,7 +3,7 @@
  * Plugin Name: SFAF Calendar
  * Plugin URI: https://sfaf.org
  * Description: The San Francisco AIDS Foundation event calendar. Staff manage events, RSVPs, reminders, and recurring series in one place, through the WordPress admin or the /caladmin front-end portal, and display them on this site with the [sfaf_calendar] shortcode or embed them on any other site with a small block of HTML.
- * Version: 3.143.2
+ * Version: 3.144.0
  * Author: San Francisco AIDS Foundation
  * Author URI: https://sfaf.org
  * License: GPL v2 or later
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SFAF_VERSION', '3.143.2' );
+define( 'SFAF_VERSION', '3.144.0' );
 
 /**
  * Schema version for the plugin's own tables.
@@ -24,7 +24,7 @@ define( 'SFAF_VERSION', '3.143.2' );
  * hook — still gets its new tables, instead of throwing "table doesn't exist"
  * the first time the runner looks for one.
  */
-define( 'SFAF_DB_VERSION', '19' );
+define( 'SFAF_DB_VERSION', '20' );
 define( 'SFAF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SFAF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -113,6 +113,8 @@ $sfaf_includes = array(
     // Texts and WhatsApp through Twilio (3.130.0). After SFAF_Mailchimp, whose
     // seal() keeps the Auth Token.
     'includes/class-sfaf-texts.php',
+    // Replies to texts and WhatsApp messages, their alerts and answers (3.144.0). After SFAF_Texts.
+    'includes/class-sfaf-text-inbox.php',
     'includes/class-sfaf-privacy.php',
     // A draft's or a scheduled event's page, for the staff who can edit it (3.122.0).
     'includes/class-sfaf-preview.php',
@@ -266,6 +268,8 @@ function sfaf_init() {
     SFAF_Mailchimp::register();
     // Texts and WhatsApp: the settings, Test connection, and replies and STOP (3.130.0).
     SFAF_Texts::register();
+    // Replies: the five-minute alert (3.144.0).
+    SFAF_Text_Inbox::register();
     // An event or a series published with no picture: one email to the calendar admins (3.141.0).
     SFAF_No_Picture::register();
 
@@ -1256,6 +1260,33 @@ function sfaf_install_tables() {
         stopped_at datetime NULL,
         PRIMARY KEY (id),
         UNIQUE KEY phone (phone)
+    ) $charset;";
+
+    // EVERY TEXT AND WHATSAPP MESSAGE IN AND OUT (schema 20, 3.144.0): the
+    // confirmations, reminders, Text registrants messages and answers sent,
+    // and every reply but STOP, START and HELP. A reply's reply_to is the
+    // last message sent to its number, which decides who is told; alerted is
+    // 0 until its alert run claims it with a stamp of its own. See
+    // SFAF_Text_Inbox.
+    $msgs = $wpdb->prefix . 'uc_text_messages';
+    $sql[] = "CREATE TABLE $msgs (
+        id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+        event_id bigint(20) unsigned NOT NULL DEFAULT 0,
+        rsvp_id bigint(20) unsigned NOT NULL DEFAULT 0,
+        phone varchar(20) NOT NULL,
+        channel varchar(10) NOT NULL DEFAULT '',
+        direction varchar(3) NOT NULL DEFAULT '',
+        kind varchar(20) NOT NULL DEFAULT '',
+        body text NOT NULL,
+        by_user bigint(20) unsigned NOT NULL DEFAULT 0,
+        reply_to bigint(20) unsigned NOT NULL DEFAULT 0,
+        twilio_sid varchar(40) NOT NULL DEFAULT '',
+        alerted bigint(20) unsigned NOT NULL DEFAULT 0,
+        created_at datetime NULL,
+        PRIMARY KEY (id),
+        KEY phone_dir (phone, direction),
+        KEY event_id (event_id),
+        KEY alerted (alerted)
     ) $charset;";
 
     require_once ABSPATH . 'wp-admin/includes/upgrade.php';

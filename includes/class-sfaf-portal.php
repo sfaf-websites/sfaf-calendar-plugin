@@ -2481,6 +2481,22 @@ class SFAF_Portal {
                 $this->redirect( 'rsvps', array( 'event_id' => $event_id ) );
                 break;
 
+            /* ---- Replies: answer a text or WhatsApp thread (3.144.0). See SFAF_Text_Inbox. */
+            case 'text_reply_send':
+                $event_id = isset( $_POST['event_id'] ) ? (int) $_POST['event_id'] : 0;
+                $post     = $event_id ? get_post( $event_id ) : null;
+                if ( ! $post || 'uc_event' !== $post->post_type || ! $this->can_edit_event( $user, $post ) ) {
+                    wp_die( 'Denied' );
+                }
+                set_transient( 'sfaf_reply_said_' . $user->ID, SFAF_Text_Inbox::reply(
+                    $event_id,
+                    isset( $_POST['reply_phone'] ) ? (string) wp_unslash( $_POST['reply_phone'] ) : '',
+                    isset( $_POST['reply_message'] ) ? (string) wp_unslash( $_POST['reply_message'] ) : '',
+                    (int) $user->ID
+                ), 5 * MINUTE_IN_SECONDS );
+                $this->redirect( 'rsvps', array( 'event_id' => $event_id, 'replies' => 1 ) );
+                break;
+
             /* ---- Teams. A name and a set of users, and nothing else. ------ */
             case 'save_team':
                 if ( ! $this->is_admin_role( $user ) ) { wp_die( 'Denied' ); }
@@ -19289,7 +19305,7 @@ class SFAF_Portal {
                 </form>
             </details>
             <?php endif; ?>
-            <?php if ( $this->can_edit_event( $user, $event ) ) { $this->render_registrant_mail( $user, $event_id ); $this->render_text_registrants( $user, $event_id ); } ?>
+            <?php if ( $this->can_edit_event( $user, $event ) ) { $this->render_registrant_mail( $user, $event_id ); $this->render_text_registrants( $user, $event_id ); $this->render_text_replies( $user, $event_id ); } ?>
         <?php elseif ( $orphans ) : ?>
             <p class="uc-hint">
                 Registrations whose event has been deleted. The name shown is the title the event had when it was
@@ -20131,7 +20147,102 @@ class SFAF_Portal {
         <?php
     }
 
+    /**
+     * REPLIES (3.144.0): every text and WhatsApp reply about this event, one
+     * thread a person, named from their registration, with the answers sent
+     * from here, and a box to answer each the way the person wrote. For
+     * whoever may edit the event, as Text registrants is. Absent until Twilio
+     * can send and nobody has replied. See SFAF_Text_Inbox.
+     */
+    private function render_text_replies( $user, $event_id ) {
+        $threads = SFAF_Text_Inbox::threads( $event_id );
+        if ( ! $threads && ! SFAF_Texts::sms_on() ) {
+            return;
+        }
+        $said = get_transient( 'sfaf_reply_said_' . $user->ID );
+        if ( false !== $said ) {
+            delete_transient( 'sfaf_reply_said_' . $user->ID );
+        }
+        $open  = is_array( $said ) || ! empty( $_GET['replies'] );
+        $n     = count( $threads );
+        $title = html_entity_decode( get_the_title( $event_id ), ENT_QUOTES, 'UTF-8' );
+        $names = array();
+        ?>
+        <details class="uc-card uc-rsvp-settings uc-registrant-mail uc-text-replies" id="uc-replies" data-uc-disclosure data-uc-text-replies<?php echo $open ? ' open' : ''; ?>>
+            <summary class="uc-rsvp-settings-toggle" aria-expanded="<?php echo $open ? 'true' : 'false'; ?>">
+                <span class="uc-disclosure-chevron" aria-hidden="true"><?php echo sfaf_icon( 'chevron', array( 'size' => '18px' ) ); ?></span>
+                <span class="uc-rsvp-settings-id">
+                    <span class="uc-rsvp-settings-name"><strong>Replies</strong></span>
+                    <span class="uc-muted" data-uc-replies-count><?php echo esc_html( $n ? sprintf( '%d %s replied by text or WhatsApp.', $n, 1 === $n ? 'person' : 'people' ) : 'Nobody has replied by text or WhatsApp.' ); ?></span>
+                </span>
+            </summary>
+            <div class="uc-rsvp-settings-form uc-registrant-mail-body">
+                <?php if ( is_array( $said ) && empty( $said['ok'] ) ) : ?>
+                    <p class="uc-notice uc-notice-error" role="alert" data-uc-reply-said><?php echo esc_html( (string) $said['message'] ); ?></p>
+                <?php elseif ( is_array( $said ) ) : ?>
+                    <p class="uc-notice" role="status" data-uc-reply-said><?php echo esc_html( (string) $said['message'] ); ?></p>
+                <?php endif; ?>
+                <?php if ( ! $threads ) : ?>
+                    <p class="uc-hint" data-uc-replies-none>Replies to this event's texts and WhatsApp messages show here.</p>
+                <?php endif; ?>
+                <?php foreach ( $threads as $t ) :
+                    $wa      = 'whatsapp' === $t['channel'];
+                    $stopped = SFAF_Texts::is_stopped( $t['phone'] );
+                    $fid     = 'uc-reply-' . (int) $event_id . '-' . preg_replace( '/\D/', '', $t['phone'] );
+                    ?>
+                    <section class="uc-reply-thread" data-uc-reply-thread="<?php echo esc_attr( $t['phone'] ); ?>">
+                        <h3 class="uc-subhead"><?php echo esc_html( $t['name'] ); ?></h3>
+                        <p class="uc-hint uc-reply-who"><?php echo esc_html( SFAF_Text_Inbox::show_phone( $t['phone'] ) . ', ' . ( $wa ? 'WhatsApp' : 'Text' ) ); ?></p>
+                        <ol class="uc-reply-messages">
+                            <?php foreach ( $t['rows'] as $r ) :
+                                $in = 'in' === $r->direction;
+                                if ( ! $in && ! isset( $names[ (int) $r->by_user ] ) ) {
+                                    $u = get_userdata( (int) $r->by_user );
+                                    $names[ (int) $r->by_user ] = $u && '' !== (string) $u->display_name ? (string) $u->display_name : 'A former user';
+                                }
+                                ?>
+                                <li class="uc-reply-msg <?php echo $in ? 'uc-reply-in' : 'uc-reply-out'; ?>" data-uc-reply-msg="<?php echo $in ? 'in' : 'out'; ?>">
+                                    <span class="uc-reply-meta"><?php echo esc_html( ( $in ? $t['name'] : $names[ (int) $r->by_user ] ) . ', ' . sfaf_ap_datetime( (string) $r->created_at ) ); ?></span>
+                                    <span class="uc-reply-body"><?php echo esc_html( (string) $r->body ); ?></span>
+                                </li>
+                            <?php endforeach; ?>
+                        </ol>
+                        <?php if ( $stopped ) : ?>
+                            <p class="uc-hint" data-uc-reply-stopped>This number sent STOP. Nothing more can be sent to it.</p>
+                        <?php else :
+                            if ( ! $wa ) {
+                                $hint = 'It arrives by text as "SFAF:", then your reply and how to stop.';
+                            } elseif ( SFAF_Text_Inbox::window_open( $t['phone'] ) ) {
+                                $hint = 'It arrives by WhatsApp as typed.';
+                            } else {
+                                $hint = sprintf( 'Their last WhatsApp message was over 24 hours ago, so this goes as an event update: "Update about %s:", then your reply and where to email.', $title );
+                            }
+                            ?>
+                            <form method="post" action="<?php echo esc_url( $this->url( 'rsvps' ) ); ?>" class="uc-registrant-mail-form uc-reply-form" data-uc-reply-form>
+                                <input type="hidden" name="uc_action" value="text_reply_send" />
+                                <?php wp_nonce_field( 'uc_portal_text_reply_send', 'uc_nonce' ); ?>
+                                <input type="hidden" name="event_id" value="<?php echo (int) $event_id; ?>" />
+                                <input type="hidden" name="reply_phone" value="<?php echo esc_attr( $t['phone'] ); ?>" />
+                                <label class="uc-field" for="<?php echo esc_attr( $fid ); ?>">
+                                    <span class="uc-field-label"><?php echo esc_html( 'Reply to ' . $t['name'] ); ?></span>
+                                    <textarea id="<?php echo esc_attr( $fid ); ?>" name="reply_message" rows="2" maxlength="<?php echo (int) SFAF_Texts::MAX_MESSAGE; ?>" required data-uc-reply-message></textarea>
+                                    <span class="uc-hint" data-uc-reply-hint><?php echo esc_html( $hint ); ?></span>
+                                </label>
+                                <div class="uc-form-actions">
+                                    <button type="submit" class="uc-btn uc-btn-go" data-uc-reply-send
+                                            data-uc-confirm="<?php echo esc_attr( sprintf( 'Send to %s? A %s cannot be recalled.', $t['name'], $wa ? 'WhatsApp message' : 'text' ) ); ?>"><span class="uc-rm-send-icon" aria-hidden="true"><?php echo sfaf_icon( 'speech', array( 'size' => '16px' ) ); ?></span><span class="uc-rm-send-label">Send</span></button>
+                                </div>
+                            </form>
+                        <?php endif; ?>
+                    </section>
+                <?php endforeach; ?>
+            </div>
+        </details>
+        <?php
+    }
+
     private function render_waitlist_section( $user, $event_id ) {
+
         $rows = SFAF_Waitlist::rows_for_list( $event_id );
         if ( empty( $rows ) ) {
             return;

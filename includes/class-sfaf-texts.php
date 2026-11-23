@@ -44,10 +44,12 @@
  *     writing, where to write, and how to stop. On a text the Messaging
  *     Service answers HELP itself, with the reply set in Twilio, so nothing
  *     is added. The form's consent line promises it.
- *   - anything else gets one automatic reply, at most once a day per number:
- *     "This number isn't monitored. For questions about [event name], please
- *     contact [email]." with the event's Replies go to address, else the site
- *     default (SFAF_Reminders::reply_to_for()). Nothing is forwarded.
+ *   - anything else is a reply (3.144.0): recorded in uc_text_messages,
+ *     shown under Replies on the event's RSVP page, and emailed within five
+ *     minutes to whoever should answer it (SFAF_Text_Inbox). It gets one
+ *     automatic answer, at most once a day per number: "Thanks, your message
+ *     has been passed to the event organizer." Every message sent is
+ *     recorded too, so a reply can find what it answers.
  *
  * THE FORM OFFERS THE CHOICE only once texts can go (sms_on()): Text,
  * WhatsApp or Neither, Neither by default, beside Mark's consent line and the
@@ -444,10 +446,10 @@ class SFAF_Texts {
                 ? 'Volverá a recibir mensajes de SFAF sobre los eventos en los que se inscriba.'
                 : 'You will get messages from SFAF again about events you register for.';
         } else {
-            // The automatic answer to a reply.
+            // The automatic answer to a reply, in Mark's words (3.144.0).
             return $es
-                ? sprintf( 'Este número no se revisa. Si tiene preguntas sobre %s, escriba a %s.', $v['name'], $v['reply'] )
-                : sprintf( "This number isn't monitored. For questions about %s, please contact %s.", $v['name'], $v['reply'] );
+                ? 'Gracias, su mensaje se ha enviado al organizador del evento.'
+                : 'Thanks, your message has been passed to the event organizer.';
         }
         return $s;
     }
@@ -568,6 +570,19 @@ class SFAF_Texts {
                 'ContentVariables' => wp_json_encode( self::variables( $kind, $v ) ),
             ) );
         }
+        // What went, to whom and from whom, so a reply finds its way back (3.144.0).
+        if ( $r['ok'] ) {
+            SFAF_Text_Inbox::sent( array(
+                'event_id' => (int) $row->event_id,
+                'rsvp_id'  => isset( $row->id ) ? (int) $row->id : 0,
+                'phone'    => $reach['phone'],
+                'channel'  => $reach['state'],
+                'kind'     => $kind,
+                'body'     => 'sms' === $reach['state'] ? self::sms( self::words( $kind, $lang, $v ), $lang ) : self::words( $kind, $lang, $v ),
+                'by'       => isset( $extra['by'] ) ? (int) $extra['by'] : 0,
+                'sid'      => isset( $r['body']['sid'] ) ? (string) $r['body']['sid'] : '',
+            ) );
+        }
         return $r['ok'];
     }
 
@@ -675,7 +690,8 @@ class SFAF_Texts {
             if ( null !== $keep && ! isset( $keep[ (int) $p['row']->id ] ) ) {
                 continue;
             }
-            if ( self::send( $p['row'], 'update', array( 'message' => $message ) ) ) {
+            // Its sender, for whom a reply to it is meant (3.144.0).
+            if ( self::send( $p['row'], 'update', array( 'message' => $message, 'by' => (int) $by_user_id ) ) ) {
                 $out[ $p['state'] ]++;
                 $ids[] = (int) $p['row']->id;
             } else {
@@ -804,7 +820,7 @@ class SFAF_Texts {
     }
 
     /** What an incoming message should get: the TwiML reply, or '' for none. */
-    public static function answer( $from, $body ) {
+    public static function answer( $from, $body, $sid = '' ) {
         $channel = ( 0 === stripos( (string) $from, 'whatsapp:' ) ) ? 'whatsapp' : 'sms';
         $phone   = self::e164( $from );
         if ( '' === $phone ) {
@@ -833,6 +849,8 @@ class SFAF_Texts {
             // On a text, the Messaging Service answers HELP itself, as it does STOP.
             return 'whatsapp' === $channel ? self::words( 'help', $lang, $v ) : '';
         }
+        // A reply (3.144.0): kept, shown on the RSVP page, and its alert scheduled.
+        SFAF_Text_Inbox::received( $phone, $channel, trim( (string) $body ), $sid );
         // One automatic reply a day per number, so two machines cannot talk forever.
         $key = 'sfaf_text_reply_' . md5( $phone );
         if ( get_transient( $key ) ) {
@@ -843,7 +861,8 @@ class SFAF_Texts {
         return 'whatsapp' === $channel ? $auto : self::sms( $auto, $lang );
     }
 
-    private static function site_reply_to() {
+    /** The site's Replies go to default, else the admin address. */
+    public static function site_reply_to() {
         $s = get_option( 'uc_settings', array() );
         $a = isset( $s['email_reply_to'] ) ? trim( (string) $s['email_reply_to'] ) : '';
         return is_email( $a ) ? $a : (string) get_option( 'admin_email' );
@@ -898,7 +917,7 @@ class SFAF_Texts {
         if ( ! self::signed( $params, $token, $sig ) ) {
             return new WP_REST_Response( array( 'message' => 'Unsigned.' ), 403 );
         }
-        $reply = self::answer( isset( $params['From'] ) ? (string) $params['From'] : '', isset( $params['Body'] ) ? (string) $params['Body'] : '' );
+        $reply = self::answer( isset( $params['From'] ) ? (string) $params['From'] : '', isset( $params['Body'] ) ? (string) $params['Body'] : '', isset( $params['MessageSid'] ) ? (string) $params['MessageSid'] : '' );
         $xml   = '<?xml version="1.0" encoding="UTF-8"?><Response>'
             . ( '' !== $reply ? '<Message>' . htmlspecialchars( $reply, ENT_XML1 | ENT_QUOTES, 'UTF-8' ) . '</Message>' : '' )
             . '</Response>';

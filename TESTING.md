@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 448 items.** Quick 362, needs real conditions 81, blocked on other
+**Outstanding: 452 items.** Quick 362, needs real conditions 85, blocked on other
 people 5.
 
 ---
@@ -5915,8 +5915,8 @@ day, and a real phone.
 ### 2.74 Replies, HELP and STOP (3.130.0)
 
 From the phone in 2.72, reply "What time do doors open?": one answer, "SFAF:
-This number isn't monitored. For questions about [event], please contact
-[Replies go to]. Reply STOP to opt out." ("SFAF:" and the STOP line from
+Thanks, your message has been passed to the event organizer. Reply STOP to
+opt out." (Mark's words from 3.144.0; "SFAF:" and the STOP line from
 3.134.0), and a second question the same day gets nothing. Reply
 HELP: Twilio's HELP reply set in 2.72. Reply STOP: Twilio confirms; on the RSVP
 list's Text registrants you now show "Nothing: this number sent STOP", and a
@@ -6033,6 +6033,55 @@ Put an announcement on today only. Tomorrow, open a sidebar embed on sfaf.org:
 the bar is gone, at the latest ten minutes after the first visit of the day.
 
 **Why it needs a person:** a real day turning over, and the embed's cache.
+
+### 2.84 A reply to Text registrants reaches the person who sent it (3.144.0)
+
+Send a Text registrants message to a test registration with your own phone,
+signed in as yourself. Reply to it from the phone three times within a minute.
+About five minutes after the first reply, **one** email arrives at your own
+address, from Postmark: "3 replies from [name]: [event]", with the name from
+the registration, the phone number, the three messages in order and Open the
+RSVP page. That button opens the RSVP page with Replies open, and the thread
+is there under the person's name. The phone got "SFAF: Thanks, your message
+has been passed to the event organizer. Reply STOP to opt out." once. Reply
+again an hour later: a second email, and no second automatic answer that day.
+If the email takes much longer than five minutes, note how long: the alert
+waits on WordPress's scheduled runs, which need a visit to the site.
+
+**Why it needs a person:** a real phone, Twilio's webhook and real mail.
+
+### 2.85 A reply to a confirmation or a reminder reaches Replies go to (3.144.0)
+
+Register a test phone for an event whose Replies go to is an address you can
+read, choosing Text. Reply to the confirmation text: the email goes to that
+address, not to anybody's own. Do the same with WhatsApp once Meta has
+approved the templates.
+
+**Why it needs a person:** a real registration, Twilio and real mail.
+
+### 2.86 Answering from the RSVP page, by text and by WhatsApp (3.144.0)
+
+On the RSVP page's Replies, answer the text thread from 2.84: the phone gets
+"SFAF: [your answer] Reply STOP to opt out.", and the thread shows it under
+your name. Reply from the phone: the email comes to whoever answered. With
+WhatsApp on and approved, reply to a WhatsApp message and answer within 24
+hours: it arrives as typed. Answer the same thread more than 24 hours after
+the person's last WhatsApp message: it arrives as the approved update
+("Update about [event]: [your answer] For questions, please email ..."), and
+the box said so before sending. Note anything Twilio refuses: the page shows
+Twilio's reason.
+
+**Why it needs a person:** real phones, WhatsApp's 24-hour window and Meta's
+approved template.
+
+### 2.87 STOP, START and HELP stay out of Replies (3.144.0)
+
+From a test phone that replied in 2.84, send HELP, then STOP, then START, by
+text and by WhatsApp. None of them shows in Replies or brings an email. While
+the number is stopped, its thread on the RSVP page has no box and says it sent
+STOP.
+
+**Why it needs a person:** Twilio's own handling of the keywords on a text.
 ## 3. Blocked on other people
 
 Nothing here can move until somebody outside the build answers.
@@ -6041,7 +6090,7 @@ Nothing here can move until somebody outside the build answers.
 |---|---|---|
 | **Aaron** | DNS records for `calendar.sfaf.org` so `events@calendar.sfaf.org` can send | Asked. From stays `websites@sfaf.org` meanwhile. It is a setting, so nothing needs deploying when the mailbox exists. |
 | **Val** | Remove the tracker's duplicates: **the 2027 Saturdays under two runs of UUIDs**, and **the coffee social under two names** ("50-Plus Saturday AM Coffee Social" and "Saturday AM Coffee Social") | Before Auto-Import goes on. The import copies what the tracker holds and de-duplicates nothing. `PROJECT.md` 3. |
-| **A Spanish-speaking reviewer**, chosen by Mark | Read `EMAILS.md`: every registrant message in English and Spanish side by side, in formal usted, including **Event cancelled, waitlist** (3.106.1), **Offer link, event off** and the three form labels under Additional information (3.106.2); from 3.112.0 also "Qué incluye" for What's included and the date range "del 21 al 23 de mayo de 2027"; from 3.124.0 also the RSVP form's email line, "Sigamos en contacto" and its two sign-up boxes; from 3.130.0 also the RSVP form's consent line for texts and every text in `SFAF_Texts::words()`; from 3.132.0 also the RSVP form's WhatsApp consent line "Envíenme avisos de este evento por WhatsApp. ...", its error "Escriba un número de teléfono para recibir avisos por texto o WhatsApp.", and the text reminder's "¿No puede asistir? Cancele aquí: [link]" (in `SFAF_Texts::words()`, not in `EMAILS.md`). Corrections go into the Email Templates screen or `class-sfaf-messages.php`, never into `EMAILS.md` | Not asked. The Spanish was written without a native reader. |
+| **A Spanish-speaking reviewer**, chosen by Mark | Read `EMAILS.md`: every registrant message in English and Spanish side by side, in formal usted, including **Event cancelled, waitlist** (3.106.1), **Offer link, event off** and the three form labels under Additional information (3.106.2); from 3.112.0 also "Qué incluye" for What's included and the date range "del 21 al 23 de mayo de 2027"; from 3.124.0 also the RSVP form's email line, "Sigamos en contacto" and its two sign-up boxes; from 3.130.0 also the RSVP form's consent line for texts and every text in `SFAF_Texts::words()`; from 3.132.0 also the RSVP form's WhatsApp consent line "Envíenme avisos de este evento por WhatsApp. ...", its error "Escriba un número de teléfono para recibir avisos por texto o WhatsApp.", and the text reminder's "¿No puede asistir? Cancele aquí: [link]" (in `SFAF_Texts::words()`, not in `EMAILS.md`); from 3.144.0 also the automatic answer to a reply, "Gracias, su mensaje se ha enviado al organizador del evento." Corrections go into the Email Templates screen or `class-sfaf-messages.php`, never into `EMAILS.md` | Not asked. The Spanish was written without a native reader. |
 | **Meta, through Twilio** | Approve the two WhatsApp templates, `sfaf_event_reminder` and `sfaf_event_update`, each in English and Spanish, category Utility | Mark is submitting them. WhatsApp stays off until all four Content SIDs are in Settings > Twilio (2.75). |
 | **Salesforce admin** | Pardot connected app: client ID and secret, Business Unit ID, service user, OAuth flow | Asked. Campaign IDs store; nothing talks to Pardot. |
 

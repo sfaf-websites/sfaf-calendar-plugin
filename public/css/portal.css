@@ -5429,6 +5429,20 @@ body.uc-modal-open { overflow: hidden; }
 .uc-recipients .uc-rcp-name { font-weight: 600; }
 .uc-recipients [data-uc-rcp-count] { margin: 0; }
 .uc-rcp-who summary { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+/* REPLIES (3.144.0): the RSVP page's text and WhatsApp threads, inside the
+   Text registrants card component. A rule between threads; the replies and
+   the answers in one column, each answer set in 24px so whose words are whose
+   reads at a glance; a long link wraps inside the card. */
+.uc-text-replies .uc-reply-thread { margin: 0; padding: 16px 0 0; border-top: 1px solid var(--p-border); }
+.uc-text-replies .uc-reply-thread:first-of-type { padding-top: 0; border-top: 0; }
+.uc-text-replies .uc-reply-thread .uc-subhead { margin: 0; }
+.uc-text-replies .uc-reply-who { margin: 2px 0 0; }
+.uc-text-replies .uc-reply-messages { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; padding: 0; list-style: none; }
+.uc-text-replies .uc-reply-msg { display: block; min-width: 0; margin: 0; }
+.uc-text-replies .uc-reply-out { margin-left: 24px; }
+.uc-text-replies .uc-reply-meta { display: block; font-size: 12px; line-height: 1.5; color: var(--p-muted); }
+.uc-text-replies .uc-reply-body { display: block; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--p-text); }
+.uc-text-replies .uc-reply-form textarea { width: 100%; box-sizing: border-box; }
 .uc-rsvp-table .uc-checkin-form { display: inline; margin: 0; }
 /* Checked in: solid teal with white ink, 5.35:1 (3.137.0); R before. */
 .uc-rsvp-table .uc-checkin-btn[aria-pressed="true"] { border-color: var(--uc-accent-text); color: #fff; background: var(--uc-accent-text); }

@@ -359,7 +359,7 @@ $GLOBALS['wpdb']->rsvps = array( tw_row( 7, 900, '(415) 555-0107', '', 'en', 'Ne
 rt( 'D: Neither is never listed, whatever the query returns', array() === SFAF_Texts::plan( 900 ) );
 $pt = file_get_contents( dirname( __DIR__ ) . '/includes/class-sfaf-portal.php' );
 rt( 'D: the route asks the event gate', 1 === preg_match( "/case 'text_registrants_send':\s*\\\$event_id = [^;]+;\s*\\\$post\s*= [^;]+;\s*if \( ! \\\$post \|\| 'uc_event' !== \\\$post->post_type \|\| ! \\\$this->can_edit_event\( \\\$user, \\\$post \) \) \{\s*wp_die\( 'Denied' \);/", $pt ) );
-rt( 'D: shown only to whoever may edit the event, beside Email registrants', false !== strpos( $pt, '<?php if ( $this->can_edit_event( $user, $event ) ) { $this->render_registrant_mail( $user, $event_id ); $this->render_text_registrants( $user, $event_id ); } ?>' ) );
+rt( 'D: shown only to whoever may edit the event, beside Email registrants', false !== strpos( $pt, '<?php if ( $this->can_edit_event( $user, $event ) ) { $this->render_registrant_mail( $user, $event_id ); $this->render_text_registrants( $user, $event_id ); $this->render_text_replies( $user, $event_id ); } ?>' ) );
 rt( 'D: the list marks the channel, and an old tick as such', false !== strpos( $pt, 'SFAF_Texts::channel_label( $r->text_channel )' ) && false !== strpos( $pt, '>Old text tick</span>' ) );
 
 /* =====================================================================
@@ -379,13 +379,14 @@ $h = SFAF_Texts::answer( 'whatsapp:+14155550101', 'help' );
 rt( 'E: HELP on WhatsApp is answered, with the Replies go to address', false !== strpos( $h, 'events@sfaf.org' ) && false !== strpos( $h, 'STOP' ) );
 rt( 'E: HELP on a text is left to the Messaging Service', '' === SFAF_Texts::answer( '+14155550101', 'HELP' ) );
 $auto = SFAF_Texts::answer( '+14155550101', 'Is there parking?' );
-// A text from 3.134.0: "SFAF:" before Mark's line and the STOP line after.
-rt( "E: Mark's line, word for word", "SFAF: This number isn't monitored. For questions about Coffee & Conversation, please contact events@sfaf.org. Reply STOP to opt out." === $auto );
+// A text from 3.134.0: "SFAF:" before Mark's line and the STOP line after. His 3.144.0 line.
+rt( "E: Mark's line, word for word", 'SFAF: Thanks, your message has been passed to the event organizer. Reply STOP to opt out.' === $auto );
 rt( 'E: once a day per number', '' === SFAF_Texts::answer( '+14155550101', 'Hello?' ) );
-rt( 'E: a stranger gets the site default', "SFAF: This number isn't monitored. For questions about this event, please contact calendar@sfaf.org. Reply STOP to opt out." === SFAF_Texts::answer( '+14155559999', 'Hi' ) );
+// From 3.144.0 the line names no address: who is told is release-31440-test.php's A.
+rt( 'E: a stranger gets the line too', 'SFAF: Thanks, your message has been passed to the event organizer. Reply STOP to opt out.' === SFAF_Texts::answer( '+14155559999', 'Hi' ) );
 delete_post_meta( 900, '_uc_email_replyto' );
 $GLOBALS['kit_trans'] = array();
-rt( "E: without the event's own address, the creator's", "SFAF: This number isn't monitored. For questions about Coffee & Conversation, please contact admin@sfaf.org. Reply STOP to opt out." === SFAF_Texts::answer( '+14155550101', 'Hi' ) );
+rt( "E: without the event's own address, the creator's", 'admin@sfaf.org' === SFAF_Reminders::reply_to_for( 900 ) );
 global $TOKEN;
 rt( 'E: an unsigned request is refused', ! SFAF_Texts::signed( array( 'From' => '+14155550101', 'Body' => 'STOP' ), $TOKEN, '' ) );
 $params = array( 'From' => '+14155550101', 'Body' => 'STOP' );

@@ -1,0 +1,226 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><link rel="stylesheet" href="../public/css/portal.css"></head><body class="uc-portal" style="margin:0"><div class="uc-portal-main"><div class="uc-portal-content">        <details open class="uc-card uc-rsvp-settings uc-registrant-mail uc-text-registrants" data-uc-disclosure data-uc-text-registrants>
+            <summary class="uc-rsvp-settings-toggle" aria-expanded="false">
+                <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                <span class="uc-rsvp-settings-id">
+                    <span class="uc-rsvp-settings-name"><strong>Text registrants</strong></span>
+                    <span class="uc-muted">Send a text or WhatsApp message to everyone who chose one.</span>
+                </span>
+            </summary>
+            <div class="uc-rsvp-settings-form uc-registrant-mail-body">
+                                                                    <form method="post" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-registrant-mail-form" data-uc-tr-form>
+                        <input type="hidden" name="uc_action" value="text_registrants_send" />
+                        <input type="hidden" name="uc_nonce" value="nonce" />                        <input type="hidden" name="event_id" value="900" />
+                        <label class="uc-field">
+                            <span class="uc-field-label">Message</span>
+                            <textarea name="tr_message" rows="3" maxlength="600" required data-uc-tr-message aria-describedby="uc-tr-count-900"></textarea>
+                            <span class="uc-hint">It arrives by text as &quot;SFAF: Update about Coffee &amp; Conversation:&quot;, then the message and where to email.</span>
+                        </label>
+                                                <p class="uc-hint uc-tr-count" id="uc-tr-count-900" data-uc-tr-count data-uc-tr-max="600" data-uc-tr-wrap="[[&quot;SFAF: Update about Coffee &amp; Conversation: &quot;,&quot; For questions, please email events@sfaf.org. Reply STOP to opt out.&quot;]]">
+                            <span data-uc-tr-chars>0 of 600 characters.</span>
+                                                            <span data-uc-tr-pieces>By text, about 1 piece.</span>
+                                <span>Accented letters make each piece shorter.</span>
+                                                    </p>
+                                                    <details class="uc-tr-wa-help" data-uc-tr-wa-help>
+                                <summary><span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="14px" height="14px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>What can I send by Text and WhatsApp?</summary>
+                                <div class="uc-tr-wa-help-body">
+                                    <p class="uc-tr-wa-help-head">OK to send:</p>
+                                    <ul>
+                                        <li>Changes to the time, date or location</li>
+                                        <li>Cancellations or postponements</li>
+                                        <li>What to bring, what to expect, accessibility or parking info</li>
+                                        <li>Check-in details or directions on the day</li>
+                                    </ul>
+                                    <p class="uc-tr-wa-help-head">Not OK:</p>
+                                    <ul>
+                                        <li>Promoting other events or programs</li>
+                                        <li>Donations or fundraising</li>
+                                        <li>Surveys, feedback or &ldquo;rate this event&rdquo;</li>
+                                        <li>Newsletters or general SFAF announcements</li>
+                                        <li>&ldquo;Don&rsquo;t miss,&rdquo; &ldquo;join us for,&rdquo; or offers of any kind</li>
+                                    </ul>
+                                    <p>If WhatsApp decides a message is promotional, it may block it, and future messages too.</p>
+                                </div>
+                            </details>
+                                                <div class="uc-rm-ticks">
+                            <label class="uc-check">
+                                <input type="checkbox" name="tr_waitlist" value="1" data-uc-rm-waitlist />
+                                Include the waitlist
+                            </label>
+                        </div>
+                                <div class="uc-recipients" data-uc-rcp data-uc-rcp-kind="text">
+            <input type="hidden" name="tr_picked" value="1" />
+            <span class="uc-field-label">Recipients</span>
+            <div class="uc-rcp-tools">
+                <label class="uc-field uc-rcp-search">
+                    <span class="uc-field-label">Search</span>
+                    <input type="search" data-uc-rcp-search placeholder="Name, email or phone" autocomplete="off" />
+                </label>
+                                                    <label class="uc-field">
+                        <span class="uc-field-label">Didn't get</span>
+                        <select data-uc-rcp-missed>
+                            <option value="">Choose a past message</option>
+                                                            <option value="0">Nov 22, 2026 at 7:04 pm: Doors open at 9:45</option>
+                                                    </select>
+                    </label>
+                                <label class="uc-field">
+                    <span class="uc-field-label">Language</span>
+                    <select data-uc-rcp-lang>
+                        <option value="">Choose a language</option>
+                        <option value="en">English only</option>
+                        <option value="es">Spanish only</option>
+                    </select>
+                </label>
+                <div class="uc-rcp-bulk">
+                    <button type="button" class="uc-btn" data-uc-rcp-all>Tick all</button>
+                    <button type="button" class="uc-btn" data-uc-rcp-none>Clear all</button>
+                </div>
+            </div>
+            <ul class="uc-rcp-list" data-uc-rcp-list>
+                                    <li data-uc-rcp-row data-uc-rcp-lang="en" data-uc-rcp-how="sms" data-uc-rcp-find="ana ruiz (415) 555-0101 4155550101"
+                        data-uc-rcp-answers=""
+                        data-uc-rcp-got="0">
+                        <label class="uc-check">
+                            <input type="checkbox" name="tr_ids[]" value="1" checked="checked" />
+                            <span class="uc-rcp-name">Ana Ruiz</span> <span class="uc-lang-tag" data-uc-lang-tag="en" title="English"><span aria-hidden="true">EN</span><span class="uc-visually-hidden">English</span></span>                            <span class="uc-muted">(415) 555-0101 · Text</span>
+                        </label>
+                    </li>
+                                    <li data-uc-rcp-row data-uc-rcp-lang="es" data-uc-rcp-how="whatsapp" data-uc-rcp-find="beto luna (415) 555-0102 4155550102"
+                        data-uc-rcp-answers=""
+                        data-uc-rcp-got="0">
+                        <label class="uc-check">
+                            <input type="checkbox" name="tr_ids[]" value="2" checked="checked" />
+                            <span class="uc-rcp-name">Beto Luna</span> <span class="uc-lang-tag" data-uc-lang-tag="es" title="Spanish"><span aria-hidden="true">ES</span><span class="uc-visually-hidden">Spanish</span></span>                            <span class="uc-muted">(415) 555-0102 · WhatsApp</span>
+                        </label>
+                    </li>
+                            </ul>
+            <p class="uc-hint" data-uc-rcp-count aria-live="polite">Sending to 2 people: 1 by text, 1 by WhatsApp.</p>
+        </div>
+                                <div class="uc-form-actions">
+                            <button type="submit" class="uc-btn uc-btn-go" data-uc-tr-send                                    data-uc-confirm="Send to 2 people? A text cannot be recalled."><span class="uc-rm-send-icon" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-speech" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20.5 12.5a7.5 7.5 0 0 1-7.5 7.5 8.4 8.4 0 0 1-3.3-.66L4 21l1.7-4.6A7.3 7.3 0 0 1 5 12.5 7.5 7.5 0 0 1 12.5 5 7.5 7.5 0 0 1 20.5 12.5z"/></svg></span><span class="uc-rm-send-label">Send</span></button>
+                        </div>
+                    </form>
+                                    <div class="uc-registrant-mail-log" data-uc-tr-log>
+                <h3 class="uc-subhead">Texts sent from this list</h3>
+                <table class="uc-table uc-table-cards">
+                    <thead><tr><th>Sent by</th><th>When</th><th>Message</th><th>Recipients</th></tr></thead>
+                    <tbody>
+                                            <tr>
+                            <td>Sam Staff</td>
+                            <td>Nov 22, 2026 at 7:04 pm</td>
+                            <td>Doors open at 9:45</td>
+                            <td>Sent by text to 1 and by WhatsApp to 1.                                                                    <details class="uc-rcp-who" data-uc-rcp-who><summary><span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="14px" height="14px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>Who</summary>Ana Ruiz, Beto Luna</details>
+                                </td>
+                        </tr>
+                                        </tbody>
+                </table>
+            </div>
+                    </div>
+        </details>
+                <details class="uc-card uc-rsvp-settings uc-registrant-mail uc-text-replies" id="uc-replies" data-uc-disclosure data-uc-text-replies open>
+            <summary class="uc-rsvp-settings-toggle" aria-expanded="true">
+                <span class="uc-disclosure-chevron" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-chevron" width="18px" height="18px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"/></svg></span>
+                <span class="uc-rsvp-settings-id">
+                    <span class="uc-rsvp-settings-name"><strong>Replies</strong></span>
+                    <span class="uc-muted" data-uc-replies-count>2 people replied by text or WhatsApp.</span>
+                </span>
+            </summary>
+            <div class="uc-rsvp-settings-form uc-registrant-mail-body">
+                                                                    <section class="uc-reply-thread" data-uc-reply-thread="+14155550102">
+                        <h3 class="uc-subhead">Beto Luna</h3>
+                        <p class="uc-hint uc-reply-who">(415) 555-0102, WhatsApp</p>
+                        <ol class="uc-reply-messages">
+                                                            <li class="uc-reply-msg uc-reply-in" data-uc-reply-msg="in">
+                                    <span class="uc-reply-meta">Beto Luna, Nov 22, 2026 at 7:04 pm</span>
+                                    <span class="uc-reply-body">Llego diez minutos tarde, ¿está bien?</span>
+                                </li>
+                                                    </ol>
+                                                    <form method="post" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-registrant-mail-form uc-reply-form" data-uc-reply-form>
+                                <input type="hidden" name="uc_action" value="text_reply_send" />
+                                <input type="hidden" name="uc_nonce" value="nonce" />                                <input type="hidden" name="event_id" value="900" />
+                                <input type="hidden" name="reply_phone" value="+14155550102" />
+                                <label class="uc-field" for="uc-reply-900-14155550102">
+                                    <span class="uc-field-label">Reply to Beto Luna</span>
+                                    <textarea id="uc-reply-900-14155550102" name="reply_message" rows="2" maxlength="600" required data-uc-reply-message></textarea>
+                                    <span class="uc-hint" data-uc-reply-hint>It arrives by WhatsApp as typed.</span>
+                                </label>
+                                <div class="uc-form-actions">
+                                    <button type="submit" class="uc-btn uc-btn-go" data-uc-reply-send
+                                            data-uc-confirm="Send to Beto Luna? A WhatsApp message cannot be recalled."><span class="uc-rm-send-icon" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-speech" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20.5 12.5a7.5 7.5 0 0 1-7.5 7.5 8.4 8.4 0 0 1-3.3-.66L4 21l1.7-4.6A7.3 7.3 0 0 1 5 12.5 7.5 7.5 0 0 1 12.5 5 7.5 7.5 0 0 1 20.5 12.5z"/></svg></span><span class="uc-rm-send-label">Send</span></button>
+                                </div>
+                            </form>
+                                            </section>
+                                    <section class="uc-reply-thread" data-uc-reply-thread="+14155550101">
+                        <h3 class="uc-subhead">Ana Ruiz</h3>
+                        <p class="uc-hint uc-reply-who">(415) 555-0101, Text</p>
+                        <ol class="uc-reply-messages">
+                                                            <li class="uc-reply-msg uc-reply-in" data-uc-reply-msg="in">
+                                    <span class="uc-reply-meta">Ana Ruiz, Nov 22, 2026 at 7:04 pm</span>
+                                    <span class="uc-reply-body">Is there parking?</span>
+                                </li>
+                                                            <li class="uc-reply-msg uc-reply-out" data-uc-reply-msg="out">
+                                    <span class="uc-reply-meta">Lee Lead, Nov 22, 2026 at 7:04 pm</span>
+                                    <span class="uc-reply-body">SFAF: Yes, on Market St, two spaces by the door. Reply STOP to opt out.</span>
+                                </li>
+                                                            <li class="uc-reply-msg uc-reply-in" data-uc-reply-msg="in">
+                                    <span class="uc-reply-meta">Ana Ruiz, Nov 22, 2026 at 7:04 pm</span>
+                                    <span class="uc-reply-body">Is this the place? https://www.google.com/maps/place/1035+Market+St,+San+Francisco,+CA+94103/@37.7808,-122.4113,17z/data=!3m1!4b1</span>
+                                </li>
+                                                    </ol>
+                                                    <form method="post" action="https://resources.sfaf.org/caladmin/rsvps" class="uc-registrant-mail-form uc-reply-form" data-uc-reply-form>
+                                <input type="hidden" name="uc_action" value="text_reply_send" />
+                                <input type="hidden" name="uc_nonce" value="nonce" />                                <input type="hidden" name="event_id" value="900" />
+                                <input type="hidden" name="reply_phone" value="+14155550101" />
+                                <label class="uc-field" for="uc-reply-900-14155550101">
+                                    <span class="uc-field-label">Reply to Ana Ruiz</span>
+                                    <textarea id="uc-reply-900-14155550101" name="reply_message" rows="2" maxlength="600" required data-uc-reply-message></textarea>
+                                    <span class="uc-hint" data-uc-reply-hint>It arrives by text as &quot;SFAF:&quot;, then your reply and how to stop.</span>
+                                </label>
+                                <div class="uc-form-actions">
+                                    <button type="submit" class="uc-btn uc-btn-go" data-uc-reply-send
+                                            data-uc-confirm="Send to Ana Ruiz? A text cannot be recalled."><span class="uc-rm-send-icon" aria-hidden="true"><svg class="sfaf-icon sfaf-icon-speech" width="16px" height="16px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20.5 12.5a7.5 7.5 0 0 1-7.5 7.5 8.4 8.4 0 0 1-3.3-.66L4 21l1.7-4.6A7.3 7.3 0 0 1 5 12.5 7.5 7.5 0 0 1 12.5 5 7.5 7.5 0 0 1 20.5 12.5z"/></svg></span><span class="uc-rm-send-label">Send</span></button>
+                                </div>
+                            </form>
+                                            </section>
+                            </div>
+        </details>
+        </div></div><script src="../public/js/portal.js"></script><script>(function () {
+var out = { errors: [] };
+window.addEventListener('error', function (e) { out.errors.push(String(e.message)); });
+function q(s, r) { return (r || document).querySelector(s); }
+function qa(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function text(el) { return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; }
+function seen(el) { if (!el || el.closest('[hidden]') || !el.getClientRects().length) { return false; } var cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden'; }
+function box(el) { var r = el.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom, w: r.width, h: r.height }; }
+function finish() { out.pageWidth = document.documentElement.scrollWidth; out.vw = document.documentElement.clientWidth; window.parent.postMessage(JSON.stringify(out), '*'); }
+window.addEventListener('load', function () { setTimeout(function () {
+  var card = q('details[data-uc-text-replies]');
+  out.open = !!(card && card.open);
+  if (!card) { return finish(); }
+  var body = q('.uc-registrant-mail-body', card), cb = box(body);
+  out.card = box(card);
+  out.threads = qa('section[data-uc-reply-thread]', card).map(function (s) {
+    var ta = q('textarea[data-uc-reply-message]', s), send = q('button[data-uc-reply-send]', s);
+    return {
+      phone: s.getAttribute('data-uc-reply-thread'), name: text(q('h3', s)), who: text(q('.uc-reply-who', s)), seen: seen(s),
+      msgs: qa('li[data-uc-reply-msg]', s).map(function (li) {
+        var b = q('.uc-reply-body', li), r = box(li);
+        return { dir: li.getAttribute('data-uc-reply-msg'), text: text(b), seen: seen(b), inside: r.l >= cb.l - 0.5 && r.r <= cb.r + 0.5, l: r.l, bodyFits: b.scrollWidth <= b.clientWidth + 1 };
+      }),
+      ta: ta ? { w: box(ta).w, inside: box(ta).l >= cb.l - 0.5 && box(ta).r <= cb.r + 0.5, room: cb.w } : null,
+      send: send ? { seen: seen(send), bg: getComputedStyle(send).backgroundColor, h: box(send).h, onScreen: box(send).l >= -0.5 && box(send).r <= document.documentElement.clientWidth + 0.5 } : null
+    };
+  });
+  var trSend = q('[data-uc-tr-send]');
+  out.trBg = trSend ? getComputedStyle(trSend).backgroundColor : '';
+  var first = q('section[data-uc-reply-thread] textarea[data-uc-reply-message]', card);
+  if (first) { first.value = 'Thanks'; }
+  var s1 = q('section[data-uc-reply-thread] button[data-uc-reply-send]', card);
+  if (s1) { s1.click(); }
+  setTimeout(function () {
+    var dlg = q('dialog.uc-confirm-modal[open]');
+    var ok = dlg ? q('button[value="ok"]', dlg) : null;
+    out.confirm = ok ? { label: text(ok), bg: getComputedStyle(ok).backgroundColor, msg: text(dlg) } : null;
+    finish();
+  }, 300);
+}, 500); });
+})();</script></body></html>

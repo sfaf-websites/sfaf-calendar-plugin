@@ -5854,10 +5854,38 @@ either channel, which `reach()` consults before every send; START, UNSTOP or
 YES takes it out. On WhatsApp both are confirmed by us; on a text, Twilio's
 Messaging Service confirms them itself, so we add nothing. HELP, INFO or
 AYUDA is the same: answered by us on WhatsApp, by the Messaging Service's own
-HELP reply on a text. Anything else gets Mark's line at most once a
-day per number, so two automatic responders cannot talk forever; the address
-is `SFAF_Reminders::reply_to_for()`, the event's own, then its creator's, then
-the site's.
+HELP reply on a text. Anything else is a reply (below), and gets Mark's line,
+"Thanks, your message has been passed to the event organizer.", at most once a
+day per number, so two automatic responders cannot talk forever.
+
+**Replies (3.144.0), `SFAF_Text_Inbox`.** Every message in and out is a row of
+`uc_text_messages` (schema 20): each confirmation, reminder, Text registrants
+message and answer when Twilio accepts it, with its kind, body and sender, and
+each reply when it arrives. STOP, START and HELP are never rows. **Twilio does
+not say what a reply answers, so a reply belongs to the last message sent to
+its number, from any event**; that message gives it its event, its
+registration and who is told. A reply to a Text registrants message or to an
+answer from the RSVP page goes to the staff member who sent it, while their
+account has an address; a reply to a confirmation or a reminder goes to the
+event's Replies go to (`SFAF_Reminders::reply_to_for()`, the event's own, then
+its creator's, then the site's); a number nothing was ever sent to belongs to
+its latest registration's event, and a stranger to the site default with no
+event. **The alert is by email (`SFAF_Email::send()`, so Postmark), one per
+recipient per five minutes per number**: the first reply schedules
+`sfaf_text_reply_alert` for its number five minutes on, the run claims every
+waiting reply from that number with a stamp of its own before sending, and a
+reply arriving after an alert is overdue sends the overdue ones first. Each
+email names the person from their registration and gives the number, every
+message and a link to the RSVP page opened at Replies.
+
+**The Replies section** on the RSVP page, for whoever may edit the event,
+holds one thread a number, newest first, with a box to answer. An answer goes
+the way the person last wrote: by text through the Messaging Service, with
+"SFAF:" and the STOP line; by WhatsApp as typed while their last WhatsApp
+message is under 24 hours old, and after that as the approved update
+template, the only thing WhatsApp lets a business send outside that window.
+Never to a stopped number, and only to a number that has replied about that
+event: the route is not a way to text anybody.
 
 **The Auth Token** is sealed with `SFAF_Mailchimp::seal()` before it reaches
 `sfaf_credentials`, never put in a page, and taken out of every error Twilio
@@ -5866,6 +5894,8 @@ returns (`scrub()`).
 Tested by `.claude/release-31300-test.php` (Twilio recorded, never reached,
 including Twilio's own signature example) and the RSVP form in
 `.claude/release-3110-live.php`; faults in `.claude/plant-31300.php`.
+Replies: `.claude/release-31440-test.php` and `.claude/release-31440-live.php`,
+faults in `.claude/plant-31440.php`.
 
 ### Where credentials live
 

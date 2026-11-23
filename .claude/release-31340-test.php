@@ -43,6 +43,9 @@ function the_post() { $GLOBALS['loop_done'] = true; $GLOBALS['kit_current'] = $G
 function get_header() { echo "<!--header-->\n"; }
 function get_footer() { echo "\n<!--footer-->"; }
 require __DIR__ . '/wp-kit.php';
+/* A reply schedules its alert from 3.144.0 (SFAF_Text_Inbox); nothing here runs it. */
+if ( ! function_exists( 'wp_next_scheduled' ) ) { function wp_next_scheduled( $h, $a = array() ) { return false; } }
+if ( ! function_exists( 'wp_schedule_single_event' ) ) { function wp_schedule_single_event( $t, $h, $a = array() ) { return true; } }
 foreach ( array( 'wpautop' => 'return "<p>".$a[0]."</p>";' ) as $f => $b ) { if ( ! function_exists( $f ) ) { eval( "function $f( ...\$a ) { $b }" ); } }
 if ( ! function_exists( 'the_title' ) ) { function the_title() { echo get_the_title( get_the_ID() ); } }
 if ( ! function_exists( 'the_content' ) ) { function the_content() { echo get_post_field( 'post_content', get_the_ID() ); } }
@@ -317,10 +320,11 @@ rt( 'C: Text registrants, English', 'SFAF: Update about Coffee & Conversation: D
 rt( 'C: Text registrants, Spanish', 0 === strpos( $by['+14155550104']['Body'] ?? '', 'SFAF: Novedad sobre Coffee & Conversation: ' ) && 'Responda STOP para cancelar.' === substr( $by['+14155550104']['Body'] ?? '', -strlen( 'Responda STOP para cancelar.' ) ) );
 $GLOBALS['kit_trans'] = array();
 $auto = SFAF_Texts::answer( '+14155550101', 'Is there parking?' );
-rt( 'C: the automatic reply by text', "SFAF: This number isn't monitored. For questions about Coffee & Conversation, please contact events@sfaf.org. Reply STOP to opt out." === $auto );
+// Mark's line from 3.144.0, release-31440-test.php.
+rt( 'C: the automatic reply by text', 'SFAF: Thanks, your message has been passed to the event organizer. Reply STOP to opt out.' === $auto );
 $GLOBALS['kit_trans'] = array();
 $wa_auto = SFAF_Texts::answer( 'whatsapp:+14155550103', 'Is there parking?' );
-rt( 'C: the automatic reply on WhatsApp is unchanged', "This number isn't monitored. For questions about Coffee & Conversation, please contact events@sfaf.org." === $wa_auto );
+rt( 'C: the automatic reply on WhatsApp is unchanged', 'Thanks, your message has been passed to the event organizer.' === $wa_auto );
 rt( 'C: HELP on WhatsApp is unchanged', 0 === strpos( SFAF_Texts::answer( 'whatsapp:+14155550103', 'HELP' ), 'SFAF messages about ' ) );
 rt( 'C: STOP and HELP by text are still left to the Messaging Service', '' === SFAF_Texts::answer( '+14155550101', 'HELP' ) && '' === SFAF_Texts::answer( '+14155550101', 'STOP' ) );
 

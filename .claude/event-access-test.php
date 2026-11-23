@@ -580,6 +580,7 @@ $ALLOWED = array(
     'POST:registrant_mail_preview' => array( 'event' ),   // 3.110.0: SFAF_Registrant_Mail, the event gate
     'POST:registrant_mail_send'   => array( 'event' ),    // 3.110.0
     'POST:text_registrants_send'  => array( 'event' ),    // 3.130.0: SFAF_Texts, the event gate
+    'POST:text_reply_send'        => array( 'event' ),    // 3.144.0: SFAF_Text_Inbox, the event gate
     // Reached only past handle()'s get_role() check, and draws the caller's own.
     'GET:preferences'             => array( 'none' ),
 

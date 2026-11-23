@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.143.2
+Stable tag: 3.144.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,15 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.144.0 =
+
+**Replies to texts and WhatsApp messages.** Not an embed change: against 3.143.2, embed-identity-test.php finds no difference. Schema 20 adds the uc_text_messages table.
+
+* **Replies** on an event's RSVP page in caladmin: every reply to a text or WhatsApp message about the event, one thread a person, named from their registration, with the answers sent from there. STOP, START and HELP are handled as before and never shown.
+* **An email for each reply**, from Postmark: a reply to a Text registrants message goes to the staff member who sent it; a reply to a confirmation or a reminder goes to the event's Replies go to. Each has the person's name, phone, message and a link to the RSVP page. Replies from one person within five minutes come in one email.
+* **Answer from the RSVP page**, by text or WhatsApp as the person wrote. A WhatsApp answer more than 24 hours after their last WhatsApp message goes as the approved update template, and the box says so first. Or answer from your own phone: the email gives the number.
+* **The automatic answer** is "Thanks, your message has been passed to the event organizer.", still at most once a day per number.
 
 = 3.143.2 =
 

@@ -19,7 +19,8 @@
  *      except embed.js's EMBED_JS_VERSION line, and the caladmin files in
  *      CALADMIN_ONLY, which no public calendar page loads.
  *
- * BASE is the release compared against: 3.143.1's released commit, 23e978fc, for 3.143.2
+ * BASE is the release compared against: 3.143.2's released commit, 4cd9e31c, for 3.144.0
+ * (3.143.1's, 23e978fc, for 3.143.2)
  * (3.143.0's, 817aa512, for 3.143.1)
  * (3.142.1's, d4557692, for 3.143.0)
  * (3.142.0's, 5700728c, for 3.142.1)
@@ -61,14 +62,15 @@
  * name, in ALLOWED or ALLOWED_FILES.
  */
 
-const BASE      = '23e978fc';
-const BASE_NAME = '3.143.1';
+const BASE      = '4cd9e31c';
+const BASE_NAME = '3.143.2';
 
 /* Files under public/ and templates/ a release means to change, as path =>
    why. Probe A still compares every embed answer, so none of these can reach
    the embed unseen. */
 const ALLOWED_FILES = array(
-    'public/css/calendar.css' => '3.143.2: the announcement bar 3px in from the cell\'s sides, no side edges, a top and bottom line fading from Dark Gray to Light Gray, slightly rounded, medium-weight words; the banner, the strip and the day panel\'s bar to match',
+    // None in 3.144.0: the Replies section is portal.css and caladmin, CALADMIN_ONLY; the webhook's route is 3.130.0's.
+    // 3.143.2 named public/css/calendar.css, the announcement bar restyled.
     // 3.143.1 named public/css/calendar.css, the announcement colors, the cell's bar edge to edge, the strip, and hyphens.
     // None in 3.143.0: the event page's series list is built in includes/, which probe A's answers do not reach; see the release's own check.
     // None in 3.142.1: its fix is WP admin's Closures and announcements screen.
@@ -103,7 +105,7 @@ $root    = str_replace( '\\', '/', dirname( __DIR__ ) );
    this tree's text (3.113.8). Applied to the base's answers before they are
    compared, so the embed may differ by exactly these and by nothing else. */
 const EXPECTED_EDITS = array(
-    // None in 3.143.2. 3.143.1: each grid title carried its event's language, for hyphens: auto.
+    // None in 3.144.0 or 3.143.2. 3.143.1: each grid title carried its event's language, for hyphens: auto.
     // None in 3.114.0.
 );
 
