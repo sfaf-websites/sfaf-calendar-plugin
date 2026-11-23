@@ -14,6 +14,8 @@
  */
 
 $root = dirname( __DIR__ );
+/* The schema version as it stands, so the plant follows each bump (3.144.0 moved it to 20). */
+$db_now = preg_match( "/define\( 'SFAF_DB_VERSION', '(\d+)' \);/", (string) file_get_contents( $root . '/sfaf-calendar.php' ), $dbm ) ? $dbm[1] : '?';
 
 $plants = array(
 
@@ -76,7 +78,7 @@ $plants = array(
 
     'the schema version is not bumped, so the pass never runs' => array(
         'file' => 'sfaf-calendar.php',
-        'from' => "define( 'SFAF_DB_VERSION', '19' );",
+        'from' => "define( 'SFAF_DB_VERSION', '" . $db_now . "' );",
         'to'   => "define( 'SFAF_DB_VERSION', '7' );",
     ),
 

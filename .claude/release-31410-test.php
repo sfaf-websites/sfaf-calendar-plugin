@@ -251,7 +251,8 @@ rt( 'M: and reports what it did: ' . json_encode( $rep ), is_array( $rep ) && 3 
     && array( $old_pick ) === $rep['replyto_kept'] && array( $old_imp ) === $rep['author_not_maker'] && ! empty( $rep['at'] ) );
 update_post_meta( $old_pick, SFAF_Access::CREATOR_META, '31' );
 rt( 'M: once, under its own option', 0 === sfaf_migrate_creators() && 31 === SFAF_Access::creator_id( $old_pick ) );
-rt( 'M: schema 19 is the version and runs it', '19' === SFAF_DB_VERSION && false !== strpos( (string) file_get_contents( $root . '/sfaf-calendar.php' ), "    sfaf_migrate_creators();\n" ) );
+// 19 or later: 3.144.0 moved it to 20, and the schema 19 pass must still run.
+rt( 'M: schema 19 is the version and runs it', (int) SFAF_DB_VERSION >= 19 && false !== strpos( (string) file_get_contents( $root . '/sfaf-calendar.php' ), "    sfaf_migrate_creators();\n" ) );
 $GLOBALS['kit_query'] = null;
 
 /* ---- P: published with no picture. ---- */
