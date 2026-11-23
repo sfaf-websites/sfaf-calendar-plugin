@@ -352,6 +352,59 @@ the closure's own colour: 7.12:1 on white, 6.58:1 on caladmin's `#F5F6F7`, and
 sits on. **Not caladmin's system amber**, because `portal.css` also dresses the
 two public forms, where only palette colours are allowed.
 
+### Every error in caladmin is one look (3.144.1)
+
+**MARK'S DECISION, 3.144.1.** An error message anywhere in caladmin is a box in
+the Red family's tint `#FDE9E7` (`--p-error-tint`) with a 1px brand red
+`#F04937` edge (`--p-danger`) and Dark Gray words `#373433` (`--p-text`).
+
+| Pairing | Ratio | Floor |
+|---|---|---|
+| `#373433` words on `#FDE9E7` | **10.57:1** | 4.5:1, text |
+| `#F04937` edge on `#FDE9E7` | 3.15:1 | 3:1, a shape |
+| `#F04937` edge on white | 3.68:1 | 3:1, a shape |
+
+It covers every class that says something failed or was refused:
+`.uc-flash-error` (the banner after a save, including the event save's and the
+failure keys in `SFAF_Portal::FLASH_ERRORS`, which drew as the green flash
+until 3.144.1), `.uc-action-error` (the editor's save error), `.uc-notice-error`,
+`.uc-login-error`, `.uc-field-error` and `.uc-hint-error` under a field (6px
+10px, 6px radius), the fetch report's `.uc-fetch-fail` row and the pending
+screen's `.uc-lastrun-alarm`. One rule in `portal.css`, scoped
+`.uc-portal:not(.uc-request-page)`, so **the two public forms keep their own
+field errors**. An empty error box is `display: none`.
+
+**Warnings and notices stay yellow and amber**: "Restore what you were
+typing?" and the other `.uc-flash-attention` banners, `.uc-flash-warn`,
+`.uc-hint-warn`. A red box means it did not happen; yellow means look before
+going on. A status word in a table (`.uc-cron-failed`) and a cancelled event are
+neither, and keep their own red text.
+
+### New replies: a red count (3.144.1)
+
+**MARK'S DECISION, 3.144.1.** Replies by text or WhatsApp that a person has not
+seen are counted in a red badge: on the sidebar's Events, and beside the RSVP
+count of each event in the Events list (My events and All events), linked to
+the event's Replies. The count is per person and only over the events they may
+edit.
+
+| Pairing | Ratio | Floor |
+|---|---|---|
+| White figures on the Red family's ink `#AD1C0D` | **7.12:1** | 4.5:1, text |
+| Brand red `#F04937` under white figures | 3.68:1 | **FAILS**, not used |
+| The `#AD1C0D` badge against the sidebar `#373433` | 1.73:1 | none: the figures carry it |
+
+The badge is the Pending badge's shape (22px minimum, 1px 7px, 99px radius,
+12px/700), `.uc-reply-badge`, with `--p-error-ink` behind white. **Pending
+stays yellow**: it is a queue to work through; red is somebody waiting for an
+answer.
+
+**Under Replies, a reply new to the viewer** is highlighted in Yellow's tint
+`#FFFAE0` with a 1px Yellow `#FFD900` edge, 8px 10px, 8px radius, and the word
+**New** before its name in Yellow's ink `#705F00` (6.01:1), so the colour is
+never the only carrier. The meta line stays `--p-muted`, 5.34:1 on the tint.
+Replies opens by itself when one is new.
+
 ### Contrast floors
 
 4.5:1 wherever there is text. 3:1 for anything that is only a shape: an icon
@@ -1340,10 +1393,11 @@ the row pads to 14px.
 
 **One inline notice.** `.uc-notice`: `--p-ok-ink` `#46661F` on `--p-ok-tint`
 `#F1F8E9` (6.08:1), the palette's success state; 10px 14px, 8px radius, 10px
-above; Field label, 13px/600 at 1.45. A failure in the same place is
-`--p-error-ink` `#AD1C0D` on `--p-error-tint` `#FDE9E7` (6.10:1). It is what the
-series prefill, the FAQ set and Insert image say after they act. **Caladmin's
-page-level `.uc-flash` banners are unchanged** and still use their own greens.
+above; Field label, 13px/600 at 1.45. A failure in the same place is caladmin's
+one error look (3.144.1, §1, "Every error in caladmin is one look"). It is what
+the series prefill, the FAQ set and Insert image say after they act.
+**Caladmin's page-level `.uc-flash` banners keep their own greens**; a failure
+banner is the error look.
 
 **The Notifications card (3.129.0)**: Who gets these emails, the emails in two
 groups, then Replies go to. Measured in Chrome by
@@ -1442,7 +1496,7 @@ wrap, `--sfaf-black` to `--sfaf-darkgray` at 135deg; the card on `--p-panel`,
 400px, 40px padding, 16px radius, `--p-shadow-raised`; the logo; a 22px heading
 and a `--p-muted` line; the form; a quiet link under it, 13px/600
 `--uc-accent-text` ("Forgot your password?", "Back to sign in", "Ask for a new
-link"). A failure is `--p-error-ink` on `--p-error-tint`; the sent line and
+link"). A failure is the error look (§1, 3.144.1); the sent line and
 "Your password is set" are the `.uc-notice` from 3.108.1.
 
 **The wide logo above the form** is `sfaf-logo.webp` from resources.sfaf.org,

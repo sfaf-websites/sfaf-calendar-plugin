@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 452 items.** Quick 362, needs real conditions 85, blocked on other
+**Outstanding: 454 items.** Quick 364, needs real conditions 85, blocked on other
 people 5.
 
 ---
@@ -4875,6 +4875,36 @@ with it.
 **Why it needs a person:** each browser's own hyphenation dictionaries; Chrome
 hyphenates nothing until it has downloaded them, which the build machine's
 headless Chrome only does with a copied profile.
+
+### 1.365 The red reply count is yours, and clears when you look (3.144.1)
+
+Needs a reply on an event, such as the test reply already sent, and two people
+who can edit that event (you and a teammate on its team). Signed in as
+yourself, in caladmin: **Events** in the sidebar has a small red number, and
+in the Events list, in My events and in All events, the event has the same red
+number beside its RSVP count. Click it: the RSVP page opens with Replies open,
+each new reply in yellow with **New** before its name, and the sidebar's
+number already gone or smaller. Go back to the Events list: no red number
+beside that event. Then ask your teammate to sign in: they still see theirs
+until they open it. Someone who cannot edit the event sees no number for it.
+On a phone, open the menu: the number is on Events there too.
+
+**Why it needs a person:** real replies in the live table and two real
+accounts on a team.
+
+### 1.366 Errors are pale red, warnings stay yellow (3.144.1)
+
+In caladmin, make a few errors on purpose: save a category with no name (the
+message at the top), type "nope" in Edit event > Replies go to's Other address
+and save (the message under the field), and on Add event press Save draft with
+no team ticked if you are on several. Each is a pale red box with a thin red
+edge and dark words. Then leave Edit event with something typed and come
+back: "Restore what you were typing?" is still yellow. The public request form's
+field errors are as they were: red words, no box.
+
+**Why it needs a person:** the real screens on the site, with WordPress's own
+styles beside ours.
+
 ## 2. Needs real conditions
 
 Waiting for an unattended job to fire, a real removal at source, or a real event
@@ -6038,15 +6068,18 @@ the bar is gone, at the latest ten minutes after the first visit of the day.
 
 Send a Text registrants message to a test registration with your own phone,
 signed in as yourself. Reply to it from the phone three times within a minute.
-About five minutes after the first reply, **one** email arrives at your own
-address, from Postmark: "3 replies from [name]: [event]", with the name from
-the registration, the phone number, the three messages in order and Open the
-RSVP page. That button opens the RSVP page with Replies open, and the thread
-is there under the person's name. The phone got "SFAF: Thanks, your message
-has been passed to the event organizer. Reply STOP to opt out." once. Reply
-again an hour later: a second email, and no second automatic answer that day.
-If the email takes much longer than five minutes, note how long: the alert
-waits on WordPress's scheduled runs, which need a visit to the site.
+**From 3.144.1:** within a minute of the first reply, **one** email arrives at
+your own address, from Postmark: "Reply from [name]: [event]", with the name
+from the registration, the phone number, that message and Open the RSVP page.
+About five minutes after the first reply, a **second** email: "2 more replies
+from [name]: [event]", with the other two in order. Note how long each took;
+the second goes on the first visit to the site after five minutes, so on a
+quiet evening it may be later. That button opens the RSVP page with Replies
+open, and the thread is there under the person's name. The phone got "SFAF:
+Thanks, your message has been passed to the event organizer. Reply STOP to opt
+out." once. Reply again an hour later: an email at once, and no second
+automatic answer that day. (Mark, 2026-11-22, on 3.144.0: one reply, the
+automatic answer at once and the email about six minutes later.)
 
 **Why it needs a person:** a real phone, Twilio's webhook and real mail.
 

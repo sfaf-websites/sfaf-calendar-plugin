@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.144.0
+Stable tag: 3.144.1
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,15 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.144.1 =
+
+**Reply alerts at once, reply badges, and one look for errors.** Not an embed change: against 3.144.0, embed-identity-test.php finds no difference.
+
+* **The first reply from a person is emailed at once**, in the same moment the automatic answer goes back, as RSVP emails are. Any more replies from that person in the next five minutes come in one follow-up email, "2 more replies from ...", sent on the first visit to the site of any kind after the five minutes, not on the next 15-minute scheduled run. Who gets them is unchanged.
+* **A red count of new replies** beside Events in the caladmin sidebar, and beside the RSVP count of each event with new replies in the Events list, in My events and All events. It counts replies on the events you can edit that you have not seen; it is yours alone, and clears for that event when you open its RSVP page. Everyone who can edit the event sees their own.
+* **New replies are highlighted** under Replies, in yellow with the word New, and Replies opens by itself when there are any.
+* **Every error message in caladmin** is a pale red box with a thin red edge and dark words: the message after a save, the event save error, the error under a field, the fetch report's failures and the rest. Failures that showed as the green message after a save, such as "That category could not be saved", show as errors now. Warnings and notices, such as "Restore what you were typing?", stay yellow. The two public forms are unchanged.
 
 = 3.144.0 =
 

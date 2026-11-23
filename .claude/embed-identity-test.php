@@ -19,7 +19,8 @@
  *      except embed.js's EMBED_JS_VERSION line, and the caladmin files in
  *      CALADMIN_ONLY, which no public calendar page loads.
  *
- * BASE is the release compared against: 3.143.2's released commit, 4cd9e31c, for 3.144.0
+ * BASE is the release compared against: 3.144.0's released commit, 56a1e1fa, for 3.144.1
+ * (3.143.2's, 4cd9e31c, for 3.144.0)
  * (3.143.1's, 23e978fc, for 3.143.2)
  * (3.143.0's, 817aa512, for 3.143.1)
  * (3.142.1's, d4557692, for 3.143.0)
@@ -62,13 +63,14 @@
  * name, in ALLOWED or ALLOWED_FILES.
  */
 
-const BASE      = '4cd9e31c';
-const BASE_NAME = '3.143.2';
+const BASE      = '56a1e1fa';
+const BASE_NAME = '3.144.0';
 
 /* Files under public/ and templates/ a release means to change, as path =>
    why. Probe A still compares every embed answer, so none of these can reach
    the embed unseen. */
 const ALLOWED_FILES = array(
+    // None in 3.144.1: the badges, the new replies and the error look are portal.css and caladmin, CALADMIN_ONLY; the alerts are includes/.
     // None in 3.144.0: the Replies section is portal.css and caladmin, CALADMIN_ONLY; the webhook's route is 3.130.0's.
     // 3.143.2 named public/css/calendar.css, the announcement bar restyled.
     // 3.143.1 named public/css/calendar.css, the announcement colors, the cell's bar edge to edge, the strip, and hyphens.
@@ -105,7 +107,7 @@ $root    = str_replace( '\\', '/', dirname( __DIR__ ) );
    this tree's text (3.113.8). Applied to the base's answers before they are
    compared, so the embed may differ by exactly these and by nothing else. */
 const EXPECTED_EDITS = array(
-    // None in 3.144.0 or 3.143.2. 3.143.1: each grid title carried its event's language, for hyphens: auto.
+    // None in 3.144.1, 3.144.0 or 3.143.2. 3.143.1: each grid title carried its event's language, for hyphens: auto.
     // None in 3.114.0.
 );
 

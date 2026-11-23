@@ -5346,6 +5346,57 @@ body.uc-modal-open { overflow: hidden; }
 .uc-notice[hidden] { display: none; }
 
 /* ---------------------------------------------------------------------------
+   EVERY ERROR IN CALADMIN IS ONE LOOK (3.144.1, Mark's decision): the Red
+   family's tint #FDE9E7, a 1px brand red #F04937 edge (3.15:1 on the tint,
+   3.68:1 on white, over the 3:1 floor for a shape), and Dark Gray words,
+   10.57:1. The flash after a save, the event save error, an action's error,
+   an inline notice, the error under a field, the fetch report's failure and
+   the pending screen's alarm. Warnings and notices stay yellow and amber.
+   Not the two public forms, whose body is .uc-portal.uc-request-page.
+   ------------------------------------------------------------------------ */
+.uc-portal:not(.uc-request-page) .uc-flash-error,
+.uc-portal:not(.uc-request-page) .uc-login-error,
+.uc-portal:not(.uc-request-page) .uc-action-error,
+.uc-portal:not(.uc-request-page) .uc-notice.uc-notice-error,
+.uc-portal:not(.uc-request-page) .uc-field-error,
+.uc-portal:not(.uc-request-page) .uc-hint-error,
+.uc-portal:not(.uc-request-page) .uc-fetch-fail,
+.uc-portal:not(.uc-request-page) .uc-lastrun-alarm {
+    background: var(--p-error-tint);
+    border: 1px solid var(--p-danger);
+    color: var(--p-text);
+}
+.uc-portal:not(.uc-request-page) .uc-fetch-fail { padding: 8px 10px; border-radius: 6px; }
+.uc-portal:not(.uc-request-page) .uc-fetch-fail .uc-fetch-line { color: var(--p-text); }
+.uc-portal:not(.uc-request-page) .uc-field-error,
+.uc-portal:not(.uc-request-page) .uc-hint-error { padding: 6px 10px; border-radius: 6px; }
+/* A box with nothing in it would be an empty red frame. */
+.uc-portal:not(.uc-request-page) .uc-field-error:empty,
+.uc-portal:not(.uc-request-page) .uc-hint-error:empty,
+.uc-portal:not(.uc-request-page) .uc-action-error:empty,
+.uc-portal:not(.uc-request-page) .uc-notice-error:empty { display: none; }
+
+/* ---------------------------------------------------------------------------
+   NEW REPLIES (3.144.1). The count on the sidebar's Events and beside an
+   event's RSVP count on the Events list is the Red family's ink #AD1C0D
+   under white figures, 7.12:1. On the dark sidebar the badge's own edge is
+   1.73:1 against #373433; the white figures, 7.12:1 on the badge, are what
+   is read. A reply new to the viewer under Replies is Yellow's tint with a
+   Yellow edge and the word New in Yellow's ink, 6.01:1.
+   ------------------------------------------------------------------------ */
+.uc-portal .uc-reply-badge {
+    display: inline-block; min-width: 22px; padding: 1px 7px; border-radius: 99px; box-sizing: border-box;
+    background: var(--p-error-ink); color: #fff;
+    font-size: 12px; font-weight: 700; line-height: 1.5; text-align: center; white-space: nowrap; vertical-align: middle;
+}
+.uc-rsvp-with-replies { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.uc-portal a.uc-reply-badge { color: #fff; text-decoration: none; }
+.uc-portal a.uc-reply-badge:hover { color: #fff; text-decoration: underline; }
+.uc-portal a.uc-reply-badge:focus-visible { outline: 2px solid var(--p-error-ink); outline-offset: 2px; }
+.uc-text-replies .uc-reply-msg.is-new { padding: 8px 10px; border: 1px solid var(--uc-primary); border-radius: 8px; background: #FFFAE0; }
+.uc-text-replies .uc-reply-new-tag { font-weight: 700; color: #705F00; }
+
+/* ---------------------------------------------------------------------------
    WHO CAN FIND THIS EVENT (3.110.0)
 
    Its own card under Display. Once the event is saved and private, its link

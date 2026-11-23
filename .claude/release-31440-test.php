@@ -107,22 +107,30 @@ rt( 'R: a registrant nothing was sent to: their latest registration\'s event', 9
 $db = ri_fresh();
 SFAF_Texts::send_update( 900, 'Doors open at 9:45', 7 );
 $in( '+14155550101', 'Is there parking?' );
+/* 3.144.1: the first reply is emailed at once and opens the window; the
+   window's follow-up carries the rest. release-31441-test.php has the timing. */
 rt( 'A: one run scheduled for the number, five minutes on', 1 === count( $GLOBALS['ri_cron'] ) && SFAF_Text_Inbox::ALERT_HOOK === $GLOBALS['ri_cron'][0]['hook'] && array( '+14155550101' ) === $GLOBALS['ri_cron'][0]['args'] && abs( $GLOBALS['ri_cron'][0]['at'] - ( time() + 300 ) ) <= 2 );
-rt( 'A: nothing is emailed straight away', array() === $GLOBALS['ri_mail'] );
+rt( 'A: the first reply is emailed straight away (3.144.1)', 1 === count( $GLOBALS['ri_mail'] ) );
 $in( '+14155550101', 'And is it step-free?' );
 $in( '+14155550101', 'Thanks' );
 rt( 'A: further replies schedule no second run', 1 === count( $GLOBALS['ri_cron'] ) );
-SFAF_Text_Inbox::alert( '+14155550101' );
-rt( 'A: one email for the three replies', 1 === count( $GLOBALS['ri_mail'] ) );
+rt( 'A: and wait for the follow-up', 1 === count( $GLOBALS['ri_mail'] ) );
 $m = $GLOBALS['ri_mail'][0];
 rt( 'A: to the staff member who sent the message: ' . $m['to'], 'sam@sfaf.org' === $m['to'] );
-rt( 'A: the subject names them, the count and the event: ' . $m['subject'], '3 replies from Ana Ruiz: Coffee & Conversation' === $m['subject'] );
-foreach ( array( 'Ana Ruiz', '(415) 555-0101', 'Is there parking?', 'And is it step-free?', 'Thanks', 'Open the RSVP page', 'replies=1', 'event_id=900', '#uc-replies', 'text (415) 555-0101 from your own phone' ) as $want ) {
+rt( 'A: the subject names them and the event: ' . $m['subject'], 'Reply from Ana Ruiz: Coffee & Conversation' === $m['subject'] );
+foreach ( array( 'Ana Ruiz', '(415) 555-0101', 'Is there parking?', 'Open the RSVP page', 'replies=1', 'event_id=900', '#uc-replies', 'text (415) 555-0101 from your own phone' ) as $want ) {
     rt( "A: the email has \"$want\"", false !== strpos( html_entity_decode( $m['body'], ENT_QUOTES ), $want ) );
 }
-rt( 'A: the replies in the order they came', strpos( $m['body'], 'Is there parking?' ) < strpos( $m['body'], 'And is it step-free?' ) && strpos( $m['body'], 'And is it step-free?' ) < strpos( $m['body'], 'Thanks' ) );
+SFAF_Text_Inbox::follow_up( '+14155550101' );
+rt( 'A: one email for the two after it', 2 === count( $GLOBALS['ri_mail'] ) );
+$m = $GLOBALS['ri_mail'][1];
+rt( 'A: the follow-up\'s subject names them, the count and the event: ' . $m['subject'], '2 more replies from Ana Ruiz: Coffee & Conversation' === $m['subject'] && 'sam@sfaf.org' === $m['to'] );
+foreach ( array( 'And is it step-free?', 'Thanks', 'Open the RSVP page' ) as $want ) {
+    rt( "A: the follow-up has \"$want\"", false !== strpos( html_entity_decode( $m['body'], ENT_QUOTES ), $want ) );
+}
+rt( 'A: the replies in the order they came', strpos( $m['body'], 'And is it step-free?' ) < strpos( $m['body'], 'Thanks' ) && false === strpos( $m['body'], 'Is there parking?' ) );
 SFAF_Text_Inbox::alert( '+14155550101' );
-rt( 'A: a second run sends nothing again', 1 === count( $GLOBALS['ri_mail'] ) );
+rt( 'A: a second run sends nothing again', 2 === count( $GLOBALS['ri_mail'] ) );
 
 $db = ri_fresh();
 SFAF_Texts::send_confirmation( $db->rsvps[0] );

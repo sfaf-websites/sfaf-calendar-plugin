@@ -5870,13 +5870,32 @@ account has an address; a reply to a confirmation or a reminder goes to the
 event's Replies go to (`SFAF_Reminders::reply_to_for()`, the event's own, then
 its creator's, then the site's); a number nothing was ever sent to belongs to
 its latest registration's event, and a stranger to the site default with no
-event. **The alert is by email (`SFAF_Email::send()`, so Postmark), one per
-recipient per five minutes per number**: the first reply schedules
-`sfaf_text_reply_alert` for its number five minutes on, the run claims every
-waiting reply from that number with a stamp of its own before sending, and a
-reply arriving after an alert is overdue sends the overdue ones first. Each
+event. **The alert is by email (`SFAF_Email::send()`, so Postmark). The first
+reply from a number is emailed in the webhook's own request** (3.144.1), as an
+RSVP's emails are, and opens a five-minute window for that number; replies
+inside it wait for **one follow-up email**, "2 more replies from ...", when it
+closes. **The window is the autoloaded option `sfaf_text_reply_windows`,
+number => when it closes, and every request checks it on `wp_loaded`**, so
+the follow-up goes on the first request of any kind after five minutes (a
+visitor, the embed's cron nudge, the webhook, EasyCron) rather than waiting
+for the 15-minute scheduled run; `sfaf_text_reply_alert` at the same moment is
+the backstop, cleared when the window closes, because WordPress refuses a
+second single event of a hook within ten minutes and a leftover one would stop
+the next window scheduling its own. Every send claims the waiting replies from
+that number with a stamp of its own first, so two requests cannot send one
+twice; a reply arriving after its window closed but before anything closed it
+sends the waiting ones in their own follow-up first, then itself at once. Each
 email names the person from their registration and gives the number, every
 message and a link to the RSVP page opened at Replies.
+
+**New replies are per person** (3.144.1). The user meta `_uc_replies_seen`
+holds event id => the last reply that person has seen; anything above it is
+new to them. The count shows as a red badge on the sidebar's Events and beside
+the RSVP count in the Events list's editable rows (`events_table()`, so My
+events and All events), over the events `user_can_edit_event()` gives them
+and no others. Opening the event's RSVP page moves only that person's mark,
+before the sidebar is drawn so the page's own count is already the smaller
+one; Replies opens by itself and marks those replies New.
 
 **The Replies section** on the RSVP page, for whoever may edit the event,
 holds one thread a number, newest first, with a box to answer. An answer goes

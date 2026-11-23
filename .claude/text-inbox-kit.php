@@ -31,6 +31,17 @@ function wp_next_scheduled( $hook, $args = array() ) {
     return false;
 }
 function wp_schedule_single_event( $at, $hook, $args = array() ) { $GLOBALS['ri_cron'][] = array( 'at' => $at, 'hook' => $hook, 'args' => $args ); return true; }
+/* 3.144.1: a closed window clears its backstop run. */
+function wp_clear_scheduled_hook( $hook, $args = array() ) {
+    $n = count( $GLOBALS['ri_cron'] );
+    $GLOBALS['ri_cron'] = array_values( array_filter( $GLOBALS['ri_cron'], function ( $c ) use ( $hook, $args ) { return ! ( $c['hook'] === $hook && $c['args'] === $args ); } ) );
+    return $n - count( $GLOBALS['ri_cron'] );
+}
+
+/* ---- Who has seen which reply (3.144.1): user meta, written where wp-kit's get_user_meta() reads. ---- */
+if ( ! function_exists( 'update_user_meta' ) ) {
+    function update_user_meta( $id, $k, $v, $prev = '' ) { $GLOBALS['kit_umeta'][ (int) $id ][ $k ] = $v; return true; }
+}
 
 /* ---- The tables: registrations, stops, the reminder ledger, the messages. ---- */
 class Ri_Db extends wpdb {
@@ -142,6 +153,7 @@ function ri_fresh( $wa = true ) {
     $GLOBALS['ri_mail']  = array();
     $GLOBALS['ri_cron']  = array();
     $GLOBALS['kit_trans'] = array();
+    unset( $GLOBALS['kit_umeta'] );
     $GLOBALS['kit_users'] = array(
         (object) array( 'ID' => 7, 'display_name' => 'Sam Staff', 'user_email' => 'sam@sfaf.org' ),
         (object) array( 'ID' => 8, 'display_name' => 'Lee Lead', 'user_email' => 'lee@sfaf.org' ),

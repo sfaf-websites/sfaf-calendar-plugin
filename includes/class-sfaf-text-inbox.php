@@ -18,11 +18,23 @@
  *   - nothing ever sent to the number: its latest registration's event's
  *     Replies go to, else the site default, with no event to link to.
  *
- * FIVE MINUTES, ONE EMAIL. The first reply from a number schedules one alert
- * for that number five minutes on; every reply from it before then goes in
- * the same email. The alert claims its rows with a stamp before sending, so
- * two runs cannot send the same reply twice. A reply arriving after an alert
- * is overdue sends the overdue ones first.
+ * THE FIRST REPLY AT ONCE, THE REST FIVE MINUTES LATER (3.144.1). A reply
+ * from a number with no window open is emailed in the same request, as an
+ * RSVP's emails are, and opens a five-minute window for that number; every
+ * reply from it inside the window waits for one follow-up email when it
+ * closes. The window is the option WINDOWS, number => when it closes, read
+ * on every request (wp_loaded), so the follow-up goes on the first visit of
+ * any kind after five minutes and not on the next fifteen-minute run; a
+ * scheduled run at the same moment is the backstop. The alert claims its
+ * rows with a stamp before sending, so two runs cannot send the same reply
+ * twice. A reply arriving after an alert is overdue sends the overdue ones
+ * first.
+ *
+ * NEW TO WHOM (3.144.1). Each person who may edit an event has their own
+ * mark, the user meta SEEN, event id => the last reply they have seen. A
+ * reply above it is new to them: counted on the sidebar's Events and beside
+ * the event on the Events list, and highlighted under Replies. Opening the
+ * event's RSVP page with Replies shown moves the mark, for that person only.
  *
  * THE REPLIES SECTION on the event's RSVP page (SFAF_Portal::
  * render_text_replies()) lists the event's threads, one per number, named
@@ -39,13 +51,22 @@ class SFAF_Text_Inbox {
 
     const TABLE      = 'uc_text_messages';
     const ALERT_HOOK = 'sfaf_text_reply_alert';
+    /** Open windows, number => the Unix time each one's follow-up is due (3.144.1). */
+    const WINDOWS    = 'sfaf_text_reply_windows';
+    /** User meta: event id => the id of the last reply that person has seen (3.144.1). */
+    const SEEN       = '_uc_replies_seen';
+
+    /** unseen(), once a request per person; mark_seen() drops it. */
+    private static $memo = array();
     /** Replies from one number within this many seconds go in one email. */
     const BUNDLE     = 300;
     /** WhatsApp's customer service window: free text only within it. */
     const WINDOW     = 86400;
 
     public static function register() {
-        add_action( self::ALERT_HOOK, array( __CLASS__, 'alert' ) );
+        add_action( self::ALERT_HOOK, array( __CLASS__, 'follow_up' ) );
+        // Every request, so a follow-up does not wait for a scheduled run.
+        add_action( 'wp_loaded', array( __CLASS__, 'send_due' ) );
     }
 
     public static function table() {
@@ -109,6 +130,14 @@ class SFAF_Text_Inbox {
                 $rsvp_id  = (int) $row->id;
             }
         }
+        // A window whose time has come is closed first, so its replies go in
+        // its own follow-up and this one opens a new window.
+        $windows = self::windows();
+        $due     = isset( $windows[ $phone ] ) ? (int) $windows[ $phone ] : 0;
+        if ( $due && $due <= time() ) {
+            self::follow_up( $phone );
+            $due = 0;
+        }
         // Anything overdue goes first, in case the scheduled run never came.
         self::send_overdue();
         $ok = $wpdb->insert( self::table(), array(
@@ -128,11 +157,59 @@ class SFAF_Text_Inbox {
         if ( ! $ok ) {
             return 0;
         }
-        $id = (int) $wpdb->insert_id;
-        if ( ! wp_next_scheduled( self::ALERT_HOOK, array( $phone ) ) ) {
-            wp_schedule_single_event( time() + self::BUNDLE, self::ALERT_HOOK, array( $phone ) );
+        $id         = (int) $wpdb->insert_id;
+        self::$memo = array();
+        if ( $due ) {
+            // Inside the window: it waits for the follow-up.
+            return $id;
         }
+        // The first reply: emailed now, and the window opened behind it.
+        self::alert( $phone );
+        $at                = time() + self::BUNDLE;
+        $windows           = self::windows();
+        $windows[ $phone ] = $at;
+        update_option( self::WINDOWS, $windows, true );
+        wp_schedule_single_event( $at, self::ALERT_HOOK, array( $phone ) );
         return $id;
+    }
+
+    /** @return array<string,int> The open windows, number => when each closes. */
+    public static function windows() {
+        $w = get_option( self::WINDOWS, array() );
+        return is_array( $w ) ? $w : array();
+    }
+
+    /**
+     * Close a number's window: the replies that waited in it, in one email.
+     * From the scheduled run, from send_due(), or from the next reply.
+     *
+     * @return int How many emails went.
+     */
+    public static function follow_up( $phone ) {
+        $phone   = (string) $phone;
+        $windows = self::windows();
+        if ( isset( $windows[ $phone ] ) ) {
+            unset( $windows[ $phone ] );
+            update_option( self::WINDOWS, $windows, true );
+        }
+        // A leftover backstop run would stop the next window scheduling its
+        // own: WordPress refuses a second run of a hook within ten minutes.
+        wp_clear_scheduled_hook( self::ALERT_HOOK, array( $phone ) );
+        return self::alert( $phone, true );
+    }
+
+    /** On every request: close each window whose five minutes are up. */
+    public static function send_due() {
+        $windows = self::windows();
+        if ( ! $windows ) {
+            return;
+        }
+        $now = time();
+        foreach ( $windows as $phone => $at ) {
+            if ( (int) $at <= $now ) {
+                self::follow_up( (string) $phone );
+            }
+        }
     }
 
     /** The last message that went out to a number, from any event, or null. */
@@ -176,7 +253,7 @@ class SFAF_Text_Inbox {
      *
      * @return int How many emails went.
      */
-    public static function alert( $phone ) {
+    public static function alert( $phone, $more = false ) {
         global $wpdb;
         $phone = (string) $phone;
         // Claimed first, with a stamp of this run's own, so a second run finds nothing.
@@ -200,7 +277,7 @@ class SFAF_Text_Inbox {
         $went = 0;
         foreach ( $groups as $key => $group ) {
             $to    = substr( $key, 0, strrpos( $key, '|' ) );
-            $built = self::build_alert( $group );
+            $built = self::build_alert( $group, $more );
             if ( SFAF_Email::send( $to, $built['subject'], $built['html'], $built['text'] ) ) {
                 $went++;
             }
@@ -265,8 +342,12 @@ class SFAF_Text_Inbox {
         return add_query_arg( array( 'event_id' => (int) $event_id, 'replies' => 1 ), SFAF_Portal::link( 'rsvps' ) ) . '#uc-replies';
     }
 
-    /** @return array{subject:string,html:string,text:string} */
-    public static function build_alert( $rows ) {
+    /**
+     * @param bool $more A follow-up: the replies after the first, so it says
+     *                   "more" and "again".
+     * @return array{subject:string,html:string,text:string}
+     */
+    public static function build_alert( $rows, $more = false ) {
         $first    = $rows[0];
         $name     = self::name_for( $rows );
         $phone    = self::show_phone( $first->phone );
@@ -274,7 +355,13 @@ class SFAF_Text_Inbox {
         $event_id = (int) $first->event_id;
         $event    = $event_id && get_post( $event_id ) ? html_entity_decode( (string) get_the_title( $event_id ), ENT_QUOTES, 'UTF-8' ) : '';
         $n        = count( $rows );
-        $subject  = ( 1 === $n ? sprintf( 'Reply from %s', $name ) : sprintf( '%d replies from %s', $n, $name ) ) . ( '' !== $event ? ': ' . $event : '' );
+        if ( $more ) {
+            $subject = 1 === $n ? sprintf( '1 more reply from %s', $name ) : sprintf( '%d more replies from %s', $n, $name );
+        } else {
+            $subject = 1 === $n ? sprintf( 'Reply from %s', $name ) : sprintf( '%d replies from %s', $n, $name );
+        }
+        $subject .= '' !== $event ? ': ' . $event : '';
+        $said     = $more ? '%s replied again by %s' : '%s replied by %s';
         $date     = $event_id ? (string) get_post_meta( $event_id, '_uc_event_date', true ) : '';
         $details  = array(
             'Name'  => $name,
@@ -283,9 +370,9 @@ class SFAF_Text_Inbox {
             'Event' => $event,
             'Date'  => '' !== $date ? sfaf_ap_date( $date ) : '',
         );
-        $html  = SFAF_Email::heading( sprintf( '%s replied by %s', $name, $by ) );
+        $html  = SFAF_Email::heading( sprintf( $said, $name, $by ) );
         $html .= SFAF_Email::details( $details );
-        $text  = sprintf( "%s replied by %s.\n\n", $name, $by );
+        $text  = sprintf( $said . ".\n\n", $name, $by );
         foreach ( $details as $k => $v ) {
             if ( '' !== trim( (string) $v ) ) {
                 $text .= $k . ': ' . $v . "\n";
@@ -355,6 +442,70 @@ class SFAF_Text_Inbox {
         }
         usort( $out, function ( $a, $b ) { return $b['lastid'] - $a['lastid']; } );
         return $out;
+    }
+
+    /* ---------------------------------------------------------------------
+     * New to whom (3.144.1)
+     * ------------------------------------------------------------------- */
+
+    /** @return array<int,int> Event id => the last reply this person has seen. */
+    public static function seen( $user_id ) {
+        $s = get_user_meta( (int) $user_id, self::SEEN, true );
+        return is_array( $s ) ? array_map( 'intval', $s ) : array();
+    }
+
+    /**
+     * Replies this person has not seen, event id => how many, for every
+     * event that has any. Who may edit which event is the caller's to ask.
+     *
+     * @return array<int,int>
+     */
+    public static function unseen( $user_id ) {
+        $user_id = (int) $user_id;
+        if ( isset( self::$memo[ $user_id ] ) ) {
+            return self::$memo[ $user_id ];
+        }
+        global $wpdb;
+        $seen = self::seen( $user_id );
+        $rows = (array) $wpdb->get_results(
+            'SELECT id, event_id FROM ' . self::table() . " WHERE direction = 'in' AND event_id > 0 ORDER BY id ASC"
+        );
+        $out = array();
+        foreach ( $rows as $r ) {
+            $e = (int) $r->event_id;
+            if ( $e && (int) $r->id > ( isset( $seen[ $e ] ) ? $seen[ $e ] : 0 ) ) {
+                $out[ $e ] = ( isset( $out[ $e ] ) ? $out[ $e ] : 0 ) + 1;
+            }
+        }
+        self::$memo[ $user_id ] = $out;
+        return $out;
+    }
+
+    /** The ids of one event's replies this person has not seen. */
+    public static function unseen_ids( $user_id, $event_id ) {
+        $seen  = self::seen( $user_id );
+        $mark  = isset( $seen[ (int) $event_id ] ) ? $seen[ (int) $event_id ] : 0;
+        $ids   = array();
+        foreach ( self::threads( $event_id ) as $t ) {
+            foreach ( $t['rows'] as $r ) {
+                if ( 'in' === $r->direction && (int) $r->id > $mark ) {
+                    $ids[] = (int) $r->id;
+                }
+            }
+        }
+        return $ids;
+    }
+
+    /** This person has seen every reply to the event so far. Nobody else's mark moves. */
+    public static function mark_seen( $user_id, $event_id, $last_id ) {
+        $user_id = (int) $user_id;
+        $seen    = self::seen( $user_id );
+        if ( (int) $last_id <= ( isset( $seen[ (int) $event_id ] ) ? $seen[ (int) $event_id ] : 0 ) ) {
+            return;
+        }
+        $seen[ (int) $event_id ] = (int) $last_id;
+        update_user_meta( $user_id, self::SEEN, $seen );
+        unset( self::$memo[ $user_id ] );
     }
 
     /** Whether a WhatsApp answer may go as typed: the person's last WhatsApp message is under 24 hours old. */

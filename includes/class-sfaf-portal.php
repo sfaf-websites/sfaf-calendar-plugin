@@ -70,6 +70,22 @@ class SFAF_Portal {
     private $load_media = false;
     private $load_editor = false;
 
+    /**
+     * The flash messages that say something failed or was refused, drawn
+     * as errors (3.144.1); every other one is the plain flash.
+     */
+    const FLASH_ERRORS = array(
+        'schedule_time_past', 'bulk_cat_failed', 'delete_needs_cancel', 'series_needs_cancel', 'series_has_waitlist',
+        'cancel_failed', 'duplicate_failed', 'approve_held', 'approve_picture_series', 'approved_picture_failed',
+        'organizer_required', 'venue_failed', 'reassign_first', 'reassign_invalid', 'series_slug_refused',
+        'series_picture_refused', 'category_failed', 'series_failed', 'faq_set_failed', 'purge_refused',
+        'schedule_pattern_refused', 'schedule_extend_bad_date', 'schedule_extend_failed', 'schedule_imported',
+        'schedule_no_seed', 'schedule_add_failed', 'schedule_remove_failed', 'schedule_past',
+    );
+
+    /** Event id => the replies new to the viewer when this page opened (3.144.1). See take_new_replies(). */
+    private $replies_new = array();
+
     /** The screen being drawn, "events/edit/12", which keys its drafts (3.110.5). */
     private $route = '';
 
@@ -4972,7 +4988,8 @@ class SFAF_Portal {
         $nav['preferences'] = array( 'Preferences', 'preferences', 'bell' );
 
         /*
-         * THE ONE COUNT THAT EARNS A BADGE.
+         * THE COUNTS THAT EARN A BADGE: Pending's, and from 3.144.1 the red
+         * count of new replies on Events.
          *
          * Yellow appears once on this sidebar, on Pending, for the same reason
          * it appears once on a form: it means "this is the thing to act on".
@@ -4987,6 +5004,9 @@ class SFAF_Portal {
             $pending_count  = count( $this->query_events( $user, $this->pending_query_args() ) );
             $pending_count += count( SFAF_Sources::queue_ids( SFAF_Sources::STATUS_PENDING ) );
         }
+        /* REPLIES NEW TO THIS PERSON (3.144.1), on the events they may edit,
+         * in red: a person is waiting for an answer. See SFAF_Text_Inbox. */
+        $replies_count = $this->new_reply_count( $user );
         ?>
         <div class="uc-portal-layout">
             <aside class="uc-portal-sidebar" id="uc-sidebar">
@@ -5014,6 +5034,8 @@ class SFAF_Portal {
                             <span class="uc-nav-label"><?php echo esc_html( $item[0] ); ?></span>
                             <?php if ( 'pending' === $key && $pending_count > 0 ) : ?>
                                 <span class="uc-nav-badge"><?php echo (int) $pending_count; ?><span class="uc-visually-hidden"> waiting for review</span></span>
+                            <?php elseif ( 'events' === $key && $replies_count > 0 ) : ?>
+                                <span class="uc-nav-badge uc-reply-badge" data-uc-replies-badge><?php echo (int) $replies_count; ?><span class="uc-visually-hidden"> new <?php echo 1 === $replies_count ? 'reply' : 'replies'; ?></span></span>
                             <?php endif; ?>
                         </a>
                     <?php endforeach; ?>
@@ -5641,7 +5663,7 @@ class SFAF_Portal {
 
         if ( isset( $map[ $key ] ) ) {
             $extra = ( 'saved' === $key ) ? $this->notify_outcome() : '';
-            echo '<div class="uc-flash">' . esc_html( $map[ $key ] . $extra ) . '</div>';
+            echo '<div class="' . ( in_array( $key, self::FLASH_ERRORS, true ) ? 'uc-flash uc-flash-error' : 'uc-flash' ) . '">' . esc_html( $map[ $key ] . $extra ) . '</div>';
         }
     }
 
@@ -7973,17 +7995,25 @@ class SFAF_Portal {
                          * event that takes none here.
                          */
                         if ( ! sfaf_event_takes_rsvps( $id ) ) {
-                            echo '<span class="uc-muted" data-uc-rsvp-none>&ndash;</span>';
+                            $rsvp_cell = '<span class="uc-muted" data-uc-rsvp-none>&ndash;</span>';
                         } else {
                             $pill = sfaf_icon( 'person', array( 'size' => '14px' ) )
                                 . '<span>' . esc_html( sprintf( '%d %s', $rsvp_n, 1 === $rsvp_n ? 'RSVP' : 'RSVPs' ) ) . '</span>';
                             if ( $this->can_edit_event( $user, $id ) ) {
-                                echo '<a class="uc-rsvp-pill" data-uc-rsvp-pill href="'
+                                $rsvp_cell = '<a class="uc-rsvp-pill" data-uc-rsvp-pill href="'
                                     . esc_url( add_query_arg( 'event_id', $id, $this->url( 'rsvps' ) ) ) . '">' . $pill . '</a>';
                             } else {
-                                echo '<span class="uc-rsvp-pill" data-uc-rsvp-pill>' . $pill . '</span>';
+                                $rsvp_cell = '<span class="uc-rsvp-pill" data-uc-rsvp-pill>' . $pill . '</span>';
                             }
                         }
+                        // Replies new to this person, beside the count, to the Replies section (3.144.1).
+                        $reply_n = $this->new_reply_count( $user, $id );
+                        if ( $reply_n > 0 ) {
+                            $rsvp_cell = '<span class="uc-rsvp-with-replies">' . $rsvp_cell
+                                . '<a class="uc-reply-badge" data-uc-replies-badge href="' . esc_url( SFAF_Text_Inbox::rsvp_link( $id ) ) . '">'
+                                . (int) $reply_n . '<span class="uc-visually-hidden"> new ' . ( 1 === $reply_n ? 'reply' : 'replies' ) . '</span></a></span>';
+                        }
+                        echo $rsvp_cell; // Built above from escaped parts.
                     ?></td>
                     <td>
                         <span class="uc-pill uc-pill-<?php echo esc_attr( $st ); ?>"><?php echo esc_html( sfaf_event_status_label( $id ) ); ?></span>
@@ -19129,6 +19159,11 @@ class SFAF_Portal {
             $this->load_editor = true;
             SFAF_Rich_Text::enqueue();
         }
+        /* Seen before the sidebar is drawn, so its count is already the
+         * smaller one on this page (3.144.1). */
+        if ( $event_id ) {
+            $this->take_new_replies( $user, $event_id );
+        }
         // The full width of the screen, for the registrations table (3.133.0).
         $this->chrome_open( $user, 'events', true );
         $search   = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
@@ -20154,16 +20189,55 @@ class SFAF_Portal {
      * whoever may edit the event, as Text registrants is. Absent until Twilio
      * can send and nobody has replied. See SFAF_Text_Inbox.
      */
+    /**
+     * NEW REPLIES (3.144.1): the event's replies this viewer had not seen
+     * when the page opened, and from then on seen, for this viewer only.
+     * Once a request, so the RSVP page can call it before the sidebar is
+     * drawn and the Replies section after, and both get the same ids.
+     *
+     * @return int[]
+     */
+    private function take_new_replies( $user, $event_id ) {
+        $event_id = (int) $event_id;
+        if ( ! isset( $this->replies_new[ $event_id ] ) ) {
+            $ids = SFAF_Text_Inbox::unseen_ids( $user->ID, $event_id );
+            if ( $ids ) {
+                SFAF_Text_Inbox::mark_seen( $user->ID, $event_id, max( $ids ) );
+            }
+            $this->replies_new[ $event_id ] = $ids;
+        }
+        return $this->replies_new[ $event_id ];
+    }
+
+    /**
+     * How many replies are new to this viewer: on one event, or on every
+     * event they may edit (the sidebar's Events). Per person (3.144.1).
+     */
+    private function new_reply_count( $user, $event_id = 0 ) {
+        $count = 0;
+        foreach ( SFAF_Text_Inbox::unseen( $user->ID ) as $eid => $n ) {
+            if ( $event_id && (int) $eid !== (int) $event_id ) {
+                continue;
+            }
+            $post = get_post( (int) $eid );
+            if ( $post && 'uc_event' === $post->post_type && $this->can_edit_event( $user, $post ) ) {
+                $count += (int) $n;
+            }
+        }
+        return $count;
+    }
+
     private function render_text_replies( $user, $event_id ) {
         $threads = SFAF_Text_Inbox::threads( $event_id );
         if ( ! $threads && ! SFAF_Texts::sms_on() ) {
             return;
         }
+        $new = array_flip( $this->take_new_replies( $user, $event_id ) );
         $said = get_transient( 'sfaf_reply_said_' . $user->ID );
         if ( false !== $said ) {
             delete_transient( 'sfaf_reply_said_' . $user->ID );
         }
-        $open  = is_array( $said ) || ! empty( $_GET['replies'] );
+        $open  = is_array( $said ) || ! empty( $_GET['replies'] ) || $new;
         $n     = count( $threads );
         $title = html_entity_decode( get_the_title( $event_id ), ENT_QUOTES, 'UTF-8' );
         $names = array();
@@ -20201,8 +20275,9 @@ class SFAF_Portal {
                                     $names[ (int) $r->by_user ] = $u && '' !== (string) $u->display_name ? (string) $u->display_name : 'A former user';
                                 }
                                 ?>
-                                <li class="uc-reply-msg <?php echo $in ? 'uc-reply-in' : 'uc-reply-out'; ?>" data-uc-reply-msg="<?php echo $in ? 'in' : 'out'; ?>">
-                                    <span class="uc-reply-meta"><?php echo esc_html( ( $in ? $t['name'] : $names[ (int) $r->by_user ] ) . ', ' . sfaf_ap_datetime( (string) $r->created_at ) ); ?></span>
+                                <?php $fresh = $in && isset( $new[ (int) $r->id ] ); ?>
+                                <li class="uc-reply-msg <?php echo $in ? 'uc-reply-in' : 'uc-reply-out'; ?><?php echo $fresh ? ' is-new' : ''; ?>" data-uc-reply-msg="<?php echo $in ? 'in' : 'out'; ?>"<?php echo $fresh ? ' data-uc-reply-new' : ''; ?>>
+                                    <span class="uc-reply-meta"><?php if ( $fresh ) : ?><span class="uc-reply-new-tag">New</span> <?php endif; ?><?php echo esc_html( ( $in ? $t['name'] : $names[ (int) $r->by_user ] ) . ', ' . sfaf_ap_datetime( (string) $r->created_at ) ); ?></span>
                                     <span class="uc-reply-body"><?php echo esc_html( (string) $r->body ); ?></span>
                                 </li>
                             <?php endforeach; ?>
