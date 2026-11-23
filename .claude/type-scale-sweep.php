@@ -75,6 +75,7 @@ $exempt = array(
 	'uc-portal-brandtext' => 'the wordmark beside the logo is part of a brand lockup',
 	'uc-nav-item'         => 'sidebar navigation; the dark sidebar is measured on its own terms',
 	'uc-nav-badge'        => 'a count badge',
+	'uc-reply-badge'      => 'a count badge, the nav badge\'s shape in red (3.144.1)',
 	'uc-portal-me-role'   => 'the role caption in the sidebar identity block',
 	'uc-portal-signout'   => 'sidebar chrome',
 	'uc-stat-num'         => 'a numeral read as a graphic, like the empty-state one',

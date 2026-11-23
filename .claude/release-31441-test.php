@@ -162,7 +162,7 @@ $rows = array();
 foreach ( $x->query( '//a[@data-uc-replies-badge]' ) as $a ) { $rows[] = rt_text( $a ) . ' ' . $a->getAttribute( 'href' ); }
 rt( 'B: the Events list has one beside each event with new replies: ' . json_encode( $rows ), 2 === count( $rows ) && 0 === strpos( $rows[0], '2 new replies ' ) && 0 === strpos( $rows[1], '1 new reply ' ) );
 rt( 'B: linked to the event\'s Replies', false !== strpos( $rows[0], 'event_id=900' ) && false !== strpos( $rows[0], 'replies=1' ) && false !== strpos( $rows[0], '#uc-replies' ) );
-$cell = $x->query( '//a[@data-uc-replies-badge]/parent::td' )->item( 0 );
+$cell = $x->query( '//a[@data-uc-replies-badge]/ancestor::td[1]' )->item( 0 );
 rt( 'B: in the RSVP count\'s cell', $cell && 1 === $x->query( './/*[@data-uc-rsvp-pill or @data-uc-rsvp-none]', $cell )->length );
 $pt = file_get_contents( $root . '/includes/class-sfaf-portal.php' );
 rt( 'B: My events and All events both draw their editable rows with that table', 1 <= substr_count( $pt, '$this->events_table( $mine_ids, $user, $sort, $filters, $bulk );' ) && 1 <= substr_count( $pt, '$this->events_table( $ids, $user, $sort, $filters, $bulk );' ) );

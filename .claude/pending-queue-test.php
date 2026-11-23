@@ -446,6 +446,9 @@ require_once $root . '/includes/class-sfaf-media-folder.php';
 require_once $root . '/includes/class-sfaf-media.php';
 require_once $root . '/includes/class-sfaf-submissions.php';
 require_once $root . '/includes/class-sfaf-submit.php';
+require_once $root . '/includes/class-sfaf-text-inbox.php'; // the sidebar's reply count (3.144.1)
+/* No replies table here: the sidebar's count asks it, and hears none (3.144.1). */
+if ( empty( $GLOBALS['wpdb'] ) ) { $GLOBALS['wpdb'] = new class { public $prefix = 'wp_'; public function get_results( $q = '', $o = null ) { return array(); } }; }
 require_once $root . '/includes/class-sfaf-portal.php';
 
 /* ---------------------------------------------------------------------------
