@@ -5898,7 +5898,13 @@ before the sidebar is drawn so the page's own count is already the smaller
 one; Replies opens by itself and marks those replies New.
 
 **The Replies section** on the RSVP page, for whoever may edit the event,
-holds one thread a number, newest first, with a box to answer. An answer goes
+holds one thread a number, newest first, with a box to answer. Above each
+reply is the message it answered (3.144.2), its `reply_to`, once however many
+replies answer it, when that was a confirmation, a reminder or a Text
+registrants message (`SFAF_Text_Inbox::answered()`); an answer from the RSVP
+page is in the thread already. A text shows as it was sent; a WhatsApp
+message shows the words of its text version, since the approved template's
+words are held by Twilio and never stored here. An answer goes
 the way the person last wrote: by text through the Messaging Service, with
 "SFAF:" and the STOP line; by WhatsApp as typed while their last WhatsApp
 message is under 24 hours old, and after that as the approved update

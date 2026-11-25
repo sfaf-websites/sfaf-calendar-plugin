@@ -253,7 +253,8 @@ $heads = array(); foreach ( $x->query( '//section[@data-uc-reply-thread]/h3' ) a
 rt( 'P: one thread a person, named from the registration, newest first: ' . json_encode( $heads ), array( 'Beto Luna', 'Ana Ruiz' ) === $heads );
 $ana = $x->query( '//section[@data-uc-reply-thread="+14155550101"]' )->item( 0 );
 $msgs = array(); foreach ( $x->query( './/li[@data-uc-reply-msg]', $ana ) as $li ) { $msgs[] = $li->getAttribute( 'data-uc-reply-msg' ) . ':' . rt_text( $x->query( './/*[contains(@class,"uc-reply-body")]', $li )->item( 0 ) ); }
-rt( 'P: the reply and the answer, in order, nothing else sent to them: ' . json_encode( $msgs ), array( 'in:Is there parking?', 'out:SFAF: Yes, on Market St Reply STOP to opt out.' ) === $msgs );
+// 3.144.2: the Text registrants message the reply answered, above it, and nothing else sent to them.
+rt( 'P: the message replied to, the reply and the answer, in order: ' . json_encode( $msgs ), array( 'sent:SFAF: Update about Coffee & Conversation: Doors open at 9:45. For questions, please email events@sfaf.org. Reply STOP to opt out.', 'in:Is there parking?', 'out:SFAF: Yes, on Market St Reply STOP to opt out.' ) === $msgs );
 rt( 'P: the answer says who sent it', false !== strpos( rt_text( $x->query( './/li[@data-uc-reply-msg="out"]//*[contains(@class,"uc-reply-meta")]', $ana )->item( 0 ) ), 'Lee Lead' ) );
 rt( 'P: the number and the channel', '(415) 555-0101, Text' === rt_text( $x->query( './/*[contains(@class,"uc-reply-who")]', $ana )->item( 0 ) ) );
 $form = $x->query( './/form[@data-uc-reply-form]', $ana )->item( 0 );

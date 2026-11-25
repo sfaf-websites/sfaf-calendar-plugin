@@ -438,10 +438,49 @@ class SFAF_Text_Inbox {
                 'rows'    => $list,
                 'last'    => (string) $list[ count( $list ) - 1 ]->created_at,
                 'lastid'  => (int) $list[ count( $list ) - 1 ]->id,
+                'answers' => self::answered( $in ),
             );
         }
         usort( $out, function ( $a, $b ) { return $b['lastid'] - $a['lastid']; } );
         return $out;
+    }
+
+    /** The kinds a reply can answer that the thread does not already hold. */
+    const ANSWERED_KINDS = array( 'confirmation', 'reminder', 'update' );
+
+    /**
+     * WHAT EACH REPLY ANSWERED (3.144.2): the message its reply_to names, the
+     * last one sent to the number when it came in (received()), when that was
+     * a confirmation, a reminder or a Text registrants message. An answer from
+     * the RSVP page is in the thread already. A text's row is its words as
+     * sent; a WhatsApp row is the same words as the text, not the approved
+     * template's, which Twilio holds. Nothing for a reply to a message sent
+     * before schema 20, which has no row.
+     *
+     * @param array $in The thread's replies.
+     * @return array<int,object> Message id => its row.
+     */
+    public static function answered( $in ) {
+        global $wpdb;
+        $out = array();
+        foreach ( (array) $in as $r ) {
+            $id = (int) $r->reply_to;
+            if ( ! $id || array_key_exists( $id, $out ) ) {
+                continue;
+            }
+            $row = $wpdb->get_row( $wpdb->prepare(
+                'SELECT * FROM ' . self::table() . " WHERE id = %d AND direction = 'out' LIMIT 1",
+                $id
+            ) );
+            $out[ $id ] = ( $row && in_array( (string) $row->kind, self::ANSWERED_KINDS, true ) ) ? $row : null;
+        }
+        return array_filter( $out );
+    }
+
+    /** "Confirmation", "Reminder" or "Text registrants", for the Replies section. */
+    public static function kind_label( $kind ) {
+        $labels = array( 'confirmation' => 'Confirmation', 'reminder' => 'Reminder', 'update' => 'Text registrants' );
+        return isset( $labels[ $kind ] ) ? $labels[ $kind ] : '';
     }
 
     /* ---------------------------------------------------------------------

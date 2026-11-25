@@ -652,7 +652,7 @@ places, nine of which handed it the decorative hairline instead of a boundary.
 | Destructive button | `#c0392b`, white ink | its own | behind a disclosure |
 | Destructive outline | white, ink `#c0392b` | `#c0392b`; hover fills `#FEF2F2` | removes or deletes from a row or form |
 | Quiet action | none | none | a verb in a row of verbs |
-| Segmented option group | white, chosen fills `#0E7680` | one boundary, seams inside | pick one of these |
+| Segmented option group | white, chosen fills `#0E7680` | one `#0E7680` boundary, seams inside the same (3.144.2) | pick one of these |
 | Option card | white | `--p-border-strong` | pick one, with its consequence under it |
 | Disclosure | inherits | none, or a ring on a card head | this opens |
 
@@ -662,7 +662,7 @@ team on the Events list: white, a 1px `#0E7680` edge, `#0E7680` semibold ink,
 Light Gray face of 3.64.0 to 3.136.0, which answered "a white box with a grey
 edge is a text field". R answers it with colour instead of a fill: a field's
 edge is the grey `--p-border-strong` and its ink Dark Gray, a button's edge and
-words are teal. **A teal outline always means secondary**: the solid teal
+words are teal. **A teal outline always means secondary**, but for the segmented option group, whose teal boundary and seams (3.144.2, Mark's decision) hold options that pick a value, one of them always filled: the solid teal
 utility button (Fetch updates, Refresh from source) became R in the same
 release. Measured, in `.claude/control-standard-audit.php`:
 

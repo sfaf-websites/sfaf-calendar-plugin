@@ -20268,8 +20268,29 @@ class SFAF_Portal {
                         <h3 class="uc-subhead"><?php echo esc_html( $t['name'] ); ?></h3>
                         <p class="uc-hint uc-reply-who"><?php echo esc_html( SFAF_Text_Inbox::show_phone( $t['phone'] ) . ', ' . ( $wa ? 'WhatsApp' : 'Text' ) ); ?></p>
                         <ol class="uc-reply-messages">
-                            <?php foreach ( $t['rows'] as $r ) :
+                            <?php
+                            // What each reply answered, once, above the first reply to it (3.144.2).
+                            $shown = array();
+                            foreach ( $t['rows'] as $r ) :
                                 $in = 'in' === $r->direction;
+                                $to = $in ? (int) $r->reply_to : 0;
+                                if ( $to && isset( $t['answers'][ $to ] ) && ! isset( $shown[ $to ] ) ) :
+                                    $shown[ $to ] = true;
+                                    $a    = $t['answers'][ $to ];
+                                    $what = SFAF_Text_Inbox::kind_label( (string) $a->kind );
+                                    if ( 'update' === (string) $a->kind && (int) $a->by_user ) {
+                                        $au = get_userdata( (int) $a->by_user );
+                                        if ( $au && '' !== (string) $au->display_name ) {
+                                            $what .= ' from ' . $au->display_name;
+                                        }
+                                    }
+                                    ?>
+                                    <li class="uc-reply-msg uc-reply-out" data-uc-reply-msg="sent" data-uc-reply-kind="<?php echo esc_attr( (string) $a->kind ); ?>">
+                                        <span class="uc-reply-meta"><?php echo esc_html( $what . ', ' . sfaf_ap_datetime( (string) $a->created_at ) ); ?></span>
+                                        <span class="uc-reply-body"><?php echo esc_html( (string) $a->body ); ?></span>
+                                    </li>
+                                <?php endif; ?>
+                                <?php
                                 if ( ! $in && ! isset( $names[ (int) $r->by_user ] ) ) {
                                     $u = get_userdata( (int) $r->by_user );
                                     $names[ (int) $r->by_user ] = $u && '' !== (string) $u->display_name ? (string) $u->display_name : 'A former user';

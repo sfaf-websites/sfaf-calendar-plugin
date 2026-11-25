@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 454 items.** Quick 364, needs real conditions 85, blocked on other
+**Outstanding: 456 items.** Quick 366, needs real conditions 85, blocked on other
 people 5.
 
 ---
@@ -4891,6 +4891,31 @@ On a phone, open the menu: the number is on Events there too.
 
 **Why it needs a person:** real replies in the live table and two real
 accounts on a team.
+
+### 1.367 The segmented toggles have a teal edge (3.144.2)
+
+In caladmin, open Events: My events | All events has a thin teal edge round it
+and between the two, the one you are on filled teal with white words. Open Add
+event: No RSVP | RSVP Here | External RSVP looks the same, and so does How often
+this repeats once you choose a repeat; on an event's RSVP page, so does Check in
+by name | Enter a count. Say whether the teal edge reads as one control or as
+buttons, beside the white buttons with a teal edge.
+
+**Why it needs a person:** the real screens on the site, and whether the edge
+reads as a choice, which no measurement answers.
+
+### 1.368 Replies shows what each reply answered (3.144.2)
+
+On the event with the test reply, open its RSVP page and Replies: above the
+reply is the message it answered, set in from the left like an answer, labelled
+Confirmation, Reminder or "Text registrants from" the sender, with when it went.
+Then send yourself a Text registrants message, reply to it twice, and reopen the
+page: the message shows once, above your first reply. A reply to something sent
+before 3.144.0 shows nothing above it. By WhatsApp, the words shown are the text
+version's, not the approved template's: say whether the difference matters.
+
+**Why it needs a person:** real messages through Twilio, and what WhatsApp
+actually delivered beside what is shown.
 
 ### 1.366 Errors are pale red, warnings stay yellow (3.144.1)
 

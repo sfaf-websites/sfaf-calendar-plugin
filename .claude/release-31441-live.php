@@ -213,7 +213,8 @@ foreach ( $files as $name => $file ) {
     rl( ! empty( $r['repliesOpen'] ), "$name: Replies is not open with new replies" );
     $msgs = (array) $r['msgs'];
     $flags = array_map( function ( $x ) { return $x['dir'] . ( $x['isNew'] ? ':new' : '' ); }, $msgs );
-    rl( array( 'in', 'out', 'in:new', 'in:new' ) === $flags, "$name: the messages are " . json_encode( $flags ) );
+    // 3.144.2: the Text registrants message the first reply answered comes first.
+    rl( array( 'sent', 'in', 'out', 'in:new', 'in:new' ) === $flags, "$name: the messages are " . json_encode( $flags ) );
     foreach ( $msgs as $x ) {
         rl( $x['seen'] && $x['inside'], "PLANT N: $name: " . json_encode( $x['body'] ) . ' is not inside the card' );
         if ( $x['isNew'] ) {

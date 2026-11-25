@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.144.1
+Stable tag: 3.144.2
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,13 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.144.2 =
+
+**The segmented toggles' teal edge, and what each reply answered.** Not an embed change: against 3.144.1, embed-identity-test.php finds no difference.
+
+* **My events | All events** and every other segmented toggle in caladmin (No RSVP | RSVP Here | External RSVP, How often this repeats, the question's answer style, Check in by name | Enter a count) have a teal edge round them and between their options. The chosen option is still filled teal with white words; the others are white with dark words.
+* **Replies shows the message each reply answered**, above it: the confirmation, the reminder or the Text registrants message, with when it went and, for Text registrants, who sent it. It shows once, above the first reply to it. A WhatsApp message shows the words of its text version, not the approved template's. A reply to a message sent before 3.144.0 shows nothing above it.
 
 = 3.144.1 =
 

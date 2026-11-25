@@ -502,9 +502,14 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
    wears one continuous boundary with seams inside it rather than four separate
    edges, and the chosen one FILLS: the darkened teal with white on it, 5.35:1.
    Brand teal would have been 2.26:1 and is never used behind text.
+
+   THE EDGE AND THE SEAMS ARE ONE TEAL (3.144.2), Mark's decision: a 1px
+   --uc-accent-text boundary round the group and between its options, so the
+   side not chosen is white inside a teal outline, 5.35:1 against a white card.
+   Its words stay Dark Gray. The check-in bar's seams below are the same.
    ------------------------------------------------------------------------- */
 .uc-scope-switch,
-.uc-seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--p-border-strong);
+.uc-seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--uc-accent-text);
     border-radius: 9px; overflow: hidden; }
 .uc-scope-switch { align-self: center; }
 .uc-seg { align-self: flex-start; }
@@ -512,7 +517,7 @@ body.uc-portal [data-wg-hidden] { display: none !important; }
 .uc-portal .uc-scope-opt,
 .uc-seg-opt span { display: block; padding: 8px 16px; font-size: 13px; font-weight: 600;
     color: var(--p-text); background: var(--p-control-face);
-    border-left: 1px solid var(--p-border);
+    border-left: 1px solid var(--uc-accent-text);
     text-decoration: none; white-space: nowrap; cursor: pointer; user-select: none; }
 .uc-portal .uc-scope-opt:first-child,
 .uc-seg-opt:first-child span { border-left: 0; }
@@ -5435,7 +5440,7 @@ body.uc-modal-open { overflow: hidden; }
 .uc-checkin-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 20px; margin: 0 0 16px; }
 .uc-checkin-bar .uc-checkin-mode { margin: 0; }
 .uc-checkin-bar .uc-seg-opt-btn {
-    display: block; margin: 0; padding: 8px 16px; border: 0; border-left: 1px solid var(--p-border); border-radius: 0;
+    display: block; margin: 0; padding: 8px 16px; border: 0; border-left: 1px solid var(--uc-accent-text); border-radius: 0;
     background: var(--p-control-face); color: var(--p-text); font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1.4; cursor: pointer;
 }
 .uc-checkin-bar .uc-seg-opt-btn:first-child { border-left: 0; }

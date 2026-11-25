@@ -141,7 +141,8 @@ foreach ( $files as $w => $file ) {
         rl( $th['send'] && $th['send']['seen'] && $th['send']['onScreen'] && $th['send']['bg'] === $r['trBg'] && '' !== $r['trBg'], "PLANT T: $name: {$th['name']}'s Send is " . json_encode( $th['send'] ) . ', Text registrants\' is ' . $r['trBg'] );
         if ( $w < 600 && $th['send'] ) { rl( $th['send']['h'] >= 44, "PLANT T: $name: {$th['name']}'s Send is " . round( $th['send']['h'] ) . 'px tall on a phone' ); }
     }
-    rl( 3 === count( isset( $t[1]['msgs'] ) ? $t[1]['msgs'] : array() ), "$name: Ana's thread does not hold two replies and the answer" );
+    // 3.144.2: and the Text registrants message the first reply answered, above it.
+    rl( 4 === count( isset( $t[1]['msgs'] ) ? $t[1]['msgs'] : array() ), "$name: Ana's thread does not hold the message replied to, two replies and the answer" );
     rl( isset( $r['confirm']['bg'] ) && $r['confirm']['bg'] === $r['trBg'] && false !== strpos( $r['confirm']['msg'], 'Send to Beto Luna?' ), "PLANT T: $name: Send asks with " . json_encode( isset( $r['confirm'] ) ? $r['confirm'] : null, JSON_UNESCAPED_UNICODE ) );
 }
 
