@@ -9,7 +9,7 @@ reading the repository. Each item says what to do and why it needs a person.
 backlog, not a record of what has been checked. What a test proved, if it is
 worth keeping, belongs in `PROJECT.md`.
 
-**Outstanding: 456 items.** Quick 366, needs real conditions 85, blocked on other
+**Outstanding: 458 items.** Quick 368, needs real conditions 85, blocked on other
 people 5.
 
 ---
@@ -4903,6 +4903,30 @@ buttons, beside the white buttons with a teal edge.
 
 **Why it needs a person:** the real screens on the site, and whether the edge
 reads as a choice, which no measurement answers.
+
+### 1.369 A series embed shows what is also shown in it (3.145.0)
+
+On a page with an embed scoped to one series (its snippet has `series=` and a
+number), pick an event of another series and, in Edit event, tick that series
+under Also show this event in series. Reload the page: the event is in the
+embed's list and month grid, with its own series' badge. Make it private, or
+save it as a draft, and it leaves the embed. Then untick the series and it
+leaves again. Say how long each change took to show, since the embed is
+cached.
+
+**Why it needs a person:** the live embed on sfaf.org, its cache, and real
+events.
+
+### 1.370 Long words in the month grid break with a hyphen in every browser (3.145.0)
+
+On sfaf.org's calendar page, in Chrome on Windows, Chrome on Android, Safari
+on an iPhone and Firefox, find a month-grid title with a long word, such as a
+Spanish event's "Transformaciones": where it wraps, the first line ends in a
+hyphen at a syllable ("Transfor-"), never "Transformac" and "iones". Copy a
+title and paste it into a text box: say whether anything odd comes with it.
+
+**Why it needs a person:** real browsers on real devices, and what each does
+with a copied soft hyphen.
 
 ### 1.368 Replies shows what each reply answered (3.144.2)
 

@@ -967,6 +967,19 @@ in Chrome 158: **Chrome hyphenates nothing until it has fetched its dictionaries
 word**, so a Title Case English title still breaks anywhere. Spanish capitalised
 words do hyphenate. Every other list here keeps `hyphens: manual`.
 
+**And they carry soft hyphens (3.145.0)**, so the break no longer waits on a
+dictionary. `sfaf_soft_hyphens()` puts U+00AD at the syllable breaks of every
+word of 8 letters or more, by vowel and consonant rather than by dictionary
+(V-CV, VC-CV, and before a pair that opens a syllable: bl, br, ch, tr and the
+rest), at least 3 letters at each end, never between two vowels, never in a
+word in capitals or straight after an `&`. Every browser honours a soft
+hyphen whether or not it holds a dictionary for the title's `lang`: in a
+Chrome with none, "Transformaciones" breaks "Transfor- / maciones" with the
+soft hyphens and "Transforma / ciones" with no hyphen without them
+(`release-31450-live.php`). A soft hyphen draws nothing unless the word
+breaks there. Only the grid's titles carry them; the `lang` and the CSS are
+3.143.1's.
+
 ### Coloured text is not separation; a band is (3.93.0)
 
 3.92.0 gave the dropdown's two section headings the palette teal. The report on

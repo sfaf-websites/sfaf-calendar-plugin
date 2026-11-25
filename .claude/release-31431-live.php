@@ -114,11 +114,14 @@ function breaks(root, el) {
   var rects = Array.prototype.filter.call(r.getClientRects(), function (x) { return x.width > 0; });
   var lines = [];
   rects.forEach(function (x) { var l = lines[lines.length - 1]; if (l && Math.abs(l.top - x.top) < 3) { l.parts.push(x); } else { lines.push({ top: x.top, h: x.height, parts: [x] }); } });
-  var out = { lang: el.getAttribute('lang'), hyphens: getComputedStyle(el).hyphens, text: t ? t.data : '', lines: lines.length, breaks: [], seen: seen(el), w: el.getBoundingClientRect().width };
+  /* The text and the offsets without the soft hyphens 3.145.0 puts in. */
+  var raw = t ? t.data : '';
+  function clean(k) { return k - (raw.slice(0, k).split('\u00AD').length - 1); }
+  var out = { lang: el.getAttribute('lang'), hyphens: getComputedStyle(el).hyphens, text: raw.replace(/\u00AD/g, ''), lines: lines.length, breaks: [], seen: seen(el), w: el.getBoundingClientRect().width };
   for (var i = 1; i < lines.length; i++) {
     var first = lines[i].parts[0], c = caret(root, first.left + 0.5, first.top + first.height / 2);
     var prev = lines[i - 1].parts, last = prev[prev.length - 1];
-    out.breaks.push({ at: c && c.node === t ? c.offset : -1, hyphen: prev.length > 1 && last.width <= 8 });
+    out.breaks.push({ at: c && c.node === t ? clean(c.offset) : -1, hyphen: prev.length > 1 && last.width <= 8 });
   }
   return out;
 }

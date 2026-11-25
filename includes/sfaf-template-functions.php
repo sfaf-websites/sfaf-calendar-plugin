@@ -4036,6 +4036,96 @@ function sfaf_event_language( $event_id ) {
     return in_array( $inherit, array( 'en', 'es' ), true ) ? $inherit : 'en';
 }
 
+/**
+ * Soft hyphens (U+00AD) at the syllable breaks of every long word (3.145.0),
+ * for month-grid titles. hyphens: auto needs the browser to hold a dictionary
+ * for the title's lang, and not every browser has one for every language, so
+ * "Transformaciones" could still break as "Transformac / iones". A soft hyphen is honored by every browser
+ * in any language and is invisible unless the word breaks there.
+ *
+ * The breaks are by vowel and consonant, not by a dictionary, so the same
+ * rule serves English and Spanish: V-CV, VC-CV, and before a cluster that
+ * can open a syllable (bl, br, ch, tr ...). Two vowels together are never
+ * split. A word under 8 letters, or in capitals, is left alone, and at least
+ * 3 letters stay on each side of a break.
+ *
+ * @param string $text Plain text, not escaped.
+ * @return string Plain text with U+00AD inserted.
+ */
+function sfaf_soft_hyphens( $text ) {
+    $text = (string) $text;
+    if ( '' === $text || ! preg_match( '/\p{L}{8,}/u', $text ) ) {
+        return $text;
+    }
+    // Never letters straight after an &: get_the_title() hands back entities.
+    $parts = preg_split( '/((?<![&\p{L}])\p{L}{8,})/u', $text, -1, PREG_SPLIT_DELIM_CAPTURE );
+    if ( false === $parts ) {
+        return $text;
+    }
+    $out = '';
+    foreach ( $parts as $i => $part ) {
+        $out .= ( $i % 2 ) ? sfaf_soft_hyphens_word( $part ) : $part;
+    }
+    return $out;
+}
+
+/**
+ * One word's soft hyphens. See sfaf_soft_hyphens().
+ *
+ * @param string $word Letters only, 8 or more.
+ * @return string
+ */
+function sfaf_soft_hyphens_word( $word ) {
+    // Capitals are an acronym or a shout; neither is broken.
+    if ( ! preg_match( '/\p{Ll}/u', $word ) ) {
+        return $word;
+    }
+    $ch  = preg_split( '//u', $word, -1, PREG_SPLIT_NO_EMPTY );
+    $n   = count( $ch );
+    // preg alone, no mbstring, which not every host has. strtolower() only
+    // ever touches ASCII, which is all the cluster list holds.
+    $low = array_map( 'strtolower', $ch );
+    $vow = array();
+    foreach ( $ch as $k => $c ) {
+        $vow[ $k ] = (bool) preg_match( '/^[aeiouyáéíóúàèìòùâêîôûäëïöüãõåæøœ]$/iu', $c );
+    }
+    // Pairs that open a syllable, so a break goes before them, never inside.
+    $onsets = array( 'bl', 'br', 'ch', 'cl', 'cr', 'dr', 'fl', 'fr', 'gl', 'gr', 'ph', 'pl', 'pr', 'qu', 'sh', 'th', 'tr', 'wh', 'll', 'rr' );
+    $breaks = array();
+    $k = 0;
+    while ( $k < $n ) {
+        if ( ! $vow[ $k ] ) { $k++; continue; }
+        // A vowel at $k; the consonants after it, up to the next vowel.
+        $j = $k + 1;
+        while ( $j < $n && ! $vow[ $j ] ) { $j++; }
+        if ( $j >= $n ) { break; }
+        $run = $j - $k - 1;
+        if ( 1 === $run ) {
+            $at = $k + 1;
+        } elseif ( $run >= 2 ) {
+            $pair = $low[ $j - 2 ] . $low[ $j - 1 ];
+            $at   = in_array( $pair, $onsets, true ) ? $j - 2 : $j - 1;
+        } else {
+            $at = 0;
+        }
+        if ( $at >= 3 && $n - $at >= 3 && ( ! $breaks || $at - end( $breaks ) >= 2 ) ) {
+            $breaks[] = $at;
+        }
+        $k = $j;
+    }
+    if ( ! $breaks ) {
+        return $word;
+    }
+    $out = '';
+    foreach ( $ch as $k => $c ) {
+        if ( in_array( $k, $breaks, true ) ) {
+            $out .= "\xC2\xAD";
+        }
+        $out .= $c;
+    }
+    return $out;
+}
+
 function sfaf_ap_date_range( $start, $end ) {
     $s = strtotime( trim( (string) $start ) . ' 12:00:00' );
     $e = strtotime( trim( (string) $end ) . ' 12:00:00' );

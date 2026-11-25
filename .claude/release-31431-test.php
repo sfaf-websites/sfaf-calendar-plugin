@@ -15,7 +15,8 @@
  *      the grid the past one exactly as it shows World AIDS Day's own past day.
  *      Cycle to Zero chosen: its own two, not World AIDS Day's. Two chosen: both.
  *      With nothing shown that way, the clause is the taxonomy one it was.
- *   S  a block scoped to World AIDS Day is unchanged: its own events only.
+ *   S  a block scoped to World AIDS Day: its own event and the ride shown in
+ *      it, since 3.145.0 (release-31450-test.php checks the rest).
  *   G  a series reached only through "Also show" is offered, and choosing it
  *      is kept by the clamp; the group counts count the event in it.
  *   L  every grid title carries its event's language: es for Transformaciones,
@@ -84,9 +85,9 @@ rt( 'Q: with no event shown in Alpha, its clause is not the taxonomy clause: ' .
     empty( $largs['post__in'] ) && in_array( array( 'taxonomy' => 'uc_series', 'field' => 'slug', 'terms' => array( 'alpha' ) ), $tax, true ) );
 rt( 'Q: Alpha\'s list is ' . json_encode( $who( $l ) ), $same( $l, array( $e['alpha'], $e['spanish'] ) ) );
 
-/* ---- S: a block scoped to World AIDS Day, unchanged ---- */
+/* ---- S: a block scoped to World AIDS Day, as 3.145.0 has it ---- */
 list( $l, ) = $list( '', array( 'series' => 14 ) );
-rt( 'S: a block scoped to World AIDS Day lists ' . json_encode( $who( $l ) ) . ', not its own event only', $same( $l, array( $e['vigil'] ) ) );
+rt( 'S: a block scoped to World AIDS Day lists ' . json_encode( $who( $l ) ) . ', not the vigil and the ride', $same( $l, array( $e['vigil'], $e['ride'] ) ) );
 
 /* ---- G: offered, kept, counted ---- */
 $groups = $sc->available_groups( array() );
@@ -105,7 +106,8 @@ $b    = $sc->render_calendar_block( array( 'view' => 'calendar', 'show_filters' 
 $html = is_array( $b ) ? (string) $b['html'] : (string) $b;
 preg_match_all( '#<span class="uc-day-event-title" lang="([a-z]*)">([^<]*)</span>#', $html, $mm, PREG_SET_ORDER );
 $langs = array();
-foreach ( $mm as $x ) { $langs[ $x[2] ] = $x[1]; }
+// The text without the soft hyphens 3.145.0 puts in the long words.
+foreach ( $mm as $x ) { $langs[ str_replace( "­", '', $x[2] ) ] = $x[1]; }
 rt( 'L: no grid title carries a language: ' . substr( $html, 0, 200 ), count( $langs ) > 0 );
 rt( 'L: Transformaciones is lang="' . ( isset( $langs['Transformaciones'] ) ? $langs['Transformaciones'] : '?' ) . '", not es', isset( $langs['Transformaciones'] ) && 'es' === $langs['Transformaciones'] );
 foreach ( $langs as $t => $lg ) { if ( 'Transformaciones' !== $t ) { rt( "L: $t is lang=\"$lg\", not en", 'en' === $lg ); } }

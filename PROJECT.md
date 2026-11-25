@@ -3815,8 +3815,7 @@ id), private and hidden-cancelled ones out as everywhere public. Both "Upcoming 
 this series" and an ended event's dates use it, so an event of the extra series
 lists the event with its own dates. With nothing shown in a series it is
 exactly `sfaf_get_series_events( $term_id, true )`. The series archive
-(`taxonomy-uc_series.php`) and a block or embed scoped to a series (`series=`)
-list only a series' own events.
+(`taxonomy-uc_series.php`) lists only a series' own events.
 
 **The calendar's series filter (3.143.1).** A visitor choosing a series (the
 groups, `uc_group` / `active_groups`) gets its own events and the events shown in
@@ -3834,6 +3833,15 @@ only that way is offered and survives the clamp. On the
 caladmin series page "Also shown here" follows Upcoming in a list of its own, each
 row tagged and naming its own series, with no Remove, so no schedule action on
 this series reaches another series' event.
+
+**A block or embed scoped to a series (3.145.0).** `series="123"`, resolved by
+`SFAF_Series::resolve()` as it always was, goes through
+`SFAF_Shortcodes::apply_series_scope()`, which hands the one term to
+`apply_series_terms()`, the half of `apply_groups()` that does the work. So a
+scoped block or embed shows the events shown in its series exactly as the
+series filter does, by the same clause, with the same exclusions; a series
+nothing is shown in keeps its term-id taxonomy clause. The snippet contract is
+unchanged: one integer, and no snippet needs regenerating.
 
 **The rules that keep it one series.** Its own series is never stored as an extra:
 `set_also_for_event()` drops it, the field hides it (`initAlsoSeries()` follows the

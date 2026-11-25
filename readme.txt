@@ -4,7 +4,7 @@ Tags: calendar, events, rsvp, nonprofit, embed
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 3.144.2
+Stable tag: 3.145.0
 License: GPLv2 or later
 
 The San Francisco AIDS Foundation event calendar: manage events, RSVPs, reminders, and recurring series in one place, display them on this site, and embed them on any other site with a small block of HTML.
@@ -530,6 +530,13 @@ it against this account from their own site indefinitely. The referrer
 restriction is what makes a key that is visible by design safe to have visible.
 
 == Changelog ==
+
+= 3.145.0 =
+
+**A series embed shows what is also shown in it, and long words in the month grid break with a hyphen in every browser.** An embed change: against 3.144.2, embed-identity-test.php finds calendar.css's comment on the grid's titles and nothing else; none of its twelve embed answers has an event shown in a series or a word of 8 letters.
+
+* **An embed or block scoped to a series** (`series=` in the snippet) shows the events added to that series with "Also show this event in series...", as choosing a series on the calendar has since 3.143.1. Private, draft, hidden cancelled and past events stay out. Existing snippets need no change.
+* **Long words in the month grid's titles break at a syllable with a hyphen in every browser and language**, for example "Transfor- maciones", even where the browser has no dictionary for the language. The titles look the same otherwise and keep their language.
 
 = 3.144.2 =
 

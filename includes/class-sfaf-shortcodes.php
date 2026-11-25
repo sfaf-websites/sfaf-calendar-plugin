@@ -518,14 +518,11 @@ class SFAF_Shortcodes {
         // _uc_series_parent, and it is now resolved by SFAF_Series::resolve(),
         // which tries the old parent ID first and the term ID second. That is
         // what lets existing embed code keep working without being regenerated.
-        $series_term = SFAF_Series::resolve( $filters['series'] );
-        if ( $series_term > 0 ) {
-            $args['tax_query'][] = array(
-                'taxonomy' => SFAF_Series::TAXONOMY,
-                'field'    => 'term_id',
-                'terms'    => $series_term,
-            );
-        }
+        //
+        // "This series" includes the events shown in it through "Also show
+        // this event in series" since 3.145.0, as the series filter has since
+        // 3.143.1. See apply_series_scope().
+        $this->apply_series_scope( $args, SFAF_Series::resolve( $filters['series'] ) );
 
         /*
          * THE GROUPS THE VISITOR CHOSE. Several slugs are an OR, because
@@ -575,6 +572,41 @@ class SFAF_Shortcodes {
                 $term_ids[] = (int) $term->term_id;
             }
         }
+        $this->apply_series_terms( $args, $term_ids, $tax );
+    }
+
+    /**
+     * A snippet's series scope, series="123", as a clause on $args (3.145.0):
+     * the events in that series and the ones shown in it through "Also show
+     * this event in series", by the groups' own mechanism. The number is
+     * resolved as it always was (SFAF_Series::resolve()).
+     *
+     * @param array $args    WP_Query args, changed in place.
+     * @param int   $term_id The resolved series term, 0 for none.
+     */
+    private function apply_series_scope( &$args, $term_id ) {
+        $term_id = (int) $term_id;
+        if ( $term_id <= 0 ) {
+            return;
+        }
+        $this->apply_series_terms( $args, array( $term_id ), array(
+            'taxonomy' => SFAF_Series::TAXONOMY,
+            'field'    => 'term_id',
+            'terms'    => $term_id,
+        ) );
+    }
+
+    /**
+     * Events in these series, by their own series or through "Also show this
+     * event in series", as a clause on $args. The shared half of
+     * apply_groups() and apply_series_scope(); see apply_groups() for why the
+     * clause becomes a list of ids when any event is shown that way.
+     *
+     * @param array $args     WP_Query args, changed in place.
+     * @param int[] $term_ids The series' term ids.
+     * @param array $tax      The taxonomy clause for the series' own events.
+     */
+    private function apply_series_terms( &$args, $term_ids, $tax ) {
         $also = SFAF_Series::also_in( $term_ids );
         if ( ! $also ) {
             $args['tax_query'][] = $tax;
@@ -1134,14 +1166,7 @@ class SFAF_Shortcodes {
         }
         // Same resolution as list_query_args(); see the note there on why the
         // number in an existing snippet keeps meaning what it always meant.
-        $series_term = SFAF_Series::resolve( $filters['series'] );
-        if ( $series_term > 0 ) {
-            $args['tax_query'][] = array(
-                'taxonomy' => SFAF_Series::TAXONOMY,
-                'field'    => 'term_id',
-                'terms'    => $series_term,
-            );
-        }
+        $this->apply_series_scope( $args, SFAF_Series::resolve( $filters['series'] ) );
 
         // The chosen groups, so the grid cannot contradict the list beside it.
         // Already clamped by whoever built these filters.
@@ -1772,7 +1797,7 @@ class SFAF_Shortcodes {
                                                         <?php if ( $ev_off ) : ?>
                                                             <span class="uc-day-event-off">Cancelled</span>
                                                         <?php endif; ?>
-                                                        <span class="uc-day-event-title" lang="<?php echo esc_attr( sfaf_event_language( $id ) ); ?>"><?php echo esc_html( get_the_title( $id ) ); ?></span>
+                                                        <span class="uc-day-event-title" lang="<?php echo esc_attr( sfaf_event_language( $id ) ); ?>"><?php echo esc_html( sfaf_soft_hyphens( get_the_title( $id ) ) ); ?></span>
                                                         <?php if ( '' !== $start ) : ?>
                                                             <span class="uc-day-event-time"><?php echo esc_html( sfaf_ap_time( $start ) ); ?></span>
                                                         <?php endif; ?>

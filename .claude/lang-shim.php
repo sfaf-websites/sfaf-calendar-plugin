@@ -18,6 +18,9 @@ if ( ! defined( 'SFAF_DONATE_DEFAULT' ) ) {
 if ( ! function_exists( 'sfaf_event_language' ) ) {
     function sfaf_event_language( $event_id ) { return 'en'; }
 }
+if ( ! function_exists( 'sfaf_soft_hyphens' ) ) {
+    function sfaf_soft_hyphens( $text ) { return (string) $text; }
+}
 if ( ! function_exists( 'sfaf_ap_restate' ) ) {
     function sfaf_ap_restate( $kind, $text, $lang ) { return (string) $text; }
 }

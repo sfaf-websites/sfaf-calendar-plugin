@@ -3554,7 +3554,12 @@ a.uc-follow-btn:hover { border-bottom-color: var(--uc-teal); }
    ciones", not "Transformac / iones". hyphens: auto, in the event's own
    language, which the title carries as lang="en" or lang="es". A break
    between words still comes first; overflow-wrap only takes a word the
-   browser has no dictionary for. */
+   browser has no dictionary for.
+
+   AND AT A SOFT HYPHEN IN ANY BROWSER (3.145.0). The renderer puts U+00AD at
+   the syllable breaks of every word of 8 letters or more
+   (sfaf_soft_hyphens()), which every browser honors with or without a
+   dictionary for the title's language. */
 .uc-day-event-title {
     display: block;
     overflow-wrap: anywhere;

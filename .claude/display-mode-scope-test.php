@@ -171,6 +171,7 @@ function sfaf_ap_time( $t ) { return (string) $t; }
 function sfaf_category_shades( $hex ) { return array( 'ink' => '#0C666F', 'tint' => '#F2FCFD', 'media' => '#D5F3F6', 'chip' => '#E3F7F9' ); }
 function sfaf_event_category_color( $id ) { return '#0E7680'; }
 function sfaf_event_language( $id ) { return 'en'; } // 3.143.1: each grid title's lang
+function sfaf_soft_hyphens( $t ) { return $t; } // 3.145.0: each grid title's soft hyphens
 function sfaf_category_color( $id ) { return '#0E7680'; }
 function sfaf_day_event_thumb( $id ) { return '<span class="uc-day-event-thumb"></span>'; }
 /* The grid tile is a dot, a title and a time since 3.89.0. The thumb stub above
