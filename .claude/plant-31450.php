@@ -52,7 +52,7 @@ $plants = array(
     'capitals broken' => array( $T, 'H: "HIV\/AIDS AWARENESS" is', array(
         array( $TF, "    if ( ! preg_match( '/\\p{Ll}/u', \$word ) ) {", "    if ( false ) {" ),
     ) ),
-    'an entity broken' => array( $T, 'H: "Celebración &thetasym;" is', array(
+    'an entity broken' => array( $T, '&thetasym;" is "Cele-bra-ci', array(
         array( $TF, "'/((?<![&\\p{L}])\\p{L}{8,})/u'", "'/(\\p{L}{8,})/u'" ),
     ) ),
     'a public file changes' => array( $I, 'differs from 3.144.2', array(
