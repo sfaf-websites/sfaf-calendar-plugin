@@ -44,7 +44,7 @@ $plants = array(
     'an answer from the RSVP page shown twice' => array( $T, "R: Ana's thread: each message replied to above the first reply to it, once", array(
         array( $IB, "    const ANSWERED_KINDS = array( 'confirmation', 'reminder', 'update' );", "    const ANSWERED_KINDS = array( 'confirmation', 'reminder', 'update', 'organizer' );" ),
     ) ),
-    'a reply to nothing shown under the last message' => array( $T, 'R: nothing above a reply to nothing recorded', array(
+    'a reply to nothing given a message it answered' => array( $T, 'R: threads() names nothing for Dee', array(
         array( $IB, "            \$id = (int) \$r->reply_to;\n            if ( ! \$id ||", "            \$id = (int) \$r->reply_to ?: 1;\n            if ( ! \$id ||" ),
     ) ),
     'no sender on a Text registrants message' => array( $T, 'R: a Text registrants message names who sent it', array(
